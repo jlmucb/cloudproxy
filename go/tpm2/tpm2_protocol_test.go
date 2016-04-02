@@ -20,7 +20,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
-	// "math/big"
         "testing"
 	"time"
 
@@ -35,14 +34,16 @@ func TestCreateKeyHierarchy(t *testing.T) {
 	}
 	defer rw.Close()
 	pcrs := []int{7}
-	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
 		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "01020304")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
 	tpm2.FlushContext(rw, rootHandle)
 	tpm2.FlushContext(rw, quoteHandle)
-	// tpm2.FlushContext(rw, storeHandle)
+	tpm2.FlushContext(rw, storeHandle)
+	tpm2.PersistTpm2KeyHierarchy(rw , pcrs, 2048, uint16(tpm2.AlgTPM_ALG_SHA1),
+		tpm2.RootKeyHandle, tpm2.QuoteKeyHandle, "")
 }
 
 func TestMakeEndorsementCert(t *testing.T) {
@@ -94,20 +95,21 @@ func TestUnseal(t *testing.T) {
 func TestAttest(t *testing.T) {
 }
 
-func RestSignAttest(t *testing.T) {
+func TestSignAttest(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
 	pcrs := []int{7}
-	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
 		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
 	defer tpm2.FlushContext(rw, rootHandle)
 	defer tpm2.FlushContext(rw, quoteHandle)
+	tpm2.FlushContext(rw, storeHandle)
 
 	var notBefore time.Time
         notBefore = time.Now()
@@ -145,13 +147,14 @@ func TestMakeActivate(t *testing.T) {
 	defer rw.Close()
 
 	pcrs := []int{7}
-	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
 		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
 	defer tpm2.FlushContext(rw, rootHandle)
 	defer tpm2.FlushContext(rw, quoteHandle)
+	tpm2.FlushContext(rw, storeHandle)
 
 	// Generate Credential
 	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
@@ -163,7 +166,6 @@ func TestMakeActivate(t *testing.T) {
 		t.Fatal("ReadPublic fails")
 	}
 
-fmt.Printf("CreateEndorsement\n")
 	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, pcrs)
 	if err != nil {
 		t.Fatal("CreateEndorsement fails")
@@ -203,13 +205,14 @@ func TestInternalSignProtocol(t *testing.T) {
 	defer rw.Close()
 
 	pcrs := []int{7}
-	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
 		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
-	defer tpm2.FlushContext(rw, rootHandle)
+	tpm2.FlushContext(rw, rootHandle)
 	defer tpm2.FlushContext(rw, quoteHandle)
+	defer tpm2.FlushContext(rw, storeHandle)
 
 	var notBefore time.Time
 	notBefore = time.Now()
@@ -296,8 +299,8 @@ func TestInternalSignProtocol(t *testing.T) {
 	var unsealing_secret [32]byte
 	rand.Read(unsealing_secret[0:32])
 	sealed_priv, sealed_pub, err := tpm2.AssistSeal(rw,
-		rootHandle, unsealing_secret[0:32],
-		"", "", pcrs, policy_digest)
+		storeHandle, unsealing_secret[0:32],
+		"", "01020304", pcrs, policy_digest)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't seal Program private key sealing secret")
@@ -355,7 +358,8 @@ func TestInternalSignProtocol(t *testing.T) {
 return
 	// Unseal secret and decrypt private policy key.
 	unsealed, _, err := tpm2.AssistUnseal(rw, sessionHandle,
-		rootHandle, sealed_pub, sealed_priv, "", "", policy_digest)
+		storeHandle, sealed_pub, sealed_priv, "",
+		"01020304", policy_digest)
         if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't Unseal")

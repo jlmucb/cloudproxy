@@ -90,7 +90,6 @@ func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
 	sealHandle, _, err := Load(rw, parentHandle, parentPassword,
 		ownerPassword, pub, priv)
 	if err != nil {
-		FlushContext(rw, sessionHandle)
 		return nil, nil, errors.New("Load failed")
 	}
 
@@ -98,7 +97,6 @@ func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
 	unsealed, nonce, err := Unseal(rw, sealHandle, ownerPassword,
 		sessionHandle, policy_digest)
 	if err != nil {
-		FlushContext(rw, sessionHandle)
 		return nil, nil, errors.New("Unseal failed")
 	}
 	return unsealed, nonce, err
@@ -145,7 +143,7 @@ func CreateEndorsement(rw io.ReadWriter, modSize uint16, pcrs []int) (Handle, []
 // primary key and quoting key for cloudproxy.
 func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		keySize uint16, hash_alg_id uint16,
-		quotePassword string) (Handle, Handle, error) {
+		quotePassword string) (Handle, Handle, Handle, error) {
 
 	// CreatePrimary
 	var empty []byte
@@ -157,7 +155,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 	rootHandle, _, err := CreatePrimary(rw,
 		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
 	if err != nil {
-		return Handle(0), Handle(0),
+		return Handle(0), Handle(0), Handle(0),
 				errors.New("CreatePrimary failed")
 	}
 
@@ -169,7 +167,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 	quote_private, quote_public, err := CreateKey(rw,
 		uint32(rootHandle), pcrs, "", quotePassword, keyparms)
 	if err != nil {
-		return Handle(0), Handle(0),
+		return Handle(0), Handle(0), Handle(0),
 				errors.New("Can't create quote key")
 	}
 
@@ -177,11 +175,10 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 	quoteHandle, _, err := Load(rw, rootHandle, "",
 		"", quote_public, quote_private)
 	if err != nil {
-		return Handle(0), Handle(0),
+		return Handle(0), Handle(0), Handle(0),
 				errors.New("Load failed")
 	}
 
-/*
 	// CreateKey
 	storeparms := RsaParams{uint16(AlgTPM_ALG_RSA),
 		uint16(AlgTPM_ALG_SHA1), FlagStorageDefault,
@@ -201,9 +198,8 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		return Handle(0), Handle(0), Handle(0),
 				errors.New("Load failed")
 	}
+
 	return rootHandle, quoteHandle, storeHandle, nil
-*/
-	return rootHandle, quoteHandle, nil
 }
 
 // and makes their handles permanent.

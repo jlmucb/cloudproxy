@@ -156,115 +156,26 @@ func TestMakeActivate(t *testing.T) {
 	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
 	fmt.Printf("Credential: %x\n", credential)
 
-/*
-	var empty []byte
-	// CreatePrimary
-	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
-		uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault, empty,
-		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
-		uint16(0), uint16(2048), uint32(0x00010001), empty}
-	rootHandle, primary_public_blob, err := tpm2.CreatePrimary(rw,
-		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
-	if err != nil {
-		t.Fatal("CreatePrimary fails")
-	}
-	fmt.Printf("CreatePrimary succeeded\n")
-
-	endorseParams, err := tpm2.DecodeRsaArea(primary_public_blob)
-	if err != nil {
-		t.Fatal("DecodeRsaBuf fails", err)
-	}
-
-	// Replace with quoteHandle = tpm2.QuoteKeyHandle
-	// CreateKey
-	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-                tpm2.FlagSignerDefault, empty, uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
-                uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
-                uint16(tpm2.AlgTPM_ALG_SHA1), 2048, uint32(0x00010001), empty}
-	private_blob, public_blob, err := tpm2.CreateKey(rw, uint32(rootHandle),
-		[]int{7}, "", "", keyparms)
-	if err != nil {
-		fmt.Printf("err: %s\n", err)
-		t.Fatal("CreateKey fails")
-	}
-	fmt.Printf("CreateKey succeeded\n")
-
-	// Load
-	quoteHandle, _, err := tpm2.Load(rw, rootHandle, "", "",
-	     public_blob, private_blob)
-	if err != nil {
-		t.Fatal("Load fails")
-	}
-	fmt.Printf("Load succeeded\n")
-
-*/
-
-	root_public, _, _, err := tpm2.ReadPublic(rw, rootHandle)
-	if err != nil {
-		fmt.Printf("err: %s\n", err)
-		t.Fatal("ReadPublic (1) fails")
-	}
-	fmt.Printf("root public: %x\n", root_public)
-	endorseParams, err := tpm2.DecodeRsaBuf(root_public)
-	if err != nil {
-		fmt.Printf("err: %s\n", err)
-		t.Fatal("DecodeRsaBuf fails")
-	}
-
 	// ReadPublic
 	_, name, _, err := tpm2.ReadPublic(rw, quoteHandle)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("ReadPublic fails")
 	}
-	fmt.Printf("ReadPublic succeeded\n")
 
-// DELETE FROM HERE
-	// Internal MakeCredential
-	credBlob, encrypted_secret0, err := tpm2.InternalMakeCredential(rw,
-		rootHandle, credential, name)
+	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, pcrs)
 	if err != nil {
-		t.Fatal("Can't InternalMakeCredential\n")
+		t.Fatal("CreateEndorsement fails")
 	}
-
-	// ActivateCredential
-	// recovered_credential1, err := tpm2.ActivateCredential(rw, quoteHandle, rootHandle,
-	recovered_credential1, err := tpm2.ActivateCredential(rw, quoteHandle,
-		rootHandle,
-		"", "", credBlob, encrypted_secret0)
+	defer tpm2.FlushContext(rw, ekHandle)
+	endorse_public, _, _, err := tpm2.ReadPublic(rw, ekHandle)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
-		t.Fatal("Can't ActivateCredential\n")
+		t.Fatal("ReadPublic (2) fails")
 	}
-	if bytes.Compare(credential, recovered_credential1) != 0 {
-		t.Fatal("Credential and recovered credential differ\n")
+	endorseParams, err := tpm2.DecodeRsaBuf(endorse_public)
+	if err != nil {
+		t.Fatal("DecodeRsaArea fails")
 	}
-	fmt.Printf("InternalMake/Activate test succeeds\n\n")
-// DELETE TO HERE
-
-/*
- 	notBefore = time.Now()
-        validFor := 365*24*time.Hour
-        notAfter := notBefore.Add(validFor)
-
-        policyKey, err := rsa.GenerateKey(rand.Reader, 2048)
-        if err != nil {
-                t.Fatal("Can't generate policy key\n")
-        }
-        derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
-                "Cloudproxy Authority", "Application Policy Key",
-                tpm2.GetSerialNumber(), notBefore, notAfter)
-        if err != nil {
-                t.Fatal("Can't generate policy key\n")
-        }
-        fmt.Printf("policyKey: %x\n", policyKey)
-	derEndorsementCert, err := tpm2.GenerateHWCert(rw,
-        tpm2.Handle(tpm2.PrimaryKeyHandle), "JohnsHw", notBefore,
-        notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
-	cert, err := x509.ParseCertificate(derEndorsementCert)
-	protectorPublic, err := GetPublicKeyFromDerCert(derEndorsementCert)
-*/
 	protectorPublic := new(rsa.PublicKey)
 	protectorPublic.E = 0x00010001
 	M := new(big.Int)
@@ -272,21 +183,20 @@ func TestMakeActivate(t *testing.T) {
 	protectorPublic.N = M
 
 	// MakeCredential
-	// REMOVE: hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
-	encrypted_secret, encIdentity, integrityHmac, err := tpm2.MakeCredential(
+	secret, encIdentity, integrityHmac, err := tpm2.MakeCredential(
 		protectorPublic, uint16(tpm2.AlgTPM_ALG_SHA1), credential, name)
 	if err != nil {
 		t.Fatal("Can't MakeCredential\n")
 	}
 
 	// ActivateCredential
-	recovered_credential2, err := tpm2.ActivateCredential(rw,
-		quoteHandle, rootHandle, "", "",
-		append(integrityHmac, encIdentity...), encrypted_secret)
+	recovered, err := tpm2.ActivateCredential(rw,
+		quoteHandle, ekHandle, "", "",
+		append(integrityHmac, encIdentity...), secret)
 	if err != nil {
 		t.Fatal("Can't ActivateCredential\n")
 	}
-	if bytes.Compare(credential, recovered_credential2) != 0 {
+	if bytes.Compare(credential, recovered) != 0 {
 		t.Fatal("Credential and recovered credential differ\n")
 	}
 	fmt.Printf("Make/Activate test succeeds\n")

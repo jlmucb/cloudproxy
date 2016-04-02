@@ -36,7 +36,7 @@ func TestCreateKeyHierarchy(t *testing.T) {
 	defer rw.Close()
 	pcrs := []int{7}
 	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
-		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "01020304")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
@@ -202,13 +202,22 @@ func TestMakeActivate(t *testing.T) {
 	fmt.Printf("Make/Activate test succeeds\n")
 }
 
-func RestInternalSignProtocol(t *testing.T) {
+func TestInternalSignProtocol(t *testing.T) {
 return
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
+
+	pcrs := []int{7}
+	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+	if err != nil {
+		t.Fatal("Can't create keys")
+	}
+	defer tpm2.FlushContext(rw, rootHandle)
+	defer tpm2.FlushContext(rw, quoteHandle)
 
 	var notBefore time.Time
 	notBefore = time.Now()
@@ -227,17 +236,20 @@ return
 	}
 	fmt.Printf("policyKey: %x\n", policyKey)
 
-	primaryHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
+	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
 	if err != nil {
 		t.Fatal("Can't CreateEndorsement")
 	}
+	defer tpm2.FlushContext(rw, ekHandle)
+
 	derEndorsementCert, err := tpm2.GenerateHWCert(rw,
-		primaryHandle, "JohnsHw", notBefore, notAfter,
+		ekHandle, "JohnsHw", notBefore, notAfter,
 		tpm2.GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}
 	fmt.Printf("Endorsement cert: %x\n", derEndorsementCert)
+
 	// signing instructions
 	signing_instructions_message := new(tpm2.SigningInstructionsMessage)
 	issuer := "JLM CA"
@@ -261,7 +273,6 @@ return
 	// Cloudproxy protocol
 	//
 
-	pcrs := []int{7}
 	quotePassword := "01020304"
 
 	programName := "TestProgram"

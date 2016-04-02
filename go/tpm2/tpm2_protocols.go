@@ -167,8 +167,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
 		uint16(AlgTPM_ALG_SHA1), keySize, uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw,
-		uint32(rootHandle), pcrs,
-		"", quotePassword, keyparms)
+		uint32(rootHandle), pcrs, "", quotePassword, keyparms)
 	if err != nil {
 		return Handle(0), Handle(0),
 				errors.New("Can't create quote key")
@@ -176,7 +175,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 
 	// Load
 	quoteHandle, _, err := Load(rw, rootHandle, "",
-		quotePassword, public_blob, private_blob)
+		"", public_blob, private_blob)
 	if err != nil {
 		return Handle(0), Handle(0),
 				errors.New("Load failed")

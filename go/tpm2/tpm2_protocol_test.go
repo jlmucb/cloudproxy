@@ -76,17 +76,18 @@ func TestCreateAndStoreKeyHierarchy(t *testing.T) {
 	keySize := uint16(2048)
 	hash_alg_id := tpm2.AlgTPM_ALG_SHA1
 	quotePassword := ""
-	rootFileName := "../tmptest/rootContext"
-	quoteFileName := "../tmptest/quoteContext"
-	storeFileName := "../tmptest/storeContext"
+	rootFileName := "./tmptest/rootContext"
+	quoteFileName := "./tmptest/quoteContext"
+	storeFileName := "./tmptest/storeContext"
 
-	err = tpm2.InitTpm2Keys(rw, pcrs, keySize, hash_alg_id, quotePassword, rootFileName,
+	err = tpm2.InitTpm2Keys(rw, pcrs, keySize, hash_alg_id,
+		quotePassword, rootFileName,
 		quoteFileName, storeFileName)
 	if err != nil {
 		t.Fatal("Can't InitTpm2Keys")
 	}
-	rootHandle, quoteHandle, storeHandle, err := tpm2.RestoreTpm2Keys(rw, quotePassword, rootFileName,
-                quoteFileName, storeFileName)
+	rootHandle, quoteHandle, storeHandle, err := tpm2.RestoreTpm2Keys(rw,
+		quotePassword, rootFileName, quoteFileName, storeFileName)
 	if err != nil {
 		t.Fatal("Can't RestoreTpm2Keys")
 	}

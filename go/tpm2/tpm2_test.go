@@ -710,7 +710,7 @@ func TestCombinedContextTest(t *testing.T) {
 	defer  tpm2.FlushContext(rw, quoteHandle)
 
 	// SaveContext
-	save_area, err := tpm2.SaveContext(rw, quoteHandle) 
+	save_area, err := tpm2.SaveContext(rw, quoteHandle)
 	if err != nil {
 		t.Fatal("Save Context fails")
 	}

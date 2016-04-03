@@ -66,6 +66,35 @@ func TestCreateKeyHierarchy(t *testing.T) {
 		tpm2.RootKeyHandle, tpm2.QuoteKeyHandle, "")
 }
 
+func TestCreateAndStoreKeyHierarchy(t *testing.T) {
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	if (err != nil) {
+		t.Fatal("Can't open tpm")
+	}
+	defer rw.Close()
+	pcrs := []int{7}
+	keySize := uint16(2048)
+	hash_alg_id := tpm2.AlgTPM_ALG_SHA1
+	quotePassword := ""
+	rootFileName := "../tmptest/rootContext"
+	quoteFileName := "../tmptest/quoteContext"
+	storeFileName := "../tmptest/storeContext"
+
+	err = tpm2.InitTpm2Keys(rw, pcrs, keySize, hash_alg_id, quotePassword, rootFileName,
+		quoteFileName, storeFileName)
+	if err != nil {
+		t.Fatal("Can't InitTpm2Keys")
+	}
+	rootHandle, quoteHandle, storeHandle, err := tpm2.RestoreTpm2Keys(rw, quotePassword, rootFileName,
+                quoteFileName, storeFileName)
+	if err != nil {
+		t.Fatal("Can't RestoreTpm2Keys")
+	}
+	defer tpm2.FlushContext(rw, rootHandle)
+	defer tpm2.FlushContext(rw, quoteHandle)
+	defer tpm2.FlushContext(rw, storeHandle)
+}
+
 func TestMakeEndorsementCert(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {

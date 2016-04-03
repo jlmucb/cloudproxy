@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/big"
 	"time"
 )
@@ -240,6 +241,72 @@ func Unseat() {
 func Attest() {
 }
 
+func InitTpm2Keys(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16,
+        	quotePassword string, rootFileName string, quoteFileName string,
+		storeFileName string) (error) {
+
+	rootHandle, quoteHandle, storeHandle, err := CreateTpm2KeyHierarchy(rw, pcrs,
+		keySize, hash_alg_id, quotePassword)
+	if err != nil {
+		return errors.New("InitTpm2Keys failed")
+	}
+
+	rootSaveArea, err := SaveContext(rw, rootHandle)
+	if err != nil {
+		return errors.New("Save root Context fails")
+	}
+	defer FlushContext(rw, rootHandle)
+
+	quoteSaveArea, err := SaveContext(rw, quoteHandle)
+	if err != nil {
+		return errors.New("Save quote Context fails")
+	}
+	defer FlushContext(rw, quoteHandle)
+
+	storeSaveArea, err := SaveContext(rw, storeHandle)
+	if err != nil {
+		return errors.New("Save store Context fails")
+	}
+	defer FlushContext(rw, storeHandle)
+
+	ioutil.WriteFile(rootFileName, rootSaveArea, 0644)
+	ioutil.WriteFile(quoteFileName, quoteSaveArea, 0644)
+	ioutil.WriteFile(storeFileName, storeSaveArea, 0644)
+	return nil
+}
+
+func RestoreTpm2Keys(rw io.ReadWriter, quotePassword string, rootFileName string,
+		quoteFileName string, storeFileName string) (Handle, Handle, Handle, error) {
+
+	rootSaveArea, err := ioutil.ReadFile(rootFileName)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("Can't read root store file")
+	}
+	quoteSaveArea, err := ioutil.ReadFile(quoteFileName)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("Can't read quote store file")
+	}
+	storeSaveArea, err := ioutil.ReadFile(storeFileName)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("Can't read store store file")
+	}
+	rootHandle, err := LoadContext(rw, rootSaveArea)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("Can't load root handle")
+	}
+	quoteHandle, err := LoadContext(rw, quoteSaveArea)
+	if err != nil {
+		FlushContext(rw, rootHandle)
+		return Handle(0), Handle(0), Handle(0), errors.New("Can't load quote handle")
+	}
+	storeHandle, err := LoadContext(rw, storeSaveArea)
+	if err != nil {
+		FlushContext(rw, rootHandle)
+		FlushContext(rw, quoteHandle)
+		return Handle(0), Handle(0), Handle(0), errors.New("Can't load store handle")
+	}
+	return rootHandle, quoteHandle, storeHandle, nil
+}
 
 func Tpm2DomainProgramKeyServer(policyCert []byte, policyKey *rsa.PrivateKey) {
 	//, signing_instructions_message *tpm2.SigningInstructionsMessage) {

@@ -1827,7 +1827,7 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_
 
 // ConstructSaveContext constructs a SaveContext command.
 func ConstructSaveContext(handle Handle) ([]byte, error) {
-	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdContextSave)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdContextSave)
 	if err != nil {
 		return nil, errors.New("ConstructSaveContext failed")
 	}
@@ -1875,7 +1875,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if status != ErrSuccess {
 		return nil, errors.New("SaveContext unsuccessful")
 	}
-	save_area, err := DecodeSaveContext(resp[10:])
+	save_area, err := DecodeSaveContext(resp[10:size])
 	if err != nil {
 		return nil, errors.New("DecodeSaveContext fails")
 	}
@@ -1886,11 +1886,11 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 
 // ConstructLoadContext constructs a LoadContext command.
 func ConstructLoadContext(save_area []byte) ([]byte, error) {
-	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdContextLoad)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdContextLoad)
 	if err != nil {
 		return nil, errors.New("ConstructLoadContext failed")
 	}
-	cmd_bytes := packWithBytes(cmdHdr, save_area)
+	cmd_bytes := packWithBytes(cmdHdr, save_area[0:len(save_area)])
 	return cmd_bytes, nil
 }
 

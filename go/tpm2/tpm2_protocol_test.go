@@ -27,6 +27,26 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+func TestClearKeyHierarchy(t *testing.T) {
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	if (err != nil) {
+		t.Fatal("Can't open tpm")
+	}
+	defer rw.Close()
+	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER),
+		tpm2.Handle(tpm2.RootKeyHandle),
+		tpm2.Handle(tpm2.RootKeyHandle))
+	if err != nil {
+		fmt.Printf("Evict existing permanant primary handle failed (OK)\n")
+	}
+	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER),
+		tpm2.Handle(tpm2.QuoteKeyHandle),
+		tpm2.Handle(tpm2.QuoteKeyHandle))
+	if err != nil {
+		fmt.Printf("Evict existing permanant primary quote failed (OK)\n")
+	}
+}
+
 func TestCreateKeyHierarchy(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {

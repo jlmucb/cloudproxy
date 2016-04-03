@@ -18,12 +18,12 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
 	"math/big"
 	"testing"
 
 	"github.com/jlmucb/cloudproxy/go/tpm2"
-	"github.com/golang/protobuf/proto"
+	// "github.com/golang/protobuf/proto"
 )
 
 // Test Endian
@@ -656,119 +656,73 @@ func TestCombinedEvictTest(t *testing.T) {
 
 // Combined Context test
 func TestCombinedContextTest(t *testing.T) {
-	fmt.Printf("TestCombinedContextTest excluded\n")
-	return
-	// pcr selections
-	// CreatePrimary
-	// SaveContext
-	// FlushContext
-	// LoadContext
-	// FlushContext
-}
-
-// Combined Quote Protocol
-func TestCombinedQuoteProtocolTest(t *testing.T) {
-return
-	// Read encoded private policy key
-	proto_policy_key, _ := ioutil.ReadFile("/home/jlm/cryptobin/cloudproxy_key_file.proto")
-	if proto_policy_key == nil {
-		t.Fatal("Can't open private key file")
-	}
-
-	// Read der-encoded policy cert
-	der_policy_cert,_ := ioutil.ReadFile("/home/jlm/cryptobin/policy_key_cert")
-	if der_policy_cert == nil {
-		t.Fatal("Can't open private cert file")
-	}
-	policyKey, err := tpm2.DeserializeRsaKey(proto_policy_key)
-	if err != nil {
-		t.Fatal("Can't deserialize policy key")
-	}
-
-	// Read endorsement cert file
-	der_endorsement_cert, _ := ioutil.ReadFile("/home/jlm/cryptobin/endorsement_cert")
-	if der_endorsement_cert == nil {
-		t.Fatal("Can't open private key file")
-	}
-	fmt.Printf("Got endorsement cert: %x\n\n", der_endorsement_cert)
 
 	// Open tpm
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
-		t.Fatal("Can't open tpm")
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return
 	}
 	defer rw.Close()
 
-	// Open endorsement and quote keys
+	// Flushall
+	err =  tpm2.Flushall(rw)
+	if err != nil {
+		t.Fatal("Flushall failed\n")
+	}
+
+	pcrs := []int{7}
+	keySize := uint16(2048)
+	quotePassword := ""
+
+	// CreatePrimary
 	var empty []byte
-	ek_parms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
-		uint16(tpm2.AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, 
-		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault,
+		empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
-		uint16(0), uint16(1024), uint32(0x00010001), empty}
-	endorsement_handle, _, err := tpm2.CreatePrimary(rw,
-		// uint32(tpm2.OrdTPM_RH_ENDORSEMENT), []int{7},
-		uint32(tpm2.OrdTPM_RH_OWNER), []int{7},
-		"", "", ek_parms)
+		uint16(0), keySize, uint32(0x00010001), empty}
+	rootHandle, _, err := tpm2.CreatePrimary(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
 	if err != nil {
-		t.Fatal("CreatePrimary fails")
+		t.Fatal("CreatePrimary failed")
 	}
-	quote_parms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
-		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
-		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
-		uint16(0), uint16(1024), uint32(0x00010001), empty}
-	private_blob, public_blob, err := tpm2.CreateKey(rw,
-		uint32(endorsement_handle), []int{7},
-		"", "01020304", quote_parms)
-	if err != nil {
-		fmt.Printf("err: %s\n", err)
-		t.Fatal("Create fails")
-	}
-	fmt.Printf("Create Key for quote succeeded\n")
+	defer  tpm2.FlushContext(rw, rootHandle)
 
-	quote_handle, quote_blob, err := tpm2.Load(rw, endorsement_handle, "",
-		"", public_blob, private_blob)
+	// CreateKey (Quote Key)
+	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagSignerDefault, empty,
+		uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
+		uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), keySize, uint32(0x00010001), empty}
+	quote_private, quote_public, err := tpm2.CreateKey(rw,
+		uint32(rootHandle), pcrs, "", quotePassword, keyparms)
 	if err != nil {
-		t.Fatal("Quote Load fails")
-	}
-	fmt.Printf("Load succeeded, blob size: %d\n\n", len(quote_blob))
-
-	der_program_private, request_message, err := tpm2.ConstructClientRequest(rw,
-		der_endorsement_cert,
-		quote_handle, "", "01020304", "Test-Program-1")
-	if err != nil {
-		fmt.Printf("err: %s\n")
-		t.Fatal("ConstructClientRequest fails")
-	}
-	fmt.Printf("Request        : %s\n", proto.MarshalTextString(request_message))
-	fmt.Printf("Program private: %x\n", der_program_private)
-	fmt.Printf("Fix me\n")
-	return
-
-	signing_instructions_message := new(tpm2.SigningInstructionsMessage)
-	response_message, err := tpm2.ConstructServerResponse(policyKey,
-		der_policy_cert,
-		*signing_instructions_message, *request_message)
-	if err != nil {
-		fmt.Printf("err: %s\n", err)
-		t.Fatal("ConstructServerResponse fails")
+		t.Fatal("Can't create quote key")
 	}
 
-	der_program_cert, err := tpm2.ClientDecodeServerResponse(rw,
-		endorsement_handle,
-		quote_handle, "01020304", *response_message)
+	// Load
+	quoteHandle, _, err := tpm2. Load(rw, rootHandle, "",
+		quotePassword, quote_public, quote_private)
 	if err != nil {
-		t.Fatal("ClientDecodeServerResponse fails")
+		t.Fatal("Load failed")
+	}
+	defer  tpm2.FlushContext(rw, quoteHandle)
+
+	// SaveContext
+	save_area, err := tpm2.SaveContext(rw, quoteHandle) 
+	if err != nil {
+		t.Fatal("Save Context fails")
+	}
+	tpm2.FlushContext(rw, quoteHandle)
+
+	// LoadContext
+	quoteHandle, err = tpm2.LoadContext(rw, save_area)
+	if err != nil {
+		t.Fatal("Load Context fails")
 	}
 
-	// Save Program cert
-	fmt.Printf("Program cert: %x\n", der_program_cert)
-
-	// Close handles
-	tpm2.FlushContext(rw, endorsement_handle)
-	tpm2.FlushContext(rw, quote_handle)
-	rw.Close()
+	// FlushContext
+	defer  tpm2.FlushContext(rw, quoteHandle)
 }
 

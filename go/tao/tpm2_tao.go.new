@@ -48,7 +48,7 @@ type TPM2Tao struct {
 	// actHandle is an integer handle for an Activate key held by the TPM.
 	actHandle uint32
 
-	// SignHandle is an integer handle for an storageKey held by the TPM.
+	// skHandle is an integer handle for an storageKey held by the TPM.
 	skHandle uint32
 
 	// signHandle is an integer handle for an signing held by the TPM.
@@ -133,7 +133,7 @@ func FinalizeTPM2Tao(tt *TPM2Tao) {
 */
 }
 
-// Need to export ekcert, acthandle for acrivate credential
+// Need to export ekcert, acthandle for activate credential
 func GetTpm2Data() (error) {
 }
 

@@ -76,17 +76,12 @@ func main() {
 		return
 	}
 
-	// Marshal
-	policyMsg, err := tpm2.MarshalRsaPrivateToProto(policyKey)
-	if err != nil {
-		fmt.Printf("Can't serialize policy key\n")
-		return
-	}
-	serializedPolicyKey, err := proto.Marshal(policyMsg)
-	if err != nil {
-		fmt.Printf("Can't serialize policy key\n")
-		return
-	}
+	// Marshal policy key
+	serializedPolicyKey, err := tpm2.SerializeRsaPrivateKey(policyKey)
+        if err != nil {
+                t.Fatal("Cant serialize rsa key\n")
+        }
+
 	ioutil.WriteFile(*policyKeyFile, serializedPolicyKey, 0644)
 	if err == nil {
 		fmt.Printf("Policy Key generation succeeded, password: %s\n",

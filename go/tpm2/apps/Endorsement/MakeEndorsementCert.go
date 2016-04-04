@@ -18,7 +18,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	// "io/ioutil"
+	"io/ioutil"
+	"time"
 
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
@@ -26,13 +27,21 @@ import (
 // This program makes the endorsement certificate given the Policy key.
 func main() {
 	keySize := flag.Int("modulus size",  2048, "Modulus size for keys")
-	endorsementCertFile:= flag.String("Endorsement save file",
-		"endorsement.cert", "endorsement save file")
+	keyName := flag.String("Endorsement key name",
+		"JohnsHw", "endorsement key name")
+	endorsementCertFile := flag.String("Endorsement save file",
+		"endorsement.cert.der", "endorsement save file")
+	policyCertFile := flag.String("Policy cert file",
+		"policy.cert.go.der", "cert file")
 	policyKeyFile:= flag.String("Policy key file",  "policy.go.bin",
 		"policy save file")
 	policyKeyPassword := flag.String("Policy key password",  "xxzzy",
 		"policy key password")
 	flag.Parse()
+	fmt.Printf("Policy key password: %s\n", *policyKeyPassword)
+
+	// TODO
+	pcrs := []int{7}
 
 	// Open tpm
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
@@ -48,6 +57,42 @@ func main() {
 		fmt.Printf("Flushall failed\n")
 		return
 	}
-	fmt.Printf("rw: %x\n", rw)
 
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+
+	serializePolicyKey, err := ioutil.ReadFile(*policyKeyFile)
+	if err != nil {
+		fmt.Printf("Can't get serialized policy key\n")
+		return
+	}
+	derPolicyCert, err := ioutil.ReadFile(*policyCertFile)
+	if err != nil {
+		fmt.Printf("Can't get policy cert %s\n", *policyCertFile)
+		return
+	}
+
+	policyKey, err := tpm2.DeserializeRsaKey(serializePolicyKey)
+	if err != nil {
+		fmt.Printf("Can't get deserialize policy key\n")
+		return
+	}
+
+	ekHandle, _, err := tpm2.CreateEndorsement(rw, uint16(*keySize), pcrs)
+	if err != nil {
+		fmt.Printf("Can't CreateEndorsement\n")
+		return
+	}
+	defer tpm2.FlushContext(rw, ekHandle)
+	endorsementCert, err := tpm2.GenerateHWCert(rw, ekHandle,
+		*keyName, notBefore, notAfter, tpm2.GetSerialNumber(),
+		derPolicyCert, policyKey)
+	if err != nil {
+		fmt.Printf("Can't create endorsement cert\n")
+	}
+	fmt.Printf("Endorsement cert: %x\n", endorsementCert)
+	ioutil.WriteFile(*endorsementCertFile, endorsementCert, 0644)
+	fmt.Printf("Endorsement cert created")
 }

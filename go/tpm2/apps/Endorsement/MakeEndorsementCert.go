@@ -18,24 +18,24 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
 
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
-// This program creates a key hierarchy consisting of a
-// primary key, and quoting key for cloudproxy
-// and makes their handles permanent.
+// This program makes the endorsement certificate given the Policy key.
 func main() {
 	keySize := flag.Int("modulus size",  2048, "Modulus size for keys")
-	policyKeyFile:= flag.String("Policy save file",  "../tmptest/policy.go.bin",
+	endorsementCertFile:= flag.String("Endorsement save file",
+		"endorsement.cert", "endorsement save file")
+	policyKeyFile:= flag.String("Policy key file",  "policy.go.bin",
 		"policy save file")
 	policyKeyPassword := flag.String("Policy key password",  "xxzzy",
 		"policy key password")
 	flag.Parse()
 
 	// Open tpm
-	rw, err := tpm.OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
@@ -43,7 +43,7 @@ func main() {
 	defer rw.Close()
 
 	// Flushall
-	err =  tpm.Flushall(rw)
+	err =  tpm2.Flushall(rw)
 	if err != nil {
 		fmt.Printf("Flushall failed\n")
 		return

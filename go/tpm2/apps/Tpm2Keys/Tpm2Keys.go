@@ -18,24 +18,27 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
 // This program creates a key hierarchy consisting of a
-// primary key, and quoting key for cloudproxy
-// and makes their handles permanent.
+// primary key, and quoting key for cloudproxy and saves the context.
 func main() {
 	keySize := flag.Int("modulus size",  2048, "Modulus size for keys")
-	policyKeyFile:= flag.String("Policy save file",  "../tmptest/policy.go.bin",
-		"policy save file")
-	policyKeyPassword := flag.String("Policy key password",  "xxzzy",
-		"policy key password")
+	rootContextFileName := flag.String("Root context file",  "rootContext.bin",
+		"Root context file")
+	quoteContextFileName := flag.String("Quote context file",
+		"quoteContext.bin", "Quote context file")
+	storeContextFileName := flag.String("Store context file",
+		"storeContext.bin", "Store context file")
+	pcrList:= flag.String("Pcr List",  "7", "Pcr list")
 	flag.Parse()
 
+	fmt.Printf("Pcr list %s\n", *pcrList)
+
 	// Open tpm
-	rw, err := tpm.OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
@@ -43,11 +46,23 @@ func main() {
 	defer rw.Close()
 
 	// Flushall
-	err =  tpm.Flushall(rw)
+	err =  tpm2.Flushall(rw)
 	if err != nil {
 		fmt.Printf("Flushall failed\n")
 		return
 	}
 	fmt.Printf("rw: %x\n", rw)
 
+	// TODO: fix
+	pcrs := []int{7}
+
+	err = tpm2.InitTpm2Keys(rw, pcrs, uint16(*keySize),
+		uint16(tpm2.AlgTPM_ALG_SHA1), "", *rootContextFileName,
+                *quoteContextFileName, *storeContextFileName)
+	if err == nil {
+		fmt.Printf("Key creation succeeded\n")
+	} else {
+		fmt.Printf("Key creation failed\n")
+	}
+	return
 }

@@ -232,15 +232,6 @@ func PersistTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 	return nil
 }
 
-func Seal() {
-}
-
-func Unseat() {
-}
-
-func Attest() {
-}
-
 func InitTpm2Keys(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16,
 		quotePassword string, rootFileName string, quoteFileName string,
 		storeFileName string) (error) {

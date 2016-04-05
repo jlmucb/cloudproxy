@@ -20,13 +20,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	// "runtime"
+	"runtime"
 	"strconv"
 	"strings"
-	// "time"
+	"time"
 
-	// "github.com/golang/protobuf/proto"
-	// "github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/golang/protobuf/proto"
+	//"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
@@ -44,20 +44,20 @@ type TPM2Tao struct {
 	password string
 
 	// ekHandle is an integer handle for an ek held by the TPM.
-	ekHandle uint32
+	ekHandle tpm2.Handle
 
 	// actHandle is an integer handle for an Activate key held by the TPM.
-	actHandle uint32
+	actHandle tpm2.Handle
 
 	// skHandle is an integer handle for an storageKey held by the TPM.
-	skHandle uint32
+	skHandle tpm2.Handle
 
 	// signHandle is an integer handle for an signing held by the TPM.
-	signHandle uint32
+	signHandle tpm2.Handle
 
 	// session handle
 	policy_digest []byte
-	sessionHandle uint32
+	sessionHandle tpm2.Handle
 
 	// verifier is a representation of the ek that can be used to verify Attestations.
 	verifier *rsa.PublicKey
@@ -77,7 +77,11 @@ type TPM2Tao struct {
 	locality byte
 }
 
-func ReadPCRs(rw io.ReadWriter, pcrNums []int) ([][]byte, error) {
+func (tt *TPM2Tao) Rand() io.Reader {
+	return tt.rw
+}
+
+func ReadPcrs(rw io.ReadWriter, pcrNums []int) ([][]byte, error) {
 	pcrVals := make([][]byte, len(pcrNums))
 	for i, v := range pcrNums {
 		pcr, _ := tpm2.SetShortPcrs([]int{v})
@@ -90,14 +94,14 @@ func ReadPCRs(rw io.ReadWriter, pcrNums []int) ([][]byte, error) {
 	return pcrVals, nil
 }
 
-func MakeTPMPrin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (auth.Prin, error) {
+func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (auth.Prin, error) {
 	ek, err := x509.MarshalPKIXPublicKey(verifier)
 	if err != nil {
 		return auth.Prin{}, err
 	}
 
 	name := auth.Prin{
-		Type: "tpm",
+		Type: "tpm2",
 		Key:  auth.Bytes(ek),
 	}
 
@@ -126,8 +130,8 @@ func MakeTPMPrin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (auth
 // FinalizeTPM2Tao releases the resources for the TPM2Tao.
 func FinalizeTPM2Tao(tt *TPM2Tao) {
 	// Flush the AIK.
-	tpm2.FlushContext(tt.rw, tt.ekHandle)
-	tt.ekHandle = tpm2.Handle(tt.ekHandle)
+	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.ekHandle))
+	tt.ekHandle = 0
 
 	// Release the file handle.
 	tt.rw.Close()
@@ -190,7 +194,7 @@ func NewTPM2Tao(tpmPath string, ekblob []byte, pcrNums []int) (Tao, error) {
 		return nil, err
 	}
 
-	tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, ekHandle)
+	tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tpm2.Handle(tt.ekHandle))
 	if err != nil {
 		return nil, err
 	}
@@ -201,20 +205,20 @@ func NewTPM2Tao(tpmPath string, ekblob []byte, pcrNums []int) (Tao, error) {
 		tt.pcrNums[i] = v
 	}
 
-	tt.pcrVals, err = ReadPCRs(tt.rw, pcrNums)
+	tt.pcrVals, err = ReadPcrs(tt.rw, pcrNums)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create principal.
-	tt.name, err = MakeTPMPrin(tt.verifier, tt.pcrNums, tt.pcrVals)
+	tt.name, err = MakeTPM2Prin(tt.verifier, tt.pcrNums, tt.pcrVals)
 	if err != nil {
 		return nil, err
 	}
 
 	// Load handles for unsealing and attestation
-	tt.sessionHandle, tt.policy_digest, err := tpm2.AssistCreateSession(rw, tpm2.AlgTPM_ALG_SHA1,
-                tt.pcrs)
+	tt.sessionHandle, tt.policy_digest, err = tpm2.AssistCreateSession(tt.rw,
+		tpm2.AlgTPM_ALG_SHA1, tt.pcrs)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +266,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
 	// clearing the PCRs.
 	sig, _, err := tpm2.Quote(tt.rw, tt.signHandle, "", tt.password,
-			to_quote []byte, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
+			ser, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +290,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 // hybrid encryption scheme that seals a key and uses the key to encrypt the
 // data separately. We use the keys infrastructure to perform secure and
 // flexible encryption.
-func (tt *TPM2Tao) Seal(data []byte, policy string) (pub_sealed []byte, priv_sealed []byte, err error) {
+func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	if policy != SealPolicyDefault {
 		return nil, errors.New("tpm-specific policies are not yet implemented")
 	}
@@ -321,7 +325,7 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) (pub_sealed []byte, priv_sea
 		return nil, err
 	}
 
-	var s byte[]
+	var s []byte
 
 	// TODO
 	s = append(pub, priv...)
@@ -346,7 +350,7 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 	// TODO
 	pub := sealed[0:10]
 	priv := sealed[10:]
-	unsealed, err := tpm2.AssistUnseal(rw, tt.sessionHandle, tt.skHandle,
+	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle, tt.skHandle,
 		pub, priv, "", tt.password, tt.policy_digest)
 	if err != nil {
 		return nil, "", err
@@ -375,7 +379,7 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 }
 
 // extractPCRs gets the PCRs from a tpm principal.
-func extractPCRs(p auth.Prin) ([]int, []byte, error) {
+func extractTpm2PCRs(p auth.Prin) ([]int, []byte, error) {
 	return nil, nil, nil
 	if p.Type != "tpm2" {
 		return nil, nil, errors.New("can only extract PCRs from a TPM principal")

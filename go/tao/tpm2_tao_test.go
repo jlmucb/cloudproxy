@@ -17,9 +17,11 @@ package tao
 import (
 	// "bytes"
 	// "io/ioutil"
-	// "runtime"
+	"runtime"
 	"testing"
 
+	// "github.com/jlmucb/cloudproxy/go/tpm2"
+	"github.com/jlmucb/cloudproxy/go/tao"
 	// "github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
@@ -27,8 +29,8 @@ import (
 // doesn't run later. Normal code will only create one instance of TPMTao, so
 // the finalizer will work correctly. But this test code creates multiple such
 // instances, so it needs to call the finalizer early.
-func cleanUpTPMTao(tt *TPMTao) {
-	FinalizeTPMTao(tt)
+func cleanUpTPMTao(tt *tao.TPM2Tao) {
+	tao.FinalizeTPM2Tao(tt)
 	runtime.SetFinalizer(tt, nil)
 }
 

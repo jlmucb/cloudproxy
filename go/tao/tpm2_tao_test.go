@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Google Inc. All rights reserved.
+// Copyright (c) 2014-2016, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,19 +15,19 @@
 package tao
 
 import (
-	// "bytes"
-	// "io/ioutil"
+	"bytes"
+	"io/ioutil"
 	"fmt"
 	"runtime"
 	"testing"
 
 	// "github.com/jlmucb/cloudproxy/go/tpm2"
 	"github.com/jlmucb/cloudproxy/go/tao"
-	// "github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // cleanUpTPMTao runs the finalizer for TPMTao early then unsets it so it
-// doesn't run later. Normal code will only create one instance of TPMTao, so
+// doesn't run later. Normal code will only create one instance of TPM2Tao, so
 // the finalizer will work correctly. But this test code creates multiple such
 // instances, so it needs to call the finalizer early.
 func cleanUpTPMTao(tt *tao.TPM2Tao) {
@@ -43,40 +43,27 @@ func TestEncode(t *testing.T) {
 	c1, c2 := tao.DecodeTwoBytes(cb)
 	fmt.Printf("seperated: %x, %x\n", c1, c2)
 }
-func TestTPMTao(t *testing.T) {
-/*
-	aikblob, err := ioutil.ReadFile("./aikblob")
-	if err != nil {
-		t.Skip("Skipping tests, since there's no ./aikblob file")
-	}
 
-	// Set up a TPM Tao that seals and attests against PCRs 17 and 18 and uses
-	// the AIK stored in aikblob. It communicates with the TPM directly through
-	// /dev/tpm0.
-	tt, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+func TestTPMTao(t *testing.T) {
+	// Set up a TPM Tao that seals and attests against PCRs 17 and 18.
+	tt, err := NewTPM2Tao("/dev/tpm0", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tpmtao, ok := tt.(*TPMTao)
+	tpmtao, ok := tt.(*TPM2Tao)
 	if !ok {
-		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
+		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
 	}
 	cleanUpTPMTao(tpmtao)
-*/
 }
 
-func TestTPMTaoSeal(t *testing.T) {
-/*
-	aikblob, err := ioutil.ReadFile("./aikblob")
-	if err != nil {
-		t.Skip("Skipping tests, since there's no ./aikblob file")
-	}
+func RestTPMTaoSeal(t *testing.T) {
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := NewTPMTao("/dev/tpm0", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tt, ok := tpmtao.(*TPMTao)
+	tt, ok := tpmtao.(*TPM2Tao)
 	if !ok {
 		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
 	}
@@ -100,21 +87,15 @@ func TestTPMTaoSeal(t *testing.T) {
 	if !bytes.Equal(unsealed, data) {
 		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
 	}
- */
 }
 
-func TestTPMTaoLargeSeal(t *testing.T) {
-/*
-	aikblob, err := ioutil.ReadFile("./aikblob")
-	if err != nil {
-		t.Skip("Skipping tests, since there's no ./aikblob file")
-	}
+func RestTPMTaoLargeSeal(t *testing.T) {
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := NewTPMTao("/dev/tpm0", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tt, ok := tpmtao.(*TPMTao)
+	tt, ok := tpmtao.(*TPM2Tao)
 	if !ok {
 		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
 	}
@@ -138,21 +119,15 @@ func TestTPMTaoLargeSeal(t *testing.T) {
 	if !bytes.Equal(unsealed, data) {
 		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
 	}
-*/
 }
 
-func TestTPMTaoAttest(t *testing.T) {
-/*
-	aikblob, err := ioutil.ReadFile("./aikblob")
-	if err != nil {
-		t.Skip("Skipping tests, since there's no ./aikblob file")
-	}
+func RestTPMTaoAttest(t *testing.T) {
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tt, ok := tpmtao.(*TPMTao)
+	tt, ok := tpmtao.(*TPM2Tao)
 	if !ok {
 		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
 	}
@@ -180,5 +155,4 @@ func TestTPMTaoAttest(t *testing.T) {
 	}
 
 	t.Logf("Got valid statement %s\n", says)
-*/
 }

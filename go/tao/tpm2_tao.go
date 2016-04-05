@@ -87,8 +87,8 @@ type TPM2Tao struct {
 	// ekHandle is an integer handle for an ek held by the TPM.
 	ekHandle tpm2.Handle
 
-	// actHandle is an integer handle for an Activate key held by the TPM.
-	actHandle tpm2.Handle
+	// rootHandle is an integer handle for an root key held by the TPM.
+	rootHandle tpm2.Handle
 
 	// skHandle is an integer handle for an storageKey held by the TPM.
 	skHandle tpm2.Handle
@@ -170,8 +170,12 @@ func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (aut
 
 // FinalizeTPM2Tao releases the resources for the TPM2Tao.
 func FinalizeTPM2Tao(tt *TPM2Tao) {
-	// Flush the AIK.
+	// Flush the ek, signingKey and storageKey.
 	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.ekHandle))
+	tt.ekHandle = 0
+	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.signingHandle))
+	tt.ekHandle = 0
+	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.skHandle))
 	tt.ekHandle = 0
 
 	// Release the file handle.
@@ -213,13 +217,13 @@ func (tt *TPM2Tao) GetSharedSecret(n int, policy string) (bytes []byte, err erro
 }
 
 // NewTPM2Tao creates a new TPM2Tao and returns it under the Tao interface.
-func NewTPM2Tao(tpmPath string, ekblob []byte, pcrNums []int) (Tao, error) {
+func NewTPM2Tao(tpmPath string, pcrNums []int) (Tao, error) {
 	return nil, nil
 	var err error
 	tt := &TPM2Tao{pcrCount: 24,
 		       password: "",}
 
-	tt.rw, err = tpm2.OpenTPM("/dev/tpm0")
+	tt.rw, err = tpm2.OpenTPM(tpmPath)
 	if err != nil {
 		return nil, err
 	}
@@ -258,6 +262,31 @@ func NewTPM2Tao(tpmPath string, ekblob []byte, pcrNums []int) (Tao, error) {
 	}
 
 	// Load handles for unsealing and attestation
+	rootFileName := "../tmp2/tmptest/rootContext"
+	signingFileName := "../tmp2/tmptest/quoteContext"
+        storeFileName := "../tmp2/tmptest/storeContext"
+
+	root_save_area, err := ioutil.ReadFile(rootFileName)
+	tt.rootHandle, err = tpm2.LoadContext(rw, root_save_area)
+	if err != nil {
+		t.Fatal("Load Context fails for root")
+	}
+
+	signing_save_area, err := ioutil.ReadFile(signingFileName)
+	tt.signingHandle, err = tpm2.LoadContext(rw, signing_save_area)
+	if err != nil {
+		t.Fatal("Load Context fails for signing")
+	}
+
+	sk_save_area, err := ioutil.ReadFile(skFileName)
+	tt.skHandle, err = tpm2.LoadContext(rw, sk_save_area)
+	if err != nil {
+		t.Fatal("Load Context fails for sk")
+	}
+
+	// Close root? tpm2.FlushContext(tt.rw, tt.rootHandle)
+
+	// Session handle for seal/unseal
 	tt.sessionHandle, tt.policy_digest, err = tpm2.AssistCreateSession(tt.rw,
 		tpm2.AlgTPM_ALG_SHA1, tt.pcrs)
 	if err != nil {
@@ -386,7 +415,7 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 		return nil, "", err
 	}
 
-	// TODO
+	// Decode buffer containing pub and priv blobs
 	pub, priv := DecodeTwoBytes(sealed)
 	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle, tt.skHandle,
 		pub, priv, "", tt.password, tt.policy_digest)

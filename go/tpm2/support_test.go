@@ -73,6 +73,7 @@ func TestDer(t *testing.T) {
 	if der == nil {
 		t.Fatal("Can't get public key from endorsement cert\n")
 	}
+	fmt.Printf("key: %x\n", key)
 }
 
 // Test GenerateCert from Keys
@@ -107,6 +108,7 @@ func TestGenerateCertFromKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate cert\n")
 	}
+	fmt.Printf("cert: %x\n", cert)
 }
 
 // Test Protect/Unprotect
@@ -138,6 +140,7 @@ func TestEndorseCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't parse test endorse certificate ", err, "\n")
 	}
+	fmt.Printf("endorse_cert: %x\n", endorse_cert)
 }
 
 func TestSignCertificate(t *testing.T) {
@@ -241,6 +244,7 @@ func TestRsaPrivateKeyParse(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't unmarshal key to proto\n")
 	}
+	fmt.Printf("key: %x\n", key)
 }
 
 func TestAttributes(t *testing.T) {

@@ -577,11 +577,11 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 		return 0, 0, err
 	}
 	if status != ErrSuccess {
-		return nil, errors.New("Can't decode response") 
+		return 0, 0, errors.New("Can't decode response") 
 	}
 	current_time, current_clock, err :=  DecodeReadClock(resp[10:read])
 	if err != nil {
-		return 0, 0,err
+		return 0, 0, err
 	}
 	return current_time, current_clock, nil
 }
@@ -1843,7 +1843,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if read < 10 {
 		return nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
@@ -1907,7 +1907,7 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	if read < 10 {
 		return Handle(0), errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return Handle(0), errors.New("DecodeCommandResponse fails")
 	}
@@ -1915,7 +1915,7 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	if status != ErrSuccess {
 		return Handle(0), errors.New("LoadContext unsuccessful")
 	}
-	handle, err := DecodeLoadContext(resp[10:])
+	handle, err := DecodeLoadContext(resp[10:size])
 	if err != nil {
 		return Handle(0), errors.New("DecodeLoadContext fails")
 	}

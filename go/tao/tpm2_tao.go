@@ -15,8 +15,10 @@
 package tao
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -30,6 +32,45 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
+
+func EncodeTwoBytes(b1 []byte, b2 []byte) ([]byte) {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, uint16(len(b1)))
+	if err != nil {
+		return nil
+	}
+	err = binary.Write(buf, binary.BigEndian, b1)
+	if err != nil {
+		return nil
+	}
+	err = binary.Write(buf, binary.BigEndian, uint16(len(b2)))
+	if err != nil {
+		return nil
+	}
+	err = binary.Write(buf, binary.BigEndian, b2)
+	if err != nil {
+		return nil
+	}
+	return buf.Bytes()
+}
+
+func DecodeTwoBytes(b []byte) ([]byte, []byte) {
+	buf := bytes.NewBuffer(b)
+	var size uint16
+	err := binary.Read(buf, binary.BigEndian, &size)
+	if err != nil {
+		return nil, nil
+	}
+	b1 := make([]byte, size, size)
+	binary.Read(buf, binary.BigEndian, b1)
+	err = binary.Read(buf, binary.BigEndian, &size)
+	if err != nil {
+		return nil, nil
+	}
+	b2 := make([]byte, size, size)
+	binary.Read(buf, binary.BigEndian, b2)
+	return b1, b2
+}
 
 // A TPM2Tao implements the Tao using a hardware TPM device.
 type TPM2Tao struct {
@@ -325,10 +366,8 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 		return nil, err
 	}
 
-	var s []byte
-
-	// TODO
-	s = append(pub, priv...)
+	// encode pub and priv
+	s := EncodeTwoBytes(pub, priv)
 
 	h := &HybridSealedData{
 		SealedKey:     s,
@@ -348,8 +387,7 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 	}
 
 	// TODO
-	pub := sealed[0:10]
-	priv := sealed[10:]
+	pub, priv := DecodeTwoBytes(sealed)
 	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle, tt.skHandle,
 		pub, priv, "", tt.password, tt.policy_digest)
 	if err != nil {

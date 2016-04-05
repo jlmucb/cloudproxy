@@ -17,6 +17,7 @@ package tao
 import (
 	// "bytes"
 	// "io/ioutil"
+	"fmt"
 	"runtime"
 	"testing"
 
@@ -34,6 +35,14 @@ func cleanUpTPMTao(tt *tao.TPM2Tao) {
 	runtime.SetFinalizer(tt, nil)
 }
 
+func TestEncode(t *testing.T) {
+	b1 := []byte{1,2,3}
+	b2 := []byte{4,5,6}
+	cb := tao.EncodeTwoBytes(b1, b2)
+	fmt.Printf("combined: %x\n", cb)
+	c1, c2 := tao.DecodeTwoBytes(cb)
+	fmt.Printf("seperated: %x, %x\n", c1, c2)
+}
 func TestTPMTao(t *testing.T) {
 /*
 	aikblob, err := ioutil.ReadFile("./aikblob")

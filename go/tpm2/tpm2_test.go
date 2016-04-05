@@ -49,6 +49,7 @@ func TestGetRandom(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
+	defer rw.Close()
 	tpm2.Flushall(rw)
 
 	rand, err :=  tpm2.GetRandom(rw, 16)
@@ -57,7 +58,6 @@ func TestGetRandom(t *testing.T) {
 		t.Fatal("GetRandom failed\n")
 	}
 	fmt.Printf("rand: %x\n", rand[0:len(rand)])
-	rw.Close()
 }
 
 // TestReadPcr tests a ReadPcr command.
@@ -66,11 +66,11 @@ func TestReadPcrs(t *testing.T) {
 
 	// Open TPM
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	defer rw.Close()
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
+	defer rw.Close()
 	tpm2.Flushall(rw)
 
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
@@ -175,7 +175,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	fmt.Printf("CreateKey succeeded, handle: %x\n", uint32(parent_handle))
 
 	// Load
-	key_handle, blob, err := tpm2.Load(rw, parent_handle, "", "01020304",
+	key_handle, _, err := tpm2.Load(rw, parent_handle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
@@ -183,11 +183,11 @@ func TestCombinedKeyTest(t *testing.T) {
 	fmt.Printf("Load succeeded, handle: %x\n", uint32(key_handle))
 
 	// ReadPublic
-	public, name, qualified_name, err := tpm2.ReadPublic(rw, key_handle)
+	_, name, _, err := tpm2.ReadPublic(rw, key_handle)
 	if err != nil {
 		t.Fatal("ReadPublic fails")
 	}
-	fmt.Printf("ReadPublic succeeded\n")
+	fmt.Printf("ReadPublic succeeded, name: %x\n", name)
 
 	// Flush
 	err = tpm2.FlushContext(rw, key_handle)
@@ -368,7 +368,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	fmt.Printf("CreateKey succeeded\n")
 
 	// Load
-	quote_handle, blob, err := tpm2.Load(rw, parent_handle, "", "01020304",
+	quote_handle, _, err := tpm2.Load(rw, parent_handle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
@@ -389,7 +389,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	fmt.Printf("sig                : %x\n\n", sig)
 
 	// get info for verify
-	keyblob, name, qualified_name, err := tpm2.ReadPublic(rw, quote_handle)
+	_, name, qualified_name, err := tpm2.ReadPublic(rw, quote_handle)
 	if err != nil {
 		tpm2.FlushContext(rw, quote_handle)
 		err = tpm2.FlushContext(rw, parent_handle)

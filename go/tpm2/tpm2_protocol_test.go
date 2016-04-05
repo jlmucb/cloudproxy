@@ -367,6 +367,7 @@ func TestInternalSignProtocol(t *testing.T) {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("ClientDecodeServerResponse failed")
 	}
+	fmt.Printf("Client cert: %x\n", cert)
 
 	// if we don;t do this we run out of tpm memory
 	tpm2.FlushContext(rw, ekHandle)

@@ -78,6 +78,9 @@ type TPM2Tao struct {
 	// usually /dev/tpm0.
 	rw io.ReadWriteCloser
 
+	// State path (includes config info)
+	path string
+
 	// ekCert
 	ekCert []byte
 
@@ -217,7 +220,7 @@ func (tt *TPM2Tao) GetSharedSecret(n int, policy string) (bytes []byte, err erro
 }
 
 // NewTPM2Tao creates a new TPM2Tao and returns it under the Tao interface.
-func NewTPM2Tao(tpmPath string, pcrNums []int) (Tao, error) {
+func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	return nil, nil
 	var err error
 	tt := &TPM2Tao{pcrCount: 24,
@@ -262,9 +265,13 @@ func NewTPM2Tao(tpmPath string, pcrNums []int) (Tao, error) {
 	}
 
 	// Load handles for unsealing and attestation
-	rootFileName := "../tmp2/tmptest/rootContext"
-	signingFileName := "../tmp2/tmptest/quoteContext"
-        storeFileName := "../tmp2/tmptest/storeContext"
+	tt.path = statePath
+	rn := []string{tt.path, "rootContext"}
+	sn := []string{tt.path, "signingContext"}
+	tn := []string{tt.path, "storeContext"}
+	rootFileName := strings.Join(rn, "/")
+	signingFileName := strings.Join(sn, "/")
+	storeFileName := strings.Join(tn, "/")
 
 	root_save_area, err := ioutil.ReadFile(rootFileName)
 	tt.rootHandle, err = tpm2.LoadContext(rw, root_save_area)

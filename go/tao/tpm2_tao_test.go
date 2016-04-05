@@ -46,7 +46,7 @@ func TestEncode(t *testing.T) {
 
 func TestTPMTao(t *testing.T) {
 	// Set up a TPM Tao that seals and attests against PCRs 17 and 18.
-	tt, err := NewTPM2Tao("/dev/tpm0", []int{17, 18})
+	tt, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
@@ -123,7 +123,7 @@ func RestTPMTaoLargeSeal(t *testing.T) {
 
 func RestTPMTaoAttest(t *testing.T) {
 
-	tpmtao, err := NewTPM2Tao("/dev/tpm0", []int{17, 18})
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}

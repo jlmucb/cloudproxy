@@ -156,6 +156,41 @@ func ParentFromConfig(tc Config) Tao {
 			}
 
 			cachedHost = host
+		case "tpm2":
+/*
+			aikblob, err := ioutil.ReadFile(tcEnv.TPMAIKPath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Couldn't read the aikblob: %s\n", err)
+				glog.Error(err)
+				return
+			}
+
+			taoPCRs := tcEnv.TPMPCRs
+			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
+
+			// This index operation will never panic, since strings.Split always
+			// returns at least one entry in the resulting slice.
+			pcrIntList := strings.Split(pcrStr, "\", \"")[0]
+			pcrInts := strings.Split(pcrIntList, ",")
+			pcrs := make([]int, len(pcrInts))
+			for i, s := range pcrInts {
+				var err error
+				pcrs[i], err = strconv.Atoi(s)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Couldn't split the PCRs: %s\n", err)
+					glog.Error(err)
+					return
+				}
+			}
+
+			host, err := NewTPMTao(tcEnv.TPMDevice, aikblob, pcrs)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Couldn't create a new TPMTao: %s\n", err)
+				glog.Error(err)
+				return
+			}
+			cachedHost = host
+*/
 		case "pipe":
 			host, err := DeserializeRPC(tcEnv.HostSpec)
 			if err != nil {

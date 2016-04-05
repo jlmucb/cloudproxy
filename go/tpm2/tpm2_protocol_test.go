@@ -37,7 +37,7 @@ func TestClearKeyHierarchy(t *testing.T) {
 		tpm2.Handle(tpm2.RootKeyHandle),
 		tpm2.Handle(tpm2.RootKeyHandle))
 	if err != nil {
-		fmt.Printf("Evict existing permanant primary handle failed (OK)\n")
+		fmt.Printf("Evict existing permanent primary handle failed (OK)\n")
 	}
 	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER),
 		tpm2.Handle(tpm2.QuoteKeyHandle),
@@ -131,18 +131,8 @@ func TestMakeEndorsementCert(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}
-	fmt.Printf("Endorsement cert: %x\n", endorsementCert)
 	ioutil.WriteFile("./tmptest/policy_cert.test", derPolicyCert, 0644)
 	ioutil.WriteFile("./tmptest/endorsement_cert.test", endorsementCert, 0644)
-}
-
-func RestSeal(t *testing.T) {
-}
-
-func TestUnseal(t *testing.T) {
-}
-
-func TestAttest(t *testing.T) {
 }
 
 func TestSignAttest(t *testing.T) {
@@ -278,7 +268,6 @@ func TestInternalSignProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
-	fmt.Printf("policyKey: %x\n", policyKey)
 
 	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
 	if err != nil {
@@ -291,7 +280,6 @@ func TestInternalSignProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}
-	fmt.Printf("Endorsement cert: %x\n", derEndorsementCert)
 
 	// signing instructions
 	signing_instructions_message := new(tpm2.SigningInstructionsMessage)
@@ -310,7 +298,6 @@ func TestInternalSignProtocol(t *testing.T) {
 	canSign := true
 	signing_instructions_message.IsCA = &isCA
 	signing_instructions_message.CanSign = &canSign
-	fmt.Printf("Got signing instructions\n")
 
 	//
 	// Cloudproxy protocol
@@ -328,15 +315,11 @@ func TestInternalSignProtocol(t *testing.T) {
 		t.Fatal("ConstructClientRequest failed")
 	}
 	fmt.Printf("ConstructClientRequest succeeded\n")
-	fmt.Printf("Key: %s\n", proto.CompactTextString(protoClientPrivateKey))
-	fmt.Printf("Request: %s\n", proto.CompactTextString(request))
-	fmt.Printf("Program name from request: %s\n\n", *request.ProgramKey.ProgramName)
 
 	// Create Session for seal/unseal
 	sessionHandle, policy_digest, err := tpm2.AssistCreateSession(rw,
 		tpm2.AlgTPM_ALG_SHA1, pcrs)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't start session for Seal")
 	}
 	fmt.Printf("Session handle: %x\n", sessionHandle)
@@ -350,15 +333,12 @@ func TestInternalSignProtocol(t *testing.T) {
 		storeHandle, unsealing_secret[0:32],
 		"", "", pcrs, policy_digest)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't seal Program private key sealing secret")
 	}
 	serialized_program_key, err := proto.Marshal(protoClientPrivateKey)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't marshal Program private key")
 	}
-	fmt.Printf("sealed priv, pub: %x %x\n\n", sealed_priv, sealed_pub)
 
 	// Encrypt private key.
 	var inHmac []byte
@@ -366,7 +346,6 @@ func TestInternalSignProtocol(t *testing.T) {
 		true, tpm2.AlgTPM_ALG_SHA1, unsealing_secret[0:32],
 		serialized_program_key, inHmac)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't tpm2.EncryptDataWithCredential program key")
 	}
 
@@ -374,7 +353,6 @@ func TestInternalSignProtocol(t *testing.T) {
 	response, err := tpm2.ConstructServerResponse(policyKey,
 		derPolicyCert, *signing_instructions_message, *request)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("ConstructServerResponse failed")
 	}
 	if response == nil {
@@ -389,7 +367,6 @@ func TestInternalSignProtocol(t *testing.T) {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("ClientDecodeServerResponse failed")
 	}
-	fmt.Printf("cert: %x\n", cert)
 
 	// if we don;t do this we run out of tpm memory
 	tpm2.FlushContext(rw, ekHandle)
@@ -412,13 +389,11 @@ func TestInternalSignProtocol(t *testing.T) {
 		storeHandle, sealed_pub, sealed_priv, "",
 		"", policy_digest)
         if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't Unseal")
         }
         _, decrypted_program_key, err := tpm2.EncryptDataWithCredential(false,
 		tpm2.AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't EncryptDataWithCredential (decrypt) program key")
 	}
 	fmt.Printf("serialized_program_key: %x\n\n", serialized_program_key)

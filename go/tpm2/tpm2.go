@@ -89,6 +89,13 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
+func reportCommand(name string, cmd []byte, resp []byte, status TpmError, errOnly bool) {
+	if errOnly && status == ErrSuccess {
+		return
+	}
+	fmt.Printf("%s, cmd: %x,\n\terr code: %d, resp: %x\n", cmd, status, resp)
+}
+
 func PrintAttestData(parms *AttestParams) {
 	fmt.Printf("Magic_number: %x\n", parms.Magic_number)
 	fmt.Printf("Attest_type : %x\n", parms.Attest_type)
@@ -365,7 +372,6 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	// Construct command
 	cmd, err:= ConstructGetRandom(size)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
 	}
 
@@ -388,14 +394,14 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	}
 	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse ", err, "\n")
 		return nil, err
 	}
+	reportCommand("GetRandom", cmd, resp, status, true)
 	if status != ErrSuccess {
+		return nil, errors.New("Can't decode response") 
 	}
 	rand, err :=  DecodeGetRandom(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom ", err, "\n")
 		return nil,err
 	}
 	return rand, nil
@@ -482,7 +488,6 @@ func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte
 	// Construct command
 	x, err:= ConstructReadPcrs(1, 4, pcrSelect)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return 1, nil, 0, nil, errors.New("MakeCommandHeader failed") 
 	}
 
@@ -546,8 +551,7 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	// Construct command
 	x, err:= ConstructReadClock()
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return 0 ,0, err
+		return 0, 0, errors.New("Can't construct ReadClock response")
 	}
 
 	// Send command
@@ -570,14 +574,13 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return 0, 0, err
 	}
 	if status != ErrSuccess {
+		return nil, errors.New("Can't decode response") 
 	}
 	current_time, current_clock, err :=  DecodeReadClock(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeReadClock %s\n", err)
 		return 0, 0,err
 	}
 	return current_time, current_clock, nil
@@ -628,7 +631,6 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	// Construct command
 	cmd, err:= ConstructGetCapabilities(cap, count, property)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
 	}
 
@@ -651,7 +653,6 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
 	if status != ErrSuccess {
@@ -684,7 +685,6 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 	// Construct command
 	cmd, err:= ConstructPcrEvent(pcrnum, eventData)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return err
 	}
 
@@ -708,7 +708,6 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
 	if status != ErrSuccess {
@@ -770,7 +769,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	template :=  []interface{}{&handle, &auth}
 	err := unpack(in, template)
 	if err != nil {
-		fmt.Printf("Out: %x\n", in)
 		return Handle(0), nil, errors.New("Can't decode response 1")
 	}
 
@@ -847,10 +845,8 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 	cmd, err:= ConstructCreatePrimary(uint32(owner), pcr_nums, parent_password,
 		owner_password, parms)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return Handle(0), nil, err
 	}
-	fmt.Printf("CreatePrimary cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -872,14 +868,13 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
+	reportCommand("CreatePrimary", cmd, resp, status, true)
 	if status != ErrSuccess {
 	}
 	handle, public_blob, err :=  DecodeCreatePrimary(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeCreatePrimary %s\n", err)
 		return Handle(0), nil, err
 	}
 	return Handle(handle), public_blob, nil
@@ -918,7 +913,6 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	// Construct command
 	cmd, err:= ConstructReadPublic(handle)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, nil, nil, err
 	}
 
@@ -942,15 +936,14 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, nil, err
 	}
+	reportCommand("ReadPublic", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return nil, nil, nil, err
 	}
 	public_blob, name, qualified_name, err :=  DecodeReadPublic(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeReadPublic %s\n", err)
 		return nil, nil, nil,err
 	}
 	return public_blob, name, qualified_name, nil
@@ -1011,7 +1004,6 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	// Construct command
 	cmd, err:= ConstructCreateKey(uint32(owner), pcr_nums, parent_password, owner_password, parms)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, nil, err
 	}
 
@@ -1020,7 +1012,6 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("CreateKey cmd : %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1029,7 +1020,6 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("CreateKey resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1037,15 +1027,14 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, err
 	}
+	reportCommand("CreateKey", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return nil, nil, errors.New("Error from command")
 	}
 	private_blob, public_blob, err :=  DecodeCreateKey(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeCreateKey %s\n", err)
 		return nil, nil, err
 	}
 	return private_blob, public_blob, nil
@@ -1093,7 +1082,6 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	// Construct command
 	cmd, err:= ConstructLoad(parentHandle, parentAuth, ownerAuth, public_blob, private_blob)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return Handle(0), nil, err
 	}
 
@@ -1102,7 +1090,6 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	if err != nil {
 		return Handle(0), nil, errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("Load cmd: %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1111,7 +1098,6 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	if err != nil {
 		return Handle(0), nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("Load resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1119,15 +1105,14 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
+	reportCommand("Load", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return Handle(0), nil, errors.New("Error from command")
 	}
 	handle, name, err :=  DecodeLoad(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeCreateKey %s\n", err)
 		return Handle(0), nil, err
 	}
 	return handle, name, nil
@@ -1172,7 +1157,6 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	// Construct command
 	cmd, err:= ConstructPolicyPassword(handle)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return err
 	}
 
@@ -1196,9 +1180,9 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
+	reportCommand("PolicyPassword", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return errors.New("Comand failure")
 	}
@@ -1211,7 +1195,6 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte,
 	// Construct command
 	cmd, err:= ConstructPolicyPcr(handle, expected_digest, pcr_nums)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return err
 	}
 
@@ -1235,7 +1218,6 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte,
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
 	if status != ErrSuccess {
@@ -1279,7 +1261,6 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	// Construct command
 	cmd, err:= ConstructPolicyGetDigest(handle)
 	if err != nil {
-		fmt.Printf("ConstructPolicyGetDigest failed %s\n", err)
 		return nil, err
 	}
 
@@ -1303,9 +1284,9 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	}
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
+	reportCommand("PolicyGetDigest", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return nil, errors.New("Comand failure")
 	}
@@ -1362,7 +1343,6 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("ConstructStartAuthSession fails")
 	}
-	fmt.Printf("StartAuth cmd: %d\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1377,7 +1357,6 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("StartAuth resp: %d\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1387,6 +1366,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("DecodeCommandResponse fails")
 	}
+	reportCommand("StartAuthSession", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return Handle(0), nil, errors.New("StartAuthSession unsuccessful")
 	}
@@ -1458,7 +1438,6 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("ConstructCreateSealed fails") 
 	}
-	fmt.Printf("Seal cmd: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1473,7 +1452,6 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("Seal resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1483,6 +1461,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
+	reportCommand("CreateSealed", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return nil, nil, errors.New("CreateSealed unsuccessful")
 	}
@@ -1634,7 +1613,6 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("\nQuote command: %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1643,7 +1621,6 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("Quote resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1654,6 +1631,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
+	reportCommand("Quote", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
@@ -1720,7 +1698,6 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("ConstructActivateCredential fails") 
 	}
-	fmt.Printf("ActivateCredential  cmd: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1735,7 +1712,6 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("ActivateCredential resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1745,6 +1721,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
+	reportCommand("ActivateCredential", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return nil, errors.New("ActivateCredential unsuccessful")
 	}
@@ -1791,7 +1768,6 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_
 	if err != nil {
 		return errors.New("ConstructEvictControl fails") 
 	}
-	fmt.Printf("Evict Control cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1815,6 +1791,7 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_
 	if err != nil {
 		return errors.New("DecodeCommandResponse fails")
 	}
+	reportCommand("EvictControl", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return errors.New("EvictControl unsuccessful")
 	}
@@ -1847,7 +1824,6 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("ConstructSaveContext fails") 
 	}
-	fmt.Printf("Save Context cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1871,7 +1847,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("SaveContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	reportCommand("SaveContext", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return nil, errors.New("SaveContext unsuccessful")
 	}
@@ -1912,7 +1888,6 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	if err != nil {
 		return Handle(0), errors.New("ConstructLoadContext fails") 
 	}
-	fmt.Printf("Load Context cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1936,7 +1911,7 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	if err != nil {
 		return Handle(0), errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("LoadContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	reportCommand("LoadContext", cmd, resp, status, true)
 	if status != ErrSuccess {
 		return Handle(0), errors.New("LoadContext unsuccessful")
 	}
@@ -2019,7 +1994,6 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 			return nil, nil, nil, err
 		}
 	} else {
-		fmt.Printf("Unsupported hash %x\n",  hash_alg_id)
 		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}
 	block, err := aes.NewCipher(symKey[0:16])
@@ -2071,7 +2045,6 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	// Decode attest
 	attest, err := UnmarshalCertifyInfo(quote_struct_blob)
 	if err != nil {
-		fmt.Printf("UnmarshalCertifyInfo fails\n")
 		return false
 	}
 	PrintAttestData(attest)

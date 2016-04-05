@@ -49,10 +49,8 @@ func TestGetRandom(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
-	fmt.Printf("Flushall\n")
 	tpm2.Flushall(rw)
 
-	fmt.Printf("GetRandom\n")
 	rand, err :=  tpm2.GetRandom(rw, 16)
 	if err != nil {
 		fmt.Printf("GetRandon Error ", err, "\n")
@@ -73,7 +71,6 @@ func TestReadPcrs(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
-	fmt.Printf("Flushall\n")
 	tpm2.Flushall(rw)
 
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
@@ -96,7 +93,6 @@ func TestReadClock(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
-	fmt.Printf("Flushall\n")
 	tpm2.Flushall(rw)
 
 	current_time, current_clock, err := tpm2.ReadClock(rw)
@@ -119,7 +115,6 @@ func TestGetCapabilities(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
-	fmt.Printf("Flushall\n")
 	tpm2.Flushall(rw)
 
 	handles, err := tpm2.GetCapabilities(rw, tpm2.OrdTPM_CAP_HANDLES,
@@ -178,8 +173,6 @@ func TestCombinedKeyTest(t *testing.T) {
 		t.Fatal("CreateKey fails")
 	}
 	fmt.Printf("CreateKey succeeded, handle: %x\n", uint32(parent_handle))
-	fmt.Printf("Private blob: %x\n", private_blob)
-	fmt.Printf("Public  blob: %x\n\n", public_blob)
 
 	// Load
 	key_handle, blob, err := tpm2.Load(rw, parent_handle, "", "01020304",
@@ -188,7 +181,6 @@ func TestCombinedKeyTest(t *testing.T) {
 		t.Fatal("Load fails")
 	}
 	fmt.Printf("Load succeeded, handle: %x\n", uint32(key_handle))
-	fmt.Printf("Blob from Load     : %x\n", blob)
 
 	// ReadPublic
 	public, name, qualified_name, err := tpm2.ReadPublic(rw, key_handle)
@@ -196,9 +188,6 @@ func TestCombinedKeyTest(t *testing.T) {
 		t.Fatal("ReadPublic fails")
 	}
 	fmt.Printf("ReadPublic succeeded\n")
-	fmt.Printf("Public	 blob: %x\n", public)
-	fmt.Printf("Name	   blob: %x\n", name)
-	fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
 	// Flush
 	err = tpm2.FlushContext(rw, key_handle)
@@ -353,7 +342,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
-	fmt.Printf("CreatePrimary succeeded\n\n")
+	fmt.Printf("CreatePrimary succeeded\n")
 
 	// Pcr event
 	eventData := []byte{1,2,3}
@@ -377,8 +366,6 @@ func TestCombinedQuoteTest(t *testing.T) {
 		t.Fatal("CreateKey fails")
 	}
 	fmt.Printf("CreateKey succeeded\n")
-	fmt.Printf("Private blob: %x\n", private_blob)
-	fmt.Printf("Public  blob: %x\n", public_blob)
 
 	// Load
 	quote_handle, blob, err := tpm2.Load(rw, parent_handle, "", "01020304",
@@ -387,7 +374,6 @@ func TestCombinedQuoteTest(t *testing.T) {
 		t.Fatal("Load fails")
 	}
 	fmt.Printf("Load succeeded, handle: %x\n", uint32(quote_handle))
-	fmt.Printf("Blob from Load        : %x\n\n", blob)
 
 	// Quote
 	to_quote := []byte{0x0f,0x0e,0x0d,0x0c,0x0b,0x0a,0x09,0x08,
@@ -417,7 +403,6 @@ func TestCombinedQuoteTest(t *testing.T) {
 	rw.Close()
 
 	// Verify quote
-	fmt.Printf("keyblob(%x): %x\n", len(keyblob), keyblob)
 	fmt.Printf("name(%x): %x\n", len(name), name)
 	fmt.Printf("qualified_name(%x): %x\n", len(qualified_name), qualified_name)
 	rsaParams, err := tpm2.DecodeRsaBuf(public_blob)

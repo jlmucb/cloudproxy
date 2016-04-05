@@ -73,7 +73,6 @@ func TestDer(t *testing.T) {
 	if der == nil {
 		t.Fatal("Can't get public key from endorsement cert\n")
 	}
-	fmt.Printf("Key: %x\n", key)	
 }
 
 // Test GenerateCert from Keys
@@ -108,7 +107,6 @@ func TestGenerateCertFromKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate cert\n")
 	}
-	fmt.Printf("Cert: %x\n", cert)	
 }
 
 // Test Protect/Unprotect
@@ -140,7 +138,6 @@ func TestEndorseCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't parse test endorse certificate ", err, "\n")
 	}
-	fmt.Printf("endorse cert: %x\n", endorse_cert)
 }
 
 func TestSignCertificate(t *testing.T) {
@@ -160,7 +157,6 @@ func TestSignCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't parse program certificate ", err, "\n")
 	}
-	fmt.Printf("Policy cert: %x\n", derPolicyCert)
 
 	// Generate Program Key.
 	privateProgramKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -173,7 +169,6 @@ func TestSignCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate cert\n")
 	}
-	fmt.Printf("Program cert: %x\n", derProgramCert)
 	ok, err := tpm2.VerifyDerCert(derProgramCert, derPolicyCert)
 	if !ok || err != nil {
 		t.Fatal("Can't verify certificate ", err, "\n")
@@ -246,9 +241,6 @@ func TestRsaPrivateKeyParse(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't unmarshal key to proto\n")
 	}
-	fmt.Printf("Private key: %x\n", key)
-	fmt.Printf("Unmarshaled private key\n")
-	// PublicKeyFromPrivate(priv interface{}) interface{}
 }
 
 func TestAttributes(t *testing.T) {
@@ -306,7 +298,6 @@ func TestSetPasswordData(t *testing.T) {
 
 func TestCreatePasswordAuthArea(t *testing.T) {
 	pw_auth1 := tpm2.CreatePasswordAuthArea("01020304", tpm2.Handle(tpm2.OrdTPM_RS_PW))
-	fmt.Printf("TestCreatePasswordAuthArea: %x\n", pw_auth1)
 	test1 := []byte{0,0xd,0x40,0,0,9,0,0,1,0,4,1,2,3,4}
 	if test1 == nil || !bytes.Equal(test1, pw_auth1) {
 		t.Fatal("Test PasswordAuthArea 1 fails\n")
@@ -317,6 +308,7 @@ func TestCreatePasswordAuthArea(t *testing.T) {
 	if test2 == nil || !bytes.Equal(test1, pw_auth1) {
 		t.Fatal("Test PasswordAuthArea 2 fails\n")
 	}
+	fmt.Printf("TestCreatePasswordAuthArea: %x\n", pw_auth1)
 	fmt.Printf("TestCreatePasswordAuthArea: %x\n", pw_auth2)
 }
 
@@ -379,7 +371,6 @@ func TestCertificateParse(t *testing.T) {
 	if out == nil || err != nil {
 		t.Fatal("Can't retrieve file\n")
 	}
-	fmt.Printf("Cert (%d): %x\n", len(out), out)
 
 	cert, err := x509.ParseCertificate(out)
 	if cert == nil || err !=nil {

@@ -187,36 +187,38 @@ func (tv *ConstantVisitor) Visit(n ast.Node) ast.Visitor {
 	return tv
 }
 
+const headerPrefix = `#include <memory>
+#include <string>
+#include <vector>
+
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/stubs/common.h>
+
+namespace tao {
+
+class LogicElement {
+ public:
+  virtual void Marshal(google::protobuf::io::CodedOutputStream* output) = 0;
+  virtual bool Unmarshal(google::protobuf::io::CodedInputStream* input) = 0;
+};
+
+class Form: public LogicElement {
+ public:
+  virtual ~Form() = default;
+  virtual void Marshal(google::protobuf::io::CodedOutputStream* output) = 0;
+  virtual bool Unmarshal(google::protobuf::io::CodedInputStream* input) = 0;
+};
+
+class Term: public LogicElement {
+ public:
+  virtual ~Term() = default;
+  virtual void Marshal(google::protobuf::io::CodedOutputStream* output) = 0;
+  virtual bool Unmarshal(google::protobuf::io::CodedInputStream* input) = 0;
+};
+`
+
 func writeHeader(constants []Constant, types map[string][]Field, interfaces map[string]bool, formTypes map[string]bool, termTypes map[string]bool) []string {
-	header := []string{
-		"#include <memory>",
-		"#include <string>",
-		"#include <vector>",
-		"",
-		"#include <google/protobuf/io/coded_stream.h>",
-		"#include <google/protobuf/stubs/common.h>",
-		"",
-		"class LogicElement {",
-		" public:",
-		"  virtual void Marshal(google::protobuf::io::CodedOutputStream* output) = 0;",
-		"  virtual bool Unmarshal(google::protobuf::io::CodedInputStream* input) = 0;",
-		"};",
-		"",
-		"class Form: public LogicElement {",
-		" public:",
-		"  virtual ~Form() = default;",
-		"  virtual void Marshal(google::protobuf::io::CodedOutputStream* output) = 0;",
-		"  virtual bool Unmarshal(google::protobuf::io::CodedInputStream* input) = 0;",
-		"};",
-		"",
-		"class Term: public LogicElement {",
-		" public:",
-		"  virtual ~Term() = default;",
-		"  virtual void Marshal(google::protobuf::io::CodedOutputStream* output) = 0;",
-		"  virtual bool Unmarshal(google::protobuf::io::CodedInputStream* input) = 0;",
-		"};",
-		"",
-	}
+	header := strings.Split(headerPrefix, "\n")
 
 	constructor := "  %s() = default;"
 	marshal := "  void Marshal(google::protobuf::io::CodedOutputStream* output)"
@@ -309,7 +311,7 @@ func writeHeader(constants []Constant, types map[string][]Field, interfaces map[
 		header = append(header, "};", "")
 	}
 
-	return header
+	return append(header, "}  // namespace tao")
 }
 
 // The following constants are raw implementation strings that don't need any
@@ -318,6 +320,7 @@ const (
 	implHeader = `#include "auth.h"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
+namespace tao {
 namespace {
 // This is the canonical implementation of make_unique for C++11. It is wrapped
 // in an anonymous namespace to keep it from conflicting with the real thing if
@@ -547,7 +550,7 @@ func writeImplementation(constants []Constant, types map[string][]Field, interfa
 		impl = append(impl, writeUnmarshaller(name, fields, interfaces, formTypes, termTypes)...)
 	}
 
-	return impl
+	return append(impl, "}  // namespace tao")
 }
 
 var (

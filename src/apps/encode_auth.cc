@@ -16,6 +16,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include "auth.h"
 #include "tao/util.h"
 
 using std::string;

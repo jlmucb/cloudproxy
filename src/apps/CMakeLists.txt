@@ -23,7 +23,8 @@ add_definitions(-DOS_POSIX)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/chromium/include)
 
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/auth.cc ${CMAKE_BINARY_DIR}/auth.h
-                   COMMAND go run ${CMAKE_SOURCE_DIR}/../go/apps/genauth/genauth.go -ast_file ${CMAKE_SOURCE_DIR}/../go/tao/auth/ast.go -binary_file ${CMAKE_SOURCE_DIR}/../go/tao/auth/binary.go -header_file ${CMAKE_BINARY_DIR}/auth.h -impl_file ${CMAKE_BINARY_DIR}/auth.cc)
+                   COMMAND go run ${CMAKE_SOURCE_DIR}/../go/apps/genauth/genauth.go -ast_file ${CMAKE_SOURCE_DIR}/../go/tao/auth/ast.go -binary_file ${CMAKE_SOURCE_DIR}/../go/tao/auth/binary.go -header_file ${CMAKE_BINARY_DIR}/auth.h -impl_file ${CMAKE_BINARY_DIR}/auth.cc
+                   DEPENDS ${CMAKE_SOURCE_DIR}/../go/apps/genauth/genauth.go)
 
 add_library(auth ${CMAKE_BINARY_DIR}/auth.cc ${CMAKE_BINARY_DIR}/auth.h)
 

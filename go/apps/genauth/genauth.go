@@ -318,6 +318,17 @@ const (
 	implHeader = `#include "auth.h"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
+namespace {
+// This is the canonical implementation of make_unique for C++11. It is wrapped
+// in an anonymous namespace to keep it from conflicting with the real thing if
+// it exists.
+template<typename T, typename ...Args>
+std::unique_ptr<T> make_unique( Args&& ...args )
+{
+    return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
+}
+}  // namespace
+
 using google::protobuf::uint64;
 using google::protobuf::uint32;
 using google::protobuf::io::ArrayInputStream;
@@ -372,7 +383,7 @@ func writeDecoder(constants []Constant, interfaceName string, types map[string]b
 
 		impl = append(impl, []string{
 			"  case static_cast<uint32>(BinaryTags::" + constant.Name + "):",
-			"    *value = std::make_unique<" + typeName + ">();",
+			"    *value = make_unique<" + typeName + ">();",
 		}...)
 	}
 
@@ -437,7 +448,7 @@ func writeUnmarshaller(name string, fields []Field, interfaces map[string]bool, 
 			impl = append(impl, []string{
 				fmt.Sprintf("  uint32 %ss_count = 0;", field.Name),
 				fmt.Sprintf("  if (!input->ReadVarint32(&%ss_count)) return false;", field.Name),
-				fmt.Sprintf("  for(int i = 0; i < %ss_count; i++) {", field.Name),
+				fmt.Sprintf("  for(uint32 i = 0; i < %ss_count; i++) {", field.Name),
 			}...)
 
 			if interfaces[typeName] {
@@ -492,7 +503,7 @@ func writeMarshaller(name string, fields []Field, interfaces map[string]bool) []
 			// not to expect an int64 field next.
 			impl = append(impl, []string{
 				fmt.Sprintf("  uint32 %s_value = %s_present_ ? 1 : 0;", field.Name, field.Name),
-				"  output->WriteVarint32(time_value);",
+				fmt.Sprintf("  output->WriteVarint32(%s_value);", field.Name),
 				fmt.Sprintf("  if (%s_present_) {", field.Name),
 				fmt.Sprintf("    output->WriteVarint64(%s_);", field.Name),
 				"  }",

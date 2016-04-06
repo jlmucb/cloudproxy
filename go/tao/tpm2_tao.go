@@ -22,13 +22,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"io/ioutil"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	//"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
@@ -176,7 +176,7 @@ func FinalizeTPM2Tao(tt *TPM2Tao) {
 	// Flush the ek, signingKey and storageKey.
 	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.ekHandle))
 	tt.ekHandle = 0
-	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.signingHandle))
+	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.signHandle))
 	tt.ekHandle = 0
 	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.skHandle))
 	tt.ekHandle = 0
@@ -221,7 +221,6 @@ func (tt *TPM2Tao) GetSharedSecret(n int, policy string) (bytes []byte, err erro
 
 // NewTPM2Tao creates a new TPM2Tao and returns it under the Tao interface.
 func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
-	return nil, nil
 	var err error
 	tt := &TPM2Tao{pcrCount: 24,
 		       password: "",}
@@ -270,25 +269,25 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	sn := []string{tt.path, "signingContext"}
 	tn := []string{tt.path, "storeContext"}
 	rootFileName := strings.Join(rn, "/")
-	signingFileName := strings.Join(sn, "/")
+	signFileName := strings.Join(sn, "/")
 	storeFileName := strings.Join(tn, "/")
 
 	root_save_area, err := ioutil.ReadFile(rootFileName)
-	tt.rootHandle, err = tpm2.LoadContext(rw, root_save_area)
+	tt.rootHandle, err = tpm2.LoadContext(tt.rw, root_save_area)
 	if err != nil {
-		t.Fatal("Load Context fails for root")
+		return nil, errors.New("Load Context fails for root")
 	}
 
-	signing_save_area, err := ioutil.ReadFile(signingFileName)
-	tt.signingHandle, err = tpm2.LoadContext(rw, signing_save_area)
+	signing_save_area, err := ioutil.ReadFile(signFileName)
+	tt.signHandle, err = tpm2.LoadContext(tt.rw, signing_save_area)
 	if err != nil {
-		t.Fatal("Load Context fails for signing")
+		return nil, errors.New("Load Context fails for signing")
 	}
 
-	sk_save_area, err := ioutil.ReadFile(skFileName)
-	tt.skHandle, err = tpm2.LoadContext(rw, sk_save_area)
+	sk_save_area, err := ioutil.ReadFile(storeFileName)
+	tt.skHandle, err = tpm2.LoadContext(tt.rw, sk_save_area)
 	if err != nil {
-		t.Fatal("Load Context fails for sk")
+		return nil, errors.New("Load Context fails for sk")
 	}
 
 	// Close root? tpm2.FlushContext(tt.rw, tt.rootHandle)

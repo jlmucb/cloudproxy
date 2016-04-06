@@ -16,7 +16,6 @@ package tao
 
 import (
 	"bytes"
-	"io/ioutil"
 	"fmt"
 	"runtime"
 	"testing"
@@ -26,11 +25,11 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
-// cleanUpTPMTao runs the finalizer for TPMTao early then unsets it so it
+// cleanUpTPM2Tao runs the finalizer for TPMTao early then unsets it so it
 // doesn't run later. Normal code will only create one instance of TPM2Tao, so
 // the finalizer will work correctly. But this test code creates multiple such
 // instances, so it needs to call the finalizer early.
-func cleanUpTPMTao(tt *tao.TPM2Tao) {
+func cleanUpTPM2Tao(tt *tao.TPM2Tao) {
 	tao.FinalizeTPM2Tao(tt)
 	runtime.SetFinalizer(tt, nil)
 }
@@ -44,33 +43,33 @@ func TestEncode(t *testing.T) {
 	fmt.Printf("seperated: %x, %x\n", c1, c2)
 }
 
-func TestTPMTao(t *testing.T) {
+func TestTPM2Tao(t *testing.T) {
 	// Set up a TPM Tao that seals and attests against PCRs 17 and 18.
-	tt, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	tt, err := tao.NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tpmtao, ok := tt.(*TPM2Tao)
+	tpmtao, ok := tt.(*tao.TPM2Tao) 
 	if !ok {
 		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
 	}
-	cleanUpTPMTao(tpmtao)
+	cleanUpTPM2Tao(tpmtao)
 }
 
 func RestTPMTaoSeal(t *testing.T) {
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", []int{17, 18})
+	tpmtao, err := tao.NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tt, ok := tpmtao.(*TPM2Tao)
+	tt, ok := tpmtao.(*tao.TPM2Tao)
 	if !ok {
-		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
+		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
 	}
-	defer cleanUpTPMTao(tt)
+	defer cleanUpTPM2Tao(tt)
 
 	data := []byte(`test data to seal`)
-	sealed, err := tpmtao.Seal(data, SealPolicyDefault)
+	sealed, err := tpmtao.Seal(data, tao.SealPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't seal data in the TPM Tao:", err)
 	}
@@ -80,7 +79,7 @@ func RestTPMTaoSeal(t *testing.T) {
 		t.Fatal("Couldn't unseal data sealed by the TPM Tao:", err)
 	}
 
-	if policy != SealPolicyDefault {
+	if policy != tao.SealPolicyDefault {
 		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
 	}
 
@@ -91,18 +90,18 @@ func RestTPMTaoSeal(t *testing.T) {
 
 func RestTPMTaoLargeSeal(t *testing.T) {
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", []int{17, 18})
+	tpmtao, err := tao.NewTPM2Tao("/dev/tpm0", "../tpm2//tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tt, ok := tpmtao.(*TPM2Tao)
+	tt, ok := tpmtao.(*tao.TPM2Tao)
 	if !ok {
-		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
+		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
 	}
-	defer cleanUpTPMTao(tt)
+	defer cleanUpTPM2Tao(tt)
 
 	data := make([]byte, 10000)
-	sealed, err := tpmtao.Seal(data, SealPolicyDefault)
+	sealed, err := tpmtao.Seal(data, tao.SealPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't seal data in the TPM Tao:", err)
 	}
@@ -112,7 +111,7 @@ func RestTPMTaoLargeSeal(t *testing.T) {
 		t.Fatal("Couldn't unseal data sealed by the TPM Tao:", err)
 	}
 
-	if policy != SealPolicyDefault {
+	if policy != tao.SealPolicyDefault {
 		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
 	}
 
@@ -123,15 +122,15 @@ func RestTPMTaoLargeSeal(t *testing.T) {
 
 func RestTPMTaoAttest(t *testing.T) {
 
-	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	tpmtao, err := tao.NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
-	tt, ok := tpmtao.(*TPM2Tao)
+	tt, ok := tpmtao.(*tao.TPM2Tao)
 	if !ok {
-		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
+		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
 	}
-	defer cleanUpTPMTao(tt)
+	defer cleanUpTPM2Tao(tt)
 
 	// Set up a fake key delegation.
 	taoname, err := tpmtao.GetTaoName()

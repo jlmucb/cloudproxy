@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	// "github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
@@ -79,7 +79,8 @@ func main() {
 	// Marshal policy key
 	serializedPolicyKey, err := tpm2.SerializeRsaPrivateKey(policyKey)
         if err != nil {
-                t.Fatal("Cant serialize rsa key\n")
+                fmt.Printf("Cant serialize rsa key\n")
+		return
         }
 
 	ioutil.WriteFile(*policyKeyFile, serializedPolicyKey, 0644)

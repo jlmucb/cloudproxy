@@ -157,14 +157,6 @@ func ParentFromConfig(tc Config) Tao {
 
 			cachedHost = host
 		case "tpm2":
-/*
-			aikblob, err := ioutil.ReadFile(tcEnv.TPMAIKPath)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Couldn't read the aikblob: %s\n", err)
-				glog.Error(err)
-				return
-			}
-
 			taoPCRs := tcEnv.TPMPCRs
 			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
 
@@ -183,14 +175,15 @@ func ParentFromConfig(tc Config) Tao {
 				}
 			}
 
-			host, err := NewTPMTao(tcEnv.TPMDevice, aikblob, pcrs)
+			// TODO: Fix path
+			host, err := NewTPM2Tao(tcEnv.TPMDevice,
+				"~/src/github.com/jlmucb/go/tpm2/tmptest", pcrs)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't create a new TPMTao: %s\n", err)
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
-*/
 		case "pipe":
 			host, err := DeserializeRPC(tcEnv.HostSpec)
 			if err != nil {

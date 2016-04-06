@@ -93,7 +93,7 @@ func reportCommand(name string, cmd []byte, resp []byte, status TpmError, errOnl
 	if errOnly && status == ErrSuccess {
 		return
 	}
-	fmt.Printf("%s, cmd: %x,\n\terr code: %d, resp: %x\n", cmd, status, resp)
+	fmt.Printf("%s, cmd: %x,\n\terr code: %x, resp: %x\n", name, cmd, status, resp)
 }
 
 func PrintAttestData(parms *AttestParams) {
@@ -396,7 +396,7 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	reportCommand("GetRandom", cmd, resp, status, true)
+	reportCommand("GetRandom", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, errors.New("Can't decode response") 
 	}
@@ -866,11 +866,11 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 	if read < 10 {
 		return Handle(0), nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return Handle(0), nil, err
 	}
-	reportCommand("CreatePrimary", cmd, resp, status, true)
+	reportCommand("CreatePrimary", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 	}
 	handle, public_blob, err :=  DecodeCreatePrimary(resp[10:read])
@@ -934,11 +934,11 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	if read < 10 {
 		return nil, nil, nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	reportCommand("ReadPublic", cmd, resp, status, true)
+	reportCommand("ReadPublic", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, nil, nil, err
 	}
@@ -1025,11 +1025,11 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, err
 	}
-	reportCommand("CreateKey", cmd, resp, status, true)
+	reportCommand("CreateKey", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, nil, errors.New("Error from command")
 	}
@@ -1103,11 +1103,11 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	if read < 10 {
 		return Handle(0), nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return Handle(0), nil, err
 	}
-	reportCommand("Load", cmd, resp, status, true)
+	reportCommand("Load", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return Handle(0), nil, errors.New("Error from command")
 	}
@@ -1178,11 +1178,11 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return err
 	}
-	reportCommand("PolicyPassword", cmd, resp, status, true)
+	reportCommand("PolicyPassword", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return errors.New("Comand failure")
 	}
@@ -1282,11 +1282,11 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if read < 10 {
 		return nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, err
 	}
-	reportCommand("PolicyGetDigest", cmd, resp, status, true)
+	reportCommand("PolicyGetDigest", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, errors.New("Comand failure")
 	}
@@ -1362,11 +1362,11 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if read < 10 {
 		return Handle(0), nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return Handle(0), nil, errors.New("DecodeCommandResponse fails")
 	}
-	reportCommand("StartAuthSession", cmd, resp, status, true)
+	reportCommand("StartAuthSession", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return Handle(0), nil, errors.New("StartAuthSession unsuccessful")
 	}
@@ -1457,11 +1457,11 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	reportCommand("CreateSealed", cmd, resp, status, true)
+	reportCommand("CreateSealed", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, nil, errors.New("CreateSealed unsuccessful")
 	}
@@ -1627,11 +1627,11 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 		return nil, nil, errors.New("Read buffer too small")
 	}
 	fmt.Printf("Quote resp: %x\n", resp[0:read])
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	reportCommand("Quote", cmd, resp, status, true)
+	reportCommand("Quote", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
@@ -1717,11 +1717,11 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if read < 10 {
 		return nil, errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
-	reportCommand("ActivateCredential", cmd, resp, status, true)
+	reportCommand("ActivateCredential", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, errors.New("ActivateCredential unsuccessful")
 	}
@@ -1787,11 +1787,11 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return errors.New("DecodeCommandResponse fails")
 	}
-	reportCommand("EvictControl", cmd, resp, status, true)
+	reportCommand("EvictControl", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return errors.New("EvictControl unsuccessful")
 	}
@@ -1847,7 +1847,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
-	reportCommand("SaveContext", cmd, resp, status, true)
+	reportCommand("SaveContext", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return nil, errors.New("SaveContext unsuccessful")
 	}
@@ -1911,7 +1911,7 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	if err != nil {
 		return Handle(0), errors.New("DecodeCommandResponse fails")
 	}
-	reportCommand("LoadContext", cmd, resp, status, true)
+	reportCommand("LoadContext", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
 		return Handle(0), errors.New("LoadContext unsuccessful")
 	}

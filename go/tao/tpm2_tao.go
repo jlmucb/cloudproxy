@@ -15,6 +15,7 @@
 package tao
 
 import (
+	// "fmt"
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
@@ -266,25 +267,34 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	// Load handles for unsealing and attestation
 	tt.path = statePath
 	rn := []string{tt.path, "rootContext"}
-	sn := []string{tt.path, "signingContext"}
+	sn := []string{tt.path, "quoteContext"}
 	tn := []string{tt.path, "storeContext"}
 	rootFileName := strings.Join(rn, "/")
 	signFileName := strings.Join(sn, "/")
 	storeFileName := strings.Join(tn, "/")
 
 	root_save_area, err := ioutil.ReadFile(rootFileName)
+	if err != nil {
+		return nil, errors.New("Can't read root context file")
+	}
 	tt.rootHandle, err = tpm2.LoadContext(tt.rw, root_save_area)
 	if err != nil {
 		return nil, errors.New("Load Context fails for root")
 	}
 
 	signing_save_area, err := ioutil.ReadFile(signFileName)
+	if err != nil {
+		return nil, errors.New("Can't read sign context file")
+	}
 	tt.signHandle, err = tpm2.LoadContext(tt.rw, signing_save_area)
 	if err != nil {
 		return nil, errors.New("Load Context fails for signing")
 	}
 
 	sk_save_area, err := ioutil.ReadFile(storeFileName)
+	if err != nil {
+		return nil, errors.New("Can't read sk context file")
+	}
 	tt.skHandle, err = tpm2.LoadContext(tt.rw, sk_save_area)
 	if err != nil {
 		return nil, errors.New("Load Context fails for sk")

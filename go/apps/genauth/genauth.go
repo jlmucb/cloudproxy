@@ -262,10 +262,6 @@ func writeHeader(constants []Constant, types map[string][]Field, interfaces map[
 		header = append(header, fmt.Sprintf("%s%s;", marshal, override))
 		header = append(header, fmt.Sprintf("%s%s;", unmarshal, override))
 
-		if len(fields) > 0 {
-			header = append(header, " private:")
-		}
-
 		for _, info := range fields {
 			typeName := info.TypeName
 

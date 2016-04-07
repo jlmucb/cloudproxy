@@ -43,7 +43,7 @@ func TestEncode(t *testing.T) {
 	fmt.Printf("seperated: %x, %x\n", c1, c2)
 }
 
-func TestTPM2Tao(t *testing.T) {
+func RestTPM2Tao(t *testing.T) {
 	// Set up a TPM Tao that seals and attests against PCRs 17 and 18.
 	tt, err := tao.NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
@@ -56,7 +56,7 @@ func TestTPM2Tao(t *testing.T) {
 	cleanUpTPM2Tao(tpmtao)
 }
 
-func RestTPMTaoSeal(t *testing.T) {
+func TestTPMTaoSeal(t *testing.T) {
 
 	tpmtao, err := tao.NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {

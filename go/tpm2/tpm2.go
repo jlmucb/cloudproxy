@@ -789,13 +789,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 3")
 	}
 
-	// params
-	params, err := DecodeRsaArea(tpm2_public)
-	if err != nil {
-		return Handle(0), nil, err
-	}
-	PrintRsaParams(params)
-
 	// Creation data
 	current = 2 + len(rsa_params_buf)
 	var creation_data []byte
@@ -1382,7 +1375,6 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte,
 			   parent_password string, owner_password string,
 			   to_seal []byte, pcr_nums []int,
 			   parms KeyedHashParams) ([]byte, error) {
-	PrintKeyedHashParams(&parms)
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
 	if err != nil {
 		return nil, errors.New("ConstructCreateKey failed")
@@ -1626,7 +1618,6 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	fmt.Printf("Quote resp: %x\n", resp[0:read])
 	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
@@ -1635,7 +1626,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if status != ErrSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
-	attest, _, _, sig, err := DecodeQuote(resp[10:])
+	attest, _, _, sig, err := DecodeQuote(resp[10:size])
 	if err != nil {
 		return nil, nil, errors.New("DecodeQuote fails")
 	}
@@ -2209,7 +2200,6 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	if err != nil {
 		return nil, nil, err
 	}
-	PrintRsaParams(rsaQuoteParams)
 
 	sig_alg := uint16(AlgTPM_ALG_NULL)
 	attest, sig, err := Quote(rw, quote_handle, owner_pw, owner_pw,

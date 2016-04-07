@@ -409,7 +409,6 @@ func TestCombinedQuoteTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("DecodeRsaBuf fails %s", err)
 	}
-	tpm2.PrintRsaParams(rsaParams)
 
 	var quote_key_info tpm2.QuoteKeyInfoMessage 
 	att := int32(rsaParams.Attributes)

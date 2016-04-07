@@ -94,9 +94,6 @@ type TPM2Tao struct {
 	// rootHandle is an integer handle for an root key held by the TPM.
 	rootHandle tpm2.Handle
 
-	// skHandle is an integer handle for an storageKey held by the TPM.
-	skHandle tpm2.Handle
-
 	// signHandle is an integer handle for an signing held by the TPM.
 	signHandle tpm2.Handle
 
@@ -174,13 +171,18 @@ func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (aut
 
 // FinalizeTPM2Tao releases the resources for the TPM2Tao.
 func FinalizeTPM2Tao(tt *TPM2Tao) {
-	// Flush the ek, signingKey and storageKey.
-	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.ekHandle))
+	if  tt.sessionHandle != 0 {
+		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sessionHandle))
+	}
+	tt.sessionHandle = 0
+	if  tt.ekHandle != 0 {
+		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.ekHandle))
+	}
 	tt.ekHandle = 0
-	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.signHandle))
-	tt.ekHandle = 0
-	tpm2.FlushContext(tt.rw, tpm2.Handle(tt.skHandle))
-	tt.ekHandle = 0
+	if  tt.signHandle != 0 {
+		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.signHandle))
+	}
+	tt.signHandle = 0
 
 	// Release the file handle.
 	tt.rw.Close()
@@ -268,10 +270,8 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	tt.path = statePath
 	rn := []string{tt.path, "rootContext"}
 	sn := []string{tt.path, "quoteContext"}
-	tn := []string{tt.path, "storeContext"}
 	rootFileName := strings.Join(rn, "/")
 	signFileName := strings.Join(sn, "/")
-	storeFileName := strings.Join(tn, "/")
 
 	root_save_area, err := ioutil.ReadFile(rootFileName)
 	if err != nil {
@@ -290,17 +290,6 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	if err != nil {
 		return nil, errors.New("Load Context fails for signing")
 	}
-
-	sk_save_area, err := ioutil.ReadFile(storeFileName)
-	if err != nil {
-		return nil, errors.New("Can't read sk context file")
-	}
-	tt.skHandle, err = tpm2.LoadContext(tt.rw, sk_save_area)
-	if err != nil {
-		return nil, errors.New("Load Context fails for sk")
-	}
-
-	// Close root? tpm2.FlushContext(tt.rw, tt.rootHandle)
 
 	// Session handle for seal/unseal
 	tt.sessionHandle, tt.policy_digest, err = tpm2.AssistCreateSession(tt.rw,
@@ -405,7 +394,7 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	}
 	defer ZeroBytes(ckb)
 
-	priv, pub, err := tpm2.AssistSeal(tt.rw, tt.skHandle, ckb,
+	priv, pub, err := tpm2.AssistSeal(tt.rw, tt.rootHandle, ckb,
 				"", tt.password, tt.pcrs, tt.policy_digest)
 	if err != nil {
 		return nil, err
@@ -433,7 +422,7 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 
 	// Decode buffer containing pub and priv blobs
 	pub, priv := DecodeTwoBytes(sealed)
-	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle, tt.skHandle,
+	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle, tt.rootHandle,
 		pub, priv, "", tt.password, tt.policy_digest)
 	if err != nil {
 		return nil, "", err

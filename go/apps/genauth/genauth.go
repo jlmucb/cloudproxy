@@ -383,6 +383,7 @@ func writeDecoder(constants []Constant, interfaceName string, types map[string]b
 		impl = append(impl, []string{
 			"  case static_cast<uint32>(BinaryTags::" + constant.Name + "):",
 			"    *value = make_unique<" + typeName + ">();",
+			"    break;",
 		}...)
 	}
 
@@ -437,7 +438,19 @@ func writeUnmarshaller(name string, fields []Field, interfaces map[string]bool, 
 
 		switch field.Type {
 		case IdentType:
-			impl = append(impl, fmt.Sprintf("  if (!%s_->Unmarshal(input)) return false;", field.Name))
+			if interfaces[typeName] {
+				impl = append(impl, []string{
+					// Peek at the next tag.
+					fmt.Sprintf("  uint32 %s_tag = 0;", field.Name),
+					fmt.Sprintf("  if (!PeekTag(input, &%s_tag)) return false;", field.Name),
+					fmt.Sprintf("  if (!Decode%s(%s_tag, input, &%s_)) return false;", typeName, field.Name, field.Name),
+				}...)
+				continue
+			}
+			impl = append(impl, []string{
+				fmt.Sprintf("  %s_ = make_unique<%s>();", field.Name, typeName),
+				fmt.Sprintf("  if (!%s_->Unmarshal(input)) return false;", field.Name),
+			}...)
 		case ArrayType:
 			if typeName == "byte" {
 				impl = append(impl, fmt.Sprintf("  if (!DecodeString(input, &%s_)) return false;", field.Name))
@@ -464,7 +477,7 @@ func writeUnmarshaller(name string, fields []Field, interfaces map[string]bool, 
 			}
 
 			impl = append(impl, []string{
-				fmt.Sprintf("    std::unique_ptr<%s> %ss_obj;", typeName, field.Name),
+				fmt.Sprintf("    auto %ss_obj = make_unique<%s>();", field.Name, typeName),
 				fmt.Sprintf("    %ss_obj->Unmarshal(input);", field.Name),
 				fmt.Sprintf("    %ss_.emplace_back(std::move(%ss_obj));", field.Name, field.Name),
 				"  }",

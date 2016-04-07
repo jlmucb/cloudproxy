@@ -22,6 +22,8 @@
 #include "auth.h"
 #include "tao/util.h"
 
+using google::protobuf::io::ArrayInputStream;
+using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::CodedOutputStream;
 using google::protobuf::io::StringOutputStream;
 using std::string;
@@ -53,7 +55,8 @@ int main(int argc, char **argv) {
   p.type_ = "key";
 
   auto bytes = make_unique<Bytes>();
-  bytes->elt_ = "These are not key bytes";
+  string key_bytes("These are not key bytes");
+  bytes->elt_ = key_bytes;
   p.key_ = std::move(bytes);
 
   p.ext_ = make_unique<SubPrin>();
@@ -75,6 +78,31 @@ int main(int argc, char **argv) {
 
   std::cout << "A Prin encoded with Base64W:" << std::endl;
   std::cout << encoded_prin << std::endl;
+
+  Prin unmarshalled_prin;
+  {
+    ArrayInputStream raw_input_stream(serialized_prin.data(),
+                                      serialized_prin.size());
+    CodedInputStream input_stream(&raw_input_stream);
+    if (!unmarshalled_prin.Unmarshal(&input_stream)) {
+      LOG(FATAL) << "Unmarshalling failed";
+    }
+  }
+
+  if (unmarshalled_prin.type_ != "key") {
+    LOG(ERROR) << "The unmarshalled prin had incorrect type '"
+               << unmarshalled_prin.type_ << "'";
+  }
+
+  auto unmarshalled_bytes =
+      reinterpret_cast<Bytes*>(unmarshalled_prin.key_.get());
+  if (unmarshalled_bytes->elt_ != key_bytes) {
+    LOG(ERROR) << "The unmarshalled bytes did not match the original bytes";
+  }
+
+  if (unmarshalled_prin.ext_->elts_.size() != 1) {
+    LOG(ERROR) << "The unmarshalled prin did not have one extension";
+  }
 
   // A fake key for the parent.
   string taoKeyName("test tao key");

@@ -33,6 +33,7 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 	}
 	switch signer.Type {
 	case "tpm":
+		// TODO -- tpm2
 		// The PCRs are contained in the Speaker of an auth.Says statement that
 		// makes up the a.SerializedStatement.
 		f, err := auth.UnmarshalForm(a.SerializedStatement)
@@ -61,6 +62,41 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		pk, err := extractAIK(speaker)
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract the AIK from the signer: %s", err)
+		}
+		if err := tpm.VerifyQuote(pk, a.SerializedStatement, a.Signature, pcrNums, pcrVals); err != nil {
+			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)
+		}
+
+		return signer, nil
+	case "tpm2":
+		// The PCRs are contained in the Speaker of an auth.Says statement that
+		// makes up the a.SerializedStatement.
+		f, err := auth.UnmarshalForm(a.SerializedStatement)
+		if err != nil {
+			return auth.Prin{}, newError("tao: couldn't unmarshal the statement: %s", err)
+		}
+
+		// A TPM attestation must be an auth.Says.
+		says, ok := f.(auth.Says)
+		if !ok {
+			return auth.Prin{}, newError("tao: the attestation statement was not an auth.Says statement")
+		}
+
+		// Signer is tpm; use tpm-specific signature verification. Extract the
+		// PCRs from the issuer name, unmarshal the key as an RSA key, and call
+		// tpm.VerifyQuote().
+		speaker, ok := says.Speaker.(auth.Prin)
+		if !ok {
+			return auth.Prin{}, newError("tao: the speaker of an attestation must be an auth.Prin")
+		}
+		pcrNums, pcrVals, err := extractTpm2PCRs(speaker)
+		if err != nil {
+			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer: %s", err)
+		}
+
+		pk, err := extractAttest(speaker)
+		if err != nil {
+			return auth.Prin{}, newError("tao: couldn't extract the attest from the signer: %s", err)
 		}
 		if err := tpm.VerifyQuote(pk, a.SerializedStatement, a.Signature, pcrNums, pcrVals); err != nil {
 			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)

@@ -513,8 +513,8 @@ func extractTpm2PCRs(p auth.Prin) ([]int, []byte, error) {
 	return pcrNums, pcrVals, nil
 }
 
-// extractEK gets an RSA public key from the TPM principal name.
-func extractEK(p auth.Prin) (*rsa.PublicKey, error) {
+// extractAttest gets an RSA public key from the TPM principal name.
+func extractAttest(p auth.Prin) (*rsa.PublicKey, error) {
 	// The principal's Key should be a binary SubjectPublicKeyInfo.
 	if p.Type != "tpm2" {
 		return nil, errors.New("wrong type of principal: should be 'tpm'")

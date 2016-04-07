@@ -69,6 +69,9 @@ type Config struct {
 	TPMAIKPath string
 	TPMPCRs    string
 	TPMDevice  string
+
+	// TODO -- tpm2
+	// change domain.proto too, Domain config
 }
 
 // IsValid checks a Config for validity.
@@ -121,6 +124,9 @@ func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Conf
 		tc.TPMAIKPath = tpmaik
 		tc.TPMPCRs = tpmpcrs
 		tc.TPMDevice = tpmdev
+	}
+	if htct == "tpm2" {
+		// TODO -- tpm2
 	}
 
 	if f != "" {

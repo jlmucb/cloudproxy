@@ -30,6 +30,19 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+func TestStringUtils(t *testing.T) {
+	in := "1, 3, 2"
+	out, err := tpm2.StringToIntList(in)
+	if err != nil {
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't parse list\n")
+	}
+	for _, v := range out {
+		fmt.Printf("%d ", v)
+	}
+	fmt.Printf("\n")
+}
+
 func TestSerializeDeserialize(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

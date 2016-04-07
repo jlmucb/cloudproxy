@@ -157,6 +157,7 @@ func ParentFromConfig(tc Config) Tao {
 
 			cachedHost = host
 		case "tpm2":
+			 // TODO -- tpm2
 			taoPCRs := tcEnv.TPMPCRs
 			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
 

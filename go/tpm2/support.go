@@ -30,6 +30,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -281,6 +283,20 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 	}
 
 	return calculatedHmac, outData, nil
+}
+
+
+func StringToIntList(in string) ([]int, error) {
+	strList := strings.Split(in, ",")
+	ints := make([]int, len(strList))
+	for i, s := range strList {
+		var err error
+		ints[i], err = strconv.Atoi(strings.TrimPrefix(s, " "))
+		if err != nil {
+			return nil, errors.New("Can't convert strings to ints")
+		}
+	}
+	return ints, nil
 }
 
 func ComputeHashValue(alg uint16, to_hash []byte) ([]byte, error) {

@@ -25,17 +25,17 @@ import (
 // This program creates a key hierarchy consisting of a
 // primary key, and quoting key for cloudproxy and saves the context.
 func main() {
-	keySize := flag.Int("modulus size",  2048, "Modulus size for keys")
-	rootContextFileName := flag.String("Root context file",  "rootContext.bin",
+	keySize := flag.Int("modulusSize",  2048, "Modulus size for keys")
+	rootContextFileName := flag.String("rootContextFile",  "rootContext.bin",
 		"Root context file")
-	quoteContextFileName := flag.String("Quote context file",
+	quoteContextFileName := flag.String("quoteContextFile",
 		"quoteContext.bin", "Quote context file")
-	storeContextFileName := flag.String("Store context file",
+	storeContextFileName := flag.String("storeContextFile",
 		"storeContext.bin", "Store context file")
-	pcrList:= flag.String("Pcr List",  "7", "Pcr list")
+	pcrList := flag.String("pcrList",  "7", "Pcr list")
 	flag.Parse()
 
-	fmt.Printf("Pcr list %s\n", *pcrList)
+	fmt.Printf("Pcr list: %s\n", *pcrList)
 
 	// Open tpm
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
@@ -51,10 +51,12 @@ func main() {
 		fmt.Printf("Flushall failed\n")
 		return
 	}
-	fmt.Printf("rw: %x\n", rw)
 
-	// TODO: fix
-	pcrs := []int{7}
+	pcrs, err := tpm2.StringToIntList(*pcrList)
+	if err != nil {
+		fmt.Printf("Can't format pcr list\n")
+		return
+	}
 
 	err = tpm2.InitTpm2Keys(rw, pcrs, uint16(*keySize),
 		uint16(tpm2.AlgTPM_ALG_SHA1), "", *rootContextFileName,

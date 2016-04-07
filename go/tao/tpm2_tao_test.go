@@ -73,6 +73,10 @@ func TestTPMTaoSeal(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't seal data in the TPM Tao:", err)
 	}
+	fmt.Printf("sealed: %x\n", sealed)
+
+	// Fix this hack
+	tpmtao.(*tao.TPM2Tao).TmpRm()
 
 	unsealed, policy, err := tpmtao.Unseal(sealed)
 	if err != nil {

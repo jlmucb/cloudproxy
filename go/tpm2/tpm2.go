@@ -89,7 +89,8 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
-func reportCommand(name string, cmd []byte, resp []byte, status TpmError, errOnly bool) {
+func reportCommand(name string, cmd []byte, resp []byte,
+		status TpmError, errOnly bool) {
 	if errOnly && status == ErrSuccess {
 		return
 	}

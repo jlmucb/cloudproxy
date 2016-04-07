@@ -15,7 +15,6 @@
 package tao
 
 import (
-	// "fmt"
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
@@ -188,6 +187,20 @@ func FinalizeTPM2Tao(tt *TPM2Tao) {
 	tt.rw.Close()
 }
 
+// Remove this
+func (tt *TPM2Tao) TmpRm() {
+
+	if tt.ekHandle != 0 {
+                tpm2.FlushContext(tt.rw, tt.ekHandle)
+        }
+        tt.ekHandle = 0
+
+        if tt.signHandle != 0 {
+                tpm2.FlushContext(tt.rw, tt.signHandle)
+        }
+        tt.signHandle = 0
+}
+
 // GetTaoName returns the Tao principal name assigned to the caller.
 func (tt *TPM2Tao) GetTaoName() (name auth.Prin, err error) {
 	return tt.name, nil
@@ -268,8 +281,8 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 
 	// Load handles for unsealing and attestation
 	tt.path = statePath
-	rn := []string{tt.path, "rootContext"}
-	sn := []string{tt.path, "quoteContext"}
+	rn := []string{tt.path, "rootContext.bin"}
+	sn := []string{tt.path, "quoteContext.bin"}
 	rootFileName := strings.Join(rn, "/")
 	signFileName := strings.Join(sn, "/")
 
@@ -421,9 +434,10 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 	}
 
 	// Decode buffer containing pub and priv blobs
-	pub, priv := DecodeTwoBytes(sealed)
-	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle, tt.rootHandle,
-		pub, priv, "", tt.password, tt.policy_digest)
+	pub, priv := DecodeTwoBytes(h.SealedKey)
+	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle,
+		tt.rootHandle, pub, priv, "",
+		tt.password, tt.policy_digest)
 	if err != nil {
 		return nil, "", err
 	}

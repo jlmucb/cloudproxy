@@ -93,6 +93,7 @@ func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
 	if err != nil {
 		return nil, nil, errors.New("Load failed")
 	}
+	defer FlushContext(rw, sealHandle)
 
 	// Unseal
 	unsealed, nonce, err := Unseal(rw, sealHandle, ownerPassword,
@@ -100,7 +101,6 @@ func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
 	if err != nil {
 		return nil, nil, errors.New("Unseal failed")
 	}
-	FlushContext(rw, sealHandle)
 	return unsealed, nonce, err
 }
 

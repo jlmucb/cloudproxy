@@ -149,8 +149,11 @@ func FormatTpm2Quote(stmt []byte, pcrs []int, pcrVals [][]byte) ([]byte, error) 
 	return toQuote, nil
 }
 
-func VerifyTpm2Quote(serialized []byte, pcrs []int, pcrVals [][]byte,
+func VerifyTpm2Quote(serialized []byte, tpm2Quote []byte,
 	sig []byte, key *rsa.PublicKey) (bool, error) {
+// VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
+//                hash_alg_id uint16, attest []byte, signature []byte)
+// UnmarshalCertifyInfo(attest) (*AttestParams, error)
 	return true, nil
 }
 

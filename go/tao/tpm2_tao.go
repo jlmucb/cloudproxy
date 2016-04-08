@@ -15,7 +15,7 @@
 package tao
 
 import (
-	// "fmt"
+	"fmt"
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
@@ -390,11 +390,13 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 
 	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
 	// clearing the PCRs.
-	sig, _, err := tpm2.Quote(tt.rw, qH, "", tt.password,
+	sig, quote, err := tpm2.Quote(tt.rw, qH, "", tt.password,
 			toQuote, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("toQuote: %x\n", toQuote)
+	fmt.Printf("Quote: %x\n", quote)
 
 	// Pull off the extensions from the name to get the bare TPM key for the
 	// signer.
@@ -402,6 +404,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 		Type: tt.name.Type,
 		Key:  tt.name.Key,
 	}
+	// need to change Attestation to include quote structure for tpm2
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,

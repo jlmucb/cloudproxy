@@ -339,7 +339,7 @@ void PrintCapabilities(int size, byte* buf) {
   }
 }
 
-bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap,
+bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap, uint32_t start,
                         int* out_size, byte* out_buf) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   uint32_t count = 20;
@@ -359,7 +359,7 @@ bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap,
   ChangeEndian32(&cap, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
   if (cap == TPM_CAP_HANDLES) {
-    property = 0x80000000;
+    property = start;
   }
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
@@ -2870,11 +2870,11 @@ bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm) {
   return true;
 }
 
-bool Tpm2_Flushall(LocalTpm& tpm) {
+bool Tpm2_Flushall(LocalTpm& tpm, uint32_t start) {
   int size = MAX_SIZE_PARAMS;
   byte buf[MAX_SIZE_PARAMS];
 
-  if (!Tpm2_GetCapability(tpm, TPM_CAP_HANDLES, &size, buf)) {
+  if (!Tpm2_GetCapability(tpm, TPM_CAP_HANDLES, start, &size, buf)) {
     printf("Flushall can't get capabilities\n");
     return false;
   }

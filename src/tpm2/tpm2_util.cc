@@ -58,6 +58,7 @@ DEFINE_string(private_file, "", "private public area");
 DEFINE_string(creation_data_file, "", "private public area");
 DEFINE_string(save_context_file, "", "save(d) context area");
 DEFINE_string(decrypt, "", "decrypt flag");
+DEFINE_uint32(startHandle, 0x80000000, "start handle range");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS google
@@ -127,7 +128,7 @@ int main(int an, char** av) {
   if (FLAGS_command == "GetCapabilities") {
     int size = 512;
     byte buf[512];
-    if (!Tpm2_GetCapability(tpm, TPM_CAP_TPM_PROPERTIES, &size, buf)) {
+    if (!Tpm2_GetCapability(tpm, TPM_CAP_TPM_PROPERTIES, *startHandle, &size, buf)) {
       printf("Tpm2_GetCapability failed\n");
     }
     PrintCapabilities(size, buf);
@@ -403,7 +404,7 @@ int main(int an, char** av) {
       printf("Tpm2_Write_Nv failed\n");
     }
   } else if (FLAGS_command == "Flushall") {
-    if (Tpm2_Flushall(tpm)) {
+    if (Tpm2_Flushall(tpm, *startHandle)) {
       printf("Flushall succeeded\n");
     } else {
       printf("Flushall failed\n");

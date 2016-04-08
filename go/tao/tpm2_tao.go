@@ -88,16 +88,20 @@ type TPM2Tao struct {
 	password string
 
 	// ekHandle is an integer handle for an ek held by the TPM.
+	ekContext []byte
 	ekHandle tpm2.Handle
 
 	// rootHandle is an integer handle for an root key held by the TPM.
+	rootContext []byte
 	rootHandle tpm2.Handle
 
 	// signHandle is an integer handle for an signing held by the TPM.
+	signContext []byte
 	signHandle tpm2.Handle
 
 	// session handle
 	policy_digest []byte
+	sessionContext []byte
 	sessionHandle tpm2.Handle
 
 	// verifier is a representation of the ek that can be used to verify Attestations.
@@ -116,6 +120,40 @@ type TPM2Tao struct {
 
 	// The current TPM2Tao code uses only locality 0, so this value is never set.
 	locality byte
+}
+
+func (tt *TPM2Tao) loadEk() (tpm2.Handle, error) {
+	keySize := uint16(2048)
+	ek, _, err := tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
+	if err != nil {
+		return nil, err
+	}
+	return ek, nil
+}
+
+func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
+	rh, err := tpm2.LoadContext(tt.rw, tt.rootContext)
+	if err != nil {
+		return nil, errors.New("Load Context fails for root")
+	}
+	return rh, nil
+}
+
+func (tt *TPM2Tao) loadQuote() (tpm2.Handle, error) {
+	sh, err := tpm2.LoadContext(tt.rw, tt.signContext)
+	if err != nil {
+		return nil, errors.New("Load Context fails for quote")
+	}
+	return sh, nil
+}
+
+func (tt *TPM2Tao) loadSession() (tpm2.Handle, []byte, error) {
+	sh, digest, err = tpm2.AssistCreateSession(tt.rw,
+		tpm2.AlgTPM_ALG_SHA1, tt.pcrs)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sh, digest, nil
 }
 
 func (tt *TPM2Tao) Rand() io.Reader {
@@ -252,10 +290,11 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	tt.pcrs = pcrNums
 
 	keySize := uint16(2048)
-	tt.ekHandle, _, err = tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
+	ek, _, err = tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
 	if err != nil {
 		return nil, err
 	}
+	defer tpm2.FlushContext(tt.rw, ek)
 
 	tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tpm2.Handle(tt.ekHandle))
 	if err != nil {
@@ -286,29 +325,14 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	rootFileName := strings.Join(rn, "/")
 	signFileName := strings.Join(sn, "/")
 
-	root_save_area, err := ioutil.ReadFile(rootFileName)
+	tt.rootContext, err = ioutil.ReadFile(rootFileName)
 	if err != nil {
 		return nil, errors.New("Can't read root context file")
 	}
-	tt.rootHandle, err = tpm2.LoadContext(tt.rw, root_save_area)
-	if err != nil {
-		return nil, errors.New("Load Context fails for root")
-	}
 
-	signing_save_area, err := ioutil.ReadFile(signFileName)
+	tt.signContext, err := ioutil.ReadFile(signFileName)
 	if err != nil {
 		return nil, errors.New("Can't read sign context file")
-	}
-	tt.signHandle, err = tpm2.LoadContext(tt.rw, signing_save_area)
-	if err != nil {
-		return nil, errors.New("Load Context fails for signing")
-	}
-
-	// Session handle for seal/unseal
-	tt.sessionHandle, tt.policy_digest, err = tpm2.AssistCreateSession(tt.rw,
-		tpm2.AlgTPM_ALG_SHA1, tt.pcrs)
-	if err != nil {
-		return nil, err
 	}
 
 	return tt, nil
@@ -318,6 +342,11 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 // optional issuer, time and expiration will be given default values if nil.
 func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 		message auth.Form) (*Attestation, error) {
+	qK, err := tt.loadQuote()
+	if err != nil {
+		return nil, errors.New("Can't load quote key")
+	}
+	defer tpm2.FlushContext(tt.rw, qk)
 	if issuer == nil {
 		issuer = &tt.name
 	} else if !auth.SubprinOrIdentical(*issuer, tt.name) {
@@ -353,7 +382,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	ser := auth.Marshal(stmt)
 	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
 	// clearing the PCRs.
-	sig, _, err := tpm2.Quote(tt.rw, tt.signHandle, "", tt.password,
+	sig, _, err := tpm2.Quote(tt.rw, qk, "", tt.password,
 			ser, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
 		return nil, err
@@ -379,6 +408,16 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 // data separately. We use the keys infrastructure to perform secure and
 // flexible encryption.
 func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
+	rH, err := tt.loadRoot()
+	if err != nil {
+		return nil, errors.New("Can't load root key")
+	}
+	defer tpm2.FlushContext(tt.rw, rH)
+	sK, policy_digest, err := tt.loadSession()
+	if err != nil {
+		return nil, errors.New("Can't load root key")
+	}
+	defer tpm2.FlushContext(tt.rw, sK)
 	if policy != SealPolicyDefault {
 		return nil, errors.New("tpm-specific policies are not yet implemented")
 	}
@@ -407,8 +446,8 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	}
 	defer ZeroBytes(ckb)
 
-	priv, pub, err := tpm2.AssistSeal(tt.rw, tt.rootHandle, ckb,
-				"", tt.password, tt.pcrs, tt.policy_digest)
+	priv, pub, err := tpm2.AssistSeal(tt.rw, rH, ckb,
+				"", tt.password, tt.pcrs, policy_digest)
 	if err != nil {
 		return nil, err
 	}
@@ -427,6 +466,17 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 // Unseal decrypts data that has been sealed by the Seal() operation, but only
 // if the policy specified during the Seal() operation is satisfied.
 func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error) {
+	rH, err := tt.loadRoot()
+	if err != nil {
+		return nil, errors.New("Can't load root key")
+	}
+	defer tpm2.FlushContext(tt.rw, rH)
+	sH, policy_digest, err := tt.loadSession()
+	if err != nil {
+		return nil, errors.New("Can't load root key")
+	}
+	defer tpm2.FlushContext(tt.rw, sH)
+
 	// The sealed data is a HybridSealedData.
 	var h HybridSealedData
 	if err := proto.Unmarshal(sealed, &h); err != nil {
@@ -435,9 +485,8 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 
 	// Decode buffer containing pub and priv blobs
 	pub, priv := DecodeTwoBytes(h.SealedKey)
-	unsealed, _, err := tpm2.AssistUnseal(tt.rw, tt.sessionHandle,
-		tt.rootHandle, pub, priv, "",
-		tt.password, tt.policy_digest)
+	unsealed, _, err := tpm2.AssistUnseal(tt.rw, sH,
+		rH, pub, priv, "", tt.password, policy_digest)
 	if err != nil {
 		return nil, "", err
 	}

@@ -96,7 +96,7 @@ bool ComputePcrDigest(TPM_ALG_ID hash, int size_in, byte* in_buf,
 // TPM Commands
 bool Tpm2_Startup(LocalTpm& tpm);
 bool Tpm2_Shutdown(LocalTpm& tpm);
-bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap,
+bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap, uint32_t start,
                         int* size, byte* buf);
 bool Tpm2_GetRandom(LocalTpm& tpm, int numBytes, byte* buf);
 
@@ -179,7 +179,7 @@ bool Tpm2_LoadContext(LocalTpm& tpm, uint16_t size, byte* saveArea,
                       TPM_HANDLE* handle);
 bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, uint16_t* size,
                       byte* saveArea);
-bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle);
+bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle, uint32_t start);
 
 bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString);
 bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, 

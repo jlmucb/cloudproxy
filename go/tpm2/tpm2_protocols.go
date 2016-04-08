@@ -17,6 +17,7 @@ package tpm2
 
 import (
 	"crypto/rsa"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -139,6 +140,18 @@ func CreateEndorsement(rw io.ReadWriter, modSize uint16, pcrs []int) (Handle, []
 		uint16(0), modSize, uint32(0x00010001), empty}
 	return CreatePrimary(rw, uint32(OrdTPM_RH_ENDORSEMENT), pcrs,
 			"", "", primaryparms)
+}
+
+func FormatTpm2Quote(stmt []byte, pcrs []int, pcrVals [][]byte) ([]byte, error) {
+	sha256Hash := sha256.New()
+	sha256Hash.Write(stmt)
+	toQuote := sha256Hash.Sum(nil)
+	return toQuote, nil
+}
+
+func VerifyTpm2Quote(serialized []byte, pcrs []int, pcrVals [][]byte,
+	sig []byte, key *rsa.PublicKey) (bool, error) {
+	return true, nil
 }
 
 // This program creates a key hierarchy consisting of a

@@ -16,11 +16,12 @@ package tao
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"fmt"
 	"runtime"
 	"testing"
 
-	// "github.com/jlmucb/cloudproxy/go/tpm2"
+	"github.com/jlmucb/cloudproxy/go/tpm2"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
@@ -152,15 +153,15 @@ func TestTPMTaoAttest(t *testing.T) {
 		t.Fatal("Couldn't attest to a key delegation:", err)
 	}
 
-	if  a == nil {
-	}
-	// Put this back later
-/*
-	says, err := a.Validate()
+	// TODO -- tpm2
+	var key *rsa.PublicKey
+	ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement, nil, nil, a.Signature, key)
 	if err != nil {
-		t.Fatal("The attestation didn't pass validation:", err)
+		t.Fatal("VerifyQuote error")
+	}
+	if !ok {
+		t.Fatal("VerifyQuote succeeds")
 	}
 
-	t.Logf("Got valid statement %s\n", says)
- */
+	// t.Logf("Got valid statement %s\n", says)
 }

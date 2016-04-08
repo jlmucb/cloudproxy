@@ -381,13 +381,17 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	}
 
 	ser := auth.Marshal(stmt)
-	// FIX ser too large, replace ser1 below
-	ser1 := []byte{1,2,3}
+
+	var pcrVals [][]byte
+	toQuote, err := tpm2.FormatTpm2Quote(ser, tt.pcrs, pcrVals)
+	if err != nil {
+		return nil, errors.New("Can't format tpm2 Quote")
+	}
 
 	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
 	// clearing the PCRs.
 	sig, _, err := tpm2.Quote(tt.rw, qH, "", tt.password,
-			ser1, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
+			toQuote, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
 		return nil, err
 	}

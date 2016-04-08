@@ -15,10 +15,12 @@
 package tao
 
 import (
+	"crypto/rsa"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-tpm/tpm"
+	"github.com/jlmucb/cloudproxy/go/tpm2"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
@@ -70,12 +72,14 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		return signer, nil
 	case "tpm2":
 		// The PCRs are contained in the Speaker of an auth.Says statement that
+/*
 		// makes up the a.SerializedStatement.
 		f, err := auth.UnmarshalForm(a.SerializedStatement)
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't unmarshal the statement: %s", err)
 		}
 
+		put this back in
 		// A TPM attestation must be an auth.Says.
 		says, ok := f.(auth.Says)
 		if !ok {
@@ -84,7 +88,7 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 
 		// Signer is tpm; use tpm-specific signature verification. Extract the
 		// PCRs from the issuer name, unmarshal the key as an RSA key, and call
-		// tpm.VerifyQuote().
+		// tpm2.VerifyQuote().
 		speaker, ok := says.Speaker.(auth.Prin)
 		if !ok {
 			return auth.Prin{}, newError("tao: the speaker of an attestation must be an auth.Prin")
@@ -98,10 +102,19 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract the attest from the signer: %s", err)
 		}
-		if err := tpm.VerifyQuote(pk, a.SerializedStatement, a.Signature, pcrNums, pcrVals); err != nil {
+ */
+		var key *rsa.PublicKey
+		pcrs := []int{17, 18}
+		var pcrVals [][]byte
+		ok, err := tpm2.VerifyTpm2Quote(a.SerializedStatement,
+				pcrs, pcrVals, a.Signature, key);
+		if err != nil {
 			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)
 		}
 
+		if !ok {
+			return auth.Prin{}, newError("tao: TPM quote failed verification")
+		}
 		return signer, nil
 	case "key":
 		// Signer is ECDSA key, use Tao signature verification.

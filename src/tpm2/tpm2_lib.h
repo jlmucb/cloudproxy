@@ -179,7 +179,7 @@ bool Tpm2_LoadContext(LocalTpm& tpm, uint16_t size, byte* saveArea,
                       TPM_HANDLE* handle);
 bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, uint16_t* size,
                       byte* saveArea);
-bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle, uint32_t start);
+bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle);
 
 bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString);
 bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, 
@@ -190,7 +190,7 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
                       string& authString, uint16_t authPolicySize,
                       byte* authPolicy, uint32_t attributes, uint16_t size_data);
 bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index);
-bool Tpm2_Flushall(LocalTpm& tpm);
+bool Tpm2_Flushall(LocalTpm& tpm, uint32_t start);
 
 bool Tpm2_MakeCredential(LocalTpm& tpm,
                          TPM_HANDLE keyHandle,

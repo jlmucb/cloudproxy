@@ -15,6 +15,7 @@
 package tao
 
 import (
+	// "fmt"
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
@@ -126,7 +127,7 @@ func (tt *TPM2Tao) loadEk() (tpm2.Handle, error) {
 	keySize := uint16(2048)
 	ek, _, err := tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
 	if err != nil {
-		return nil, err
+		return tpm2.Handle(0), err
 	}
 	return ek, nil
 }
@@ -134,7 +135,7 @@ func (tt *TPM2Tao) loadEk() (tpm2.Handle, error) {
 func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
 	rh, err := tpm2.LoadContext(tt.rw, tt.rootContext)
 	if err != nil {
-		return nil, errors.New("Load Context fails for root")
+		return tpm2.Handle(0), errors.New("Load Context fails for root")
 	}
 	return rh, nil
 }
@@ -142,16 +143,16 @@ func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
 func (tt *TPM2Tao) loadQuote() (tpm2.Handle, error) {
 	sh, err := tpm2.LoadContext(tt.rw, tt.signContext)
 	if err != nil {
-		return nil, errors.New("Load Context fails for quote")
+		return tpm2.Handle(0), errors.New("Load Context fails for quote")
 	}
 	return sh, nil
 }
 
 func (tt *TPM2Tao) loadSession() (tpm2.Handle, []byte, error) {
-	sh, digest, err = tpm2.AssistCreateSession(tt.rw,
+	sh, digest, err := tpm2.AssistCreateSession(tt.rw,
 		tpm2.AlgTPM_ALG_SHA1, tt.pcrs)
 	if err != nil {
-		return nil, nil, err
+		return tpm2.Handle(0), nil, err
 	}
 	return sh, digest, nil
 }
@@ -290,13 +291,13 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	tt.pcrs = pcrNums
 
 	keySize := uint16(2048)
-	ek, _, err = tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
+	ek, _, err := tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
 	if err != nil {
 		return nil, err
 	}
 	defer tpm2.FlushContext(tt.rw, ek)
 
-	tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tpm2.Handle(tt.ekHandle))
+	tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, ek)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +331,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		return nil, errors.New("Can't read root context file")
 	}
 
-	tt.signContext, err := ioutil.ReadFile(signFileName)
+	tt.signContext, err = ioutil.ReadFile(signFileName)
 	if err != nil {
 		return nil, errors.New("Can't read sign context file")
 	}
@@ -342,11 +343,11 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 // optional issuer, time and expiration will be given default values if nil.
 func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 		message auth.Form) (*Attestation, error) {
-	qK, err := tt.loadQuote()
+	qH, err := tt.loadQuote()
 	if err != nil {
 		return nil, errors.New("Can't load quote key")
 	}
-	defer tpm2.FlushContext(tt.rw, qk)
+	defer tpm2.FlushContext(tt.rw, qH)
 	if issuer == nil {
 		issuer = &tt.name
 	} else if !auth.SubprinOrIdentical(*issuer, tt.name) {
@@ -380,10 +381,13 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	}
 
 	ser := auth.Marshal(stmt)
+	// FIX ser too large, replace ser1 below
+	ser1 := []byte{1,2,3}
+
 	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
 	// clearing the PCRs.
-	sig, _, err := tpm2.Quote(tt.rw, qk, "", tt.password,
-			ser, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
+	sig, _, err := tpm2.Quote(tt.rw, qH, "", tt.password,
+			ser1, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
 		return nil, err
 	}
@@ -468,12 +472,12 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	rH, err := tt.loadRoot()
 	if err != nil {
-		return nil, errors.New("Can't load root key")
+		return nil, "", errors.New("Can't load root key")
 	}
 	defer tpm2.FlushContext(tt.rw, rH)
 	sH, policy_digest, err := tt.loadSession()
 	if err != nil {
-		return nil, errors.New("Can't load root key")
+		return nil, "", errors.New("Can't load root key")
 	}
 	defer tpm2.FlushContext(tt.rw, sH)
 

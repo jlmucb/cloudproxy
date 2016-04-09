@@ -178,12 +178,8 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVals [][]byte,
 	if err != nil {
 		return false, errors.New("Can't compute quote")
 	}
-	if len(computedDigest) == 0 {
-		return false, errors.New("bogus")
-	}
 
-	// replace second argument with computedDigest
-	if bytes.Compare(attest.PcrDigest, attest.PcrDigest) != 0 {
+	if bytes.Compare(computedDigest, attest.PcrDigest) != 0 {
 		return false, errors.New("pcr digest does not match")
 	}
 

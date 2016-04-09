@@ -16,6 +16,7 @@
 package tpm2
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/sha256"
 	"errors"
@@ -153,9 +154,9 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVals [][]byte,
 	tpm2Quote []byte, sig []byte, key *rsa.PublicKey) (bool, error) {
 
 	// TODO: fix
-	hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
+	hash_alg_id := uint16(AlgTPM_ALG_SHA1)
 
-	attest, err := tpm2.UnmarshalCertifyInfo(tpm2Quote)
+	attest, err := UnmarshalCertifyInfo(tpm2Quote)
 	if err != nil {
 		return false, errors.New("Can't unmarshal quote structure\n")
 	}
@@ -173,7 +174,7 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVals [][]byte,
 	for i := 0; i < len(expectedPcrVals); i++ {
 		digests = append(digests, expectedPcrVals[i]...)
 	}
-	computedDigest, err := tpm2.ComputeHashValue(hash_alg_id, digests)
+	computedDigest, err := ComputeHashValue(hash_alg_id, digests)
 	if err != nil {
 		return false, errors.New("Can't compute quote")
 	}
@@ -187,22 +188,19 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVals [][]byte,
 	}
 
 	// quote_hash was the thing that was signed
-	quote_hash, err := tpm2.ComputeHashValue(hash_alg_id, tpm2Quote)
+	quote_hash, err := ComputeHashValue(hash_alg_id, tpm2Quote)
 	if err != nil {
 		return false, errors.New("Can't compute quote\n")
 	}
 
 	// decrypt signature
-	var N *big.Int
 	var E *big.Int
-	N  = new(big.Int)
-	N.SetBytes(quote_key_info.PublicKey.RsaKey.Modulus)
 	E  = new(big.Int)
 	E.SetBytes([]byte{0,1,0,1})
 	x := new(big.Int)
-	x.SetBytes(signature)
+	x.SetBytes(sig)
 	z := new(big.Int)
-	z = z.Exp(x, E, N)
+	z = z.Exp(x, E, key.N)
 	decrypted_quote := z.Bytes()
 	start_quote_blob := len(decrypted_quote) - SizeHash(hash_alg_id)
 

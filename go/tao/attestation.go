@@ -104,10 +104,11 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		}
  */
 		var key *rsa.PublicKey
+		var quote_structure []byte
 		pcrs := []int{17, 18}
 		var pcrVals [][]byte
 		ok, err := tpm2.VerifyTpm2Quote(a.SerializedStatement,
-				pcrs, pcrVals, a.Signature, key);
+			pcrs, pcrVals, quote_structure, a.Signature, key);
 		if err != nil {
 			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)
 		}

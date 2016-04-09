@@ -157,15 +157,28 @@ func (tt *TPM2Tao) loadSession() (tpm2.Handle, []byte, error) {
 	return sh, digest, nil
 }
 
+func (tt *TPM2Tao) GetPcrNums() ([]int){
+	return tt.pcrs
+}
+
+func (tt *TPM2Tao) GetRsaQuoteKey() (*rsa.PublicKey, error) {
+	handle, err := tt.loadQuote()
+	if err != nil {
+		return nil, errors.New("Can't load quote key\n")
+	}
+	defer tpm2.FlushContext(tt.rw, handle)
+	return tpm2.GetRsaKeyFromHandle(tt.rw, handle)
+}
+
 func (tt *TPM2Tao) Rand() io.Reader {
 	return tt.rw
 }
 
-func ReadPcrs(rw io.ReadWriter, pcrNums []int) ([][]byte, error) {
+func (tt *TPM2Tao) ReadPcrs(pcrNums []int) ([][]byte, error) {
 	pcrVals := make([][]byte, len(pcrNums))
 	for i, v := range pcrNums {
 		pcr, _ := tpm2.SetShortPcrs([]int{v})
-		_, _, _, pv, err := tpm2.ReadPcrs(rw, byte(4), pcr)
+		_, _, _, pv, err := tpm2.ReadPcrs(tt.rw, byte(4), pcr)
 		if err != nil {
 			return nil, err
 		}
@@ -308,7 +321,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		tt.pcrNums[i] = v
 	}
 
-	tt.pcrVals, err = ReadPcrs(tt.rw, pcrNums)
+	tt.pcrVals, err = tt.ReadPcrs(pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -390,13 +403,14 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 
 	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
 	// clearing the PCRs.
-	sig, quote, err := tpm2.Quote(tt.rw, qH, "", tt.password,
+	quote_struct, sig, err := tpm2.Quote(tt.rw, qH, "", tt.password,
 			toQuote, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("toQuote: %x\n", toQuote)
-	fmt.Printf("Quote: %x\n", quote)
+	fmt.Printf("Quote: %x\n", quote_struct)
+	fmt.Printf("sig: %x\n", sig)
 
 	// Pull off the extensions from the name to get the bare TPM key for the
 	// signer.
@@ -409,6 +423,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 		SerializedStatement: ser,
 		Signature:           sig,
 		Signer:              auth.Marshal(signer),
+		Tpm2QuoteStructure:  quote_struct,
 	}
 	return a, nil
 }

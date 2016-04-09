@@ -16,7 +16,6 @@ package tao
 
 import (
 	"bytes"
-	"crypto/rsa"
 	"fmt"
 	"runtime"
 	"testing"
@@ -154,8 +153,20 @@ func TestTPMTaoAttest(t *testing.T) {
 	}
 
 	// TODO -- tpm2
-	var key *rsa.PublicKey
-	ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement, nil, nil, a.Signature, key)
+        digests, err := tt.ReadPcrs([]int{17, 18})
+        if err != nil {
+                t.Fatal("ReadPcrs failed\n")
+        }
+	fmt.Printf("Pcr digest: %x\n", digests)
+	pms, err := tpm2.UnmarshalCertifyInfo(a.Tpm2QuoteStructure)
+        if err != nil {
+		fmt.Printf("a.Tpm2QuoteStructure: %x\n", a.Tpm2QuoteStructure)
+                t.Fatal("Can't unmarshal quote structure\n")
+        }
+	tpm2.PrintAttestData(pms)
+	key, _ := tt.GetRsaQuoteKey()
+	ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement, tt.GetPcrNums(),
+			digests, a.Tpm2QuoteStructure, a.Signature, key)
 	if err != nil {
 		t.Fatal("VerifyQuote error")
 	}

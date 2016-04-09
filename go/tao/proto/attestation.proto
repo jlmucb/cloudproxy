@@ -215,6 +215,9 @@ message Attestation {
   // piggy-backed, e.g. when an authorization guard requires multiple
   // attestations to check a policy.
   repeated bytes serialized_endorsements = 5;
+
+  // This is the quote structure actually signed by the tpm 2.0.
+  optional bytes tpm2_quote_structure = 6;
 }
 
 // TODO(kwalsh) Consider moving issuer (and expiration times) out of serialized

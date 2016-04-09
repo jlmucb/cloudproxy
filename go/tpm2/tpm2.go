@@ -1917,8 +1917,9 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 func UnmarshalCertifyInfo(in []byte) (*AttestParams, error) {
 	attest := new(AttestParams)
 	var count uint32
-	template := []interface{}{&attest.Magic_number, &attest.Attest_type, &attest.Name,
-			&attest.Data, &attest.Clock, &attest.ResetCount,  &attest.RestartCount,
+	template := []interface{}{&attest.Magic_number, &attest.Attest_type,
+			&attest.Name, &attest.Data, &attest.Clock,
+			&attest.ResetCount,  &attest.RestartCount,
 			&attest.Safe, &attest.FirmwareVersion, &count}
 	err := unpack(in, template)
 	if err != nil {

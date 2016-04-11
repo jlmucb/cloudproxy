@@ -96,18 +96,13 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract attest key signer")
 		}
-		pcrNums, pcrVals, err := extractTpm2PCRs(speaker)
+		pcrNums, pcrVal, err := extractTpm2PCRs(speaker)
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract pcrs from signer")
 		}
 
-		var pcrForVerify [][]byte
-
-		// Fix
-		if pcrVals == nil {
-		}
 		ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement,
-			pcrNums, pcrForVerify, a.Tpm2QuoteStructure, a.Signature,
+			pcrNums, pcrVal, a.Tpm2QuoteStructure, a.Signature,
 			key)
 		if err != nil {
 			return auth.Prin{}, newError("tao: TPM quote verification error")

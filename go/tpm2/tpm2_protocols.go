@@ -150,7 +150,7 @@ func FormatTpm2Quote(stmt []byte, pcrs []int, pcrVals [][]byte) ([]byte, error) 
 	return toQuote, nil
 }
 
-func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVals [][]byte,
+func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVal []byte,
 	tpm2Quote []byte, sig []byte, key *rsa.PublicKey) (bool, error) {
 
 	// TODO: fix
@@ -170,16 +170,7 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVals [][]byte,
 	}
 
 	// pcr digests match?
-	var digests []byte
-	for i := 0; i < len(expectedPcrVals); i++ {
-		digests = append(digests, expectedPcrVals[i]...)
-	}
-	computedDigest, err := ComputeHashValue(hash_alg_id, digests)
-	if err != nil {
-		return false, errors.New("Can't compute quote")
-	}
-
-	if bytes.Compare(computedDigest, attest.PcrDigest) != 0 {
+	if bytes.Compare(expectedPcrVal, attest.PcrDigest) != 0 {
 		return false, errors.New("pcr digest does not match")
 	}
 

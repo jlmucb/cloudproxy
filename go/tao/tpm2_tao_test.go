@@ -126,6 +126,9 @@ func TestTPMTaoLargeSeal(t *testing.T) {
 
 func TestTPMTaoAttest(t *testing.T) {
 
+	// Fix
+	hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
+
 	tpmtao, err := tao.NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
@@ -156,7 +159,16 @@ func TestTPMTaoAttest(t *testing.T) {
         if err != nil {
                 t.Fatal("ReadPcrs failed\n")
         }
-	fmt.Printf("Pcr digest: %x\n", digests)
+	var allDigests []byte
+	for i := 0; i < len(digests); i++ {
+		allDigests = append(allDigests, digests[i]...)
+	}
+	computedDigest, err := tpm2.ComputeHashValue(hash_alg_id, allDigests)
+	if err != nil {
+		t.Fatal("Can't compute combined quote digest")
+	}
+	fmt.Printf("Pcr combined digest: %x\n", computedDigest)
+
 	pms, err := tpm2.UnmarshalCertifyInfo(a.Tpm2QuoteStructure)
         if err != nil {
 		fmt.Printf("a.Tpm2QuoteStructure: %x\n", a.Tpm2QuoteStructure)
@@ -165,7 +177,7 @@ func TestTPMTaoAttest(t *testing.T) {
 	tpm2.PrintAttestData(pms)
 	key, _ := tt.GetRsaQuoteKey()
 	ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement, tt.GetPcrNums(),
-			digests, a.Tpm2QuoteStructure, a.Signature, key)
+			computedDigest, a.Tpm2QuoteStructure, a.Signature, key)
 	if err != nil {
 		t.Fatal("VerifyQuote error")
 	}

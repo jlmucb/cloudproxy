@@ -70,8 +70,11 @@ type Config struct {
 	TPMPCRs    string
 	TPMDevice  string
 
-	// TODO -- tpm2
-	// change domain.proto too, Domain config
+	TPM2InfoDir string
+	TPM2PCRs string
+	TPM2Device string
+	TPM2EkCert string
+	TPM2QuoteCert string
 }
 
 // IsValid checks a Config for validity.
@@ -127,6 +130,11 @@ func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Conf
 	}
 	if htct == "tpm2" {
 		// TODO -- tpm2
+		// tc.TPM2InfoDir string
+		// tc.TPM2PCRs string
+		// tc.TPM2Device string
+		// tc.TPM2EkCert string
+		// tc.TPM2QuoteCert string
 	}
 
 	if f != "" {

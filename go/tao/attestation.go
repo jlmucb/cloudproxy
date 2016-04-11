@@ -35,7 +35,6 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 	}
 	switch signer.Type {
 	case "tpm":
-		// TODO -- tpm2
 		// The PCRs are contained in the Speaker of an auth.Says statement that
 		// makes up the a.SerializedStatement.
 		f, err := auth.UnmarshalForm(a.SerializedStatement)
@@ -71,15 +70,16 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 
 		return signer, nil
 	case "tpm2":
-		// The PCRs are contained in the Speaker of an auth.Says statement that
 /*
+		// TODO -- tpm2
+		// The PCRs are contained in the Speaker of an auth.Says statement that
 		// makes up the a.SerializedStatement.
 		f, err := auth.UnmarshalForm(a.SerializedStatement)
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't unmarshal the statement: %s", err)
 		}
 
-		put this back in
+		// put this back in
 		// A TPM attestation must be an auth.Says.
 		says, ok := f.(auth.Says)
 		if !ok {
@@ -102,6 +102,8 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract the attest from the signer: %s", err)
 		}
+		key, err :=  extractAttest(p auth.Prin)
+		pcrNums, pcrVals, err := extractTpm2PCRs(p auth.Prin)
  */
 		var key *rsa.PublicKey
 		var quote_structure []byte

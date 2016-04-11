@@ -614,3 +614,142 @@ func extractAttest(p auth.Prin) (*rsa.PublicKey, error) {
 
 	return ek, nil
 }
+
+// Input: Der encoded endorsement cert and handles
+// quote key is certified key unlike in the tpm2.go library
+// Returns program CertRequestMessage
+func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
+		qH tpm2.Handle, parentPassword string, ownerPassword string,
+		keyName string) (*ProgramCertRequestMessage, error) {
+
+/*
+	// Generate Request
+	request := new(tpm2.ProgramCertRequestMessage)
+	request.ProgramKey = new(tpm2.ProgramKeyParameters)
+	request.EndorsementCertBlob = derEkCert
+	req_id := "001"
+	request.RequestId = &req_id
+
+	// Quote key
+	keyBlob, tpm2QuoteName, _, err := tpm2.ReadPublic(rw, qH)
+	if err != nil {
+		return nil, nil, err
+	}
+	rsaQuoteParams, err := tpm2.DecodeRsaBuf(keyBlob)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	modSize := rsaQuoteParams.Mod_sz
+
+	keyType := "rsa"
+	request.ProgramKey.ProgramName =  &keyName
+	request.ProgramKey.ProgramKeyType = &keyType
+	request.ProgramKey.ProgramBitModulusSize = &modSize
+
+	request.ProgramKey.ProgramKeyExponent =  []byte{0,1,0,1}
+	request.ProgramKey.ProgramKeyModulus = rsaQuoteParams.Modulus
+	serializedProgramKey := proto.CompactTextString(request.ProgramKey)
+	sha1Hash := sha1.New()
+	sha1Hash.Write([]byte(serializedProgramKey))
+	hashProgramKey := sha1Hash.Sum(nil)
+
+	sigAlg := uint16(AlgTPM_ALG_NULL)
+	attest, sig, err := tpm2.Quote(rw, qH, ownerPassword, ownerPassword,
+		hashProgramKey, pcrs, sigAlg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Quote key info.
+	request.QuoteKeyInfo = new(tpm2.QuoteKeyInfoMessage)
+	request.QuoteKeyInfo.Name = tpm2QuoteName 
+	request.QuoteKeyInfo.PublicKey= new(tpm2.PublicKeyMessage)
+	request.QuoteKeyInfo.PublicKey.RsaKey = new(tpm2.RsaPublicKeyMessage)
+	request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &keyName
+
+	var encAlg string
+	var hashAlg string
+	if  rsaQuoteParams.Enc_alg == tpm2.AlgTPM_ALG_RSA {
+		encAlg = "rsa"
+	} else {
+		return nil, err
+	}
+	if  rsaQuoteParams.Hash_alg == tpm2.AlgTPM_ALG_SHA1 {
+		hashAlg = "sha1"
+	} else if  rsaQuoteParams.Hash_alg == tpm2.AlgTPM_ALG_SHA256 {
+		hashAlg = "sha256"
+	} else {
+		return nil, err
+	}
+	request.QuoteKeyInfo.PublicKey.KeyType = &encAlg
+	request.QuoteKeyInfo.PublicKey.RsaKey.BitModulusSize = &modSize
+	request.QuoteKeyInfo.PublicKey.RsaKey.Modulus = rsaQuoteParams.Modulus
+	request.QuoteSignAlg = &encAlg
+	request.QuoteSignHashAlg = &hashAlg
+
+	request.ProgramKey = new(ProgramKeyParameters)
+	request.ProgramKey.ProgramName = &keyName
+	request.ProgramKey.ProgramKeyType= &encAlg
+	request.ProgramKey.ProgramBitModulusSize= &modSize
+	request.ProgramKey.ProgramKeyModulus = rsaQuoteParams.Modulus
+
+	request.QuotedBlob = attest
+	request.QuoteSignature = sig
+	return request, nil
+ */
+	return nil, nil
+}
+
+// Output is der encoded Program Cert
+func Tpm2ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
+		quoteHandle Handle, password string,
+		response ProgramCertResponseMessage) ([]byte, error) {
+	certBlob := append(response.IntegrityHMAC, response.EncIdentity...)
+	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle,
+		password, "", certBlob, response.Secret)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decrypt cert.
+	_, out, err :=  tpm2.EncryptDataWithCredential(false, uint16(AlgTPM_ALG_SHA1),
+		certInfo, response.EncryptedCert, response.EncryptedCertHmac)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Return attest certificate
+func (tt *TPM2Tao) Tpm2Certify(network, addr string, keyName string) ([]byte, error) {
+
+	// Establish connection wtih the CA.
+	conn, err := net.Dial(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	/*
+	qH, err := tt.loadQuote()
+	eK, err := tt.loadEk()
+
+	ms := util.NewMessageStream(conn)
+	programCertMessage, err := Tpm2ConstructClientRequest(tt.rw, tt.ekCert, tt.pcrs,
+		qH, "", tt.password, keyName)
+	_, err = ms.WriteMessage(programCertMessage)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ProgramCertResponseMessage
+	err = ms.ReadMessage(&resp)
+	if err != nil {
+		return nil, err
+	}
+	attestCert, err := Tpm2ClientDecodeServerResponse(tt.rw, eK, qH, tt.password, &resp) ([]byte, error)
+	 */
+	attestCert := nil
+	return attestCert, nil
+}
+

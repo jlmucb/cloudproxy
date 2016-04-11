@@ -153,7 +153,7 @@ func TestTPMTaoAttest(t *testing.T) {
 	}
 
 	// TODO -- tpm2
-        digests, err := tt.ReadPcrs([]int{17, 18})
+        digests, err := tt.ReadPcrs([]int{17, 18})  // tt.pcrs
         if err != nil {
                 t.Fatal("ReadPcrs failed\n")
         }

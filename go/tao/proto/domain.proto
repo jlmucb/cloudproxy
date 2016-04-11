@@ -49,12 +49,22 @@ message TPMDetails {
   optional string pcrs = 3;
 }
 
+message TPM2Details {
+  optional string tpm2_info_dir = 1;
+  optional string tpm2_device = 2;
+  optional string tpm2_pcrs = 3;
+
+  optional string tpm2_ek_cert = 4;
+  optional string tpm2_quote_cert = 5;
+}
+
 message DomainConfig {
   optional DomainDetails domain_info = 1;
   optional X509Details x509_info = 2;
   optional ACLGuardDetails acl_guard_info = 3;
   optional DatalogGuardDetails datalog_guard_info = 4;
   optional TPMDetails tpm_info = 5;
+  optional TPM2Details tpm_info = 6;
 }
 
 message DomainTemplate {

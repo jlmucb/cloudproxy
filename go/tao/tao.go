@@ -157,8 +157,7 @@ func ParentFromConfig(tc Config) Tao {
 
 			cachedHost = host
 		case "tpm2":
-			 // TODO -- tpm2
-			taoPCRs := tcEnv.TPMPCRs
+			taoPCRs := tcEnv.TPM2PCRs
 			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
 
 			// This index operation will never panic, since strings.Split always
@@ -176,11 +175,9 @@ func ParentFromConfig(tc Config) Tao {
 				}
 			}
 
-			// TODO: Fix path
-			host, err := NewTPM2Tao(tcEnv.TPMDevice,
-				"~/src/github.com/jlmucb/go/tpm2/tmptest", pcrs)
+			host, err := NewTPM2Tao(tcEnv.TPM2Device, tc.TPM2InfoDir, pcrs)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Couldn't create a new TPMTao: %s\n", err)
+				fmt.Fprintf(os.Stderr, "Couldn't create a new TPM2Tao: %s\n", err)
 				glog.Error(err)
 				return
 			}

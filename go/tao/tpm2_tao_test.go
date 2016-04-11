@@ -152,7 +152,6 @@ func TestTPMTaoAttest(t *testing.T) {
 		t.Fatal("Couldn't attest to a key delegation:", err)
 	}
 
-	// TODO -- tpm2
         digests, err := tt.ReadPcrs([]int{17, 18})  // tt.pcrs
         if err != nil {
                 t.Fatal("ReadPcrs failed\n")
@@ -173,6 +172,4 @@ func TestTPMTaoAttest(t *testing.T) {
 	if !ok {
 		t.Fatal("VerifyQuote succeeds")
 	}
-
-	// t.Logf("Got valid statement %s\n", says)
 }

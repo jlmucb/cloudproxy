@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"crypto/rsa"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -70,7 +69,6 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 
 		return signer, nil
 	case "tpm2":
-/*
 		// TODO -- tpm2
 		// The PCRs are contained in the Speaker of an auth.Says statement that
 		// makes up the a.SerializedStatement.
@@ -93,28 +91,27 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		if !ok {
 			return auth.Prin{}, newError("tao: the speaker of an attestation must be an auth.Prin")
 		}
+
+		key, err :=  extractAttest(speaker)
+		if err != nil {
+			return auth.Prin{}, newError("tao: couldn't extract attest key signer")
+		}
 		pcrNums, pcrVals, err := extractTpm2PCRs(speaker)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer: %s", err)
+			return auth.Prin{}, newError("tao: couldn't extract pcrs from signer")
 		}
 
-		pk, err := extractAttest(speaker)
-		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract the attest from the signer: %s", err)
-		}
-		key, err :=  extractAttest(p auth.Prin)
-		pcrNums, pcrVals, err := extractTpm2PCRs(p auth.Prin)
- */
-		var key *rsa.PublicKey
-		var quote_structure []byte
-		pcrs := []int{17, 18}
-		var pcrVals [][]byte
-		ok, err := tpm2.VerifyTpm2Quote(a.SerializedStatement,
-			pcrs, pcrVals, quote_structure, a.Signature, key);
-		if err != nil {
-			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)
-		}
+		var pcrForVerify [][]byte
 
+		// Fix
+		if pcrVals == nil {
+		}
+		ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement,
+			pcrNums, pcrForVerify, a.Tpm2QuoteStructure, a.Signature,
+			key)
+		if err != nil {
+			return auth.Prin{}, newError("tao: TPM quote verification error")
+		}
 		if !ok {
 			return auth.Prin{}, newError("tao: TPM quote failed verification")
 		}

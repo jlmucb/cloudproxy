@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"bytes"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
@@ -624,7 +625,6 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 		qH tpm2.Handle, parentPassword string, ownerPassword string,
 		keyName string) (*tpm2.ProgramCertRequestMessage, error) {
 
-/*
 	// Generate Request
 	request := new(tpm2.ProgramCertRequestMessage)
 	request.ProgramKey = new(tpm2.ProgramKeyParameters)
@@ -635,14 +635,14 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 	// Quote key
 	keyBlob, tpm2QuoteName, _, err := tpm2.ReadPublic(rw, qH)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	rsaQuoteParams, err := tpm2.DecodeRsaBuf(keyBlob)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	modSize := rsaQuoteParams.Mod_sz
+	modSize := int32(rsaQuoteParams.Mod_sz)
 
 	keyType := "rsa"
 	request.ProgramKey.ProgramName =  &keyName
@@ -656,8 +656,8 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 	sha1Hash.Write([]byte(serializedProgramKey))
 	hashProgramKey := sha1Hash.Sum(nil)
 
-	sigAlg := uint16(AlgTPM_ALG_NULL)
-	attest, sig, err := tpm2.Quote(rw, qH, ownerPassword, ownerPassword,
+	sigAlg := uint16(tpm2.AlgTPM_ALG_NULL)
+	attest, sig, err := tpm2.Quote(rw, qH, parentPassword, ownerPassword,
 		hashProgramKey, pcrs, sigAlg)
 	if err != nil {
 		return nil, err
@@ -690,7 +690,7 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 	request.QuoteSignAlg = &encAlg
 	request.QuoteSignHashAlg = &hashAlg
 
-	request.ProgramKey = new(ProgramKeyParameters)
+	request.ProgramKey = new(tpm2.ProgramKeyParameters)
 	request.ProgramKey.ProgramName = &keyName
 	request.ProgramKey.ProgramKeyType= &encAlg
 	request.ProgramKey.ProgramBitModulusSize= &modSize
@@ -699,8 +699,6 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 	request.QuotedBlob = attest
 	request.QuoteSignature = sig
 	return request, nil
- */
-	return nil, nil
 }
 
 // Output is der encoded Program Cert

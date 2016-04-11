@@ -24,6 +24,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"net"
 	"runtime"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 func EncodeTwoBytes(b1 []byte, b2 []byte) ([]byte) {
@@ -620,7 +622,7 @@ func extractAttest(p auth.Prin) (*rsa.PublicKey, error) {
 // Returns program CertRequestMessage
 func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 		qH tpm2.Handle, parentPassword string, ownerPassword string,
-		keyName string) (*ProgramCertRequestMessage, error) {
+		keyName string) (*tpm2.ProgramCertRequestMessage, error) {
 
 /*
 	// Generate Request
@@ -702,18 +704,20 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 }
 
 // Output is der encoded Program Cert
-func Tpm2ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
-		quoteHandle Handle, password string,
-		response ProgramCertResponseMessage) ([]byte, error) {
+func Tpm2ClientDecodeServerResponse(rw io.ReadWriter,
+		protectorHandle tpm2.Handle,
+		quoteHandle tpm2.Handle, password string,
+		response tpm2.ProgramCertResponseMessage) ([]byte, error) {
 	certBlob := append(response.IntegrityHMAC, response.EncIdentity...)
-	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle,
-		password, "", certBlob, response.Secret)
+	certInfo, err := tpm2.ActivateCredential(rw, quoteHandle,
+		protectorHandle, password, "", certBlob, response.Secret)
 	if err != nil {
 		return nil, err
 	}
 
 	// Decrypt cert.
-	_, out, err :=  tpm2.EncryptDataWithCredential(false, uint16(AlgTPM_ALG_SHA1),
+	_, out, err :=  tpm2.EncryptDataWithCredential(false,
+		uint16(tpm2.AlgTPM_ALG_SHA1),
 		certInfo, response.EncryptedCert, response.EncryptedCertHmac)
 	if err != nil {
 		return nil, err
@@ -730,26 +734,26 @@ func (tt *TPM2Tao) Tpm2Certify(network, addr string, keyName string) ([]byte, er
 		return nil, err
 	}
 	defer conn.Close()
-	/*
+
 	qH, err := tt.loadQuote()
 	eK, err := tt.loadEk()
 
 	ms := util.NewMessageStream(conn)
-	programCertMessage, err := Tpm2ConstructClientRequest(tt.rw, tt.ekCert, tt.pcrs,
+	programCertMessage, err := Tpm2ConstructClientRequest(tt.rw,
+		tt.ekCert, tt.pcrs,
 		qH, "", tt.password, keyName)
 	_, err = ms.WriteMessage(programCertMessage)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp ProgramCertResponseMessage
+	var resp tpm2.ProgramCertResponseMessage
 	err = ms.ReadMessage(&resp)
 	if err != nil {
 		return nil, err
 	}
-	attestCert, err := Tpm2ClientDecodeServerResponse(tt.rw, eK, qH, tt.password, &resp) ([]byte, error)
-	 */
-	attestCert := nil
+	attestCert, err := Tpm2ClientDecodeServerResponse(tt.rw, eK, qH,
+		tt.password, resp)
 	return attestCert, nil
 }
 

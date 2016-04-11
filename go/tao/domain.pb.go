@@ -2,13 +2,31 @@
 // source: domain.proto
 // DO NOT EDIT!
 
+/*
+Package tao is a generated protocol buffer package.
+
+It is generated from these files:
+	domain.proto
+
+It has these top-level messages:
+	DomainDetails
+	X509Details
+	ACLGuardDetails
+	DatalogGuardDetails
+	TPMDetails
+	TPM2Details
+	DomainConfig
+	DomainTemplate
+*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
 
 type DomainDetails struct {
@@ -21,9 +39,10 @@ type DomainDetails struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *DomainDetails) Reset()         { *m = DomainDetails{} }
-func (m *DomainDetails) String() string { return proto.CompactTextString(m) }
-func (*DomainDetails) ProtoMessage()    {}
+func (m *DomainDetails) Reset()                    { *m = DomainDetails{} }
+func (m *DomainDetails) String() string            { return proto.CompactTextString(m) }
+func (*DomainDetails) ProtoMessage()               {}
+func (*DomainDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 func (m *DomainDetails) GetName() string {
 	if m != nil && m.Name != nil {
@@ -77,9 +96,10 @@ type X509Details struct {
 	XXX_unrecognized   []byte  `json:"-"`
 }
 
-func (m *X509Details) Reset()         { *m = X509Details{} }
-func (m *X509Details) String() string { return proto.CompactTextString(m) }
-func (*X509Details) ProtoMessage()    {}
+func (m *X509Details) Reset()                    { *m = X509Details{} }
+func (m *X509Details) String() string            { return proto.CompactTextString(m) }
+func (*X509Details) ProtoMessage()               {}
+func (*X509Details) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func (m *X509Details) GetCommonName() string {
 	if m != nil && m.CommonName != nil {
@@ -128,9 +148,10 @@ type ACLGuardDetails struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *ACLGuardDetails) Reset()         { *m = ACLGuardDetails{} }
-func (m *ACLGuardDetails) String() string { return proto.CompactTextString(m) }
-func (*ACLGuardDetails) ProtoMessage()    {}
+func (m *ACLGuardDetails) Reset()                    { *m = ACLGuardDetails{} }
+func (m *ACLGuardDetails) String() string            { return proto.CompactTextString(m) }
+func (*ACLGuardDetails) ProtoMessage()               {}
+func (*ACLGuardDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 func (m *ACLGuardDetails) GetSignedAclsPath() string {
 	if m != nil && m.SignedAclsPath != nil {
@@ -144,9 +165,10 @@ type DatalogGuardDetails struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *DatalogGuardDetails) Reset()         { *m = DatalogGuardDetails{} }
-func (m *DatalogGuardDetails) String() string { return proto.CompactTextString(m) }
-func (*DatalogGuardDetails) ProtoMessage()    {}
+func (m *DatalogGuardDetails) Reset()                    { *m = DatalogGuardDetails{} }
+func (m *DatalogGuardDetails) String() string            { return proto.CompactTextString(m) }
+func (*DatalogGuardDetails) ProtoMessage()               {}
+func (*DatalogGuardDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func (m *DatalogGuardDetails) GetSignedRulesPath() string {
 	if m != nil && m.SignedRulesPath != nil {
@@ -163,9 +185,10 @@ type TPMDetails struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *TPMDetails) Reset()         { *m = TPMDetails{} }
-func (m *TPMDetails) String() string { return proto.CompactTextString(m) }
-func (*TPMDetails) ProtoMessage()    {}
+func (m *TPMDetails) Reset()                    { *m = TPMDetails{} }
+func (m *TPMDetails) String() string            { return proto.CompactTextString(m) }
+func (*TPMDetails) ProtoMessage()               {}
+func (*TPMDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 func (m *TPMDetails) GetTpmPath() string {
 	if m != nil && m.TpmPath != nil {
@@ -188,18 +211,69 @@ func (m *TPMDetails) GetPcrs() string {
 	return ""
 }
 
+type TPM2Details struct {
+	Tpm2InfoDir      *string `protobuf:"bytes,1,opt,name=tpm2_info_dir" json:"tpm2_info_dir,omitempty"`
+	Tpm2Device       *string `protobuf:"bytes,2,opt,name=tpm2_device" json:"tpm2_device,omitempty"`
+	Tpm2Pcrs         *string `protobuf:"bytes,3,opt,name=tpm2_pcrs" json:"tpm2_pcrs,omitempty"`
+	Tpm2EkCert       *string `protobuf:"bytes,4,opt,name=tpm2_ek_cert" json:"tpm2_ek_cert,omitempty"`
+	Tpm2QuoteCert    *string `protobuf:"bytes,5,opt,name=tpm2_quote_cert" json:"tpm2_quote_cert,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *TPM2Details) Reset()                    { *m = TPM2Details{} }
+func (m *TPM2Details) String() string            { return proto.CompactTextString(m) }
+func (*TPM2Details) ProtoMessage()               {}
+func (*TPM2Details) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+
+func (m *TPM2Details) GetTpm2InfoDir() string {
+	if m != nil && m.Tpm2InfoDir != nil {
+		return *m.Tpm2InfoDir
+	}
+	return ""
+}
+
+func (m *TPM2Details) GetTpm2Device() string {
+	if m != nil && m.Tpm2Device != nil {
+		return *m.Tpm2Device
+	}
+	return ""
+}
+
+func (m *TPM2Details) GetTpm2Pcrs() string {
+	if m != nil && m.Tpm2Pcrs != nil {
+		return *m.Tpm2Pcrs
+	}
+	return ""
+}
+
+func (m *TPM2Details) GetTpm2EkCert() string {
+	if m != nil && m.Tpm2EkCert != nil {
+		return *m.Tpm2EkCert
+	}
+	return ""
+}
+
+func (m *TPM2Details) GetTpm2QuoteCert() string {
+	if m != nil && m.Tpm2QuoteCert != nil {
+		return *m.Tpm2QuoteCert
+	}
+	return ""
+}
+
 type DomainConfig struct {
 	DomainInfo       *DomainDetails       `protobuf:"bytes,1,opt,name=domain_info" json:"domain_info,omitempty"`
 	X509Info         *X509Details         `protobuf:"bytes,2,opt,name=x509_info" json:"x509_info,omitempty"`
 	AclGuardInfo     *ACLGuardDetails     `protobuf:"bytes,3,opt,name=acl_guard_info" json:"acl_guard_info,omitempty"`
 	DatalogGuardInfo *DatalogGuardDetails `protobuf:"bytes,4,opt,name=datalog_guard_info" json:"datalog_guard_info,omitempty"`
 	TpmInfo          *TPMDetails          `protobuf:"bytes,5,opt,name=tpm_info" json:"tpm_info,omitempty"`
+	Tpm2Info         *TPM2Details         `protobuf:"bytes,6,opt,name=tpm2_info" json:"tpm2_info,omitempty"`
 	XXX_unrecognized []byte               `json:"-"`
 }
 
-func (m *DomainConfig) Reset()         { *m = DomainConfig{} }
-func (m *DomainConfig) String() string { return proto.CompactTextString(m) }
-func (*DomainConfig) ProtoMessage()    {}
+func (m *DomainConfig) Reset()                    { *m = DomainConfig{} }
+func (m *DomainConfig) String() string            { return proto.CompactTextString(m) }
+func (*DomainConfig) ProtoMessage()               {}
+func (*DomainConfig) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 func (m *DomainConfig) GetDomainInfo() *DomainDetails {
 	if m != nil {
@@ -236,6 +310,13 @@ func (m *DomainConfig) GetTpmInfo() *TPMDetails {
 	return nil
 }
 
+func (m *DomainConfig) GetTpm2Info() *TPM2Details {
+	if m != nil {
+		return m.Tpm2Info
+	}
+	return nil
+}
+
 type DomainTemplate struct {
 	Config       *DomainConfig `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
 	DatalogRules []string      `protobuf:"bytes,2,rep,name=datalog_rules" json:"datalog_rules,omitempty"`
@@ -264,9 +345,10 @@ type DomainTemplate struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *DomainTemplate) Reset()         { *m = DomainTemplate{} }
-func (m *DomainTemplate) String() string { return proto.CompactTextString(m) }
-func (*DomainTemplate) ProtoMessage()    {}
+func (m *DomainTemplate) Reset()                    { *m = DomainTemplate{} }
+func (m *DomainTemplate) String() string            { return proto.CompactTextString(m) }
+func (*DomainTemplate) ProtoMessage()               {}
+func (*DomainTemplate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 func (m *DomainTemplate) GetConfig() *DomainConfig {
 	if m != nil {
@@ -379,3 +461,60 @@ func (m *DomainTemplate) GetOsPredicateName() string {
 	}
 	return ""
 }
+
+func init() {
+	proto.RegisterType((*DomainDetails)(nil), "tao.DomainDetails")
+	proto.RegisterType((*X509Details)(nil), "tao.X509Details")
+	proto.RegisterType((*ACLGuardDetails)(nil), "tao.ACLGuardDetails")
+	proto.RegisterType((*DatalogGuardDetails)(nil), "tao.DatalogGuardDetails")
+	proto.RegisterType((*TPMDetails)(nil), "tao.TPMDetails")
+	proto.RegisterType((*TPM2Details)(nil), "tao.TPM2Details")
+	proto.RegisterType((*DomainConfig)(nil), "tao.DomainConfig")
+	proto.RegisterType((*DomainTemplate)(nil), "tao.DomainTemplate")
+}
+
+/*
+var fileDescriptor0 = []byte{
+	// 625 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x54, 0x41, 0x6f, 0xd4, 0x3c,
+	0x10, 0x55, 0x9b, 0x6e, 0xdb, 0x9d, 0xec, 0x76, 0xb7, 0x69, 0xbf, 0x8f, 0x14, 0x10, 0x6a, 0xd3,
+	0x03, 0x48, 0xa0, 0xaa, 0xaa, 0xe0, 0xc0, 0x05, 0x09, 0xb5, 0x12, 0x17, 0x90, 0x38, 0xf4, 0xc0,
+	0x2d, 0x32, 0x89, 0x9b, 0x5a, 0x9b, 0xd8, 0xc1, 0x71, 0x4a, 0x17, 0xfe, 0x00, 0x07, 0x7e, 0x13,
+	0xbf, 0x8d, 0xc9, 0xd8, 0x59, 0x9c, 0x85, 0xeb, 0x9b, 0x79, 0xe3, 0x37, 0x6f, 0x5e, 0x02, 0x93,
+	0x5c, 0x55, 0x4c, 0xc8, 0xb3, 0x5a, 0x2b, 0xa3, 0xa2, 0xc0, 0x30, 0x95, 0xfc, 0xdc, 0x80, 0xe9,
+	0x15, 0xa1, 0x57, 0xdc, 0x30, 0x51, 0x36, 0xd1, 0x04, 0xb6, 0x24, 0xab, 0x78, 0xbc, 0x71, 0xbc,
+	0xf1, 0x6c, 0x1c, 0xc5, 0x30, 0xaf, 0x55, 0x29, 0xb2, 0x65, 0xba, 0xe0, 0xcb, 0x26, 0xad, 0x99,
+	0xb9, 0x8d, 0x37, 0xa9, 0x12, 0x01, 0x14, 0x2d, 0xd3, 0x79, 0x6a, 0x96, 0x35, 0x8f, 0x03, 0xc2,
+	0xfe, 0x83, 0xa9, 0xc5, 0x24, 0x37, 0x5f, 0x95, 0x5e, 0xc4, 0x5b, 0x43, 0x98, 0xe5, 0xb9, 0xe6,
+	0x4d, 0x13, 0x8f, 0x08, 0xde, 0x87, 0xb1, 0x9b, 0x60, 0xca, 0x78, 0x1b, 0xa1, 0xa0, 0x93, 0x13,
+	0x7e, 0x7a, 0x75, 0xfe, 0xba, 0x17, 0x73, 0x00, 0x61, 0xa6, 0xaa, 0x4a, 0xc9, 0xd4, 0xd3, 0x34,
+	0x83, 0x9d, 0x4c, 0xb5, 0xd2, 0xe8, 0xa5, 0x93, 0x32, 0x85, 0x51, 0x63, 0x98, 0xe9, 0x55, 0x1c,
+	0xc2, 0x44, 0xe9, 0x82, 0x49, 0xf1, 0x8d, 0x19, 0xa1, 0xa4, 0x13, 0xf1, 0x08, 0x0e, 0x7c, 0x94,
+	0x95, 0x69, 0x2b, 0x85, 0x71, 0x52, 0x50, 0x61, 0xc3, 0xb5, 0x40, 0x50, 0xb6, 0xd5, 0x67, 0xae,
+	0x49, 0xce, 0x28, 0x79, 0x0e, 0xb3, 0xb7, 0x97, 0xef, 0xdf, 0x75, 0x22, 0x7b, 0x45, 0x68, 0x48,
+	0x23, 0x0a, 0xc9, 0x71, 0x99, 0xac, 0x74, 0x86, 0x90, 0xac, 0xe4, 0x1c, 0x0e, 0xae, 0x98, 0x61,
+	0xa5, 0x2a, 0x06, 0x84, 0x23, 0xd8, 0x77, 0x04, 0xdd, 0x96, 0xdc, 0xb7, 0x30, 0x79, 0x03, 0x70,
+	0xfd, 0xf1, 0x43, 0xdf, 0x38, 0x87, 0x5d, 0x53, 0x57, 0xde, 0xc4, 0x0e, 0x61, 0x62, 0xe1, 0x9b,
+	0x8e, 0xc7, 0xa9, 0x33, 0xdd, 0xd8, 0x45, 0x93, 0xef, 0x10, 0x22, 0xff, 0xa2, 0x1f, 0x80, 0x4b,
+	0xe0, 0x80, 0x8b, 0x54, 0xc8, 0x1b, 0x95, 0xe6, 0x42, 0xbb, 0x29, 0xe8, 0x21, 0xc1, 0x39, 0xbf,
+	0x13, 0x19, 0x77, 0x83, 0xd0, 0x7b, 0x02, 0xff, 0x4c, 0xeb, 0x6c, 0x23, 0x88, 0x2f, 0xd2, 0x8c,
+	0x6b, 0xe3, 0x6c, 0x7b, 0x00, 0x33, 0x42, 0xbf, 0xb4, 0xca, 0x70, 0x5b, 0x20, 0xcb, 0x92, 0x1f,
+	0x9b, 0x30, 0xb1, 0xc9, 0xb9, 0x54, 0xf2, 0x46, 0x14, 0xd1, 0x53, 0x08, 0x6d, 0xbe, 0x48, 0x00,
+	0x3d, 0x1e, 0x5e, 0x44, 0x67, 0x98, 0xb2, 0xb3, 0x61, 0xc2, 0x4e, 0x61, 0x7c, 0x8f, 0x37, 0xb6,
+	0x6d, 0x9b, 0xd4, 0x36, 0xa7, 0x36, 0xff, 0xf2, 0x2f, 0x60, 0x0f, 0x0d, 0x4e, 0x6d, 0x40, 0xa8,
+	0x33, 0xa0, 0xce, 0x43, 0xea, 0x5c, 0xbf, 0xca, 0x4b, 0x88, 0x72, 0xeb, 0xbd, 0xcf, 0xd8, 0x22,
+	0x46, 0x6c, 0x25, 0xfc, 0xe3, 0x34, 0x27, 0xd6, 0x71, 0xea, 0x1d, 0x51, 0xef, 0x8c, 0x7a, 0xbd,
+	0xa3, 0x9c, 0x3a, 0x9f, 0xa8, 0x67, 0xdb, 0xd3, 0xea, 0x19, 0x9f, 0xfc, 0x0a, 0x60, 0xcf, 0xae,
+	0x78, 0xcd, 0xab, 0xba, 0xc4, 0x24, 0xe2, 0xe8, 0xed, 0x8c, 0x6c, 0x71, 0x3e, 0xec, 0x7b, 0x3e,
+	0x38, 0xbf, 0xf0, 0x5c, 0xbd, 0x66, 0x4a, 0x06, 0x5a, 0x11, 0xd8, 0xcb, 0x74, 0x8b, 0x5b, 0x28,
+	0xe8, 0xa1, 0x5b, 0xd5, 0x18, 0xfb, 0x0d, 0xac, 0xd2, 0x4c, 0x50, 0xad, 0x79, 0x2e, 0x32, 0x7c,
+	0xd1, 0x16, 0x57, 0x69, 0xc6, 0x4f, 0xbc, 0xd0, 0xcc, 0xa6, 0xa9, 0x41, 0xe1, 0xdd, 0x98, 0x27,
+	0xf0, 0xff, 0x0a, 0x1e, 0xd2, 0x76, 0xfa, 0x53, 0xa3, 0x66, 0x5c, 0x49, 0x72, 0xed, 0x88, 0xbb,
+	0x44, 0x3c, 0x86, 0xd8, 0x2b, 0x0c, 0xa9, 0xe3, 0x3e, 0xa9, 0x77, 0xfd, 0x63, 0x40, 0x1c, 0x8c,
+	0xfd, 0xdd, 0x5f, 0xef, 0x84, 0xfd, 0x3f, 0xa5, 0x14, 0xb2, 0xbd, 0x4f, 0xed, 0x06, 0x44, 0x9a,
+	0x10, 0xe9, 0x04, 0x8e, 0xfc, 0xca, 0x90, 0x3c, 0x25, 0xf2, 0x63, 0x38, 0xb4, 0x17, 0x5e, 0xab,
+	0xee, 0x51, 0xf5, 0x21, 0x44, 0xf4, 0x0d, 0x0d, 0x6b, 0x33, 0xaa, 0xa1, 0x22, 0xd5, 0xac, 0x97,
+	0xe6, 0x5d, 0xe9, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff, 0xe1, 0x29, 0xb1, 0xbf, 0x19, 0x05, 0x00,
+	0x00,
+}
+*/

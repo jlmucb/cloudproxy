@@ -64,7 +64,7 @@ message DomainConfig {
   optional ACLGuardDetails acl_guard_info = 3;
   optional DatalogGuardDetails datalog_guard_info = 4;
   optional TPMDetails tpm_info = 5;
-  optional TPM2Details tpm_info = 6;
+  optional TPM2Details tpm2_info = 6;
 }
 
 message DomainTemplate {

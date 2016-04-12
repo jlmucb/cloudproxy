@@ -20,9 +20,10 @@ package protected_objects
 import (
 	"container/list"
 	"fmt"
+	"io/ioutil"
 	"time"
 
-	// "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 func PrintObject(obj *ObjectMessage) {
@@ -63,11 +64,25 @@ func StoreObject(l *list.List, obj interface{}) error {
 	return nil
 }
 
-func DeleteObject(l *list.List, obj interface{}) error {
+func DeleteObject(l *list.List, name string, epoch int32) error {
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(*ObjectMessage)
+		if *o.ObjId.ObjName == name && *o.ObjId.ObjEpoch == epoch {
+			l.Remove(e)
+			break;
+		}
+	}
 	return nil
 }
 
-func DeleteProtectedObject(l *list.List, obj interface{}) error {
+func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(*ProtectedObjectMessage)
+		if *o.ProtectedObjId.ObjId.ObjName == name && *o.ProtectedObjId.ObjId.ObjEpoch == epoch {
+			l.Remove(e)
+			break;
+		}
+	}
 	return nil
 }
 
@@ -123,7 +138,25 @@ func GetEarliestEpoch(l *list.List, name string, epoch int32) (*ObjectMessage) {
 }
 
 func SaveProtectedObjects(l *list.List, file string) error {
-	// var po_store ProtectedObjectStoreMessage
+	var po_store ProtectedObjectStoreMessage
+
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(*ProtectedObjectMessage)
+		p := new(ProtectedObjectMessage)
+		p.ProtectorObjId = new(ObjectIdMessage)
+		p.ProtectedObjId.ObjId.ObjName = o.ProtectedObjId.ObjId.ObjName
+		p.ProtectedObjId.ObjId.ObjEpoch = o.ProtectedObjId.ObjId.ObjEpoch
+		//p.ObjType = o.ObjType
+		// p.ObjStatus = o.ObjStatus
+		// p.ObjNotBefore = o.NotBefore
+		// p.ObjNotAfter = o.NotAfter
+		// p.ObjVal = o.ObjVal
+	}
+	b, err := proto.Marshal(&po_store)
+	if err != nil {
+		return err
+	}
+	ioutil.WriteFile(file, b, 0644)
 	return nil
 }
 

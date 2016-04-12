@@ -20,7 +20,7 @@ message Object_message {
 }
 
 message Protected_object_message {
-  required Object_message protected_obj_id    = 1;
+  required Object_message protected_obj       = 1;
   optional Object_id_message protector_obj_id = 2;
 }
 

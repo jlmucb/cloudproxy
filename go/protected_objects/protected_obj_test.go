@@ -16,6 +16,7 @@ package protected_objects
 
 import (
 	"fmt"
+	"container/list"
 	"testing"
 	"time"
 
@@ -32,19 +33,28 @@ func TestStoreObject(t *testing.T) {
 	validFor := 365*24*time.Hour
 	notAfter := notBefore.Add(validFor)
 
-	obj, err := protected_objects.CreateObject("/jlm/file/file1", 1, &obj_type, &status, &notBefore, &notAfter, nil)
+	obj, err := protected_objects.CreateObject("/jlm/file/file1", 1, &obj_type, &status,
+		&notBefore, &notAfter, nil)
 	if err != nil {
 		t.Fatal("Can't create object")
 	}
 	fmt.Printf("Obj: %s\n", *obj.NotBefore)
 
+	obj_list := list.New()
+	// protected_obj_list := list.New()
+
 	// store it
+	protected_objects.StoreObject(obj_list, obj) 
+
 	// Look it up
+	found_obj := protected_objects.FindObject(obj_list, "/jlm/file/file1", 0)
+	protected_objects.PrintObject(found_obj)
+
 	// get latest epoch
 	// get all epochs
 }
 
-func ConstructChain(t *testing.T) {
+func TestConstructChain(t *testing.T) {
 	// base object
 	// ancestors
 	// construct chain with latest epoch

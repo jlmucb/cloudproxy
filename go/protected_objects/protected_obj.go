@@ -34,10 +34,10 @@ func PrintObject(obj *ObjectMessage) {
 }
 
 func PrintProtectedObject(obj *ProtectedObjectMessage) {
-	fmt.Printf("ProtectedObject %s, epoch %d\n", *obj.ProtectedObjId.ObjId.ObjName,
-		 *obj.ProtectedObjId.ObjId.ObjEpoch)
-	 fmt.Printf("\ttype %s, status %s, notbefore: %s, notafter: %s\n", *obj.ProtectedObjId.ObjType,
-		*obj.ProtectedObjId.ObjStatus, *obj.ProtectedObjId.NotBefore, *obj.ProtectedObjId.NotAfter)
+	fmt.Printf("ProtectedObject %s, epoch %d\n", *obj.ProtectedObj.ObjId.ObjName,
+		 *obj.ProtectedObj.ObjId.ObjEpoch)
+	 fmt.Printf("\ttype %s, status %s, notbefore: %s, notafter: %s\n", *obj.ProtectedObj.ObjType,
+		*obj.ProtectedObj.ObjStatus, *obj.ProtectedObj.NotBefore, *obj.ProtectedObj.NotAfter)
 }
 
 func CreateObject(name string, epoch int32, obj_type *string, status *string, notBefore *time.Time,
@@ -78,7 +78,7 @@ func DeleteObject(l *list.List, name string, epoch int32) error {
 func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(*ProtectedObjectMessage)
-		if *o.ProtectedObjId.ObjId.ObjName == name && *o.ProtectedObjId.ObjId.ObjEpoch == epoch {
+		if *o.ProtectedObj.ObjId.ObjName == name && *o.ProtectedObj.ObjId.ObjEpoch == epoch {
 			l.Remove(e)
 			break;
 		}
@@ -91,10 +91,10 @@ func FindProtectedObject(l *list.List, name string, epoch int32) (*list.List) {
 
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(*ProtectedObjectMessage)
-		if epoch != 0 && epoch != *o.ProtectedObjId.ObjId.ObjEpoch {
+		if epoch != 0 && epoch != *o.ProtectedObj.ObjId.ObjEpoch {
 			continue
 		}
-		if name == *o.ProtectedObjId.ObjId.ObjName {
+		if name == *o.ProtectedObj.ObjId.ObjName {
 			r.PushFront(o)
 		}
         }
@@ -143,14 +143,17 @@ func SaveProtectedObjects(l *list.List, file string) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(*ProtectedObjectMessage)
 		p := new(ProtectedObjectMessage)
-		p.ProtectorObjId = new(ObjectIdMessage)
-		p.ProtectedObjId.ObjId.ObjName = o.ProtectedObjId.ObjId.ObjName
-		p.ProtectedObjId.ObjId.ObjEpoch = o.ProtectedObjId.ObjId.ObjEpoch
-		//p.ObjType = o.ObjType
-		// p.ObjStatus = o.ObjStatus
-		// p.ObjNotBefore = o.NotBefore
-		// p.ObjNotAfter = o.NotAfter
-		// p.ObjVal = o.ObjVal
+		// p.ProtectorObjId = new(ObjectIdMessage)
+		p.ProtectorObjId.ObjName = o.ProtectorObjId.ObjName
+		p.ProtectorObjId.ObjEpoch = o.ProtectorObjId.ObjEpoch
+		p.ProtectedObj.ObjId.ObjName = o.ProtectedObj.ObjId.ObjName
+		p.ProtectedObj.ObjId.ObjEpoch = o.ProtectedObj.ObjId.ObjEpoch
+		p.ProtectedObj.ObjType = o.ProtectedObj.ObjType
+		p.ProtectedObj.ObjStatus = o.ProtectedObj.ObjStatus
+		p.ProtectedObj.NotBefore = o.ProtectedObj.NotBefore
+		p.ProtectedObj.NotAfter = o.ProtectedObj.NotAfter
+		p.ProtectedObj.ObjVal = o.ProtectedObj.ObjVal
+		po_store.ProtectedObjects = append(po_store.ProtectedObjects, p)
 	}
 	b, err := proto.Marshal(&po_store)
 	if err != nil {
@@ -160,16 +163,83 @@ func SaveProtectedObjects(l *list.List, file string) error {
 	return nil
 }
 
+// nil is error return
 func SaveObjects(l *list.List, file string) error {
-	// var o_store ObjectStoreMessage
+	var o_store ObjectStoreMessage
+
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(*ObjectMessage)
+		p := new(ObjectMessage)
+		p.ObjId.ObjName = o.ObjId.ObjName
+		p.ObjId.ObjEpoch = o.ObjId.ObjEpoch
+		p.ObjType = o.ObjType
+		p.ObjStatus = o.ObjStatus
+		p.NotBefore = o.NotBefore
+		p.NotAfter = o.NotAfter
+		p.ObjVal = o.ObjVal
+		o_store.Objects = append(o_store.Objects, p)
+	}
+	b, err := proto.Marshal(&o_store)
+	if err != nil {
+		return nil
+	}
+	ioutil.WriteFile(file, b, 0644)
 	return nil
 }
 
 func LoadProtectedObjects(file string) (*list.List) {
-	return nil
+	var po_store ProtectedObjectStoreMessage
+	
+	buf, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil
+	}
+	err = proto.Unmarshal(buf, &po_store)
+	if err != nil {
+		return nil
+	}
+	l := list.New()
+	for _, v := range(po_store.ProtectedObjects) {
+		o := new(ProtectedObjectMessage)
+		o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
+		o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
+		o.ProtectedObj.ObjId.ObjName = v.ProtectedObj.ObjId.ObjName
+		o.ProtectedObj.ObjId.ObjEpoch = v.ProtectedObj.ObjId.ObjEpoch
+
+		o.ProtectedObj.ObjType = v.ProtectedObj.ObjType
+		o.ProtectedObj.ObjStatus = v.ProtectedObj.ObjStatus
+		o.ProtectedObj.NotBefore = v.ProtectedObj.NotBefore
+		o.ProtectedObj.NotAfter = v.ProtectedObj.NotAfter
+		o.ProtectedObj.ObjVal = v.ProtectedObj.ObjVal
+		l.PushFront(o)
+	}
+	return l 
 }
 
 func LoadObjects(file string) (*list.List) {
-	return nil
+	var o_store ObjectStoreMessage
+	
+	buf, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil
+	}
+	err = proto.Unmarshal(buf, &o_store)
+	if err != nil {
+		return nil
+	}
+	l := list.New()
+	for _, v := range(o_store.Objects) {
+		o := new(ObjectMessage)
+		o.ObjId.ObjName = v.ObjId.ObjName
+		o.ObjId.ObjEpoch = v.ObjId.ObjEpoch
+
+		o.ObjType = v.ObjType
+		o.ObjStatus = v.ObjStatus
+		o.NotBefore = v.NotBefore
+		o.NotAfter = v.NotAfter
+		o.ObjVal = v.ObjVal
+		l.PushFront(o)
+	}
+	return l 
 }
 

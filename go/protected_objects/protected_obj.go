@@ -32,7 +32,12 @@ func PrintObject(obj *ObjectMessage) {
 	fmt.Printf("Object %s, epoch %d\n", *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch)
 	fmt.Printf("\ttype %s, status %s, notbefore: %s, notafter: %s\n", *obj.ObjType,
 		*obj.ObjStatus, *obj.NotBefore, *obj.NotAfter)
-	// ObjVal
+	fmt.Printf("Object value: %x\n", obj.ObjVal)
+}
+
+func PrintProtectedObject(obj *ProtectedObjectMessage) {
+	fmt.Printf("Object %s, epoch %d\n", *obj.ProtectedObjId.ObjName, *obj.ProtectedObjId.ObjEpoch)
+	fmt.Printf("Object %s, epoch %d\n", *obj.ProtectorObjId.ObjName, *obj.ProtectorObjId.ObjEpoch)
 }
 
 func PrintNode(obj *NodeMessage) {
@@ -61,7 +66,7 @@ func CreateObject(name string, epoch int32, obj_type *string, status *string, no
 	return obj, nil
 }
 
-func StoreObject(l *list.List, obj interface{}) error {
+func AddObject(l *list.List, obj interface{}) error {
 	l.PushFront(obj)
 	return nil
 }
@@ -185,8 +190,9 @@ func SaveObjects(l *list.List, file string) error {
 	var o_store ObjectStoreMessage
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*ObjectMessage)
+		o := e.Value.(ObjectMessage)
 		p := new(ObjectMessage)
+		p.ObjId = new(ObjectIdMessage)
 		p.ObjId.ObjName = o.ObjId.ObjName
 		p.ObjId.ObjEpoch = o.ObjId.ObjEpoch
 		p.ObjType = o.ObjType
@@ -265,6 +271,7 @@ func LoadObjects(file string) (*list.List) {
 	l := list.New()
 	for _, v := range(o_store.Objects) {
 		o := new(ObjectMessage)
+		o.ObjId = new(ObjectIdMessage)
 		o.ObjId.ObjName = v.ObjId.ObjName
 		o.ObjId.ObjEpoch = v.ObjId.ObjEpoch
 
@@ -273,7 +280,7 @@ func LoadObjects(file string) (*list.List) {
 		o.NotBefore = v.NotBefore
 		o.NotAfter = v.NotAfter
 		o.ObjVal = v.ObjVal
-		l.PushFront(o)
+		l.PushFront(*o)
 	}
 	return l
 }
@@ -281,6 +288,12 @@ func LoadObjects(file string) (*list.List) {
 func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch int32,
 		protectorKeys []byte) (*ProtectedObjectMessage, error) {
 	p := new(ProtectedObjectMessage)
+	p.ProtectedObjId = new(ObjectIdMessage)
+	p.ProtectorObjId = new(ObjectIdMessage)
+	p.ProtectedObjId.ObjName = obj.ObjId.ObjName
+	p.ProtectedObjId.ObjEpoch =obj.ObjId.ObjEpoch
+	p.ProtectorObjId.ObjName = &protectorName
+	p.ProtectorObjId.ObjEpoch = &protectorEpoch
 	unencrypted, err := proto.Marshal(&obj)
 	if err != nil {
 		return nil, errors.New("Can't make Protected Object")

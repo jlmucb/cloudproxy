@@ -148,7 +148,7 @@ func SaveProtectedObjects(l *list.List, file string) error {
 	var po_store ProtectedObjectStoreMessage
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*ProtectedObjectMessage)
+		o := e.Value.(ProtectedObjectMessage)
 		p := new(ProtectedObjectMessage)
 		p.ProtectedObjId.ObjName = o.ProtectedObjId.ObjName
 		p.ProtectedObjId.ObjEpoch = o.ProtectedObjId.ObjEpoch
@@ -169,7 +169,7 @@ func SaveNodes(l *list.List, file string) error {
 	var node_store NodeStoreMessage
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*NodeMessage)
+		o := e.Value.(NodeMessage)
 		p := new(NodeMessage)
 		p.ProtectedObjId.ObjName = o.ProtectedObjId.ObjName
 		p.ProtectedObjId.ObjEpoch = o.ProtectedObjId.ObjEpoch
@@ -212,7 +212,7 @@ func SaveObjects(l *list.List, file string) error {
 
 func LoadProtectedObjects(file string) (*list.List) {
 	var po_store ProtectedObjectStoreMessage
-	
+
 	buf, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil
@@ -229,7 +229,7 @@ func LoadProtectedObjects(file string) (*list.List) {
 		o.ProtectedObjId.ObjName = v.ProtectedObjId.ObjName
 		o.ProtectedObjId.ObjEpoch = v.ProtectedObjId.ObjEpoch
 		o.Blob = v.Blob
-		l.PushFront(o)
+		l.PushFront(*o)
 	}
 	return l
 }
@@ -252,7 +252,7 @@ func LoadNodes(file string) (*list.List) {
 		o.ProtectedObjId.ObjEpoch = v.ProtectedObjId.ObjEpoch
 		o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
 		o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
-		l.PushFront(o)
+		l.PushFront(*o)
 	}
 	return l
 }
@@ -271,6 +271,7 @@ func LoadObjects(file string) (*list.List) {
 	l := list.New()
 	for _, v := range(o_store.Objects) {
 		o := new(ObjectMessage)
+		PrintObject(v)
 		o.ObjId = new(ObjectIdMessage)
 		o.ObjId.ObjName = v.ObjId.ObjName
 		o.ObjId.ObjEpoch = v.ObjId.ObjEpoch

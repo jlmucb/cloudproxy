@@ -19,11 +19,13 @@ package protected_objects
 
 import (
 	"container/list"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
 func PrintObject(obj *ObjectMessage) {
@@ -33,11 +35,11 @@ func PrintObject(obj *ObjectMessage) {
 	// ObjVal
 }
 
-func PrintProtectedObject(obj *ProtectedObjectMessage) {
-	fmt.Printf("ProtectedObject %s, epoch %d\n", *obj.ProtectedObj.ObjId.ObjName,
-		 *obj.ProtectedObj.ObjId.ObjEpoch)
-	 fmt.Printf("\ttype %s, status %s, notbefore: %s, notafter: %s\n", *obj.ProtectedObj.ObjType,
-		*obj.ProtectedObj.ObjStatus, *obj.ProtectedObj.NotBefore, *obj.ProtectedObj.NotAfter)
+func PrintNode(obj *NodeMessage) {
+	fmt.Printf("ProtectedObject %s, epoch %d\n", *obj.ProtectedObjId.ObjName,
+		 *obj.ProtectedObjId.ObjEpoch)
+	fmt.Printf("ProtectorObject %s, epoch %d\n", *obj.ProtectorObjId.ObjName,
+		 *obj.ProtectorObjId.ObjEpoch)
 }
 
 func CreateObject(name string, epoch int32, obj_type *string, status *string, notBefore *time.Time,
@@ -78,7 +80,7 @@ func DeleteObject(l *list.List, name string, epoch int32) error {
 func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(*ProtectedObjectMessage)
-		if *o.ProtectedObj.ObjId.ObjName == name && *o.ProtectedObj.ObjId.ObjEpoch == epoch {
+		if *o.ProtectedObjId.ObjName == name && *o.ProtectedObjId.ObjEpoch == epoch {
 			l.Remove(e)
 			break;
 		}
@@ -86,26 +88,26 @@ func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 	return nil
 }
 
-func FindProtectedObject(l *list.List, name string, epoch int32) (*list.List) {
+func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*ProtectedObjectMessage)
-		if epoch != 0 && epoch != *o.ProtectedObj.ObjId.ObjEpoch {
+		o := e.Value.(*NodeMessage)
+		if epoch != 0 && epoch != *o.ProtectedObjId.ObjEpoch {
 			continue
 		}
-		if name == *o.ProtectedObj.ObjId.ObjName {
+		if name == *o.ProtectedObjId.ObjName {
 			r.PushFront(o)
 		}
         }
 	return r
 }
 
-func FindProtectorObject(l *list.List, name string, epoch int32) (*list.List) {
+func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*ProtectedObjectMessage)
+		o := e.Value.(*NodeMessage)
 		if epoch != 0 && epoch != *o.ProtectorObjId.ObjEpoch {
 			continue
 		}
@@ -143,19 +145,34 @@ func SaveProtectedObjects(l *list.List, file string) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(*ProtectedObjectMessage)
 		p := new(ProtectedObjectMessage)
-		// p.ProtectorObjId = new(ObjectIdMessage)
+		p.ProtectedObjId.ObjName = o.ProtectedObjId.ObjName
+		p.ProtectedObjId.ObjEpoch = o.ProtectedObjId.ObjEpoch
 		p.ProtectorObjId.ObjName = o.ProtectorObjId.ObjName
 		p.ProtectorObjId.ObjEpoch = o.ProtectorObjId.ObjEpoch
-		p.ProtectedObj.ObjId.ObjName = o.ProtectedObj.ObjId.ObjName
-		p.ProtectedObj.ObjId.ObjEpoch = o.ProtectedObj.ObjId.ObjEpoch
-		p.ProtectedObj.ObjType = o.ProtectedObj.ObjType
-		p.ProtectedObj.ObjStatus = o.ProtectedObj.ObjStatus
-		p.ProtectedObj.NotBefore = o.ProtectedObj.NotBefore
-		p.ProtectedObj.NotAfter = o.ProtectedObj.NotAfter
-		p.ProtectedObj.ObjVal = o.ProtectedObj.ObjVal
+		p.Blob= o.Blob
 		po_store.ProtectedObjects = append(po_store.ProtectedObjects, p)
 	}
 	b, err := proto.Marshal(&po_store)
+	if err != nil {
+		return err
+	}
+	ioutil.WriteFile(file, b, 0644)
+	return nil
+}
+
+func SaveNodes(l *list.List, file string) error {
+	var node_store NodeStoreMessage
+
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(*NodeMessage)
+		p := new(NodeMessage)
+		p.ProtectedObjId.ObjName = o.ProtectedObjId.ObjName
+		p.ProtectedObjId.ObjEpoch = o.ProtectedObjId.ObjEpoch
+		p.ProtectorObjId.ObjName = o.ProtectorObjId.ObjName
+		p.ProtectorObjId.ObjEpoch = o.ProtectorObjId.ObjEpoch
+		node_store.NodeObjects = append(node_store.NodeObjects, p)
+	}
+	b, err := proto.Marshal(&node_store)
 	if err != nil {
 		return err
 	}
@@ -203,22 +220,40 @@ func LoadProtectedObjects(file string) (*list.List) {
 		o := new(ProtectedObjectMessage)
 		o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
 		o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
-		o.ProtectedObj.ObjId.ObjName = v.ProtectedObj.ObjId.ObjName
-		o.ProtectedObj.ObjId.ObjEpoch = v.ProtectedObj.ObjId.ObjEpoch
-
-		o.ProtectedObj.ObjType = v.ProtectedObj.ObjType
-		o.ProtectedObj.ObjStatus = v.ProtectedObj.ObjStatus
-		o.ProtectedObj.NotBefore = v.ProtectedObj.NotBefore
-		o.ProtectedObj.NotAfter = v.ProtectedObj.NotAfter
-		o.ProtectedObj.ObjVal = v.ProtectedObj.ObjVal
+		o.ProtectedObjId.ObjName = v.ProtectedObjId.ObjName
+		o.ProtectedObjId.ObjEpoch = v.ProtectedObjId.ObjEpoch
+		o.Blob = v.Blob
 		l.PushFront(o)
 	}
-	return l 
+	return l
+}
+
+func LoadNodes(file string) (*list.List) {
+	var node_store NodeStoreMessage
+
+	buf, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil
+	}
+	err = proto.Unmarshal(buf, &node_store)
+	if err != nil {
+		return nil
+	}
+	l := list.New()
+	for _, v := range(node_store.NodeObjects) {
+		o := new(NodeMessage)
+		o.ProtectedObjId.ObjName = v.ProtectedObjId.ObjName
+		o.ProtectedObjId.ObjEpoch = v.ProtectedObjId.ObjEpoch
+		o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
+		o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
+		l.PushFront(o)
+	}
+	return l
 }
 
 func LoadObjects(file string) (*list.List) {
 	var o_store ObjectStoreMessage
-	
+
 	buf, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil
@@ -240,6 +275,34 @@ func LoadObjects(file string) (*list.List) {
 		o.ObjVal = v.ObjVal
 		l.PushFront(o)
 	}
-	return l 
+	return l
+}
+
+func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch int32,
+		protectorKeys []byte) (*ProtectedObjectMessage, error) {
+	p := new(ProtectedObjectMessage)
+	unencrypted, err := proto.Marshal(&obj)
+	if err != nil {
+		return nil, errors.New("Can't make Protected Object")
+	}
+	encrypted, err := tpm2.Protect(protectorKeys, unencrypted)
+	if err != nil {
+		return nil, errors.New("Can't Protect Object")
+	}
+	p.Blob = encrypted
+	return p, nil
+}
+
+func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (*ObjectMessage, error) {
+	p := new(ObjectMessage)
+	unencrypted, err := tpm2.Unprotect(protectorKeys, obj.Blob)
+	if err != nil {
+		return nil, errors.New("Can't make Unprotect Object")
+	}
+	err = proto.Unmarshal(unencrypted, p)
+	if err != nil {
+		return nil, errors.New("Can't Unmarshal Object")
+	}
+	return p, nil
 }
 

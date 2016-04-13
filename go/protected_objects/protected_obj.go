@@ -320,3 +320,8 @@ func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (
 	return p, nil
 }
 
+
+func MakeProtectorNodes(protectorName string, protectorEpoch int32, protectedName string,
+	protectedEpoch int32) (*NodeMessage, error) {
+}
+

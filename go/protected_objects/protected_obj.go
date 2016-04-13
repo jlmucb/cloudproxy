@@ -140,12 +140,12 @@ func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
 
 func FindObject(l *list.List, name string, epoch int32) (*ObjectMessage) {
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*ObjectMessage)
+		o := e.Value.(ObjectMessage)
 		if epoch != 0 && epoch != *o.ObjId.ObjEpoch {
 			continue
 		}
 		if name == *o.ObjId.ObjName {
-			return o
+			return &o
 		}
         }
 	return nil

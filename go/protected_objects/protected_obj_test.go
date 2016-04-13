@@ -47,6 +47,10 @@ func TestBasicObject(t *testing.T) {
 		t.Fatal("Can't add object")
 	}
 
+	o3 := protected_objects.FindObject(obj_list, *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch)
+	fmt.Printf("Found object\n")
+	protected_objects.PrintObject(o3)
+
 	protectorKeys := []byte{
 		0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,
 		0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,

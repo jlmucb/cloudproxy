@@ -81,6 +81,48 @@ func TestBasicObject(t *testing.T) {
 	o2 := e.Value.(protected_objects.ObjectMessage)
 	fmt.Printf("Recovered object\n")
 	protected_objects.PrintObject(&o2)
+
+	n1 := protected_objects.MakeNode("/jlm/key/key1", 1, "/jlm/file/file1", 1);
+	if n1 == nil {
+		t.Fatal("Can't make node")
+	}
+
+	n2 := protected_objects.MakeNode("/jlm/key/key2", 1, "/jlm/key/key1", 1);
+	if n2 == nil {
+		t.Fatal("Can't make node")
+	}
+
+	n_list := list.New()
+	err = protected_objects.AddNode(n_list, *n1)
+	if n1 == nil {
+		t.Fatal("Can't add node")
+	}
+	err = protected_objects.AddNode(n_list, *n2)
+	if n2 == nil {
+		t.Fatal("Can't add node")
+	}
+
+	pr_list1 := protected_objects.FindProtectorNodes(n_list, "/jlm/key/key1", 1)
+	if pr_list1 == nil {
+		t.Fatal("FindProtectorNodes fails")
+	}
+	fmt.Printf("Protecting:\n")
+	for e := pr_list1.Front(); e != nil; e = e.Next() {
+		o := e.Value.(protected_objects.NodeMessage)
+		protected_objects.PrintNode(&o)
+		
+	}
+	fmt.Printf("\n")
+	fmt.Printf("Protected:\n")
+	pr_list2 := protected_objects.FindProtectedNodes(n_list, "/jlm/key/key1", 1)
+	if pr_list2 == nil {
+		t.Fatal("FindProtectedNodes fails")
+	}
+	for e := pr_list2.Front(); e != nil; e = e.Next() {
+		o := e.Value.(protected_objects.NodeMessage)
+		protected_objects.PrintNode(&o)
+	}
+	fmt.Printf("\n")
 }
 
 func TestConstructChain(t *testing.T) {
@@ -89,7 +131,4 @@ func TestConstructChain(t *testing.T) {
 	// construct chain with latest epoch
 	// validate chain
 }
-
-
-
 

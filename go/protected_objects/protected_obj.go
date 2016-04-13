@@ -73,7 +73,7 @@ func AddObject(l *list.List, obj interface{}) error {
 
 func DeleteObject(l *list.List, name string, epoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*ObjectMessage)
+		o := e.Value.(ObjectMessage)
 		if *o.ObjId.ObjName == name && *o.ObjId.ObjEpoch == epoch {
 			l.Remove(e)
 			break;
@@ -84,8 +84,23 @@ func DeleteObject(l *list.List, name string, epoch int32) error {
 
 func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*ProtectedObjectMessage)
+		o := e.Value.(ProtectedObjectMessage)
 		if *o.ProtectedObjId.ObjName == name && *o.ProtectedObjId.ObjEpoch == epoch {
+			l.Remove(e)
+			break;
+		}
+	}
+	return nil
+}
+
+func DeleteNode(l *list.List, protectorName string, protectorEpoch int32,
+	protectedName string, protectedEpoch int32) error {
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ProtectedObjectMessage)
+		if *o.ProtectedObjId.ObjName == protectedName &&
+				*o.ProtectedObjId.ObjEpoch == protectedEpoch  &&
+				*o.ProtectorObjId.ObjName == protectorName &&
+				*o.ProtectorObjId.ObjEpoch == protectorEpoch {
 			l.Remove(e)
 			break;
 		}
@@ -97,7 +112,7 @@ func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*NodeMessage)
+		o := e.Value.(NodeMessage)
 		if epoch != 0 && epoch != *o.ProtectedObjId.ObjEpoch {
 			continue
 		}
@@ -112,7 +127,7 @@ func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(*NodeMessage)
+		o := e.Value.(NodeMessage)
 		if epoch != 0 && epoch != *o.ProtectorObjId.ObjEpoch {
 			continue
 		}
@@ -321,7 +336,23 @@ func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (
 }
 
 
-func MakeProtectorNodes(protectorName string, protectorEpoch int32, protectedName string,
-	protectedEpoch int32) (*NodeMessage, error) {
+func MakeNode(protectorName string, protectorEpoch int32, protectedName string,
+	protectedEpoch int32) (*NodeMessage) {
+	protector := &ObjectIdMessage {
+		ObjName: &protectorName,
+		ObjEpoch: &protectorEpoch,
+	}
+	protected := &ObjectIdMessage {
+		ObjName: &protectedName,
+		ObjEpoch: &protectedEpoch,
+	}
+	nodeMsg := new(NodeMessage)
+	nodeMsg.ProtectedObjId = protected
+	nodeMsg.ProtectorObjId = protector
+	return nodeMsg
 }
 
+func AddNode(l *list.List, obj interface{}) error {
+	l.PushFront(obj)
+	return nil
+}

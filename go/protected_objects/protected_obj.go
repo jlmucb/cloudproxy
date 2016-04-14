@@ -356,3 +356,59 @@ func AddNode(l *list.List, obj interface{}) error {
 	l.PushFront(obj)
 	return nil
 }
+
+func isValid(obj ObjectMessage) (bool) {
+	// if object is not active or the dates are wrong, return false
+	if *obj.ObjStatus != "active" {
+		return false
+	}
+/*
+	tb, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", *obj.NotBefore)
+	if err != nil {
+		return false
+	}
+	ta, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", *obj.NotAfter)
+	if err != nil {
+		return false
+	}
+	tn := time.Now()
+	if !tn.After(tb) || tn.Before(ta) {
+		return false
+	}
+ */
+	return true
+}
+
+func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int32,
+	nameTop *string, epochTop *int32, seen_list *list.List,
+	node_list *list.List) (*list.List, error) {
+
+	if nameTop != nil &&  *nameTop == nameNode {
+		if epochTop == nil || *epochTop == epochNode {
+			return seen_list, nil
+		}
+	}
+	pl := FindProtectedNodes(node_list, nameNode, epochNode)
+	if pl == nil {
+		return nil, errors.New("ProtectedNode error")
+	}
+	for e := pl.Front(); e != nil; e = e.Next() {
+		o := e.Value.(NodeMessage)
+		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
+                        *o.ProtectorObjId.ObjEpoch)
+		if t != nil {
+			return nil, errors.New("Circular list")
+		}
+		t = FindObject(obj_list, *o.ProtectorObjId.ObjName,
+			*o.ProtectorObjId.ObjEpoch)
+		if !isValid(*t) {
+			continue
+		}
+		AddObject(seen_list, *t)
+		return ConstructProtectorChain(obj_list,
+			*o.ProtectorObjId.ObjName,
+			*o.ProtectorObjId.ObjEpoch,
+			nameTop, epochTop, seen_list, node_list)
+	}
+	return seen_list, nil
+}

@@ -33,12 +33,17 @@ func TestBasicObject(t *testing.T) {
 	validFor := 365*24*time.Hour
 	notAfter := notBefore.Add(validFor)
 
-	obj, err := protected_objects.CreateObject("/jlm/file/file1", 1, &obj_type, &status,
-		&notBefore, &notAfter, nil)
+	obj, err := protected_objects.CreateObject("/jlm/file/file1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
 	if err != nil {
 		t.Fatal("Can't create object")
 	}
 	fmt.Printf("Obj: %s\n", *obj.NotBefore)
+	obj_type = "key"
+	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+	obj_3, _:= protected_objects.CreateObject("/jlm/key/key2", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
 
 	// add it to object list
 	obj_list := list.New()
@@ -46,6 +51,8 @@ func TestBasicObject(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't add object")
 	}
+	_ = protected_objects.AddObject(obj_list, *obj_2)
+	_ = protected_objects.AddObject(obj_list, *obj_3)
 
 	o3 := protected_objects.FindObject(obj_list, *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch)
 	fmt.Printf("Found object\n")
@@ -114,7 +121,6 @@ func TestBasicObject(t *testing.T) {
 	for e := pr_list1.Front(); e != nil; e = e.Next() {
 		o := e.Value.(protected_objects.NodeMessage)
 		protected_objects.PrintNode(&o)
-		
 	}
 	fmt.Printf("\n")
 	fmt.Printf("Protected:\n")
@@ -127,6 +133,19 @@ func TestBasicObject(t *testing.T) {
 		protected_objects.PrintNode(&o)
 	}
 	fmt.Printf("\n")
+
+	seen_list := list.New()
+	chain, err := protected_objects.ConstructProtectorChain(obj_list,
+		"/jlm/file/file1", 1, nil, nil, seen_list, n_list)
+	if err != nil {
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't ConstructProtectorChain ")
+	}
+	fmt.Printf("Chain:\n")
+	for e := chain.Front(); e != nil; e = e.Next() {
+		o := e.Value.(protected_objects.ObjectMessage)
+		protected_objects.PrintObject(&o)
+	}
 }
 
 func TestConstructChain(t *testing.T) {

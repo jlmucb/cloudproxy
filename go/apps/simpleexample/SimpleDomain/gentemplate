@@ -1,5 +1,5 @@
 #
 source ./defines
 $BINPATH/tao domain init -tao_domain $DOMAIN -config_template $TEMPLATE -pass xxx
-$(TAO_HOST_DOMAIN_DIR)/domain_template.simpleexample> $TEMPLATE \
-sed "s/REPLACE_WITH_DOMAIN_GUARD_TYPE/Datalog/g"
+echo "$OLD_TEMPLATE"
+sed 's/REPLACE_WITH_DOMAIN_GUARD_TYPE/Datalog/g' < $OLD_TEMPLATE > $TEMPLATE

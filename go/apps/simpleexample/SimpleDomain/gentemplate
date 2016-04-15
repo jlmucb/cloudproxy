@@ -1,5 +1,5 @@
 #
 source ./defines
 $BINPATH/tao domain init -tao_domain $DOMAIN -config_template $TEMPLATE -pass xxx
-/home/jlm/src/github.com/jlmucb/cloudproxy/go/run/scripts/domain_template.pb > $TEMPLATE
+$(TAO_HOST_DOMAIN_DIR)/domain_template.simpleexample> $TEMPLATE \
 sed "s/REPLACE_WITH_DOMAIN_GUARD_TYPE/Datalog/g"

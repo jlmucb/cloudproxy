@@ -1,6 +1,8 @@
 #
 ./initdomain
+sleep 1
 ./inithost
+sleep 1
 ./runhost
 sleep 1
 ./runds

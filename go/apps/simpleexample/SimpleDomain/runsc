@@ -1,5 +1,6 @@
 #
 source ./defines
 export TAO_DOMAIN=$DOMAIN
-$BINPATH/tao run $BINPATH/simpleclient &
+# $BINPATH/tao run $BINPATH/simpleclient &
+$BINPATH/tao run ../simpleclient &
 

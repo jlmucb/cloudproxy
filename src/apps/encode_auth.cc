@@ -30,39 +30,22 @@ using std::string;
 using tao::Base64WEncode;
 using tao::Bytes;
 using tao::InitializeApp;
+using tao::make_unique;
 using tao::MarshalKeyPrin;
 using tao::MarshalSpeaksfor;
 using tao::Prin;
 using tao::PrinExt;
 using tao::SubPrin;
-
-namespace {
-// This is the canonical implementation of make_unique for C++11. It is wrapped
-// in an anonymous namespace to keep it from conflicting with the real thing if
-// it exists.
-template<typename T, typename ...Args>
-std::unique_ptr<T> make_unique( Args&& ...args )
-{
-    return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
-}
-}  // namespace
-
+using tao::Term;
 
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, false);
 
-  Prin p;
-  p.type_ = "key";
+  std::vector<std::unique_ptr<PrinExt>> v;
+  v.push_back(make_unique<PrinExt>("Validated", std::vector<std::unique_ptr<Term>>()));
 
-  auto bytes = make_unique<Bytes>();
-  string key_bytes("These are not key bytes");
-  bytes->elt_ = key_bytes;
-  p.key_ = std::move(bytes);
-
-  p.ext_ = make_unique<SubPrin>();
-  auto ext = make_unique<PrinExt>();
-  ext->name_ = "Validated";
-  p.ext_->elts_.emplace_back(std::move(ext));
+  Prin p("key", make_unique<Bytes>("These are not key bytes"),
+         make_unique<SubPrin>(std::move(v)));
 
   string serialized_prin;
   {
@@ -96,7 +79,7 @@ int main(int argc, char **argv) {
 
   auto unmarshalled_bytes =
       reinterpret_cast<Bytes*>(unmarshalled_prin.key_.get());
-  if (unmarshalled_bytes->elt_ != key_bytes) {
+  if (unmarshalled_bytes->elt_ != "These are not key bytes") {
     LOG(ERROR) << "The unmarshalled bytes did not match the original bytes";
   }
 

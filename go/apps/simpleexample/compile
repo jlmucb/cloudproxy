@@ -3,3 +3,4 @@ go build ./SimpleClient/simpleclient.go
 go build ./SimpleServer/simpleserver.go
 go build ./SimpleDomainService/simpledomainservice.go
 cp simpleclient simpleserver simpledomainservice ~/bin
+cp simpleclient simpleserver simpledomainservice /Domains

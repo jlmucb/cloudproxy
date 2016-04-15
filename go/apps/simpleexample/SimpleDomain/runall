@@ -1,4 +1,7 @@
 #
+cd ..
+./compile
+cd SimpleDomain
 ./initdomain
 sleep 1
 ./inithost

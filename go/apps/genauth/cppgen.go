@@ -61,7 +61,9 @@ namespace {
 	unmarshalTemplate = "bool %s::Unmarshal(CodedInputStream* input) {"
 	marshalTemplate   = "void %s::Marshal(CodedOutputStream* output) {"
 
-	headerPrefix = `#include <memory>
+	headerPrefix = `#ifndef CLOUDPROXY_GO_APPS_GENAUTH_H_
+#define CLOUDPROXY_GO_APPS_GENAUTH_H_
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -115,16 +117,13 @@ func (cg *CppGenerator) BinaryConstants() []string {
 	return append(header, "};", "")
 }
 
-// Field generates the code for a field in a C++ header.
-func (cg *CppGenerator) Field(info Field) []string {
-	field := make([]string, 0)
+// FieldDeclType returns a string that represents the C++ type for this field.
+func FieldDeclType(info Field) string {
 	typeName := info.TypeName
 
 	if primitives[typeName] {
 		if info.Type == StarType {
 			typeName = typeName + "*"
-			// It shouldn't be possible for this to collide with names from the types, since those are Go names, which shouldn't have underscores in them.
-			field = append(field, fmt.Sprintf("  bool %s_present_;", info.Name))
 		}
 
 		if typeName == "string" {
@@ -141,22 +140,42 @@ func (cg *CppGenerator) Field(info Field) []string {
 			typeName = "google::protobuf::uint32"
 		}
 
-		return append(field, fmt.Sprintf("  %s %s_;", typeName, info.Name))
+		return typeName
 	}
 
 	switch info.Type {
 	case IdentType, StarType:
-		field = append(field, fmt.Sprintf("  std::unique_ptr<%s> %s_;", info.TypeName, info.Name))
+		return fmt.Sprintf("std::unique_ptr<%s>", typeName)
 	case ArrayType:
 		if info.TypeName == "byte" {
-			return append(field, fmt.Sprintf("  std::string %s_;", info.Name))
+			return "std::string"
 		}
 
-		typeName = "std::unique_ptr<" + info.TypeName + ">"
-		field = append(field, fmt.Sprintf("  std::vector<%s> %ss_;", typeName, info.Name))
+		return "std::vector<std::unique_ptr<" + typeName + ">>"
 	}
 
-	return field
+	return ""
+}
+
+// FieldName returns the generated name for a field in an auth class.
+func FieldName(info Field) string {
+	varName := info.Name + "_"
+	if info.Type == ArrayType && info.TypeName != "byte" {
+		varName = info.Name + "s_";
+	}
+
+	return varName
+}
+
+// FieldDecl generates the code for a field in a C++ header.
+func FieldDecl(info Field) []string {
+	field := make([]string, 0)
+	fieldType := FieldDeclType(info)
+	if info.Type == StarType {
+		field = append(field, fmt.Sprintf("  bool %s_present_;", info.Name))
+	}
+
+	return append(field, "  " + fieldType + " " + FieldName(info) + ";")
 }
 
 func (cg *CppGenerator) Class(name string, fields []Field) []string {
@@ -179,6 +198,8 @@ func (cg *CppGenerator) Class(name string, fields []Field) []string {
 		override = " override"
 	}
 
+	rvalue := fmt.Sprintf("  %s(", name)
+
 	marshal := "  void Marshal(google::protobuf::io::CodedOutputStream* output)"
 	unmarshal := "  bool Unmarshal(google::protobuf::io::CodedInputStream* input)"
 
@@ -186,9 +207,20 @@ func (cg *CppGenerator) Class(name string, fields []Field) []string {
 	header = append(header, fmt.Sprintf("%s%s;", marshal, override))
 	header = append(header, fmt.Sprintf("%s%s;", unmarshal, override))
 
-	for _, info := range fields {
-		header = append(header, cg.Field(info)...)
+	variables := make([]string, 0)
+	for i, info := range fields {
+		variables = append(variables, FieldDecl(info)...)
+
+		rvalue += FieldDeclType(info) + "&& " + FieldName(info)
+		if i < len(fields) - 1 {
+			rvalue += ", "
+		} else {
+			rvalue += ");"
+		}
 	}
+
+	header = append(header, rvalue)
+	header = append(header, variables...)
 
 	return append(header, "};", "")
 }
@@ -208,7 +240,7 @@ func (cg *CppGenerator) Header() []string {
 		header = append(header, cg.Class(name, fields)...)
 	}
 
-	return append(header, "}  // namespace tao")
+	return append(header, "}  // namespace tao", "#endif  // CLOUDPROXY_GO_APPS_GENAUTH_H_")
 }
 
 // Decoder generates code that deserializes bytes that might be any subclass of
@@ -377,6 +409,33 @@ func (cg *CppGenerator) PrimitiveMarshaller(typeName string, field Field) []stri
 	return nil
 }
 
+// MoveConstructor generates a constructor that moves all of the member
+// variables through rvalue parameters.
+func (cg *CppGenerator) MoveConstructor(name string, fields []Field) []string {
+	sig := fmt.Sprintf("%[1]s::%[1]s(", name)
+	body := make([]string, 0)
+	for i, info := range fields {
+		sig += FieldDeclType(info) + "&& " + info.Name
+		end := ""
+		if i < len(fields) - 1 {
+			sig += ", "
+			end = ","
+		} else {
+			sig += ")"
+			end = " {}\n"
+		}
+
+		leader := "    "
+		if i == 0 {
+			leader += ": "
+		}
+		body = append(body, fmt.Sprintf("%s%s(std::move(%s))%s", leader, FieldName(info), info.Name, end))
+	}
+
+	header := []string{sig}
+	return append(header, body...)
+}
+
 // Marshaller generates serialization code for the given auth type.
 func (cg *CppGenerator) Marshaller(name string, fields []Field) []string {
 	impl := []string{fmt.Sprintf(marshalTemplate, name)}
@@ -426,6 +485,7 @@ func (cg *CppGenerator) Implementation() []string {
 	impl = append(impl, "}  // namespace", "")
 
 	for name, fields := range cg.Types {
+		impl = append(impl, cg.MoveConstructor(name, fields)...)
 		impl = append(impl, cg.Marshaller(name, fields)...)
 		impl = append(impl, cg.Unmarshaller(name, fields)...)
 	}

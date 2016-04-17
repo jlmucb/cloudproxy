@@ -146,6 +146,42 @@ func TestBasicObject(t *testing.T) {
 		o := e.Value.(protected_objects.ObjectMessage)
 		protected_objects.PrintObject(&o)
 	}
+
+	base_list := list.New()
+	target := new(protected_objects.ObjectIdMessage)
+	if target == nil {
+		t.Fatal("Can't make ObjectId --- ConstructProtectorChainFromBase")
+	}
+
+	base_name := "/jlm/key/key2"	
+	base_epoch := int32(1)
+	seen_list_base := list.New()
+	target.ObjName = &base_name
+	target.ObjEpoch= &base_epoch
+	protected_objects.AddObject(base_list, *target)
+	chain, err = protected_objects.ConstructProtectorChainFromBase(obj_list,
+		"/jlm/file/file1", 1, base_list, seen_list_base, n_list)
+	if err != nil {
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't ConstructProtectorChainFromBase")
+	}
+	fmt.Printf("\nBase chain:\n")
+	for e := chain.Front(); e != nil; e = e.Next() {
+		o := e.Value.(protected_objects.ObjectMessage)
+		protected_objects.PrintObject(&o)
+	}
+
+	base_name = "/jlm/key/key4"	
+	base_epoch = int32(1)
+	seen_list_base = list.New()
+	target.ObjName = &base_name
+	target.ObjEpoch= &base_epoch
+	protected_objects.AddObject(base_list, *target)
+	chain, err = protected_objects.ConstructProtectorChainFromBase(obj_list,
+		"/jlm/file/file1", 1, base_list, seen_list_base, n_list)
+	if err == nil {
+		fmt.Printf("shouldn't have found any satisfying objects")
+	}
 }
 
 func TestConstructChain(t *testing.T) {

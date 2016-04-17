@@ -412,3 +412,40 @@ func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int
 	}
 	return seen_list, nil
 }
+
+func ConstructProtectorChainFromBase(obj_list *list.List, nameNode string, epochNode int32,
+	base_list *list.List, seen_list *list.List, node_list *list.List) (*list.List, error) {
+
+	// if object is in base list, we're done
+	for e := base_list.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ObjectIdMessage)
+		if *o.ObjName == nameNode {
+			if o.ObjEpoch == nil  || *o.ObjEpoch == epochNode {
+				return seen_list, nil
+			}
+		}
+	}
+
+	pl := FindProtectedNodes(node_list, nameNode, epochNode)
+	if pl == nil {
+		return nil, errors.New("ProtectedNode error")
+	}
+	for e := pl.Front(); e != nil; e = e.Next() {
+		o := e.Value.(NodeMessage)
+		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
+                        *o.ProtectorObjId.ObjEpoch)
+		if t != nil {
+			return nil, errors.New("Circular list")
+		}
+		t = FindObject(obj_list, *o.ProtectorObjId.ObjName,
+			*o.ProtectorObjId.ObjEpoch)
+		if !isValid(*t) {
+			continue
+		}
+		AddObject(seen_list, *t)
+		return ConstructProtectorChainFromBase(obj_list,
+			*o.ProtectorObjId.ObjName, *o.ProtectorObjId.ObjEpoch,
+			base_list, seen_list, node_list)
+	}
+	return nil, errors.New("Can't find any base value")
+}

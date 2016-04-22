@@ -5,11 +5,16 @@ syntax = "proto2";
 
 package protected_objects;
 
+// Epochs must increase monotonically and be > 0
 message object_id_message {
   required string obj_name                    = 1;
   optional int32 obj_epoch                    = 2;
 }
 
+// Standard statuses are: active, retired, inactive
+// Standard types are: file, key, key-aes128-ctr-hmacsha256
+// NotBefore and notAfter are string with the standard
+//     string format: 2006-01-02 15:04:05.999999999 -0700 MST
 message object_message {
   required object_id_message obj_id           = 1;
   optional string obj_type                    = 2;

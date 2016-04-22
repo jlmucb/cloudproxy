@@ -67,6 +67,7 @@ func CreateObject(name string, epoch int32, obj_type *string, status *string, no
 }
 
 func AddObject(l *list.List, obj interface{}) error {
+	// TODO(jlm): Make sure it's not already there.
 	l.PushFront(obj)
 	return nil
 }
@@ -109,6 +110,7 @@ func DeleteNode(l *list.List, protectorName string, protectorEpoch int32,
 }
 
 func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
+	// TODO(jlm): add status condition
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -124,6 +126,7 @@ func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
 }
 
 func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
+	// TODO(jlm): add status condition
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -139,6 +142,7 @@ func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
 }
 
 func FindObject(l *list.List, name string, epoch int32) (*ObjectMessage) {
+	// TODO(jlm): add status condition and type condition
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectMessage)
 		if epoch != 0 && epoch != *o.ObjId.ObjEpoch {
@@ -151,11 +155,19 @@ func FindObject(l *list.List, name string, epoch int32) (*ObjectMessage) {
 	return nil
 }
 
-func GetLatestEpoch(l *list.List, name string, epoch int32) (*ObjectMessage) {
+func GetLatestEpoch(l *list.List, name string, status []string) (*ObjectMessage) {
 	return nil
 }
 
-func GetEarliestEpoch(l *list.List, name string, epoch int32) (*ObjectMessage) {
+func GetEarliestEpoch(l *list.List, name string, status []string) (*ObjectMessage) {
+	return nil
+}
+
+func FindAllPredecessors(l *list.List, name string, obj_status []string, obj_type []string) (*ObjectMessage) {
+	return nil
+}
+
+func FindAllDecendants(l *list.List, name string, obj_status []string, obj_type []string) (*ObjectMessage) {
 	return nil
 }
 
@@ -413,6 +425,7 @@ func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int
 	return seen_list, nil
 }
 
+// TODO(JLM): add status
 func ConstructProtectorChainFromBase(obj_list *list.List, nameNode string, epochNode int32,
 	base_list *list.List, seen_list *list.List, node_list *list.List) (*list.List, error) {
 

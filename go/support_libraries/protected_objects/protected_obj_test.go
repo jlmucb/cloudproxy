@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jlmucb/cloudproxy/go/protected_objects"
+	"github.com/jlmucb/cloudproxy/go/support_libraries/protected_objects"
 	// "github.com/jlmucb/cloudproxy/go/tpm2"
 	// "github.com/golang/protobuf/proto"
 )

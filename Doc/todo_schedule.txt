@@ -1,39 +1,39 @@
 Cloudproxy
 
 
-Sub-project		End State							People			When
------------		---------							------			----
+Sub-project		End State							People		When
+-----------		---------							------		----
 
-Mac version		Fake tao and tutorial runs on macs				John/Sid		May, 2016
+Mac version		Fake tao and tutorial runs on macs				John/Sid	May, 2016
 
-C++			C++ works and is in Nuts and Bolts				Tom/John		May, 2016
+C++			C++ works and is in Nuts and Bolts				Tom/John	May, 2016
 
-Tpm2 integration	Tpm2 support, tpm1.2 and tpm2 scripts and Doc complete		John/Sid/Tom		May, 2016
+Tpm2 integration	Tpm2 support, tpm1.2 and tpm2 scripts and Doc complete		John/Sid/Tom	May, 2016
 			for KVM and Linux
 
-State-protection	Local state rollback protection and monotonic counters		John			June, 2016
+State-protection	Local state rollback protection and monotonic counters		John		June, 2016
 
 Code walk-through		
 
-Security Review		Full security review						John/Ben		July, 2016
+Security Review		Full security review						John/Ben	July, 2016
 
-Key management library	Epochs, key-protection chains					John			June, 2016
+Key management library	CPRotation library: Epochs, key-protection chains		John		June, 2016
 			"PolicyKey says Program-Name canRead zone-keys			John
 
-Infrastructure servers	Full feature KeyNegoServer					Sid, John?		Aug, 2016
-			Full feature CPSecretServer					Albert?			Oct, 2016
-			Auth for the masses
+Infrastructure servers	Full feature CPDomainServer					Sid, John?	Aug, 2016
+			Full feature CPSecretServer					Albert?		Oct, 2016
+			Auth for the masse
 
-New SecApp		Some nifty new app						Albert			Dec, 2016
+New SecApp		Some nifty new app						Albert		Dec, 2016
 			and even standard for example apps
 
-Attackathon		Red teams (UCB?)						John			August, 2016
+Attackathon		Red teams (UCB?)						John		August, 2016
 
-New_HW			Support other HW mechanisms					Sid/John		Nov, 2016
+New_HW			Support other HW mechanisms					Sid/John	Nov, 2016
 
-Industry Hackathon	Run application building thons					John			Sept, 2016
+Industry Hackathon	Run application building thons					John		Sept, 2016
 
-Industry App		Some deployed major player app								March, 2017
+Industry App		Some deployed major player app							March, 2017
 
 Docker/Kubernetes in	Packaged support for Docker and Kubernetes deployment		John, Tom, Sid
 a box

@@ -25,6 +25,27 @@ import (
 	// "github.com/golang/protobuf/proto"
 )
 
+func TestTime(t *testing.T) {
+	ttb := time.Now()
+	ttn := time.Now()
+	tta := time.Now()
+	tb, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", ttb.String())
+	if err != nil {
+		t.Fatal("Can't parse time before\n")
+	}
+	ta, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", tta.String())
+	if err != nil {
+		t.Fatal("Can't parse time after\n")
+	}
+	fmt.Printf("tb: %s, tn: %s, ta: %s\n", tb.String(), ttn.String(), ta.String())
+	if tb.After(ttn) {
+		t.Fatal("Time after fails\n")
+	}
+	if ta.Before(ttn) {
+		t.Fatal("Time before fails\n")
+	}
+}
+
 func TestBasicObject(t *testing.T) {
 
 	// Add three objects: a file and two keys
@@ -57,6 +78,9 @@ func TestBasicObject(t *testing.T) {
 
 	// Find object test
 	o3 := protected_objects.FindObject(obj_list, *obj_1.ObjId.ObjName, *obj_1.ObjId.ObjEpoch, nil, nil)
+	if o3 == nil {
+		t.Fatal("Can't find object")
+	}
 	fmt.Printf("Found object\n")
 	protected_objects.PrintObject(o3)
 
@@ -81,19 +105,6 @@ func TestBasicObject(t *testing.T) {
 	if *obj_1.ObjId.ObjName != *p_obj_2.ObjId.ObjName {
 		t.Fatal("objects don't match")
 	}
-
-	err = protected_objects.SaveObjects(obj_list, "tmptest/s1")
-	if err != nil {
-		t.Fatal("Can't save objects")
-	}
-	r := protected_objects.LoadObjects("tmptest/s1")
-	if r == nil {
-		t.Fatal("Can't Load objects")
-	}
-	e := r.Front()
-	o2 := e.Value.(protected_objects.ObjectMessage)
-	fmt.Printf("Recovered object\n")
-	protected_objects.PrintObject(&o2)
 
 	n1 := protected_objects.MakeNode("/jlm/key/key1", 1, "/jlm/file/file1", 1);
 	if n1 == nil {
@@ -135,6 +146,157 @@ func TestBasicObject(t *testing.T) {
 		protected_objects.PrintNode(&o)
 	}
 	fmt.Printf("\n")
+}
+
+func TestEarliestandLatest(t *testing.T) {
+
+	// Add three objects: a file and two keys
+	obj_type := "key"
+	status := "active"
+	notBefore := time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+
+	obj_1, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 2,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+
+	// add them to object list
+	obj_list := list.New()
+	err := protected_objects.AddObject(obj_list, *obj_1)
+	if err != nil {
+		t.Fatal("Can't add object")
+	}
+	_ = protected_objects.AddObject(obj_list, *obj_2)
+
+	statuses := []string{"active"}
+	result := protected_objects.GetEarliestEpoch(obj_list, "/jlm/key/key1", statuses)
+	if result == nil {
+		t.Fatal("Can't get earliest epoch")
+	}
+	if *result.ObjId.ObjName != "/jlm/key/key1" ||
+	   result.ObjId.ObjEpoch == nil || *result.ObjId.ObjEpoch != 1 {
+		t.Fatal("Earliest epoch failed")
+	}
+
+	result = protected_objects.GetLatestEpoch(obj_list, "/jlm/key/key1", statuses)
+	if result == nil {
+		t.Fatal("Can't get latest epoch")
+	}
+	if *result.ObjId.ObjName != "/jlm/key/key1" ||
+	   result.ObjId.ObjEpoch == nil || *result.ObjId.ObjEpoch != 2 {
+		protected_objects.PrintObject(result)
+		t.Fatal("Latest epoch failed")
+	}
+}
+
+func TestSaveAndRestore(t *testing.T) {
+
+	// Add three objects: a file and two keys
+	obj_type := "file"
+	status := "active"
+	notBefore := time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+
+	obj_1, err := protected_objects.CreateObject("/jlm/file/file1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+	if err != nil {
+		t.Fatal("Can't create object")
+	}
+	fmt.Printf("Obj: %s\n", *obj_1.NotBefore)
+	obj_type = "key"
+	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+	obj_3, _:= protected_objects.CreateObject("/jlm/key/key2", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+
+	// add them to object list
+	obj_list := list.New()
+	err = protected_objects.AddObject(obj_list, *obj_1)
+	if err != nil {
+		t.Fatal("Can't add object")
+	}
+	_ = protected_objects.AddObject(obj_list, *obj_2)
+	_ = protected_objects.AddObject(obj_list, *obj_3)
+
+	err = protected_objects.SaveObjects(obj_list, "tmptest/s1")
+	if err != nil {
+		t.Fatal("Can't save objects")
+	}
+	r := protected_objects.LoadObjects("tmptest/s1")
+	if r == nil {
+		t.Fatal("Can't Load objects")
+	}
+
+	if obj_list.Len() != r.Len() {
+		t.Fatal("recovered object list has different size")
+	}
+
+	er := obj_list.Front()
+	for eo := obj_list.Front(); eo != nil; eo = eo.Next() {
+		oo := eo.Value.(protected_objects.ObjectMessage)
+		or := er.Value.(protected_objects.ObjectMessage)
+		if *oo.ObjId.ObjName != *or.ObjId.ObjName {
+			t.Fatal("recovered name doesn't match")
+		}
+		if *oo.ObjId.ObjEpoch != *or.ObjId.ObjEpoch {
+			t.Fatal("recovered object doesn't match")
+		}
+		er = er.Next()
+	}
+}
+
+func TestConstructChain(t *testing.T) {
+
+	// Add three objects: a file and two keys
+	obj_type := "file"
+	status := "active"
+	notBefore := time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+
+	obj_1, err := protected_objects.CreateObject("/jlm/file/file1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+	if err != nil {
+		t.Fatal("Can't create object")
+	}
+	fmt.Printf("Obj: %s\n", *obj_1.NotBefore)
+	obj_type = "key"
+	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+	obj_3, _:= protected_objects.CreateObject("/jlm/key/key2", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+
+	// add them to object list
+	obj_list := list.New()
+	err = protected_objects.AddObject(obj_list, *obj_1)
+	if err != nil {
+		t.Fatal("Can't add object")
+	}
+	_ = protected_objects.AddObject(obj_list, *obj_2)
+	_ = protected_objects.AddObject(obj_list, *obj_3)
+
+	n1 := protected_objects.MakeNode("/jlm/key/key1", 1, "/jlm/file/file1", 1);
+	if n1 == nil {
+		t.Fatal("Can't make node")
+	}
+
+	n2 := protected_objects.MakeNode("/jlm/key/key2", 1, "/jlm/key/key1", 1);
+	if n2 == nil {
+		t.Fatal("Can't make node")
+	}
+
+	n_list := list.New()
+	err = protected_objects.AddNode(n_list, *n1)
+	if n1 == nil {
+		t.Fatal("Can't add node")
+	}
+	err = protected_objects.AddNode(n_list, *n2)
+	if n2 == nil {
+		t.Fatal("Can't add node")
+	}
 
 	statuses := []string{"active"}
 
@@ -185,80 +347,5 @@ func TestBasicObject(t *testing.T) {
 		"/jlm/file/file1", 1, statuses, nil, base_list, seen_list_base, n_list)
 	if err == nil {
 		fmt.Printf("shouldn't have found any satisfying objects")
-	}
-}
-
-func TestEarliestandLatest(t *testing.T) {
-
-	// Add three objects: a file and two keys
-	obj_type := "key"
-	status := "active"
-	notBefore := time.Now()
-	validFor := 365*24*time.Hour
-	notAfter := notBefore.Add(validFor)
-
-	obj_1, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
-		&obj_type, &status, &notBefore, &notAfter, nil)
-	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 2,
-		&obj_type, &status, &notBefore, &notAfter, nil)
-
-	// add them to object list
-	obj_list := list.New()
-	err := protected_objects.AddObject(obj_list, *obj_1)
-	if err != nil {
-		t.Fatal("Can't add object")
-	}
-	_ = protected_objects.AddObject(obj_list, *obj_2)
-
-	statuses := []string{"active"}
-	result := protected_objects.GetEarliestEpoch(obj_list, "/jlm/key/key1", statuses)
-	if result == nil {
-		t.Fatal("Can't get earliest epoch")
-	}
-	if *result.ObjId.ObjName != "/jlm/key/key1" ||
-	   result.ObjId.ObjEpoch == nil || *result.ObjId.ObjEpoch != 1 {
-		t.Fatal("Earliest epoch failed")
-	}
-
-	result = protected_objects.GetLatestEpoch(obj_list, "/jlm/key/key1", statuses)
-	if result == nil {
-		t.Fatal("Can't get latest epoch")
-	}
-	if *result.ObjId.ObjName != "/jlm/key/key1" ||
-	   result.ObjId.ObjEpoch == nil || *result.ObjId.ObjEpoch != 2 {
-		protected_objects.PrintObject(result)
-		t.Fatal("Latest epoch failed")
-	}
-}
-
-func TestSaveAndRestore(t *testing.T) {
-}
-
-func TestConstructChain(t *testing.T) {
-	// base object
-	// ancestors
-	// construct chain with latest epoch
-	// validate chain
-}
-
-
-func TestTime(t *testing.T) {
-	ttb := time.Now()
-	ttn := time.Now()
-	tta := time.Now()
-	tb, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", ttb.String())
-	if err != nil {
-		t.Fatal("Can't parse time before\n")
-	}
-	ta, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", tta.String())
-	if err != nil {
-		t.Fatal("Can't parse time after\n")
-	}
-	fmt.Printf("tb: %s, tn: %s, ta: %s\n", tb.String(), ttn.String(), ta.String())
-	if tb.After(ttn) {
-		t.Fatal("Time after fails\n")
-	}
-	if ta.Before(ttn) {
-		t.Fatal("Time before fails\n")
 	}
 }

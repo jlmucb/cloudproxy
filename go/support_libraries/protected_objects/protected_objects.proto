@@ -11,7 +11,7 @@ message object_id_message {
   optional int32 obj_epoch                    = 2;
 }
 
-// Standard statuses are: active, retired, inactive
+// Standard statuses are: active, retired, inactive, revoked
 // Standard types are: file, key, key-aes128-ctr-hmacsha256
 // NotBefore and notAfter are string with the standard
 //     string format: 2006-01-02 15:04:05.999999999 -0700 MST

@@ -429,7 +429,7 @@ func LoadObjects(file string) (*list.List) {
 	return l
 }
 
-// Create, marshal and encrypt a protected object blob
+// Create, marshal and encrypt a protected object blob protecting obj.
 func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch int32,
 		protectorKeys []byte) (*ProtectedObjectMessage, error) {
 	p := new(ProtectedObjectMessage)

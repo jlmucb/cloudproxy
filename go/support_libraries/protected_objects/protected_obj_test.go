@@ -26,59 +26,61 @@ import (
 )
 
 func TestBasicObject(t *testing.T) {
-	// make it
+
+	// Add three objects: a file and two keys
 	obj_type := "file"
 	status := "active"
 	notBefore := time.Now()
 	validFor := 365*24*time.Hour
 	notAfter := notBefore.Add(validFor)
 
-	obj, err := protected_objects.CreateObject("/jlm/file/file1", 1,
+	obj_1, err := protected_objects.CreateObject("/jlm/file/file1", 1,
 		&obj_type, &status, &notBefore, &notAfter, nil)
 	if err != nil {
 		t.Fatal("Can't create object")
 	}
-	fmt.Printf("Obj: %s\n", *obj.NotBefore)
+	fmt.Printf("Obj: %s\n", *obj_1.NotBefore)
 	obj_type = "key"
 	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
 		&obj_type, &status, &notBefore, &notAfter, nil)
 	obj_3, _:= protected_objects.CreateObject("/jlm/key/key2", 1,
 		&obj_type, &status, &notBefore, &notAfter, nil)
 
-	// add it to object list
+	// add them to object list
 	obj_list := list.New()
-	err = protected_objects.AddObject(obj_list, *obj)
+	err = protected_objects.AddObject(obj_list, *obj_1)
 	if err != nil {
 		t.Fatal("Can't add object")
 	}
 	_ = protected_objects.AddObject(obj_list, *obj_2)
 	_ = protected_objects.AddObject(obj_list, *obj_3)
 
-	o3 := protected_objects.FindObject(obj_list, *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch, nil, nil)
+	// Find object test
+	o3 := protected_objects.FindObject(obj_list, *obj_1.ObjId.ObjName, *obj_1.ObjId.ObjEpoch, nil, nil)
 	fmt.Printf("Found object\n")
 	protected_objects.PrintObject(o3)
 
+	// Make a protected object
 	protectorKeys := []byte{
 		0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,
 		0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,
 	}
-	p_obj, err := protected_objects.MakeProtectedObject(*obj, "/jlm/key/key1", 1, protectorKeys)
+	p_obj_1, err := protected_objects.MakeProtectedObject(*obj_1, "/jlm/key/key1", 1, protectorKeys)
 	if err != nil {
 		t.Fatal("Can't make protected object")
 	}
-	if p_obj == nil {
+	if p_obj_1 == nil {
 		t.Fatal("Bad protected object")
 	}
-	protected_objects.PrintProtectedObject(p_obj)
+	protected_objects.PrintProtectedObject(p_obj_1)
 
-	obj2, err := protected_objects.RecoverProtectedObject(p_obj, protectorKeys)
+	p_obj_2, err := protected_objects.RecoverProtectedObject(p_obj_1, protectorKeys)
 	if err != nil {
 		t.Fatal("Can't recover protected object")
 	}
-	if *obj.ObjId.ObjName != *obj2.ObjId.ObjName {
+	if *obj_1.ObjId.ObjName != *p_obj_2.ObjId.ObjName {
 		t.Fatal("objects don't match")
 	}
-	//protected_obj_list := list.New()
 
 	err = protected_objects.SaveObjects(obj_list, "tmptest/s1")
 	if err != nil {
@@ -184,6 +186,52 @@ func TestBasicObject(t *testing.T) {
 	if err == nil {
 		fmt.Printf("shouldn't have found any satisfying objects")
 	}
+}
+
+func TestEarliestandLatest(t *testing.T) {
+
+	// Add three objects: a file and two keys
+	obj_type := "key"
+	status := "active"
+	notBefore := time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+
+	obj_1, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 2,
+		&obj_type, &status, &notBefore, &notAfter, nil)
+
+	// add them to object list
+	obj_list := list.New()
+	err := protected_objects.AddObject(obj_list, *obj_1)
+	if err != nil {
+		t.Fatal("Can't add object")
+	}
+	_ = protected_objects.AddObject(obj_list, *obj_2)
+
+	statuses := []string{"active"}
+	result := protected_objects.GetEarliestEpoch(obj_list, "/jlm/key/key1", statuses)
+	if result == nil {
+		t.Fatal("Can't get earliest epoch")
+	}
+	if *result.ObjId.ObjName != "/jlm/key/key1" ||
+	   result.ObjId.ObjEpoch == nil || *result.ObjId.ObjEpoch != 1 {
+		t.Fatal("Earliest epoch failed")
+	}
+
+	result = protected_objects.GetLatestEpoch(obj_list, "/jlm/key/key1", statuses)
+	if result == nil {
+		t.Fatal("Can't get latest epoch")
+	}
+	if *result.ObjId.ObjName != "/jlm/key/key1" ||
+	   result.ObjId.ObjEpoch == nil || *result.ObjId.ObjEpoch != 2 {
+		protected_objects.PrintObject(result)
+		t.Fatal("Latest epoch failed")
+	}
+}
+
+func TestSaveAndRestore(t *testing.T) {
 }
 
 func TestConstructChain(t *testing.T) {

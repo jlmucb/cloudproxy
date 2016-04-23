@@ -65,6 +65,7 @@ func stringMatch(name *string, names []string) bool {
 	return false
 }
 
+// Create the object with the provided data.
 func CreateObject(name string, epoch int32, obj_type *string, status *string, notBefore *time.Time,
 		notAfter *time.Time, v []byte) (*ObjectMessage, error) {
 	obj_id := &ObjectIdMessage {
@@ -84,6 +85,7 @@ func CreateObject(name string, epoch int32, obj_type *string, status *string, no
 	return obj, nil
 }
 
+// Add the indicated objectid to the list.
 func AddObjectId(l *list.List, obj ObjectIdMessage) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectIdMessage)
@@ -95,6 +97,7 @@ func AddObjectId(l *list.List, obj ObjectIdMessage) error {
 	return nil
 }
 
+// Add the indicated protected object to the list.
 func AddObject(l *list.List, obj ObjectMessage) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectMessage)
@@ -106,6 +109,7 @@ func AddObject(l *list.List, obj ObjectMessage) error {
 	return nil
 }
 
+// Add the indicated protected object to the list.
 func AddProtectedObject(l *list.List, obj ProtectedObjectMessage) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ProtectedObjectMessage)
@@ -120,6 +124,7 @@ func AddProtectedObject(l *list.List, obj ProtectedObjectMessage) error {
 	return nil
 }
 
+// Add the indicated node to the list.
 func AddNode(l *list.List, obj NodeMessage) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(NodeMessage)
@@ -134,6 +139,7 @@ func AddNode(l *list.List, obj NodeMessage) error {
 	return nil
 }
 
+// Remove the referenced object from the list.
 func DeleteObject(l *list.List, name string, epoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectMessage)
@@ -145,6 +151,7 @@ func DeleteObject(l *list.List, name string, epoch int32) error {
 	return nil
 }
 
+// Remove the referenced protected object from the list.
 func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ProtectedObjectMessage)
@@ -156,6 +163,7 @@ func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 	return nil
 }
 
+// Remove the referenced node from the list.
 func DeleteNode(l *list.List, protectorName string, protectorEpoch int32,
 	protectedName string, protectedEpoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -171,6 +179,7 @@ func DeleteNode(l *list.List, protectorName string, protectorEpoch int32,
 	return nil
 }
 
+// Find objects protected by object with given name and epoch.
 func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
@@ -186,6 +195,7 @@ func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
 	return r
 }
 
+// Find protectors of the object with given name and epoch.
 func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
@@ -201,6 +211,8 @@ func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
 	return r
 }
 
+// Find object with given name, epoch, with one of the offered types and names.
+// A nil types or names list matches anything (even nil)
 func FindObject(l *list.List, name string, epoch int32, types []string, statuses []string) (*ObjectMessage) {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectMessage)
@@ -217,22 +229,59 @@ func FindObject(l *list.List, name string, epoch int32, types []string, statuses
 	return nil
 }
 
+// Get object with given name and latest epoch.
 func GetLatestEpoch(l *list.List, name string, status []string) (*ObjectMessage) {
-	return nil
+	latest := 0
+	var result *ObjectMessage
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ObjectMessage)
+		PrintObject(&o)
+		if *o.ObjId.ObjName != name {
+			continue
+		}
+		if o.ObjId.ObjEpoch == nil {
+			continue
+		}
+		if result == nil {
+			result = &o
+			latest = int(*o.ObjId.ObjEpoch)
+			continue
+		}
+		if int(*o.ObjId.ObjEpoch) > latest {
+			latest = int(*o.ObjId.ObjEpoch)
+			result = &o
+		}
+	}
+	return result 
 }
 
+// Get object with given name and earliest epoch.
 func GetEarliestEpoch(l *list.List, name string, status []string) (*ObjectMessage) {
-	return nil
+	earliest := 0
+	var result *ObjectMessage
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ObjectMessage)
+		if *o.ObjId.ObjName != name {
+			continue
+		}
+		if o.ObjId.ObjEpoch == nil {
+			continue
+		}
+		if result == nil {
+			result = &o
+			earliest = int(*o.ObjId.ObjEpoch)
+			continue
+		}
+		if earliest == 0 || int(*o.ObjId.ObjEpoch) < earliest {
+			earliest = int(*o.ObjId.ObjEpoch)
+			result = &o
+		}
+	}
+	return result 
 }
 
-func FindAllPredecessors(l *list.List, name string, obj_status []string, obj_type []string) (*ObjectMessage) {
-	return nil
-}
-
-func FindAllDecendants(l *list.List, name string, obj_status []string, obj_type []string) (*ObjectMessage) {
-	return nil
-}
-
+// Marshal protected objects and save them in a file.
+// nil is error return
 func SaveProtectedObjects(l *list.List, file string) error {
 	var po_store ProtectedObjectStoreMessage
 
@@ -254,6 +303,8 @@ func SaveProtectedObjects(l *list.List, file string) error {
 	return nil
 }
 
+// Marshal nodes and save them in a file.
+// nil is error return
 func SaveNodes(l *list.List, file string) error {
 	var node_store NodeStoreMessage
 
@@ -274,6 +325,7 @@ func SaveNodes(l *list.List, file string) error {
 	return nil
 }
 
+// Marshal objects and save them in a file.
 // nil is error return
 func SaveObjects(l *list.List, file string) error {
 	var o_store ObjectStoreMessage
@@ -299,6 +351,7 @@ func SaveObjects(l *list.List, file string) error {
 	return nil
 }
 
+// Read and unmarshal an protected object file.
 func LoadProtectedObjects(file string) (*list.List) {
 	var po_store ProtectedObjectStoreMessage
 
@@ -323,6 +376,7 @@ func LoadProtectedObjects(file string) (*list.List) {
 	return l
 }
 
+// Read and unmarshal a node file.
 func LoadNodes(file string) (*list.List) {
 	var node_store NodeStoreMessage
 
@@ -346,6 +400,7 @@ func LoadNodes(file string) (*list.List) {
 	return l
 }
 
+// Read and unmarshal an object file.
 func LoadObjects(file string) (*list.List) {
 	var o_store ObjectStoreMessage
 
@@ -360,7 +415,6 @@ func LoadObjects(file string) (*list.List) {
 	l := list.New()
 	for _, v := range(o_store.Objects) {
 		o := new(ObjectMessage)
-		PrintObject(v)
 		o.ObjId = new(ObjectIdMessage)
 		o.ObjId.ObjName = v.ObjId.ObjName
 		o.ObjId.ObjEpoch = v.ObjId.ObjEpoch
@@ -375,6 +429,7 @@ func LoadObjects(file string) (*list.List) {
 	return l
 }
 
+// Create, marshal and encrypt a protected object blob
 func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch int32,
 		protectorKeys []byte) (*ProtectedObjectMessage, error) {
 	p := new(ProtectedObjectMessage)
@@ -396,6 +451,7 @@ func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch
 	return p, nil
 }
 
+// Decrypt and unmarshal a protected object blob
 func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (*ObjectMessage, error) {
 	p := new(ObjectMessage)
 	unencrypted, err := tpm2.Unprotect(protectorKeys, obj.Blob)
@@ -409,7 +465,7 @@ func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (
 	return p, nil
 }
 
-
+// Make a node
 func MakeNode(protectorName string, protectorEpoch int32, protectedName string,
 	protectedEpoch int32) (*NodeMessage) {
 	protector := &ObjectIdMessage {
@@ -426,9 +482,13 @@ func MakeNode(protectorName string, protectorEpoch int32, protectedName string,
 	return nodeMsg
 }
 
-func isValid(obj ObjectMessage) (bool) {
+// Is object the right type, have the right status and in it's validity period?
+func IsValid(obj ObjectMessage, statuses []string, types []string) (bool) {
 	// if object is not active or the dates are wrong, return false
-	if *obj.ObjStatus != "active" {
+	if !stringMatch(obj.ObjStatus, statuses) {
+		return false
+	}
+	if !stringMatch(obj.ObjType, types) {
 		return false
 	}
 	tb, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", *obj.NotBefore)
@@ -473,7 +533,7 @@ func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int
 		if t == nil {
 			return seen_list, nil
 		}
-		if !isValid(*t) {
+		if !IsValid(*t, statuses, types) {
 			continue
 		}
 		AddObject(seen_list, *t)
@@ -513,7 +573,7 @@ func ConstructProtectorChainFromBase(obj_list *list.List, nameNode string, epoch
 		}
 		t = FindObject(obj_list, *o.ProtectorObjId.ObjName,
 			*o.ProtectorObjId.ObjEpoch, statuses, types)
-		if !isValid(*t) {
+		if !IsValid(*t, statuses, types) {
 			continue
 		}
 		AddObject(seen_list, *t)

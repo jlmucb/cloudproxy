@@ -113,24 +113,27 @@ func AddAndRotateNewKeyEpoch(name_obj string,  obj_type string, existing_status 
 	}
 	for e := old_protected.Front(); e != nil; e = e.Next() {
 		old := e.Value.(protected_objects.NodeMessage)
-		if old.ProtectedObjId.ObjName == nil {
-		}
-		new_epoch := *old.ProtectedObjId.ObjEpoch + 1
-		new_protected_obj, err := protected_objects.MakeProtectedObject(*new_obj, *old.ProtectedObjId.ObjName,
-					new_epoch, new_obj.ObjVal)
+		protected_name := *old.ProtectedObjId.ObjName
+		protected_epoch := *old.ProtectedObjId.ObjEpoch
+		new_protected_obj, err := protected_objects.MakeProtectedObject(*new_obj, protected_name,
+					protected_epoch, new_obj.ObjVal)
 		if new_protected_obj == nil || err != nil {
+			return -1, errors.New("Can't make new protected object")
 		}
 		err = protected_objects.AddProtectedObject(protected_obj_list, *new_protected_obj)
 		if err != nil {
+			return -1, errors.New("Can't add new protected node")
 		}
 		new_node := protected_objects.MakeNode(*new_obj.ObjId.ObjName, *new_obj.ObjId.ObjEpoch,
-			*new_protected_obj.ProtectedObjId.ObjName, *new_protected_obj.ProtectedObjId.ObjEpoch)
+			protected_name, protected_epoch)
+		if new_node == nil {
+			return -1, errors.New("Can't make new node")
+		}
 		err = protected_objects.AddNode(node_list, *new_node)
 		if err != nil {
+			return -1, errors.New("Can't add new node")
 		}
-		// re-encrypt
 	}
-	return int(*old_obj.ObjId.ObjEpoch), nil
+	_ = RetireObject(obj_list, *old_obj.ObjId.ObjName, int(*old_obj.ObjId.ObjEpoch))
+	return int(*new_obj.ObjId.ObjEpoch), nil
 }
-
-

@@ -21,11 +21,12 @@ import (
 	// "time"
 
 	// "github.com/jlmucb/cloudproxy/go/support_libraries/protected_objects"
-	// "github.com/jlmucb/cloudproxy/go/support_libraries/rotation_support"
+	"github.com/jlmucb/cloudproxy/go/support_libraries/rotation_support"
 )
 
 func TestStuff(t *testing.T) {
 	fmt.Printf("TestStuff\n")
+	rotation_support.ForceInclude()
 	// add a key
 	// add a new epoch
 	// add new protector node

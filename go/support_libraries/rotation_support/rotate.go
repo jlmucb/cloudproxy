@@ -25,35 +25,62 @@ import (
 	"github.com/jlmucb/cloudproxy/go/support_libraries/protected_objects"
 )
 
-// Revoke indicated object
-func RevokeObject(name_obj string, epoch int) (error) {
-	// FindObject(l *list.List, name string, epoch int32, types []string, statuses []string) (*ObjectMessage)
+func ChangeObjectStatus(l *list.List, name_obj string, epoch int, new_status string) error {
+	obj, err := FindObject(l, name_obj, int32(epoch), nil, nil)
+	if err != nil  || obj == nil {
+		return error.New("Can't find object")
+	}
+	obj.ObjStatus = new_status
 	return nil
+}
+
+// Revoke indicated object
+func RevokeObject(l *list.List, name_obj string, epoch int) (error) {
+	return ChangeObjectStatus(l, name_obj, epoch, "revoked")
 }
 
 // Retire indicated object
-func RetireObject(name_obj string, epoch int) (error) {
-	return nil
+func RetireObject(l *list.List, name_obj string, epoch int) (error) {
+	return ChangeObjectStatus(l, name_obj, epoch, "retired")
 }
 
 // Activate indicated object
-func ActivateObject(name_obj string, epoch int) (error) {
-	return errors.New("Not implemented") 
+func ActivateObject(l *list.List, name_obj string, epoch int) (error) {
+	return ChangeObjectStatus(l, name_obj, epoch, "active")
 }
 
 // Inactivate indicated object
-func InactivateObject(name_obj string, epoch int) (error) {
-	return nil
+func InactivateObject(l *list.List, name_obj string, epoch int) (error) {
+	return ChangeObjectStatus(l, name_obj, epoch, "inactive")
 }
 
 // Make object with new epoch and return it
-func AddNewKeyEpoch(name_obj string, obj_type string, obj_status string, notBefore string, notAfter string,
+func AddNewKeyEpoch(l *list.List, name_obj string, obj_type string, obj_status string,
+		    notBefore string, notAfter string,
                     value []byte) (*protected_objects.ObjectMessage, error) {
-	// func GetLatestEpoch(l *list.List, name string, status []string) (*ObjectMessage
-	// CreateObject(name string, epoch int32, obj_type *string, status *string, notBefore *time.Time,
-        //      notAfter *time.Time, v []byte) (*ObjectMessage, error
-	// AddObject(l *list.List, obj ObjectMessage)
-	return nil, nil
+	new_epoch := 1
+	old_obj := protected_objects.GetLatestEpoch(l, name, obj_status)
+	if old_obj != nil {
+		new_epoch = *old_obj.ObjId.Epoch + 1
+	}
+	nb, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", notBefore)
+	if err == nil {
+		return nil, errors.New("Can't parse notBefore")
+	}
+	na, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", notAfter)
+	if err == nil {
+		return nil, errors.New("Can't parse notAfter")
+	}
+	new_obj, err := protected_objects.CreateObject(name, new_epoch, &obj_type,
+			&obj_status, nb, na, value)
+	if err == nil || new_obj == nil {
+		return nil, errors.New("Can't create new object")
+	}
+	AddObject(l, *new_obj)
+	if err == nil {
+		return nil, errors.New("Can't add new object")
+	}
+	return new_obj, nil
 }
 
 // Find all the objects protected by existing object.

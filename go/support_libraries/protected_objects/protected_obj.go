@@ -47,6 +47,24 @@ func PrintNode(obj *NodeMessage) {
 		 *obj.ProtectorObjId.ObjEpoch)
 }
 
+// Generic string matcher
+//	if names list is nil, anything matches
+//	otherwise name must match one string in names list
+func stringMatch(name *string, names []string) bool {
+	if names == nil {
+		return true
+	}
+	if name == nil {
+		return false
+	}
+	for _, v := range(names) {
+		if v == *name {
+			return true
+		}
+	}
+	return false
+}
+
 func CreateObject(name string, epoch int32, obj_type *string, status *string, notBefore *time.Time,
 		notAfter *time.Time, v []byte) (*ObjectMessage, error) {
 	obj_id := &ObjectIdMessage {
@@ -66,9 +84,53 @@ func CreateObject(name string, epoch int32, obj_type *string, status *string, no
 	return obj, nil
 }
 
-func AddObject(l *list.List, obj interface{}) error {
-	// TODO(jlm): Make sure it's not already there.
-	l.PushFront(obj)
+func AddObjectId(l *list.List, obj ObjectIdMessage) error {
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ObjectIdMessage)
+		if o.ObjName == obj.ObjName && o.ObjEpoch == obj.ObjEpoch {
+			return nil
+		}
+	}
+	l.PushFront(interface{}(obj))
+	return nil
+}
+
+func AddObject(l *list.List, obj ObjectMessage) error {
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ObjectMessage)
+		if o.ObjId.ObjName == obj.ObjId.ObjName && o.ObjId.ObjEpoch == obj.ObjId.ObjEpoch {
+			return nil
+		}
+	}
+	l.PushFront(interface{}(obj))
+	return nil
+}
+
+func AddProtectedObject(l *list.List, obj ProtectedObjectMessage) error {
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ProtectedObjectMessage)
+		if o.ProtectedObjId.ObjName == obj.ProtectedObjId.ObjName &&
+		   o.ProtectedObjId.ObjEpoch == obj.ProtectedObjId.ObjEpoch &&
+		   o.ProtectorObjId.ObjName == obj.ProtectorObjId.ObjName &&
+		   o.ProtectorObjId.ObjEpoch == obj.ProtectorObjId.ObjEpoch {
+			return nil
+		}
+	}
+	l.PushFront(interface{}(obj))
+	return nil
+}
+
+func AddNode(l *list.List, obj NodeMessage) error {
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(NodeMessage)
+		if o.ProtectedObjId.ObjName == obj.ProtectedObjId.ObjName &&
+		   o.ProtectedObjId.ObjEpoch == obj.ProtectedObjId.ObjEpoch &&
+		   o.ProtectorObjId.ObjName == obj.ProtectorObjId.ObjName &&
+		   o.ProtectorObjId.ObjEpoch == obj.ProtectorObjId.ObjEpoch {
+			return nil
+		}
+	}
+	l.PushFront(interface{}(obj))
 	return nil
 }
 
@@ -110,7 +172,6 @@ func DeleteNode(l *list.List, protectorName string, protectorEpoch int32,
 }
 
 func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
-	// TODO(jlm): add status condition
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -126,7 +187,6 @@ func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
 }
 
 func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
-	// TODO(jlm): add status condition
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -141,10 +201,12 @@ func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
 	return r
 }
 
-func FindObject(l *list.List, name string, epoch int32) (*ObjectMessage) {
-	// TODO(jlm): add status condition and type condition
+func FindObject(l *list.List, name string, epoch int32, types []string, statuses []string) (*ObjectMessage) {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectMessage)
+		if !stringMatch(o.ObjStatus, statuses) || !stringMatch(o.ObjType, statuses) {
+			continue
+		}
 		if epoch != 0 && epoch != *o.ObjId.ObjEpoch {
 			continue
 		}
@@ -364,17 +426,11 @@ func MakeNode(protectorName string, protectorEpoch int32, protectedName string,
 	return nodeMsg
 }
 
-func AddNode(l *list.List, obj interface{}) error {
-	l.PushFront(obj)
-	return nil
-}
-
 func isValid(obj ObjectMessage) (bool) {
 	// if object is not active or the dates are wrong, return false
 	if *obj.ObjStatus != "active" {
 		return false
 	}
-/*
 	tb, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", *obj.NotBefore)
 	if err != nil {
 		return false
@@ -384,15 +440,16 @@ func isValid(obj ObjectMessage) (bool) {
 		return false
 	}
 	tn := time.Now()
-	if !tn.After(tb) || tn.Before(ta) {
+	if tb.After(tn) || ta.Before(tn) {
 		return false
 	}
- */
 	return true
 }
 
+// Construct chain of protector objects for (nameNode, epochNode)
+// Stops when there are no protectors for top object
 func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int32,
-	nameTop *string, epochTop *int32, seen_list *list.List,
+	statuses []string, types []string, nameTop *string, epochTop *int32, seen_list *list.List,
 	node_list *list.List) (*list.List, error) {
 
 	if nameTop != nil &&  *nameTop == nameNode {
@@ -407,26 +464,30 @@ func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int
 	for e := pl.Front(); e != nil; e = e.Next() {
 		o := e.Value.(NodeMessage)
 		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
-                        *o.ProtectorObjId.ObjEpoch)
+                        *o.ProtectorObjId.ObjEpoch, statuses, types)
 		if t != nil {
 			return nil, errors.New("Circular list")
 		}
 		t = FindObject(obj_list, *o.ProtectorObjId.ObjName,
-			*o.ProtectorObjId.ObjEpoch)
+			*o.ProtectorObjId.ObjEpoch, statuses, types)
+		if t == nil {
+			return seen_list, nil
+		}
 		if !isValid(*t) {
 			continue
 		}
 		AddObject(seen_list, *t)
 		return ConstructProtectorChain(obj_list,
-			*o.ProtectorObjId.ObjName,
-			*o.ProtectorObjId.ObjEpoch,
-			nameTop, epochTop, seen_list, node_list)
+			*o.ProtectorObjId.ObjName, *o.ProtectorObjId.ObjEpoch,
+			statuses, types, nameTop, epochTop, seen_list, node_list)
 	}
 	return seen_list, nil
 }
 
-// TODO(JLM): add status
+// Construct chain of protector objects for (nameNode, epochNode)
+//	Chain must terminate with an object from the base list
 func ConstructProtectorChainFromBase(obj_list *list.List, nameNode string, epochNode int32,
+	statuses []string, types []string,
 	base_list *list.List, seen_list *list.List, node_list *list.List) (*list.List, error) {
 
 	// if object is in base list, we're done
@@ -446,19 +507,19 @@ func ConstructProtectorChainFromBase(obj_list *list.List, nameNode string, epoch
 	for e := pl.Front(); e != nil; e = e.Next() {
 		o := e.Value.(NodeMessage)
 		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
-                        *o.ProtectorObjId.ObjEpoch)
+                        *o.ProtectorObjId.ObjEpoch, statuses, types)
 		if t != nil {
 			return nil, errors.New("Circular list")
 		}
 		t = FindObject(obj_list, *o.ProtectorObjId.ObjName,
-			*o.ProtectorObjId.ObjEpoch)
+			*o.ProtectorObjId.ObjEpoch, statuses, types)
 		if !isValid(*t) {
 			continue
 		}
 		AddObject(seen_list, *t)
 		return ConstructProtectorChainFromBase(obj_list,
 			*o.ProtectorObjId.ObjName, *o.ProtectorObjId.ObjEpoch,
-			base_list, seen_list, node_list)
+			statuses, types, base_list, seen_list, node_list)
 	}
 	return nil, errors.New("Can't find any base value")
 }

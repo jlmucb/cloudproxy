@@ -54,7 +54,7 @@ func TestBasicObject(t *testing.T) {
 	_ = protected_objects.AddObject(obj_list, *obj_2)
 	_ = protected_objects.AddObject(obj_list, *obj_3)
 
-	o3 := protected_objects.FindObject(obj_list, *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch)
+	o3 := protected_objects.FindObject(obj_list, *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch, nil, nil)
 	fmt.Printf("Found object\n")
 	protected_objects.PrintObject(o3)
 
@@ -134,14 +134,16 @@ func TestBasicObject(t *testing.T) {
 	}
 	fmt.Printf("\n")
 
+	statuses := []string{"active"}
+
 	seen_list := list.New()
 	chain, err := protected_objects.ConstructProtectorChain(obj_list,
-		"/jlm/file/file1", 1, nil, nil, seen_list, n_list)
+		"/jlm/file/file1", 1, statuses, nil, nil, nil, seen_list, n_list)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't ConstructProtectorChain ")
 	}
-	fmt.Printf("Chain:\n")
+	fmt.Printf("Protector Chain:\n")
 	for e := chain.Front(); e != nil; e = e.Next() {
 		o := e.Value.(protected_objects.ObjectMessage)
 		protected_objects.PrintObject(&o)
@@ -158,9 +160,9 @@ func TestBasicObject(t *testing.T) {
 	seen_list_base := list.New()
 	target.ObjName = &base_name
 	target.ObjEpoch= &base_epoch
-	protected_objects.AddObject(base_list, *target)
+	protected_objects.AddObjectId(base_list, *target)
 	chain, err = protected_objects.ConstructProtectorChainFromBase(obj_list,
-		"/jlm/file/file1", 1, base_list, seen_list_base, n_list)
+		"/jlm/file/file1", 1, statuses, nil, base_list, seen_list_base, n_list)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't ConstructProtectorChainFromBase")
@@ -176,9 +178,9 @@ func TestBasicObject(t *testing.T) {
 	seen_list_base = list.New()
 	target.ObjName = &base_name
 	target.ObjEpoch= &base_epoch
-	protected_objects.AddObject(base_list, *target)
+	protected_objects.AddObjectId(base_list, *target)
 	chain, err = protected_objects.ConstructProtectorChainFromBase(obj_list,
-		"/jlm/file/file1", 1, base_list, seen_list_base, n_list)
+		"/jlm/file/file1", 1, statuses, nil, base_list, seen_list_base, n_list)
 	if err == nil {
 		fmt.Printf("shouldn't have found any satisfying objects")
 	}
@@ -191,3 +193,24 @@ func TestConstructChain(t *testing.T) {
 	// validate chain
 }
 
+
+func TestTime(t *testing.T) {
+	ttb := time.Now()
+	ttn := time.Now()
+	tta := time.Now()
+	tb, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", ttb.String())
+	if err != nil {
+		t.Fatal("Can't parse time before\n")
+	}
+	ta, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", tta.String())
+	if err != nil {
+		t.Fatal("Can't parse time after\n")
+	}
+	fmt.Printf("tb: %s, tn: %s, ta: %s\n", tb.String(), ttn.String(), ta.String())
+	if tb.After(ttn) {
+		t.Fatal("Time after fails\n")
+	}
+	if ta.Before(ttn) {
+		t.Fatal("Time before fails\n")
+	}
+}

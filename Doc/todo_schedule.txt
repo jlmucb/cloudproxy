@@ -18,11 +18,11 @@ Code walk-through
 Security Review		Full security review						John/Ben	July, 2016
 
 Key management library	CPRotation library: Epochs, key-protection chains		John		June, 2016
-			"PolicyKey says Program-Name canRead zone-keys			John
+			"PolicyKey says Program-Name canRead zone-keys"			John
 
 Infrastructure servers	Full feature CPDomainServer					Sid, John?	Aug, 2016
 			Full feature CPSecretServer					Albert?		Oct, 2016
-			Auth for the masse
+			Auth for the masses
 
 New SecApp		Some nifty new app						Albert		Dec, 2016
 			and even standard for example apps
@@ -37,4 +37,7 @@ Industry App		Some deployed major player app							March, 2017
 
 Docker/Kubernetes in	Packaged support for Docker and Kubernetes deployment		John, Tom, Sid
 a box
+
+
+Check: key wiping
 

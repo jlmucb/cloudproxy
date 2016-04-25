@@ -1,4 +1,4 @@
 #
 source ./defines
-$BINPATH/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass xxx &
+sudo $BINPATH/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass xxx &
 

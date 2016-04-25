@@ -1,4 +1,4 @@
 #
 source ./defines
-$BINPATH/tao host init -tao_domain $DOMAIN -hosting process -root -pass xxx
+sudo $BINPATH/tao host init -tao_domain $DOMAIN -hosting process -root -pass xxx
 

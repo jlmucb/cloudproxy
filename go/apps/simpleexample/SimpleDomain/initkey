@@ -4,8 +4,8 @@ if [[ -e $DOMAIN/linux_tao_host ]]
 then
   echo "$DOMAIN/linux_tao_host exists"
 else
-  mkdir $DOMAIN/linux_tao_host
+  sudo mkdir $DOMAIN/linux_tao_host
   echo "$DOMAIN/linux_tao_host created"
 fi
-KEY_NAME="$($BINPATH/tao domain newsoft -soft_pass xxx -config_template $TEMPLATE $DOMAIN/linux_tao_host)"
-echo "host_name: \"$KEY_NAME\"" >> $TEMPLATE
+KEY_NAME="$(sudo $BINPATH/tao domain newsoft -soft_pass xxx -config_template $TEMPLATE $DOMAIN/linux_tao_host)"
+echo "host_name: \"$KEY_NAME\"" | sudo tee -a $TEMPLATE

@@ -1,6 +1,5 @@
 #
 source ./defines
-export TAO_DOMAIN=$DOMAIN
 #$BINPATH/tao run $BINPATH/simpleserver –pass xxx &
-$BINPATH/tao run ../simpleserver –pass xxx &
+sudo $BINPATH/tao run -tao_domain $DOMAIN  ../simpleserver –pass xxx &
 

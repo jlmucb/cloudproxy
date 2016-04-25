@@ -42,9 +42,9 @@ datalog_rules: "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
 
 host_predicate_name: "TrustedHost"
 
-program_paths: "simpledomainservice"
-program_paths: "simpleclient"
-program_paths: "simpleserver"
+program_paths: "/Domains/simpledomainservice"
+program_paths: "/Domains/simpleclient"
+program_paths: "/Domains/simpleserver"
 program_paths: "mixnet_router"
 program_predicate_name: "TrustedProgramHash"
 

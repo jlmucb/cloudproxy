@@ -1,5 +1,4 @@
 #
 source ./defines
-export TAO_DOMAIN=$DOMAIN
 # $BINPATH/tao run $BINPATH/simpledomainservice &
-$BINPATH/tao run ../simpledomainservice &
+sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/simpledomainservice &

@@ -36,8 +36,8 @@ func PrintObject(obj *ObjectMessage) {
 }
 
 func PrintProtectedObject(obj *ProtectedObjectMessage) {
+	fmt.Printf("Object %s, epoch %d protects ", *obj.ProtectorObjId.ObjName, *obj.ProtectorObjId.ObjEpoch)
 	fmt.Printf("Object %s, epoch %d\n", *obj.ProtectedObjId.ObjName, *obj.ProtectedObjId.ObjEpoch)
-	fmt.Printf("Object %s, epoch %d\n", *obj.ProtectorObjId.ObjName, *obj.ProtectorObjId.ObjEpoch)
 }
 
 func PrintNode(obj *NodeMessage) {
@@ -436,7 +436,7 @@ func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch
 	p.ProtectedObjId = new(ObjectIdMessage)
 	p.ProtectorObjId = new(ObjectIdMessage)
 	p.ProtectedObjId.ObjName = obj.ObjId.ObjName
-	p.ProtectedObjId.ObjEpoch =obj.ObjId.ObjEpoch
+	p.ProtectedObjId.ObjEpoch = obj.ObjId.ObjEpoch
 	p.ProtectorObjId.ObjName = &protectorName
 	p.ProtectorObjId.ObjEpoch = &protectorEpoch
 	unencrypted, err := proto.Marshal(&obj)

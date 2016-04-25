@@ -108,8 +108,10 @@ func AddAndRotateNewKeyEpoch(name_obj string,  obj_type string, existing_status 
 	if old_obj == nil {
 		return 1, nil
 	}
-	old_protected:= protected_objects.FindProtectedNodes(node_list, name_obj, *old_obj.ObjId.ObjEpoch)
+	old_protected := protected_objects.FindProtectedNodes(node_list, name_obj, *old_obj.ObjId.ObjEpoch)
 	if old_protected == nil  || old_protected.Len() <= 0 {
+		fmt.Printf("old protector: %s, %d\n", name_obj, *old_obj.ObjId.ObjEpoch)
+		return -1, errors.New("Can't Find protected nodes")
 	}
 	for e := old_protected.Front(); e != nil; e = e.Next() {
 		old := e.Value.(protected_objects.NodeMessage)

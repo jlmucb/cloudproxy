@@ -24,11 +24,6 @@ message object_message {
   optional bytes obj_val                      = 6;
 }
 
-message node_message {
-  required object_id_message protected_obj_id = 1;
-  optional object_id_message protector_obj_id = 2;
-}
-
 message protected_object_message {
   required object_id_message protected_obj_id = 1;
   optional object_id_message protector_obj_id = 2;

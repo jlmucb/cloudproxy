@@ -40,13 +40,6 @@ func PrintProtectedObject(obj *ProtectedObjectMessage) {
 	fmt.Printf("Object %s, epoch %d\n", *obj.ProtectedObjId.ObjName, *obj.ProtectedObjId.ObjEpoch)
 }
 
-func PrintNode(obj *NodeMessage) {
-	fmt.Printf("ProtectedObject %s, epoch %d\n", *obj.ProtectedObjId.ObjName,
-		 *obj.ProtectedObjId.ObjEpoch)
-	fmt.Printf("ProtectorObject %s, epoch %d\n", *obj.ProtectorObjId.ObjName,
-		 *obj.ProtectorObjId.ObjEpoch)
-}
-
 // Generic string matcher
 //	if names list is nil, anything matches
 //	otherwise name must match one string in names list
@@ -124,21 +117,6 @@ func AddProtectedObject(l *list.List, obj ProtectedObjectMessage) error {
 	return nil
 }
 
-// Add the indicated node to the list.
-func AddNode(l *list.List, obj NodeMessage) error {
-	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(NodeMessage)
-		if o.ProtectedObjId.ObjName == obj.ProtectedObjId.ObjName &&
-		   o.ProtectedObjId.ObjEpoch == obj.ProtectedObjId.ObjEpoch &&
-		   o.ProtectorObjId.ObjName == obj.ProtectorObjId.ObjName &&
-		   o.ProtectorObjId.ObjEpoch == obj.ProtectorObjId.ObjEpoch {
-			return nil
-		}
-	}
-	l.PushFront(interface{}(obj))
-	return nil
-}
-
 // Remove the referenced object from the list.
 func DeleteObject(l *list.List, name string, epoch int32) error {
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -163,32 +141,16 @@ func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 	return nil
 }
 
-// Remove the referenced node from the list.
-func DeleteNode(l *list.List, protectorName string, protectorEpoch int32,
-	protectedName string, protectedEpoch int32) error {
-	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(ProtectedObjectMessage)
-		if *o.ProtectedObjId.ObjName == protectedName &&
-				*o.ProtectedObjId.ObjEpoch == protectedEpoch  &&
-				*o.ProtectorObjId.ObjName == protectorName &&
-				*o.ProtectorObjId.ObjEpoch == protectorEpoch {
-			l.Remove(e)
-			break;
-		}
-	}
-	return nil
-}
-
 // Find objects protected by object with given name and epoch.
-func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
+func FindProtectedObjects(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(NodeMessage)
-		if epoch != 0 && epoch != *o.ProtectedObjId.ObjEpoch {
+		o := e.Value.(ProtectedObjectMessage)
+		if epoch != 0 && epoch != *o.ProtectorObjId.ObjEpoch {
 			continue
 		}
-		if name == *o.ProtectedObjId.ObjName {
+		if name == *o.ProtectorObjId.ObjName {
 			r.PushFront(o)
 		}
         }
@@ -196,15 +158,15 @@ func FindProtectedNodes(l *list.List, name string, epoch int32) (*list.List) {
 }
 
 // Find protectors of the object with given name and epoch.
-func FindProtectorNodes(l *list.List, name string, epoch int32) (*list.List) {
+func FindProtectorObjects(l *list.List, name string, epoch int32) (*list.List) {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(NodeMessage)
-		if epoch != 0 && epoch != *o.ProtectorObjId.ObjEpoch {
+		o := e.Value.(ProtectedObjectMessage)
+		if epoch != 0 && epoch != *o.ProtectedObjId.ObjEpoch {
 			continue
 		}
-		if name == *o.ProtectorObjId.ObjName {
+		if name == *o.ProtectedObjId.ObjName {
 			r.PushFront(o)
 		}
         }
@@ -303,28 +265,6 @@ func SaveProtectedObjects(l *list.List, file string) error {
 	return nil
 }
 
-// Marshal nodes and save them in a file.
-// nil is error return
-func SaveNodes(l *list.List, file string) error {
-	var node_store NodeStoreMessage
-
-	for e := l.Front(); e != nil; e = e.Next() {
-		o := e.Value.(NodeMessage)
-		p := new(NodeMessage)
-		p.ProtectedObjId.ObjName = o.ProtectedObjId.ObjName
-		p.ProtectedObjId.ObjEpoch = o.ProtectedObjId.ObjEpoch
-		p.ProtectorObjId.ObjName = o.ProtectorObjId.ObjName
-		p.ProtectorObjId.ObjEpoch = o.ProtectorObjId.ObjEpoch
-		node_store.NodeObjects = append(node_store.NodeObjects, p)
-	}
-	b, err := proto.Marshal(&node_store)
-	if err != nil {
-		return err
-	}
-	ioutil.WriteFile(file, b, 0644)
-	return nil
-}
-
 // Marshal objects and save them in a file.
 // nil is error return
 func SaveObjects(l *list.List, file string) error {
@@ -371,30 +311,6 @@ func LoadProtectedObjects(file string) (*list.List) {
 		o.ProtectedObjId.ObjName = v.ProtectedObjId.ObjName
 		o.ProtectedObjId.ObjEpoch = v.ProtectedObjId.ObjEpoch
 		o.Blob = v.Blob
-		l.PushFront(*o)
-	}
-	return l
-}
-
-// Read and unmarshal a node file.
-func LoadNodes(file string) (*list.List) {
-	var node_store NodeStoreMessage
-
-	buf, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil
-	}
-	err = proto.Unmarshal(buf, &node_store)
-	if err != nil {
-		return nil
-	}
-	l := list.New()
-	for _, v := range(node_store.NodeObjects) {
-		o := new(NodeMessage)
-		o.ProtectedObjId.ObjName = v.ProtectedObjId.ObjName
-		o.ProtectedObjId.ObjEpoch = v.ProtectedObjId.ObjEpoch
-		o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
-		o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
 		l.PushFront(*o)
 	}
 	return l
@@ -465,23 +381,6 @@ func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (
 	return p, nil
 }
 
-// Make a node
-func MakeNode(protectorName string, protectorEpoch int32, protectedName string,
-	protectedEpoch int32) (*NodeMessage) {
-	protector := &ObjectIdMessage {
-		ObjName: &protectorName,
-		ObjEpoch: &protectorEpoch,
-	}
-	protected := &ObjectIdMessage {
-		ObjName: &protectedName,
-		ObjEpoch: &protectedEpoch,
-	}
-	nodeMsg := new(NodeMessage)
-	nodeMsg.ProtectedObjId = protected
-	nodeMsg.ProtectorObjId = protector
-	return nodeMsg
-}
-
 // Is object the right type, have the right status and in it's validity period?
 func IsValid(obj ObjectMessage, statuses []string, types []string) (bool) {
 	// if object is not active or the dates are wrong, return false
@@ -506,23 +405,24 @@ func IsValid(obj ObjectMessage, statuses []string, types []string) (bool) {
 	return true
 }
 
-// Construct chain of protector objects for (nameNode, epochNode)
+// Construct chain of protector objects for (nameProtector, epochProtector)
 // Stops when there are no protectors for top object
-func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int32,
-	statuses []string, types []string, nameTop *string, epochTop *int32, seen_list *list.List,
-	node_list *list.List) (*list.List, error) {
+func ConstructProtectorChain(obj_list *list.List, nameProtector string, epochProtector int32,
+	nameTop *string, epochTop *int32,
+	statuses []string, types []string, seen_list *list.List,
+	protected_object_list *list.List) (*list.List, error) {
 
-	if nameTop != nil &&  *nameTop == nameNode {
-		if epochTop == nil || *epochTop == epochNode {
+	if nameTop != nil &&  *nameTop == nameProtector {
+		if epochTop == nil || *epochTop == epochProtector {
 			return seen_list, nil
 		}
 	}
-	pl := FindProtectedNodes(node_list, nameNode, epochNode)
+	pl := FindProtectedObjects(protected_object_list, nameProtector, epochProtector)
 	if pl == nil {
-		return nil, errors.New("ProtectedNode error")
+		return nil, errors.New("FindProtectedObject error")
 	}
 	for e := pl.Front(); e != nil; e = e.Next() {
-		o := e.Value.(NodeMessage)
+		o := e.Value.(ProtectedObjectMessage)
 		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
                         *o.ProtectorObjId.ObjEpoch, statuses, types)
 		if t != nil {
@@ -539,33 +439,34 @@ func ConstructProtectorChain(obj_list *list.List, nameNode string, epochNode int
 		AddObject(seen_list, *t)
 		return ConstructProtectorChain(obj_list,
 			*o.ProtectorObjId.ObjName, *o.ProtectorObjId.ObjEpoch,
-			statuses, types, nameTop, epochTop, seen_list, node_list)
+			nameTop, epochTop,
+			statuses, types, seen_list, protected_object_list)
 	}
 	return seen_list, nil
 }
 
-// Construct chain of protector objects for (nameNode, epochNode)
+// Construct chain of protector objects for (nameProtected, epochProtected)
 //	Chain must terminate with an object from the base list
-func ConstructProtectorChainFromBase(obj_list *list.List, nameNode string, epochNode int32,
-	statuses []string, types []string,
-	base_list *list.List, seen_list *list.List, node_list *list.List) (*list.List, error) {
+func ConstructProtectorChainFromBase(obj_list *list.List, nameProtected string, epochProtected int32,
+		statuses []string, types []string, base_list *list.List,
+		seen_list *list.List, protected_object_list *list.List) (*list.List, error) {
 
 	// if object is in base list, we're done
 	for e := base_list.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectIdMessage)
-		if *o.ObjName == nameNode {
-			if o.ObjEpoch == nil  || *o.ObjEpoch == epochNode {
+		if *o.ObjName == nameProtected {
+			if o.ObjEpoch == nil  || *o.ObjEpoch == epochProtected {
 				return seen_list, nil
 			}
 		}
 	}
 
-	pl := FindProtectedNodes(node_list, nameNode, epochNode)
+	pl := FindProtectorObjects(protected_object_list, nameProtected, epochProtected)
 	if pl == nil {
-		return nil, errors.New("ProtectedNode error")
+		return nil, errors.New("FindProtectorobjects error")
 	}
 	for e := pl.Front(); e != nil; e = e.Next() {
-		o := e.Value.(NodeMessage)
+		o := e.Value.(ProtectedObjectMessage)
 		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
                         *o.ProtectorObjId.ObjEpoch, statuses, types)
 		if t != nil {
@@ -579,7 +480,7 @@ func ConstructProtectorChainFromBase(obj_list *list.List, nameNode string, epoch
 		AddObject(seen_list, *t)
 		return ConstructProtectorChainFromBase(obj_list,
 			*o.ProtectorObjId.ObjName, *o.ProtectorObjId.ObjEpoch,
-			statuses, types, base_list, seen_list, node_list)
+			statuses, types, base_list, seen_list, protected_object_list)
 	}
 	return nil, errors.New("Can't find any base value")
 }

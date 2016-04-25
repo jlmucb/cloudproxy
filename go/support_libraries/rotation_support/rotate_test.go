@@ -162,36 +162,23 @@ func TestAddAndRotate(t *testing.T) {
 		t.Fatal("Can't add protected object")
 	}
 
-	n1 := protected_objects.MakeNode("/jlm/key/key1", 1, "/jlm/file/file1", 1)
-	if n1 == nil {
-	        t.Fatal("Can't make node")
-	}
-
-	n2 := protected_objects.MakeNode("/jlm/key/key2", 1, "/jlm/key/key1", 1)
-	if n2 == nil {
-	        t.Fatal("Can't make node")
-	}
-
 	fmt.Printf("\n\n")
+	fmt.Printf("Initial Objects\n")
+	for e := obj_list.Front(); e != nil; e = e.Next() {
+		o := e.Value.(protected_objects.ObjectMessage)
+		protected_objects.PrintObject(&o)
+	}
+	fmt.Printf("\n\nInitial protected objects\n")
 	for e := protected_obj_list.Front(); e != nil; e = e.Next() {
 		o := e.Value.(protected_objects.ProtectedObjectMessage)
 		protected_objects.PrintProtectedObject(&o)
 	}
+	fmt.Printf("\n\n")
 
-	node_list := list.New()
-	err = protected_objects.AddNode(node_list, *n1)
-	if err != nil {
-	        t.Fatal("Can't add node")
-	}
-	err = protected_objects.AddNode(node_list, *n2)
-	if err != nil {
-	        t.Fatal("Can't add node")
-	}
-
-return
 	n, err := rotation_support.AddAndRotateNewKeyEpoch("/jlm/key/key2", "key", "active", "active",
-			nb.String(), na.String(), newkey, node_list, obj_list, protected_obj_list) 
+			nb.String(), na.String(), newkey, obj_list, protected_obj_list) 
 	if err != nil {
+		fmt.Printf("Err: %s\n", err)
 		t.Fatal("Can't AddAndRotateNewKeyEpoch")
 	}
 	fmt.Printf("\n\n")
@@ -202,6 +189,13 @@ return
 		o := e.Value.(protected_objects.ProtectedObjectMessage)
 		protected_objects.PrintProtectedObject(&o)
 	}
+	fmt.Printf("\n\n")
+	fmt.Printf("Objects\n")
+	for e := obj_list.Front(); e != nil; e = e.Next() {
+		o := e.Value.(protected_objects.ObjectMessage)
+		protected_objects.PrintObject(&o)
+	}
+	fmt.Printf("\n\n")
 	// reencrypt the things it supports
 	// check the encryption
 }

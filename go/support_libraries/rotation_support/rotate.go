@@ -94,23 +94,23 @@ func AddNewKeyEpoch(l *list.List, name_obj string, obj_type string, existing_sta
 // Return new epoch.
 func AddAndRotateNewKeyEpoch(name_obj string,  obj_type string, existing_status string,
 		new_status string, notBefore string, notAfter string, value []byte,
-		obj_list *list.List, protected_obj_list *list.List) (int, error) {
+		obj_list *list.List, protected_obj_list *list.List) (*protected_objects.ObjectMessage, error) {
 	old_obj, new_obj, err := AddNewKeyEpoch(obj_list, name_obj, obj_type, existing_status,
                     new_status, notBefore, notAfter, value)
 	if err != nil || new_obj == nil {
-		return -1, errors.New("Can't create new epoch")
+		return nil, errors.New("Can't create new epoch")
 	}
 	err = protected_objects.AddObject(obj_list, *new_obj)
 	if err != nil {
-		return -1, errors.New("Can't add new key")
+		return nil, errors.New("Can't add new key")
 	}
 	if old_obj == nil {
-		return 1, nil
+		return new_obj, nil
 	}
 	old_protected := protected_objects.FindProtectedObjects(protected_obj_list, name_obj, *old_obj.ObjId.ObjEpoch)
 	if old_protected == nil  || old_protected.Len() <= 0 {
 		fmt.Printf("old protector: %s, %d\n", name_obj, *old_obj.ObjId.ObjEpoch)
-		return -1, errors.New("Can't Find protected nodes")
+		return nil, errors.New("Can't Find protected nodes")
 	}
 	for e := old_protected.Front(); e != nil; e = e.Next() {
 		old := e.Value.(protected_objects.ProtectedObjectMessage)
@@ -118,17 +118,17 @@ func AddAndRotateNewKeyEpoch(name_obj string,  obj_type string, existing_status 
 		protected_epoch := *old.ProtectedObjId.ObjEpoch
 		old_protected_obj := protected_objects.FindObject(obj_list, protected_name, protected_epoch, nil, nil)
 		if old_protected_obj == nil {
+			return nil, errors.New("Can't find object")
 		}
 		new_protected_obj, err := protected_objects.MakeProtectedObject(*old_protected_obj,
 					*new_obj.ObjId.ObjName, *new_obj.ObjId.ObjEpoch, new_obj.ObjVal)
 		if new_protected_obj == nil || err != nil {
-			return -1, errors.New("Can't make new protected object")
+			return new_obj, errors.New("Can't make new protected object")
 		}
 		err = protected_objects.AddProtectedObject(protected_obj_list, *new_protected_obj)
 		if err != nil {
-			return -1, errors.New("Can't add new protected node")
+			return new_obj, errors.New("Can't add new protected node")
 		}
 	}
-	_ = RetireObject(obj_list, *old_obj.ObjId.ObjName, int(*old_obj.ObjId.ObjEpoch))
-	return int(*new_obj.ObjId.ObjEpoch), nil
+	return new_obj, nil
 }

@@ -175,14 +175,14 @@ func TestAddAndRotate(t *testing.T) {
 	}
 	fmt.Printf("\n\n")
 
-	n, err := rotation_support.AddAndRotateNewKeyEpoch("/jlm/key/key2", "key", "active", "active",
+	new_obj, err := rotation_support.AddAndRotateNewKeyEpoch("/jlm/key/key2", "key", "active", "active",
 			nb.String(), na.String(), newkey, obj_list, protected_obj_list) 
 	if err != nil {
 		fmt.Printf("Err: %s\n", err)
 		t.Fatal("Can't AddAndRotateNewKeyEpoch")
 	}
 	fmt.Printf("\n\n")
-	fmt.Printf("New epoch: %d\n", n)
+	fmt.Printf("New key: %s, %d\n", new_obj.ObjId.ObjName, new_obj.ObjId.ObjEpoch)
 	fmt.Printf("\n\n")
 	fmt.Printf("Protected objects\n")
 	for e := protected_obj_list.Front(); e != nil; e = e.Next() {
@@ -196,7 +196,19 @@ func TestAddAndRotate(t *testing.T) {
 		protected_objects.PrintObject(&o)
 	}
 	fmt.Printf("\n\n")
-	// reencrypt the things it supports
-	// check the encryption
+	// Check we can open protected object with new protector
+	protected_kids := protected_objects.FindProtectedObjects(protected_obj_list, *new_obj.ObjId.ObjName,
+			*new_obj.ObjId.ObjEpoch)
+	if err != nil {
+		t.Fatal("Can't FindProtected kids")
+	}
+	e := protected_kids.Front()
+	o := e.Value.(protected_objects.ProtectedObjectMessage)
+	obj, err := protected_objects.RecoverProtectedObject(&o, new_obj.ObjVal)
+	if err != nil || obj == nil{
+		t.Fatal("Can't recover first kid")
+	}
+	fmt.Printf("\n\nRecovered:\n")
+	protected_objects.PrintObject(obj)
 }
 

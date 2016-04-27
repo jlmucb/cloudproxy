@@ -1,0 +1,26 @@
+// To compile: protoc -I=. --go_out=. directive.proto
+
+// Definition of protobufs for directives.
+syntax = "proto2";
+
+package secret_disclosure;
+
+message directive_message {
+  // As of now, the only type supported is "secret_disclosure".
+  enum directive_type {
+    SECRET_DISCLOSURE = 1;
+  }
+  optional directive_type type = 1;
+
+  // A serialized statement. This is serialized using cloudproxy/tao/auth.Marshal().
+  //
+  // The statement corresponding to type "key_disclosure" must be of the form:
+  // policy_key says program_name can read (secret_name, epoch).
+  optional bytes serialized_statement = 2;
+
+  // The signer's public key, encoded using clouddproxy/tao/auth.Marshal().
+  optional bytes signer = 3;
+
+  // Signature over the serialized statement.
+  optional bytes signature = 4;
+}

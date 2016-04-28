@@ -40,4 +40,7 @@ a box
 
 
 Check: key wiping
+Change domain program loading:  should a host name be extended by a program loading policy?  The policy
+key for the host should almost certainly not have to sign every image that is run.  In a cloud
+setting it would kill scale and make the host policy key vulnerable. Check with Tom.
 

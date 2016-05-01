@@ -103,9 +103,9 @@ std::string tpmutil_ops[] = {
     "--command=DictionaryAttackLockReset",
     "--command=KeyCombinedTest",
     "--command=NvCombinedTest",
-    "--command=NvCombinedSessionTest",
     "--command=ContextCombinedTest",
     "--command=EndorsementCombinedTest",
+    "--command=NvCombinedSessionTest",
 };
 
 // standard buffer size
@@ -140,7 +140,8 @@ int main(int an, char** av) {
   if (FLAGS_command == "GetCapabilities") {
     int size = 512;
     byte buf[512];
-    if (!Tpm2_GetCapability(tpm, TPM_CAP_TPM_PROPERTIES, FLAGS_startHandle, &size, buf)) {
+    if (!Tpm2_GetCapability(tpm, TPM_CAP_TPM_PROPERTIES, FLAGS_startHandle,
+                            &size, buf)) {
       printf("Tpm2_GetCapability failed\n");
     }
     PrintCapabilities(size, buf);
@@ -1209,14 +1210,71 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
 
 class EncryptedSessionAuthInfo {
 public:
+  TPMI_ALG_HASH hash_alg_;
   TPM2B_NONCE oldNonce_;
   TPM2B_NONCE newNonce_;
-  byte session_key[128];
+  int sessionKeySize_;
+  byte sessionKey_[256];
 };
 
-void CalculateKeys(EncryptedSessionAuthInfo& in) {
+bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& authValue,
+        TPM2B_DIGEST& rawSalt) {
 // sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
 //                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
+  int sizeKey= SizeHash(in.hash_alg_);
+
+  string label= "AUTH";
+  string key;
+  string contextU;
+  string contextV;
+
+  key.assign((const char*)authValue.buffer, authValue.size);
+  key.append((const char*)rawSalt.buffer, rawSalt.size);
+  contextV.clear();
+  contextU.clear();
+  contextU.assign((const char*)in.newNonce_.buffer, in.newNonce_.size);
+  contextV.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
+  if (!KDFa(in.hash_alg_, key, label, contextU, contextV,
+            128, 256, in.sessionKey_)) {
+    printf("Can't KDFa symKey\n");
+    return false;
+  }
+  printf("Calculated session key: ");
+  PrintBytes(16, in.sessionKey_); printf("\n");
+
+  byte zero_iv[32];
+  memset(zero_iv, 0, 32);
+
+  int in_size = 64;
+  int out_size = 64;
+  int check_size = 64;
+  byte in_bytes[64];
+  byte out_bytes[64];
+  byte check_bytes[64];
+
+  if (!AesCFBEncrypt(in.sessionKey_, in_size, in_bytes,
+                     16, zero_iv,
+                     &out_size, out_bytes)) {
+    printf("Can't AesCFBEncrypt\n");
+    return false;
+  }
+
+  if (!AesCFBDecrypt(in.sessionKey_, out_size, out_bytes,
+                     16, zero_iv,
+                     &check_size, check_bytes)) {
+    printf("Can't AesCFBDecrypt\n");
+    return false;
+  }
+  if (!Equal(in_size, in_bytes, check_size, check_bytes)) {
+    printf("Decrypt failure\n");
+    return false;
+  }
+
+/*
+  int size_hmacKey = SizeHash(hash_alg_id);
+  byte hmacKey[128];
+ */
+  return true;
 }
 
 void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
@@ -1490,7 +1548,6 @@ bool Tpm2_DefineEncryptedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX
     return false;
   return true;
 }
-
 #endif
 
 
@@ -1514,7 +1571,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   TPM2B_ENCRYPTED_SECRET salt;
   TPMT_SYM_DEF symmetric;
-  TPM_HANDLE session_handle = 0;
+  TPM_HANDLE sessionHandle = 0;
   TPML_PCR_SELECTION pcrSelect;
   TPM2B_DIGEST secret;
   EncryptedSessionAuthInfo authInfo;
@@ -1531,17 +1588,15 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("Initial nonce: "); PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("Secret: "); PrintBytes(secret.size, secret.buffer); printf("\n");
 
-
   // Get endorsement key handle
 
   string emptyAuth;
-
   TPM_HANDLE ekHandle;
   TPM2B_PUBLIC pub_out;
   TPM2B_NAME pub_name;
   TPM2B_NAME qualified_pub_name;
-  uint16_t pub_blob_size = 1024;
-  byte pub_blob[1024];
+  uint16_t pub_blob_size = 2048;
+  byte pub_blob[2048];
 
   // TPM_RH_ENDORSEMENT
   TPMA_OBJECT primary_flags;
@@ -1586,11 +1641,12 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   EVP_PKEY_assign_RSA(tpmKey, rsa_tpmKey);
 
   // encrypt salt
-  int n = RSA_public_encrypt(secret.size, secret.buffer,
-                             salt.secret, rsa_tpmKey, RSA_NO_PADDING);
+  printf("\nencrypting salt\n");
+  int n = RSA_public_encrypt(secret.size, secret.buffer, salt.secret,
+                             rsa_tpmKey, RSA_PKCS1_OAEP_PADDING);
+  printf("\nEncrypted size: %d\n", n);
 
   // Create counter
-
 
 #if 0  
   InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
@@ -1599,10 +1655,10 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   // Start auth session
   if (Tpm2_StartEncryptedAuthSession(tpm, TPM_RH_NULL, TPM_RH_NULL,
                             nonceCaller, salt, TPM_SE_POLICY,
-                            symmetric, TPM_ALG_SHA1, &session_handle,
+                            symmetric, TPM_ALG_SHA1, &sessionHandle,
                             &nonceTPM)) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n",
-           session_handle);
+           sessionHandle);
     printf("nonce (%d): ", nonce_obj.size);
     PrintBytes(nonce_obj.size, nonce_obj.buffer);
     printf("\n");
@@ -1613,42 +1669,41 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   TPM2B_DIGEST policy_digest;
   // get policy digest
-  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
+  if(Tpm2_PolicyGetDigest(tpm, sessionHandle, &policy_digest)) {
     printf("PolicyGetDigest before Pcr succeeded: ");
     PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
   } else {
-    Tpm2_FlushContext(tpm, session_handle);
+    Tpm2_FlushContext(tpm, sessionHandle);
     printf("PolicyGetDigest failed\n");
     return false;
   }
 
-  if (Tpm2_PolicyPassword(tpm, session_handle)) {
+  if (Tpm2_PolicyPassword(tpm, sessionHandle)) {
     printf("PolicyPassword succeeded\n");
   } else {
-    Tpm2_FlushContext(tpm, session_handle);
+    Tpm2_FlushContext(tpm, sessionHandle);
     printf("PolicyPassword failed\n");
     return false;
   }
 
   TPM2B_DIGEST expected_digest;
   expected_digest.size = 0;
-  if (Tpm2_PolicyPcr(tpm, session_handle,
+  if (Tpm2_PolicyPcr(tpm, sessionHandle,
                      expected_digest, pcrSelect)) {
     printf("PolicyPcr succeeded\n");
   } else {
     printf("PolicyPcr failed\n");
-    Tpm2_FlushContext(tpm, session_handle);
+    Tpm2_FlushContext(tpm, sessionHandle);
     return false;
   }
 
-  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
+  if(Tpm2_PolicyGetDigest(tpm, sessionHandle, &policy_digest)) {
     printf("PolicyGetDigest succeeded: ");
     PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
   } else {
     printf("PolicyGetDigest failed\n");
     return false;
   }
-#endif
 
   if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Tpm2_UndefineSpace %d succeeds\n", slot);
@@ -1676,10 +1731,14 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_ReadNv fails\n");
     return false;
   }
-#if 0
-  if (session_handle != 0) {
-    Tpm2_FlushContext(tpm, session_handle);
-  }
 #endif
+
+  if (sessionHandle != 0) {
+    Tpm2_FlushContext(tpm, sessionHandle);
+  }
+  if (ekHandle != 0) {
+    Tpm2_FlushContext(tpm, ekHandle);
+  }
+
   return true;
 }

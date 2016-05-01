@@ -27,6 +27,7 @@
 using std::string;
 
 // General Utility functions
+bool Equal(int size_in1, byte* in1, int size_in2, byte* in2);
 void ReverseCpy(int size, byte* in, byte* out);
 void PrintBytes(int n, byte* in);
 void ChangeEndian16(const uint16_t* in, uint16_t* out);

@@ -45,6 +45,16 @@ using std::string;
 // standard buffer size
 #define MAX_SIZE_PARAMS 4096
 
+bool Equal(int size_in1, byte* in1, int size_in2, byte* in2) {
+  if(size_in1 != size_in2)
+    return false;
+  for (int i = 0; i < size_in1; i++) {
+    if (in1[i] != in2[i])
+      return false;
+  }
+  return true;
+}
+
 void ReverseCpy(int size, byte* in, byte* out) {
   out += size - 1;
   for (int i = 0; i < size; i++) *(out--) = *(in++);

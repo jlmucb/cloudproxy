@@ -1202,7 +1202,7 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   return true;
 }
 
-// TODO(jlm): Check policy on definespace later
+// For Jethro
 bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   printf("Tpm2_NvCombinedSessionTest\n\n");
@@ -1227,6 +1227,9 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   TPM2B_DIGEST secret;
   EncryptedSessionAuthInfo authInfo;
   authInfo.hash_alg_ = TPM_ALG_SHA1;
+  // symmetric.algorithm = TPM_ALG_AES;
+  // symmetric.keyBits = (TPMU_SYM_KEY_BITS)128;
+  // symmetric.mode = (TPMI_ALG_SYM_MODE)TPM_ALG_CFB;
 
   authInfo.newNonce_.size = 16;
   authInfo.oldNonce_.size = 16;
@@ -1240,6 +1243,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("Initial nonce: "); PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("Secret: "); PrintBytes(secret.size, secret.buffer); printf("\n");
 
+#if 0
   // Test CalculateKeys
   TPM2B_DIGEST authValue;
   authValue.size = 16;
@@ -1250,9 +1254,9 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   }
   printf("sessionKey: ");
   PrintBytes(authInfo.sessionKeySize_, authInfo.sessionKey_); printf("\n");
+#endif
 
   // Get endorsement key handle
-
   string emptyAuth;
   TPM_HANDLE ekHandle;
   TPM2B_PUBLIC pub_out;
@@ -1307,19 +1311,19 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("\nencrypting salt\n");
   int n = RSA_public_encrypt(secret.size, secret.buffer, salt.secret,
                              rsa_tpmKey, RSA_PKCS1_OAEP_PADDING);
-  printf("\nEncrypted size: %d\n", n);
+  salt.size = n;
+  printf("\nEncrypted salt (%d): ", n);
+  PrintBytes(n, salt.secret); printf("\n");
 
   // Create counter
 
-#if 0  
   InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
-  symmetric.algorithm = TPM_ALG_NULL;
 
+#if 0  
   // Start auth session
   if (Tpm2_StartEncryptedAuthSession(tpm, TPM_RH_NULL, TPM_RH_NULL,
-                            nonceCaller, salt, TPM_SE_POLICY,
-                            symmetric, TPM_ALG_SHA1, &sessionHandle,
-                            &nonceTPM)) {
+                            authInfo, salt, TPM_SE_POLICY,
+                            symmetric, TPM_ALG_SHA1, &sessionHandle)) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n",
            sessionHandle);
     printf("nonce (%d): ", nonce_obj.size);
@@ -1374,16 +1378,17 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
   if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
-                       NV_AUTHWRITE | NV_AUTHREAD, size_data) ) {
+                       NV_COUNTER | NV_AUTHREAD, size_data) ) {
     printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_DefineSpace fails\n");
     return false;
   }
-  if (Tpm2_WriteNv(tpm, nv_handle, authString, size_data, data_in)) {
-    printf("Tpm2_WriteNv %d succeeds\n", nv_handle);
+  if (Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+          EncryptedSessionAuthInfo& authInfo)) {
+    printf("Tpm2_IncrementEncryptedNv %d succeeds\n", nv_handle);
   } else {
-    printf("Tpm2_WriteNv fails\n");
+    printf("Tpm2_IncrementEncryptedNv fails\n");
     return false;
   }
   if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {

@@ -240,6 +240,7 @@ public:
   TPM2B_NONCE newNonce_;
   int sessionKeySize_;
   byte sessionKey_[256];
+  TPM_HANDLE sessionHandle_;
 };
 bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& authValue,
         TPM2B_DIGEST& rawSalt);

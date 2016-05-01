@@ -1227,9 +1227,12 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   TPM2B_DIGEST secret;
   EncryptedSessionAuthInfo authInfo;
   authInfo.hash_alg_ = TPM_ALG_SHA1;
-  // symmetric.algorithm = TPM_ALG_AES;
-  // symmetric.keyBits = (TPMU_SYM_KEY_BITS)128;
-  // symmetric.mode = (TPMI_ALG_SYM_MODE)TPM_ALG_CFB;
+  symmetric.algorithm = TPM_ALG_AES;
+  symmetric.keyBits.aes = 128;
+  symmetric.mode.aes = TPM_ALG_CFB;
+
+  authInfo.targetAuthValue_.size = authString.size();
+  memset(authInfo.targetAuthValue_.buffer, 0, authString.size());
 
   authInfo.newNonce_.size = 16;
   authInfo.oldNonce_.size = 16;
@@ -1240,21 +1243,11 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   RAND_bytes(authInfo.newNonce_.buffer, authInfo.newNonce_.size);
   RAND_bytes(secret.buffer, secret.size);
 
-  printf("Initial nonce: "); PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("Initial nonce: ");
+  PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("Secret: "); PrintBytes(secret.size, secret.buffer); printf("\n");
 
-#if 0
-  // Test CalculateKeys
-  TPM2B_DIGEST authValue;
-  authValue.size = 16;
-  memset(authValue.buffer, 0, authValue.size);
-  if (!CalculateKeys(authInfo, authValue, secret)) {
-    printf("CalculateKeys failed\n");
-    return false;
-  }
-  printf("sessionKey: ");
-  PrintBytes(authInfo.sessionKeySize_, authInfo.sessionKey_); printf("\n");
-#endif
+  // Create the counter object
 
   // Get endorsement key handle
   string emptyAuth;
@@ -1316,6 +1309,11 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   PrintBytes(n, salt.secret); printf("\n");
 
   // Create counter
+  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
+    printf("Tpm2_UndefineSpace %d succeeds\n", slot);
+  } else {
+    printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
+  }
 
   InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
 
@@ -1333,6 +1331,20 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_StartAuthSession fails\n");
     return false;
   }
+  authInfo.sessionHandle_ = sessionHandle;
+
+  // Generate Keys
+  if (!CalculateKeys(authInfo, authValue, secret)) {
+    printf("CalculateKeys failed\n");
+    return false;
+  }
+  printf("sessionKey: ");
+  PrintBytes(authInfo.sessionKeySize_, authInfo.sessionKey_); printf("\n");
+
+  // set sessionAttributes.encrypt
+  // encrypt first arg
+  // if sessionAttributes.decrypt is set
+  // decrypt first arg
 
   TPM2B_DIGEST policy_digest;
   // get policy digest
@@ -1371,32 +1383,26 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("PolicyGetDigest failed\n");
     return false;
   }
-
-  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
-    printf("Tpm2_UndefineSpace %d succeeds\n", slot);
-  } else {
-    printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
-  }
-  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
+  
+  if (Tpm2_DefineEncryptedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
                        NV_COUNTER | NV_AUTHREAD, size_data) ) {
-    printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
+    printf("Tpm2_DefineEncryptedSpace %d succeeds\n", nv_handle);
   } else {
-    printf("Tpm2_DefineSpace fails\n");
+    printf("Tpm2_DefineEncryptedSpace fails\n");
     return false;
   }
-  if (Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
-          EncryptedSessionAuthInfo& authInfo)) {
+  if (Tpm2_IncrementEncryptedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementEncryptedNv %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_IncrementEncryptedNv fails\n");
     return false;
   }
-  if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {
-    printf("Tpm2_ReadNv %d succeeds: ", nv_handle);
+  if (Tpm2_ReadEncryptedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
+    printf("Tpm2_ReadEncryptedNv %d succeeds: ", nv_handle);
     PrintBytes(size_out, data_out);
     printf("\n");
   } else {
-    printf("Tpm2_ReadNv fails\n");
+    printf("Tpm2_ReadEncryptedNv fails\n");
     return false;
   }
 #endif

@@ -3252,8 +3252,7 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
 
 // sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
 //                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
-bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& authValue,
-        TPM2B_DIGEST& rawSalt) {
+bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   int sizeKey= SizeHash(in.hash_alg_);
   in.sessionKeySize_ = sizeKey;
 
@@ -3262,7 +3261,7 @@ bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& authValue,
   string contextU;
   string contextV;
 
-  key.assign((const char*)authValue.buffer, authValue.size);
+  key.assign((const char*)in.targetAuthValue_.buffer, in.targetAuthValue_.size);
   key.append((const char*)rawSalt.buffer, rawSalt.size);
   contextV.clear();
   contextU.clear();

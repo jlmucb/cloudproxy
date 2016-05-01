@@ -10,6 +10,18 @@
 #include <tpm2_lib.h>
 #include <gflags/gflags.h>
 
+#include <openssl_helpers.h>
+
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl/ssl.h>
+#include <openssl/evp.h>
+#include <openssl/asn1.h>
+#include <openssl/err.h>
+#include <openssl/aes.h>
+#include <openssl/hmac.h>
+#include <openssl/rand.h>
+
 //
 // Copyright 2015 Google Corporation, All Rights Reserved.
 //
@@ -796,125 +808,6 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
   return true;
 }
 
-// TODO(jlm): Check policy on definespace later
-bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
-  int slot = 1000;
-  string authString("01020304");
-  uint16_t size_data = 16;
-  byte data_in[512] = {
-    0x9, 0x8, 0x7, 0x6,
-    0x9, 0x8, 0x7, 0x6,
-    0x9, 0x8, 0x7, 0x6,
-    0x9, 0x8, 0x7, 0x6
-  };
-  uint16_t size_out = 16;
-  byte data_out[512];
-  TPM_HANDLE nv_handle = GetNvHandle(slot);
-
-  printf("Tpm2_NvCombinedSessionTest\n\n");
-
-#if 0  
-  TPM2B_NONCE initial_nonce;
-  TPM2B_ENCRYPTED_SECRET salt;
-  TPMT_SYM_DEF symmetric;
-  TPM_HANDLE session_handle = 0;
-  TPM2B_NONCE nonce_obj;
-  TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
-
-  initial_nonce.size = 16;
-  memset(initial_nonce.buffer, 0, 16);
-  salt.size = 0;
-  symmetric.algorithm = TPM_ALG_NULL;
-
-  // Start auth session
-  if (Tpm2_StartAuthSession(tpm, TPM_RH_NULL, TPM_RH_NULL,
-                            initial_nonce, salt, TPM_SE_POLICY,
-                            symmetric, TPM_ALG_SHA1, &session_handle,
-                            &nonce_obj)) {
-    printf("Tpm2_StartAuthSession succeeds handle: %08x\n",
-           session_handle);
-    printf("nonce (%d): ", nonce_obj.size);
-    PrintBytes(nonce_obj.size, nonce_obj.buffer);
-    printf("\n");
-  } else {
-    printf("Tpm2_StartAuthSession fails\n");
-    return false;
-  }
-
-  TPM2B_DIGEST policy_digest;
-  // get policy digest
-  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
-    printf("PolicyGetDigest before Pcr succeeded: ");
-    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
-  } else {
-    Tpm2_FlushContext(tpm, session_handle);
-    printf("PolicyGetDigest failed\n");
-    return false;
-  }
-
-  if (Tpm2_PolicyPassword(tpm, session_handle)) {
-    printf("PolicyPassword succeeded\n");
-  } else {
-    Tpm2_FlushContext(tpm, session_handle);
-    printf("PolicyPassword failed\n");
-    return false;
-  }
-
-  TPM2B_DIGEST expected_digest;
-  expected_digest.size = 0;
-  if (Tpm2_PolicyPcr(tpm, session_handle,
-                     expected_digest, pcrSelect)) {
-    printf("PolicyPcr succeeded\n");
-  } else {
-    printf("PolicyPcr failed\n");
-    Tpm2_FlushContext(tpm, session_handle);
-    return false;
-  }
-
-  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
-    printf("PolicyGetDigest succeeded: ");
-    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
-  } else {
-    printf("PolicyGetDigest failed\n");
-    return false;
-  }
-#endif
-
-  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
-    printf("Tpm2_UndefineSpace %d succeeds\n", slot);
-  } else {
-    printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
-  }
-  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
-                       NV_AUTHWRITE | NV_AUTHREAD, size_data) ) {
-    printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
-  } else {
-    printf("Tpm2_DefineSpace fails\n");
-    return false;
-  }
-  if (Tpm2_WriteNv(tpm, nv_handle, authString, size_data, data_in)) {
-    printf("Tpm2_WriteNv %d succeeds\n", nv_handle);
-  } else {
-    printf("Tpm2_WriteNv fails\n");
-    return false;
-  }
-  if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {
-    printf("Tpm2_ReadNv %d succeeds: ", nv_handle);
-    PrintBytes(size_out, data_out);
-    printf("\n");
-  } else {
-    printf("Tpm2_ReadNv fails\n");
-    return false;
-  }
-#if 0
-  if (session_handle != 0) {
-    Tpm2_FlushContext(tpm, session_handle);
-  }
-#endif
-  return true;
-}
-
 bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
   string authString("01020304");
   string parentAuth("01020304");
@@ -1305,5 +1198,488 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   printf("\n"); 
   Tpm2_FlushContext(tpm, load_handle);
   Tpm2_FlushContext(tpm, parent_handle);
+  return true;
+}
+
+/*
+ *  The following code is for an encrypted session.  Later we should fix the original functions
+ *  so they allow bound sessions initiated with encrypted salts.
+ */
+
+
+class EncryptedSessionAuthInfo {
+public:
+  TPM2B_NONCE oldNonce_;
+  TPM2B_NONCE newNonce_;
+  byte session_key[128];
+};
+
+void CalculateKeys(EncryptedSessionAuthInfo& in) {
+// sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
+//                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
+}
+
+void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
+  memcpy(in.oldNonce_.buffer, in.newNonce_.buffer, in.newNonce_.size);
+  in.oldNonce_.size = in.newNonce_.size; 
+  memcpy(in.newNonce_.buffer, newNonce.buffer, newNonce.size);
+  in.newNonce_.size = newNonce.size; 
+}
+
+#if 0
+bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
+                           EncryptedSessionAuthInfo& authInfo,
+                           TPM2B_ENCRYPTED_SECRET& salt,
+                           TPM_SE session_type, TPMT_SYM_DEF& symmetric,
+                           TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int resp_size = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params[MAX_SIZE_PARAMS];
+  byte* in = params;
+  int space_left = MAX_SIZE_PARAMS;
+
+  memset(params, 0, MAX_SIZE_PARAMS);
+
+  int n= Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
+                                  salt, session_type, symmetric, hash_alg,
+                                  MAX_SIZE_PARAMS, params);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+  int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_StartAuthSession,
+                                commandBuf, size_params, params);
+  printCommand("StartAuthSession", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&resp_size, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
+                         &responseSize, &responseCode);
+  printResponse("StartAuthSession", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* current_out = resp_buf + sizeof(TPM_RESPONSE);
+  ChangeEndian32((uint32_t*)current_out, (uint32_t*)session_handle);
+  current_out += sizeof(uint32_t);
+  ChangeEndian16((uint16_t*)current_out, &nonce_obj->size);
+  current_out += sizeof(uint16_t);
+  memcpy(nonce_obj->buffer, current_out, nonce_obj->size);
+  return true;
+}
+
+bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, EncryptedSessionAuthInfo& authInfo) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  n = CreatePasswordAuthArea(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Increment,
+                                commandBuf, size_params, params_buf);
+  printCommand("IncrementNv", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("IncrementNv", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+
+  return true;
+}
+
+bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+                 EncryptedSessionAuthInfo& authInfo, uint16_t* size, byte* data) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(params_buf, 0, MAX_SIZE_PARAMS);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  n = CreatePasswordAuthArea(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+  memset(in, 0, sizeof(uint16_t));
+  ChangeEndian16((uint16_t*)size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  uint16_t offset = 0;
+  IF_NEG_RETURN_FALSE(n);
+  ChangeEndian16((uint16_t*)&offset, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Read,
+                                commandBuf, size_params, params_buf);
+  printCommand("ReadNv", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                         &responseSize, &responseCode);
+  printResponse("ReadNv", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* out = resp_buf + sizeof(TPM_RESPONSE) + sizeof(uint32_t);
+  ChangeEndian16((uint16_t*)out, (uint16_t*)size);
+  out += sizeof(uint16_t);
+  memcpy(data, out, *size);
+  return true;
+}
+
+bool Tpm2_DefineEncryptedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
+                      EncryptedSessionAuthInfo& authInfo, uint16_t authPolicySize, byte* authPolicy,
+                      uint32_t attributes, uint16_t size_data) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  int n = SetOwnerHandle(owner, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);;
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  string emptyAuth;
+  n = CreatePasswordAuthArea(emptyAuth, space_left, in);
+
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  n = SetPasswordData(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  // TPM2B_NV_PUBLIC
+  uint16_t size_nv_area = sizeof(uint32_t) + sizeof(TPMI_RH_NV_INDEX) +
+                          sizeof(TPMI_ALG_HASH) + 2*sizeof(uint16_t) +
+                          authPolicySize;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&size_nv_area, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+
+  // nvIndex;
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  TPMI_ALG_HASH alg = TPM_ALG_SHA256;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&alg, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+#if 0
+  uint32_t attributes;
+  memset((byte*)&attributes, 0 , sizeof(uint32_t));
+
+  // TODO(jlm): what attributes is this?  Remove
+  // attributes = 0x00040004;
+  attributes = NV_AUTHWRITE | NV_AUTHREAD;
+#endif
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  // authPolicy size
+  ChangeEndian16((uint16_t*)&authPolicySize, (uint16_t*)in);
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+  if (authPolicySize > 0) {
+    IF_LESS_THAN_RETURN_FALSE(space_left, authPolicySize)
+    memcpy(in, authPolicy, authPolicySize);
+    Update(authPolicySize, &in, &size_params, &space_left);
+  }
+
+  // dataSize
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&size_data, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_DefineSpace,
+                                commandBuf, size_params, params_buf);
+  printCommand("DefineSpace", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("Definespace", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  return true;
+}
+
+#endif
+
+
+// TODO(jlm): Check policy on definespace later
+bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
+
+  printf("Tpm2_NvCombinedSessionTest\n\n");
+
+  int slot = 1000;
+  string authString("01020304");
+  uint16_t size_data = 16;
+  byte data_in[512] = {
+    0x9, 0x8, 0x7, 0x6,
+    0x9, 0x8, 0x7, 0x6,
+    0x9, 0x8, 0x7, 0x6,
+    0x9, 0x8, 0x7, 0x6
+  };
+  uint16_t size_out = 16;
+  byte data_out[512];
+  TPM_HANDLE nv_handle = GetNvHandle(slot);
+
+  TPM2B_ENCRYPTED_SECRET salt;
+  TPMT_SYM_DEF symmetric;
+  TPM_HANDLE session_handle = 0;
+  TPML_PCR_SELECTION pcrSelect;
+  TPM2B_DIGEST secret;
+  EncryptedSessionAuthInfo authInfo;
+
+  authInfo.newNonce_.size = 16;
+  authInfo.oldNonce_.size = 16;
+  secret.size = 16;
+  memset(authInfo.newNonce_.buffer, 0, 16);
+  memset(authInfo.oldNonce_.buffer, 0, 16);
+  memset(secret.buffer, 0, 16);
+  RAND_bytes(authInfo.newNonce_.buffer, authInfo.newNonce_.size);
+  RAND_bytes(secret.buffer, secret.size);
+
+  printf("Initial nonce: "); PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("Secret: "); PrintBytes(secret.size, secret.buffer); printf("\n");
+
+
+  // Get endorsement key handle
+
+  string emptyAuth;
+
+  TPM_HANDLE ekHandle;
+  TPM2B_PUBLIC pub_out;
+  TPM2B_NAME pub_name;
+  TPM2B_NAME qualified_pub_name;
+  uint16_t pub_blob_size = 1024;
+  byte pub_blob[1024];
+
+  // TPM_RH_ENDORSEMENT
+  TPMA_OBJECT primary_flags;
+  *(uint32_t*)(&primary_flags) = 0;
+  primary_flags.fixedTPM = 1;
+  primary_flags.fixedParent = 1;
+  primary_flags.sensitiveDataOrigin = 1;
+  primary_flags.userWithAuth = 1;
+  primary_flags.decrypt = 1;
+  primary_flags.restricted = 1;
+
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect, TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL, 2048, 0x010001, &ekHandle, &pub_out)) {
+    printf("CreatePrimary succeeded: %08x\n", ekHandle);
+  } else {
+    printf("CreatePrimary failed\n");
+    return false;
+  }
+  if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out, &pub_name, &qualified_pub_name)) {
+    printf("ReadPublic succeeded\n");
+  } else {
+    printf("ReadPublic failed\n");
+    return false;
+  }
+  printf("Public blob: ");
+  PrintBytes(pub_blob_size, pub_blob);
+  printf("\n");
+  printf("Name: ");
+  PrintBytes(pub_name.size, pub_name.name);
+  printf("\n");
+  printf("Qualified name: ");
+  PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
+  printf("\n");
+
+  // Normally, the caller would get the key from the endorsement certificate
+  EVP_PKEY* tpmKey = EVP_PKEY_new();
+  RSA* rsa_tpmKey = RSA_new();
+  rsa_tpmKey->n = bin_to_BN((int)pub_out.publicArea.unique.rsa.size,
+                            pub_out.publicArea.unique.rsa.buffer);
+  uint64_t exp = 0x010001ULL;
+  rsa_tpmKey->e = bin_to_BN(sizeof(uint64_t), (byte*)&exp);
+  EVP_PKEY_assign_RSA(tpmKey, rsa_tpmKey);
+
+  // encrypt salt
+  int n = RSA_public_encrypt(secret.size, secret.buffer,
+                             salt.secret, rsa_tpmKey, RSA_NO_PADDING);
+
+  // Create counter
+
+
+#if 0  
+  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
+  symmetric.algorithm = TPM_ALG_NULL;
+
+  // Start auth session
+  if (Tpm2_StartEncryptedAuthSession(tpm, TPM_RH_NULL, TPM_RH_NULL,
+                            nonceCaller, salt, TPM_SE_POLICY,
+                            symmetric, TPM_ALG_SHA1, &session_handle,
+                            &nonceTPM)) {
+    printf("Tpm2_StartAuthSession succeeds handle: %08x\n",
+           session_handle);
+    printf("nonce (%d): ", nonce_obj.size);
+    PrintBytes(nonce_obj.size, nonce_obj.buffer);
+    printf("\n");
+  } else {
+    printf("Tpm2_StartAuthSession fails\n");
+    return false;
+  }
+
+  TPM2B_DIGEST policy_digest;
+  // get policy digest
+  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
+    printf("PolicyGetDigest before Pcr succeeded: ");
+    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
+  } else {
+    Tpm2_FlushContext(tpm, session_handle);
+    printf("PolicyGetDigest failed\n");
+    return false;
+  }
+
+  if (Tpm2_PolicyPassword(tpm, session_handle)) {
+    printf("PolicyPassword succeeded\n");
+  } else {
+    Tpm2_FlushContext(tpm, session_handle);
+    printf("PolicyPassword failed\n");
+    return false;
+  }
+
+  TPM2B_DIGEST expected_digest;
+  expected_digest.size = 0;
+  if (Tpm2_PolicyPcr(tpm, session_handle,
+                     expected_digest, pcrSelect)) {
+    printf("PolicyPcr succeeded\n");
+  } else {
+    printf("PolicyPcr failed\n");
+    Tpm2_FlushContext(tpm, session_handle);
+    return false;
+  }
+
+  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
+    printf("PolicyGetDigest succeeded: ");
+    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
+  } else {
+    printf("PolicyGetDigest failed\n");
+    return false;
+  }
+#endif
+
+  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
+    printf("Tpm2_UndefineSpace %d succeeds\n", slot);
+  } else {
+    printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
+  }
+  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
+                       NV_AUTHWRITE | NV_AUTHREAD, size_data) ) {
+    printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
+  } else {
+    printf("Tpm2_DefineSpace fails\n");
+    return false;
+  }
+  if (Tpm2_WriteNv(tpm, nv_handle, authString, size_data, data_in)) {
+    printf("Tpm2_WriteNv %d succeeds\n", nv_handle);
+  } else {
+    printf("Tpm2_WriteNv fails\n");
+    return false;
+  }
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {
+    printf("Tpm2_ReadNv %d succeeds: ", nv_handle);
+    PrintBytes(size_out, data_out);
+    printf("\n");
+  } else {
+    printf("Tpm2_ReadNv fails\n");
+    return false;
+  }
+#if 0
+  if (session_handle != 0) {
+    Tpm2_FlushContext(tpm, session_handle);
+  }
+#endif
   return true;
 }

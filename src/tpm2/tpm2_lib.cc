@@ -289,8 +289,8 @@ bool Tpm2_Startup(LocalTpm& tpm) {
   }
  
   uint16_t cap;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Tpm2_Startup", cap, responseSize, responseCode, resp_buf);
@@ -392,8 +392,8 @@ bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap, uint32_t start,
     return false;
   }
   uint16_t cap2 = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap2,
                          &responseSize, &responseCode);
   printResponse("GetCapability", cap, responseSize, responseCode, resp_buf);
@@ -429,8 +429,8 @@ bool Tpm2_GetRandom(LocalTpm& tpm, int numBytes, byte* buf) {
   }
  
   uint16_t cap;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("GetRandom", cap, responseSize, responseCode, resp_buf);
@@ -463,8 +463,8 @@ bool Tpm2_ReadClock(LocalTpm& tpm, uint64_t* current_time, uint64_t* current_clo
   }
  
   uint16_t cap;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("ReadClock", cap, responseSize, responseCode, resp_buf);
@@ -577,8 +577,8 @@ bool Tpm2_ReadPcrs(LocalTpm& tpm, TPML_PCR_SELECTION pcrSelect,
   }
 
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("ReadPcr", cap, responseSize, responseCode, resp_buf);
@@ -790,8 +790,8 @@ bool Tpm2_PCR_Event(LocalTpm& tpm, int pcr_num,
   }
 
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("PCR_Event", cap, responseSize, responseCode, resp_buf);
@@ -1222,8 +1222,8 @@ bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,
   }
  
   uint16_t cap;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("CreatePrimary", cap, responseSize, responseCode, resp_buf);
@@ -1289,8 +1289,8 @@ bool Tpm2_PolicySecret(LocalTpm& tpm, TPM_HANDLE handle,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("PolicySecret", cap, responseSize, responseCode, resp_buf);
@@ -1324,8 +1324,8 @@ bool Tpm2_PolicyPassword(LocalTpm& tpm, TPM_HANDLE handle) {
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("PolicyPassword", cap, responseSize, responseCode, resp_buf);
@@ -1358,8 +1358,8 @@ bool Tpm2_PolicyGetDigest(LocalTpm& tpm, TPM_HANDLE handle, TPM2B_DIGEST* digest
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("PolicyGetDigest", cap, responseSize, responseCode, resp_buf);
@@ -1405,8 +1405,8 @@ bool Tpm2_StartAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("StartAuthSession", cap, responseSize, responseCode, resp_buf);
@@ -1455,8 +1455,8 @@ bool Tpm2_PolicyPcr(LocalTpm& tpm, TPM_HANDLE session_handle,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("PolicyPcr", cap, responseSize, responseCode, resp_buf);
@@ -1514,8 +1514,8 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("MakeCredential", cap, responseSize, responseCode, resp_buf);
@@ -1566,9 +1566,9 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm, TPM_HANDLE activeHandle,
   Update(sizeof(uint16_t), &in, &total_size, &space_left);
 
   // twin auth areas
-  byte activeAuthArea[512]; 
-  byte keyAuthArea[512]; 
-  byte outAuthArea[512]; 
+  byte activeAuthArea[512];
+  byte keyAuthArea[512];
+  byte outAuthArea[512];
   int n = CreatePasswordAuthArea(activeAuth, 512, activeAuthArea);
   int m = CreatePasswordAuthArea(keyAuth, 512, keyAuthArea);
   uint16_t k = m + n - 4;
@@ -1600,8 +1600,8 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm, TPM_HANDLE activeHandle,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("ActivateCredential", cap, responseSize, responseCode, resp_buf);
@@ -1669,8 +1669,8 @@ bool Tpm2_Load(LocalTpm& tpm, TPM_HANDLE parent_handle,
   }
  
   uint16_t cap;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Load", cap, responseSize, responseCode, resp_buf);
@@ -1809,8 +1809,8 @@ bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("ReadPublic", cap, responseSize, responseCode, resp_buf);
@@ -1940,8 +1940,8 @@ bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Certify", cap, responseSize, responseCode, resp_buf);
@@ -2095,8 +2095,8 @@ bool Tpm2_CreateKey(LocalTpm& tpm, TPM_HANDLE parent_handle,
   }
  
   uint16_t cap;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Create", cap, responseSize, responseCode, resp_buf);
@@ -2190,8 +2190,8 @@ bool Tpm2_CreateSealed(LocalTpm& tpm, TPM_HANDLE parent_handle,
   }
  
   uint16_t cap;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Create", cap, responseSize, responseCode, resp_buf);
@@ -2277,8 +2277,8 @@ bool Tpm2_Unseal(LocalTpm& tpm, TPM_HANDLE item_handle, string& parentAuth,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Unseal", cap, responseSize, responseCode, resp_buf);
@@ -2359,8 +2359,8 @@ bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle, string& parentAuth,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Quote", cap, responseSize, responseCode, resp_buf);
@@ -2416,8 +2416,8 @@ bool Tpm2_LoadContext(LocalTpm& tpm, uint16_t size, byte* saveArea,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("ContextLoad", cap, responseSize, responseCode, resp_buf);
@@ -2457,8 +2457,8 @@ bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, uint16_t* size,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("SaveContext", cap, responseSize, responseCode, resp_buf);
@@ -2492,8 +2492,8 @@ bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle) {
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("FlushContext", cap, responseSize, responseCode, resp_buf);
@@ -2546,8 +2546,8 @@ bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString)
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("IncrementNv", cap, responseSize, responseCode, resp_buf);
@@ -2608,8 +2608,8 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("ReadNv", cap, responseSize, responseCode, resp_buf);
@@ -2677,8 +2677,8 @@ bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("WriteNv", cap, responseSize, responseCode, resp_buf);
@@ -2777,8 +2777,8 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("Definespace", cap, responseSize, responseCode, resp_buf);
@@ -2829,8 +2829,8 @@ bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index)
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("UndefineSpace", cap, responseSize, responseCode, resp_buf);
@@ -2869,8 +2869,8 @@ bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm) {
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                          &responseSize, &responseCode);
   printResponse("DictionaryAttackLockReset", cap, responseSize,
@@ -2969,8 +2969,8 @@ bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("TPM_RSA_Encrypt", cap, responseSize, responseCode, resp_buf);
@@ -3038,8 +3038,8 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
     return false;
   }
   uint16_t cap = 0;
-  uint32_t responseSize; 
-  uint32_t responseCode; 
+  uint32_t responseSize;
+  uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
                         &responseSize, &responseCode);
   printResponse("EvictControl", cap, responseSize, responseCode, resp_buf);
@@ -3197,7 +3197,7 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
   byte decrypt_mac[128];
   string data_encryption_key_seed;
   string label;
-  string contextV; 
+  string contextV;
   byte* encrypted_data = output_data;
 
   *size_hmac = SizeHash(hash_alg_id);
@@ -3242,4 +3242,353 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
 
   return true;
 }
+
+#define JETHRO
+#ifdef JETHRO
+/*
+ *  The following code is for an encrypted session. Later we should fix the
+ *  original functions so they allow bound sessions initiated with encrypted salts.
+ */
+
+// sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
+//                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
+bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& authValue,
+        TPM2B_DIGEST& rawSalt) {
+  int sizeKey= SizeHash(in.hash_alg_);
+  in.sessionKeySize_ = sizeKey;
+
+  string label= "AUTH";
+  string key;
+  string contextU;
+  string contextV;
+
+  key.assign((const char*)authValue.buffer, authValue.size);
+  key.append((const char*)rawSalt.buffer, rawSalt.size);
+  contextV.clear();
+  contextU.clear();
+  contextU.assign((const char*)in.newNonce_.buffer, in.newNonce_.size);
+  contextV.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
+  if (!KDFa(in.hash_alg_, key, label, contextU, contextV,
+            sizeKey*NBITSINBYTE, 256, in.sessionKey_)) {
+    printf("Can't KDFa symKey\n");
+    return false;
+  }
+
+#if 0
+  byte zero_iv[32];
+  memset(zero_iv, 0, 32);
+
+  int in_size = 64;
+  int out_size = 64;
+  int check_size = 64;
+  byte in_bytes[64] = {
+    0, 1, 2, 3, 4, 5, 6, 7,
+    0, 1, 2, 3, 4, 5, 6, 7,
+    0, 1, 2, 3, 4, 5, 6, 7,
+    0, 1, 2, 3, 4, 5, 6, 7,
+    0, 1, 2, 3, 4, 5, 6, 7,
+    0, 1, 2, 3, 4, 5, 6, 7,
+    0, 1, 2, 3, 4, 5, 6, 7,
+    0, 1, 2, 3, 4, 5, 6, 7,
+  };
+  byte out_bytes[64];
+  byte check_bytes[64];
+
+  if (!AesCFBEncrypt(in.sessionKey_, in_size, in_bytes, 16, zero_iv,
+                     &out_size, out_bytes)) {
+    printf("Can't AesCFBEncrypt\n");
+    return false;
+  }
+
+  if (!AesCFBDecrypt(in.sessionKey_, out_size, out_bytes, 16, zero_iv,
+                     &check_size, check_bytes)) {
+    printf("Can't AesCFBDecrypt\n");
+    return false;
+  }
+  if (!Equal(in_size, in_bytes, check_size, check_bytes)) {
+    printf("Decrypt failure\n");
+    return false;
+  }
+  printf("AesCFBEncrypt/AesCFBDecrypt worked\n");
+#endif
+
+  return true;
+}
+
+void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
+  memcpy(in.oldNonce_.buffer, in.newNonce_.buffer, in.newNonce_.size);
+  in.oldNonce_.size = in.newNonce_.size;
+  memcpy(in.newNonce_.buffer, newNonce.buffer, newNonce.size);
+  in.newNonce_.size = newNonce.size;
+}
+
+bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
+                           EncryptedSessionAuthInfo& authInfo,
+                           TPM2B_ENCRYPTED_SECRET& salt,
+                           TPM_SE session_type, TPMT_SYM_DEF& symmetric,
+                           TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int resp_size = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params[MAX_SIZE_PARAMS];
+  byte* in = params;
+  int space_left = MAX_SIZE_PARAMS;
+  TPM2B_DIGEST newNonce;
+
+  memset(params, 0, MAX_SIZE_PARAMS);
+
+  int n= Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
+                                  salt, session_type, symmetric, hash_alg,
+                                  MAX_SIZE_PARAMS, params);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+  int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_StartAuthSession,
+                                commandBuf, size_params, params);
+  printCommand("StartAuthSession", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&resp_size, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize;
+  uint32_t responseCode;
+  Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
+                         &responseSize, &responseCode);
+  printResponse("StartAuthSession", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* current_out = resp_buf + sizeof(TPM_RESPONSE);
+  ChangeEndian32((uint32_t*)current_out, (uint32_t*)session_handle);
+  current_out += sizeof(uint32_t);
+  ChangeEndian16((uint16_t*)current_out, &newNonce.size);
+  current_out += sizeof(uint16_t);
+  memcpy(newNonce.buffer, current_out, newNonce.size);
+  RollNonces(authInfo, newNonce);
+  return true;
+}
+
+bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, EncryptedSessionAuthInfo& authInfo) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  string authString;  // FIX
+  n = CreatePasswordAuthArea(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Increment,
+                                commandBuf, size_params, params_buf);
+  printCommand("IncrementNv", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize;
+  uint32_t responseCode;
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("IncrementNv", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+
+  return true;
+}
+
+bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+                 EncryptedSessionAuthInfo& authInfo, uint16_t* size, byte* data) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(params_buf, 0, MAX_SIZE_PARAMS);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  string authString;  // FIX
+  n = CreatePasswordAuthArea(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+  memset(in, 0, sizeof(uint16_t));
+  ChangeEndian16((uint16_t*)size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  uint16_t offset = 0;
+  IF_NEG_RETURN_FALSE(n);
+  ChangeEndian16((uint16_t*)&offset, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Read,
+                                commandBuf, size_params, params_buf);
+  printCommand("ReadNv", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize;
+  uint32_t responseCode;
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                         &responseSize, &responseCode);
+  printResponse("ReadNv", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* out = resp_buf + sizeof(TPM_RESPONSE) + sizeof(uint32_t);
+  ChangeEndian16((uint16_t*)out, (uint16_t*)size);
+  out += sizeof(uint16_t);
+  memcpy(data, out, *size);
+  return true;
+}
+
+bool Tpm2_DefineEncryptedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
+                EncryptedSessionAuthInfo& authInfo, uint16_t authPolicySize,
+                byte* authPolicy, uint32_t attributes, uint16_t size_data) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  int n = SetOwnerHandle(owner, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);;
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  string emptyAuth;
+  n = CreatePasswordAuthArea(emptyAuth, space_left, in);
+
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  string authString;  // FIX
+  n = SetPasswordData(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  // TPM2B_NV_PUBLIC
+  uint16_t size_nv_area = sizeof(uint32_t) + sizeof(TPMI_RH_NV_INDEX) +
+                          sizeof(TPMI_ALG_HASH) + 2*sizeof(uint16_t) +
+                          authPolicySize;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&size_nv_area, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+
+  // nvIndex;
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  TPMI_ALG_HASH alg = TPM_ALG_SHA256;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&alg, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+#if 0
+  uint32_t attributes;
+  memset((byte*)&attributes, 0 , sizeof(uint32_t));
+
+  // TODO(jlm): what attributes is this?  Remove
+  // attributes = 0x00040004;
+  attributes = NV_AUTHWRITE | NV_AUTHREAD;
+#endif
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  // authPolicy size
+  ChangeEndian16((uint16_t*)&authPolicySize, (uint16_t*)in);
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+  if (authPolicySize > 0) {
+    IF_LESS_THAN_RETURN_FALSE(space_left, authPolicySize)
+    memcpy(in, authPolicy, authPolicySize);
+    Update(authPolicySize, &in, &size_params, &space_left);
+  }
+
+  // dataSize
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&size_data, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_DefineSpace,
+                                commandBuf, size_params, params_buf);
+  printCommand("DefineSpace", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize;
+  uint32_t responseCode;
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("Definespace", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  return true;
+}
+#endif
 

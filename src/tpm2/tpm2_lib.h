@@ -26,6 +26,8 @@
 #include <string>
 using std::string;
 
+#define NBITSINBYTE 8
+
 // General Utility functions
 bool Equal(int size_in1, byte* in1, int size_in2, byte* in2);
 void ReverseCpy(int size, byte* in, byte* out);
@@ -230,5 +232,29 @@ bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm);
 #define NV_EXTEND         0x00000040
 #define NV_POLICY_DELETE  0x00000400
 #define NV_AUTHREAD       0x00040000
+
+class EncryptedSessionAuthInfo {
+public:
+  TPMI_ALG_HASH hash_alg_;
+  TPM2B_NONCE oldNonce_;
+  TPM2B_NONCE newNonce_;
+  int sessionKeySize_;
+  byte sessionKey_[256];
+};
+bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& authValue,
+        TPM2B_DIGEST& rawSalt);
+void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce);
+bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
+                           EncryptedSessionAuthInfo& authInfo,
+                           TPM2B_ENCRYPTED_SECRET& salt,
+                           TPM_SE session_type, TPMT_SYM_DEF& symmetric,
+                           TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle);
+bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+          EncryptedSessionAuthInfo& authInfo);
+bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+                 EncryptedSessionAuthInfo& authInfo, uint16_t* size, byte* data);
+bool Tpm2_DefineEncryptedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
+                EncryptedSessionAuthInfo& authInfo, uint16_t authPolicySize,
+                byte* authPolicy, uint32_t attributes, uint16_t size_data);
 #endif
 

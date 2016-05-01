@@ -1247,8 +1247,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("Secret: "); PrintBytes(secret.size, secret.buffer); printf("\n");
 
-  // Create the counter object
-
   // Get endorsement key handle
   string emptyAuth;
   TPM_HANDLE ekHandle;
@@ -1268,14 +1266,17 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect, TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
-                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL, 2048, 0x010001, &ekHandle, &pub_out)) {
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
+                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
+                         2048, 0x010001, &ekHandle, &pub_out)) {
     printf("CreatePrimary succeeded: %08x\n", ekHandle);
   } else {
     printf("CreatePrimary failed\n");
     return false;
   }
-  if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out, &pub_name, &qualified_pub_name)) {
+  if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out, &pub_name,
+                      &qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
     printf("ReadPublic failed\n");
@@ -1300,7 +1301,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   rsa_tpmKey->e = bin_to_BN(sizeof(uint64_t), (byte*)&exp);
   EVP_PKEY_assign_RSA(tpmKey, rsa_tpmKey);
 
-  // encrypt salt
+  // Encrypt salt
   printf("\nencrypting salt\n");
   int n = RSA_public_encrypt(secret.size, secret.buffer, salt.secret,
                              rsa_tpmKey, RSA_PKCS1_OAEP_PADDING);
@@ -1315,18 +1316,12 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
 
-  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
-
 #if 0  
+  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
   // Start auth session
-  if (Tpm2_StartEncryptedAuthSession(tpm, TPM_RH_NULL, TPM_RH_NULL,
-                            authInfo, salt, TPM_SE_POLICY,
-                            symmetric, TPM_ALG_SHA1, &sessionHandle)) {
-    printf("Tpm2_StartAuthSession succeeds handle: %08x\n",
-           sessionHandle);
-    printf("nonce (%d): ", nonce_obj.size);
-    PrintBytes(nonce_obj.size, nonce_obj.buffer);
-    printf("\n");
+  if (Tpm2_StartEncryptedAuthSession(tpm, ekHandle, nv_handle, authInfo,
+                        salt, TPM_SE_POLICY, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
+    printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
     printf("Tpm2_StartAuthSession fails\n");
     return false;
@@ -1334,7 +1329,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.sessionHandle_ = sessionHandle;
 
   // Generate Keys
-  if (!CalculateKeys(authInfo, authValue, secret)) {
+  if (!CalculateKeys(authInfo, secret)) {
     printf("CalculateKeys failed\n");
     return false;
   }
@@ -1413,6 +1408,5 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   if (ekHandle != 0) {
     Tpm2_FlushContext(tpm, ekHandle);
   }
-
   return true;
 }

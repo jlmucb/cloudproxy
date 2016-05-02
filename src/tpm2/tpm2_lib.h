@@ -238,14 +238,20 @@ public:
   TPMI_ALG_HASH hash_alg_;
   TPM2B_NONCE oldNonce_;
   TPM2B_NONCE newNonce_;
-  int sessionKeySize_;
-  byte sessionKey_[256];
   TPM_HANDLE sessionHandle_;
+  TPM_HANDLE protectedHandle_;
+  uint32_t protectedAttributes_;
+  uint16_t protectedSize_;
   TPM2B_NAME nameProtected_;
   TPM2B_DIGEST targetAuthValue_;
   byte tpmSessionAttributes_;
+  int sessionKeySize_;
+  byte sessionKey_[64];
 };
+bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM2B_NAME& name);
 bool CalculateKeys(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
+bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
+		int size_parms, byte* parms, int* size_hmac, byte* hmac);
 void RollNonces(ProtectedSessionAuthInfo& in, TPM2B_NONCE& newNonce);
 bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
                            ProtectedSessionAuthInfo& authInfo,

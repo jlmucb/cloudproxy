@@ -3252,10 +3252,87 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
  *  This code works for HMAC sessions only with password authorization.
  */
 
+// Name =  nameAlg || Hash(handle→nvPublicArea)
+// TPMI_RH_NV_INDEX nvIndex;
+// TPMI_ALG_HASH    nameAlg;
+// TPMA_NV          attributes;
+// TPM2B_DIGEST     authPolicy;
+// uint16_t         dataSize;
+bool CalculateNvName(ProtectedSessionAuthInfo& in) {
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+
+  if (in.hash_alg_!= TPM_ALG_SHA1 && in.hash_alg_ != TPM_ALG_SHA256) {
+    printf("CalculateNvName: unsupported hash algorithm\n");
+    return false;
+  }
+
+  uint16_t zero = 0;
+
+  if (in.hash_alg_ == TPM_ALG_SHA1) {
+    in.nameProtected_.size = 20;
+
+    SHA1_Init(&sha1);
+    SHA1_Update(&sha1, (byte*)&in.protectedHandle_, sizeof(uint32_t));
+    SHA1_Update(&sha1, (byte*)&in.hash_alg_, sizeof(uint16_t));
+    SHA1_Update(&sha1, (byte*)&in.protectedAttributes_, sizeof(byte));
+    SHA1_Update(&sha1, (byte*)&zero, sizeof(uint16_t));
+    SHA1_Update(&sha1, (byte*)&in.protectedSize_, sizeof(uint16_t));
+    SHA1_Final(in.nameProtected_.name, &sha1);
+  } else {
+    in.nameProtected_.size = 32;
+
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (byte*)&in.protectedHandle_, sizeof(uint32_t));
+    SHA256_Update(&sha256, (byte*)&in.hash_alg_, sizeof(uint16_t));
+    SHA256_Update(&sha256, (byte*)&in.protectedAttributes_, sizeof(byte));
+    SHA256_Update(&sha256, (byte*)&zero, sizeof(uint16_t));
+    SHA256_Update(&sha256, (byte*)&in.protectedSize_, sizeof(uint16_t));
+    SHA256_Final(in.nameProtected_.name, &sha256);
+  }
+  return true;
+}
+
 // cpHash, nonceNewer, nonceOlder, sessionAttrs
 // cpHash ≔ Hash(commandCode {|| Name1 {|| Name2 {|| Name3 }}} {|| parameters })
-bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, int size_cmd, byte* cmd,
-		int* size_hmac, byte* hmac) {
+bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
+		int size_parms, byte* parms, int* size_hmac, byte* hmac) {
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+  byte cpHash[32];
+
+  if (in.hash_alg_!= TPM_ALG_SHA1 && in.hash_alg_ != TPM_ALG_SHA256) {
+    printf("ComputePcrDigest: unsupported hash algorithm\n");
+    return false;
+  }
+
+  if (in.hash_alg_ == TPM_ALG_SHA1) {
+    *size_hmac = 20;
+
+    SHA1_Init(&sha1);
+    SHA1_Update(&sha1, parms, size_parms);
+    SHA1_Update(&sha1, (byte*)&in.nameProtected_.name, in.nameProtected_.size);
+    SHA1_Final(cpHash, &sha1);
+
+    SHA1_Init(&sha1);
+    SHA1_Update(&sha1, (byte*)&cmd, sizeof(uint32_t));
+    SHA1_Update(&sha1, (byte*)&in.nameProtected_.name, in.nameProtected_.size);
+    SHA1_Update(&sha1, cpHash, *size_hmac);
+    SHA1_Final(hmac, &sha1);
+  } else {
+    *size_hmac = 32;
+
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, parms, size_parms);
+    SHA256_Update(&sha256, (byte*)&in.nameProtected_.name, in.nameProtected_.size);
+    SHA256_Final(cpHash, &sha256);
+
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (byte*)&cmd, sizeof(uint32_t));
+    SHA256_Update(&sha256, (byte*)&in.nameProtected_.name, in.nameProtected_.size);
+    SHA256_Update(&sha256, cpHash, *size_hmac);
+    SHA256_Final(hmac, &sha256);
+  }
   return true;
 }
 
@@ -3331,7 +3408,8 @@ void RollNonces(ProtectedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
 }
 
 bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
-                           ProtectedSessionAuthInfo& authInfo, TPM2B_ENCRYPTED_SECRET& salt,
+                           ProtectedSessionAuthInfo& authInfo,
+                           TPM2B_ENCRYPTED_SECRET& salt,
                            TPM_SE session_type, TPMT_SYM_DEF& symmetric,
                            TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
@@ -3345,14 +3423,13 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
 
   memset(params, 0, MAX_SIZE_PARAMS);
 
-  // set name of bind object in the nameProtected_ variable of the ProtectedSessionAuthInfo.
-  // Name ≔ nameAlg || Hash(handle→nvPublicArea)
-  // TPMI_RH_NV_INDEX nvIndex;
-  // TPMI_ALG_HASH    nameAlg;
-  // TPMA_NV          attributes;
-  // TPM2B_DIGEST     authPolicy;
-  // uint16_t         dataSize;
-
+  // set name of bind object in the nameProtected_ variable of the
+  // ProtectedSessionAuthInfo.
+  authInfo.protectedHandle_ = bind_obj;
+  if (!CalculateNvName(authInfo)) {
+    printf("CalculateNvName failed\n");
+    return false;
+  }
   int n= Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
                                   salt, session_type, symmetric, hash_alg,
                                   MAX_SIZE_PARAMS, params);
@@ -3411,13 +3488,22 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
-  // CalculateSessionHmac(authInfo, true, int size_cmd, byte* cmd, int* size_hmac, byte* hmac)
-  // Set Hmac auth
+  int sizeHmac = SizeHash(authInfo.hash_alg_);
+  byte hmac[128];
+  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Increment,
+          size_params, params_buf, &sizeHmac, hmac)) {
+    printf("CalculateSessionHmac failed\n");
+    return false;
+  }
 
-  string authString;  // FIX
-  n = CreatePasswordAuthArea(authString, space_left, in);
-  IF_NEG_RETURN_FALSE(n);
-  Update(n, &in, &size_params, &space_left);
+  // Set Hmac auth
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&sizeHmac, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeHmac)
+  memcpy(in, hmac, sizeHmac);
+  Update(sizeHmac, &in, &size_params, &space_left);
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Increment,
                                 commandBuf, size_params, params_buf);
@@ -3472,16 +3558,23 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
-  // CalculateSessionHmac(authInfo, true, int size_cmd, byte* cmd, int* size_hmac, byte* hmac)
   // Set Hmac suth
+  int sizeHmac = SizeHash(authInfo.hash_alg_);
+  byte hmac[128];
+  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Read,
+          size_params, params_buf, &sizeHmac, hmac)) {
+    printf("CalculateSessionHmac failed\n");
+    return false;
+  }
 
-  string authString;  // FIX
-  n = CreatePasswordAuthArea(authString, space_left, in);
-  IF_NEG_RETURN_FALSE(n);
-  Update(n, &in, &size_params, &space_left);
-  memset(in, 0, sizeof(uint16_t));
-  ChangeEndian16((uint16_t*)size, (uint16_t*)in);
+  // Set Hmac auth
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&sizeHmac, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeHmac)
+  memcpy(in, hmac, sizeHmac);
+  Update(sizeHmac, &in, &size_params, &space_left);
 
   uint16_t offset = 0;
   IF_NEG_RETURN_FALSE(n);

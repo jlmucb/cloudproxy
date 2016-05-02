@@ -1209,6 +1209,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   int slot = 1000;
   string authString("01020304");
+  uint16_t size_data = 16;
   uint16_t size_out = 16;
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
@@ -1312,28 +1313,19 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
 
-#if 0  
-  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
+  authInfo.protectedHandle_ = nv_handle;
+  authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHREAD;  // PLATFORM_CREATE?
+  authInfo.protectedSize_ = size_data;
+
   // Start auth session
   if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, nv_handle, authInfo,
-                        salt, TPM_SE_HMAC, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
+            salt, TPM_SE_HMAC, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
     printf("Tpm2_StartAuthSession fails\n");
     return false;
   }
   authInfo.sessionHandle_ = sessionHandle;
-  // Nonces were rolled in Tpm2_StartProtectedAuthSession.
-
-  // Compute the HMAC.
-
-  // Generate Keys
-  if (!CalculateKeys(authInfo, secret)) {
-    printf("CalculateKeys failed\n");
-    return false;
-  }
-  printf("sessionKey: ");
-  PrintBytes(authInfo.sessionKeySize_, authInfo.sessionKey_); printf("\n");
 
   if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
                        NV_COUNTER | NV_AUTHREAD, size_data) ) {
@@ -1342,8 +1334,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_DefineProtectedSpace fails\n");
     return false;
   }
-
-  // set name of protected object
 
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
@@ -1359,7 +1349,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_ReadProtectedNv fails\n");
     return false;
   }
-#endif
 
   if (sessionHandle != 0) {
     Tpm2_FlushContext(tpm, sessionHandle);

@@ -1327,6 +1327,12 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   }
   authInfo.sessionHandle_ = sessionHandle;
 
+  // Calculate session key
+  if (!CalculateHmacKey(authInfo, secret)) {
+    printf("Can't calculate HMac session key\n");
+    return false;
+  }
+
   if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
                        NV_COUNTER | NV_AUTHREAD, size_data) ) {
     printf("Tpm2_DefineProtectedSpace %d succeeds\n", nv_handle);

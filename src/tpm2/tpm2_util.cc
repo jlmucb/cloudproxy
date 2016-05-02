@@ -1209,37 +1209,33 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   int slot = 1000;
   string authString("01020304");
-  uint16_t size_data = 16;
-  byte data_in[512] = {
-    0x9, 0x8, 0x7, 0x6,
-    0x9, 0x8, 0x7, 0x6,
-    0x9, 0x8, 0x7, 0x6,
-    0x9, 0x8, 0x7, 0x6
-  };
   uint16_t size_out = 16;
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
 
   TPM2B_ENCRYPTED_SECRET salt;
-  TPMT_SYM_DEF symmetric;
   TPM_HANDLE sessionHandle = 0;
   TPML_PCR_SELECTION pcrSelect;
   TPM2B_DIGEST secret;
   EncryptedSessionAuthInfo authInfo;
+  TPMT_SYM_DEF symmetric;
+
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   symmetric.algorithm = TPM_ALG_AES;
   symmetric.keyBits.aes = 128;
   symmetric.mode.aes = TPM_ALG_CFB;
 
+  int hashSize = SizeHash(authInfo.hash_alg_);
+
   authInfo.targetAuthValue_.size = authString.size();
   memset(authInfo.targetAuthValue_.buffer, 0, authString.size());
 
-  authInfo.newNonce_.size = 16;
-  authInfo.oldNonce_.size = 16;
-  secret.size = 16;
-  memset(authInfo.newNonce_.buffer, 0, 16);
-  memset(authInfo.oldNonce_.buffer, 0, 16);
-  memset(secret.buffer, 0, 16);
+  authInfo.newNonce_.size = hashSize;
+  authInfo.oldNonce_.size = hashSize;
+  secret.size = hashSize;
+  memset(authInfo.newNonce_.buffer, 0, hashSize);
+  memset(authInfo.oldNonce_.buffer, 0, hashSize);
+  memset(secret.buffer, 0, hashSize);
   RAND_bytes(authInfo.newNonce_.buffer, authInfo.newNonce_.size);
   RAND_bytes(secret.buffer, secret.size);
 
@@ -1320,13 +1316,16 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
   // Start auth session
   if (Tpm2_StartEncryptedAuthSession(tpm, ekHandle, nv_handle, authInfo,
-                        salt, TPM_SE_POLICY, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
+                        salt, TPM_SE_HMAC, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
     printf("Tpm2_StartAuthSession fails\n");
     return false;
   }
   authInfo.sessionHandle_ = sessionHandle;
+  // Nonces were rolled in Tpm2_StartEncryptedAuthSession.
+
+  // Compute the HMAC.
 
   // Generate Keys
   if (!CalculateKeys(authInfo, secret)) {
@@ -1336,49 +1335,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("sessionKey: ");
   PrintBytes(authInfo.sessionKeySize_, authInfo.sessionKey_); printf("\n");
 
-  // set sessionAttributes.encrypt
-  // encrypt first arg
-  // if sessionAttributes.decrypt is set
-  // decrypt first arg
-
-  TPM2B_DIGEST policy_digest;
-  // get policy digest
-  if(Tpm2_PolicyGetDigest(tpm, sessionHandle, &policy_digest)) {
-    printf("PolicyGetDigest before Pcr succeeded: ");
-    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
-  } else {
-    Tpm2_FlushContext(tpm, sessionHandle);
-    printf("PolicyGetDigest failed\n");
-    return false;
-  }
-
-  if (Tpm2_PolicyPassword(tpm, sessionHandle)) {
-    printf("PolicyPassword succeeded\n");
-  } else {
-    Tpm2_FlushContext(tpm, sessionHandle);
-    printf("PolicyPassword failed\n");
-    return false;
-  }
-
-  TPM2B_DIGEST expected_digest;
-  expected_digest.size = 0;
-  if (Tpm2_PolicyPcr(tpm, sessionHandle,
-                     expected_digest, pcrSelect)) {
-    printf("PolicyPcr succeeded\n");
-  } else {
-    printf("PolicyPcr failed\n");
-    Tpm2_FlushContext(tpm, sessionHandle);
-    return false;
-  }
-
-  if(Tpm2_PolicyGetDigest(tpm, sessionHandle, &policy_digest)) {
-    printf("PolicyGetDigest succeeded: ");
-    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
-  } else {
-    printf("PolicyGetDigest failed\n");
-    return false;
-  }
-  
   if (Tpm2_DefineEncryptedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
                        NV_COUNTER | NV_AUTHREAD, size_data) ) {
     printf("Tpm2_DefineEncryptedSpace %d succeeds\n", nv_handle);
@@ -1386,6 +1342,9 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_DefineEncryptedSpace fails\n");
     return false;
   }
+
+  // set name of protected object
+
   if (Tpm2_IncrementEncryptedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementEncryptedNv %d succeeds\n", nv_handle);
   } else {

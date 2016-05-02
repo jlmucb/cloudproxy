@@ -241,7 +241,9 @@ public:
   int sessionKeySize_;
   byte sessionKey_[256];
   TPM_HANDLE sessionHandle_;
+  TPM2B_NAME nameProtected_;
   TPM2B_DIGEST targetAuthValue_;
+  byte tpmSessionAttributes_;
 };
 bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
 void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce);

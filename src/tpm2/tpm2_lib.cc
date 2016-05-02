@@ -3248,7 +3248,16 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
 /*
  *  The following code is for an encrypted session. Later we should fix the
  *  original functions so they allow bound sessions initiated with encrypted salts.
+ *
+ *  This code works for HMAC sessions only with password authorization.
  */
+
+// cpHash, nonceNewer, nonceOlder, sessionAttrs
+// cpHash ≔ Hash(commandCode {|| Name1 {|| Name2 {|| Name3 }}} {|| parameters })
+bool CalculateSessionHmac(EncryptedSessionAuthInfo& in, bool dir, int size_cmd, byte* cmd,
+		int* size_hmac, byte* hmac) {
+  return true;
+}
 
 // sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
 //                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
@@ -3322,8 +3331,7 @@ void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
 }
 
 bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
-                           EncryptedSessionAuthInfo& authInfo,
-                           TPM2B_ENCRYPTED_SECRET& salt,
+                           EncryptedSessionAuthInfo& authInfo, TPM2B_ENCRYPTED_SECRET& salt,
                            TPM_SE session_type, TPMT_SYM_DEF& symmetric,
                            TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
@@ -3336,6 +3344,14 @@ bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   TPM2B_DIGEST newNonce;
 
   memset(params, 0, MAX_SIZE_PARAMS);
+
+  // set name of bind object in the nameProtected_ variable of the EncryptedSessionAuthInfo.
+  // Name ≔ nameAlg || Hash(handle→nvPublicArea)
+  // TPMI_RH_NV_INDEX nvIndex;
+  // TPMI_ALG_HASH    nameAlg;
+  // TPMA_NV          attributes;
+  // TPM2B_DIGEST     authPolicy;
+  // uint16_t         dataSize;
 
   int n= Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
                                   salt, session_type, symmetric, hash_alg,
@@ -3395,6 +3411,9 @@ bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, EncryptedS
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
+  // CalculateSessionHmac(authInfo, true, int size_cmd, byte* cmd, int* size_hmac, byte* hmac)
+  // Set Hmac auth
+
   string authString;  // FIX
   n = CreatePasswordAuthArea(authString, space_left, in);
   IF_NEG_RETURN_FALSE(n);
@@ -3419,6 +3438,9 @@ bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, EncryptedS
   printResponse("IncrementNv", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
+
+  // make sure the Hmac is right
+  // get the new nonce and rollnonces
 
   return true;
 }
@@ -3449,6 +3471,9 @@ bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  // CalculateSessionHmac(authInfo, true, int size_cmd, byte* cmd, int* size_hmac, byte* hmac)
+  // Set Hmac suth
 
   string authString;  // FIX
   n = CreatePasswordAuthArea(authString, space_left, in);
@@ -3482,6 +3507,10 @@ bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   printResponse("ReadNv", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
+
+  // make sure the Hmac is right
+  // get the new nonce and rollnonces
+
   byte* out = resp_buf + sizeof(TPM_RESPONSE) + sizeof(uint32_t);
   ChangeEndian16((uint16_t*)out, (uint16_t*)size);
   out += sizeof(uint16_t);

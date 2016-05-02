@@ -3254,14 +3254,14 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
 
 // cpHash, nonceNewer, nonceOlder, sessionAttrs
 // cpHash ≔ Hash(commandCode {|| Name1 {|| Name2 {|| Name3 }}} {|| parameters })
-bool CalculateSessionHmac(EncryptedSessionAuthInfo& in, bool dir, int size_cmd, byte* cmd,
+bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, int size_cmd, byte* cmd,
 		int* size_hmac, byte* hmac) {
   return true;
 }
 
 // sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
 //                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
-bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
+bool CalculateKeys(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   int sizeKey= SizeHash(in.hash_alg_);
   in.sessionKeySize_ = sizeKey;
 
@@ -3323,15 +3323,15 @@ bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   return true;
 }
 
-void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
+void RollNonces(ProtectedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
   memcpy(in.oldNonce_.buffer, in.newNonce_.buffer, in.newNonce_.size);
   in.oldNonce_.size = in.newNonce_.size;
   memcpy(in.newNonce_.buffer, newNonce.buffer, newNonce.size);
   in.newNonce_.size = newNonce.size;
 }
 
-bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
-                           EncryptedSessionAuthInfo& authInfo, TPM2B_ENCRYPTED_SECRET& salt,
+bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
+                           ProtectedSessionAuthInfo& authInfo, TPM2B_ENCRYPTED_SECRET& salt,
                            TPM_SE session_type, TPMT_SYM_DEF& symmetric,
                            TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
@@ -3345,7 +3345,7 @@ bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
 
   memset(params, 0, MAX_SIZE_PARAMS);
 
-  // set name of bind object in the nameProtected_ variable of the EncryptedSessionAuthInfo.
+  // set name of bind object in the nameProtected_ variable of the ProtectedSessionAuthInfo.
   // Name ≔ nameAlg || Hash(handle→nvPublicArea)
   // TPMI_RH_NV_INDEX nvIndex;
   // TPMI_ALG_HASH    nameAlg;
@@ -3387,7 +3387,7 @@ bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   return true;
 }
 
-bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, EncryptedSessionAuthInfo& authInfo) {
+bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedSessionAuthInfo& authInfo) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -3445,8 +3445,8 @@ bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, EncryptedS
   return true;
 }
 
-bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
-                 EncryptedSessionAuthInfo& authInfo, uint16_t* size, byte* data) {
+bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+                 ProtectedSessionAuthInfo& authInfo, uint16_t* size, byte* data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -3518,8 +3518,8 @@ bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   return true;
 }
 
-bool Tpm2_DefineEncryptedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
-                EncryptedSessionAuthInfo& authInfo, uint16_t authPolicySize,
+bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
+                ProtectedSessionAuthInfo& authInfo, uint16_t authPolicySize,
                 byte* authPolicy, uint32_t attributes, uint16_t size_data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;

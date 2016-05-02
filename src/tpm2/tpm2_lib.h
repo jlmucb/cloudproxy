@@ -233,7 +233,7 @@ bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm);
 #define NV_POLICY_DELETE  0x00000400
 #define NV_AUTHREAD       0x00040000
 
-class EncryptedSessionAuthInfo {
+class ProtectedSessionAuthInfo {
 public:
   TPMI_ALG_HASH hash_alg_;
   TPM2B_NONCE oldNonce_;
@@ -245,19 +245,19 @@ public:
   TPM2B_DIGEST targetAuthValue_;
   byte tpmSessionAttributes_;
 };
-bool CalculateKeys(EncryptedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
-void RollNonces(EncryptedSessionAuthInfo& in, TPM2B_NONCE& newNonce);
-bool Tpm2_StartEncryptedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
-                           EncryptedSessionAuthInfo& authInfo,
+bool CalculateKeys(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
+void RollNonces(ProtectedSessionAuthInfo& in, TPM2B_NONCE& newNonce);
+bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
+                           ProtectedSessionAuthInfo& authInfo,
                            TPM2B_ENCRYPTED_SECRET& salt,
                            TPM_SE session_type, TPMT_SYM_DEF& symmetric,
                            TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle);
-bool Tpm2_IncrementEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
-          EncryptedSessionAuthInfo& authInfo);
-bool Tpm2_ReadEncryptedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
-                 EncryptedSessionAuthInfo& authInfo, uint16_t* size, byte* data);
-bool Tpm2_DefineEncryptedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
-                EncryptedSessionAuthInfo& authInfo, uint16_t authPolicySize,
+bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+          ProtectedSessionAuthInfo& authInfo);
+bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+                 ProtectedSessionAuthInfo& authInfo, uint16_t* size, byte* data);
+bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
+                ProtectedSessionAuthInfo& authInfo, uint16_t authPolicySize,
                 byte* authPolicy, uint32_t attributes, uint16_t size_data);
 #endif
 

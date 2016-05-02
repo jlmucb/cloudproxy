@@ -1217,7 +1217,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   TPM_HANDLE sessionHandle = 0;
   TPML_PCR_SELECTION pcrSelect;
   TPM2B_DIGEST secret;
-  EncryptedSessionAuthInfo authInfo;
+  ProtectedSessionAuthInfo authInfo;
   TPMT_SYM_DEF symmetric;
 
   authInfo.hash_alg_ = TPM_ALG_SHA1;
@@ -1315,7 +1315,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 #if 0  
   InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
   // Start auth session
-  if (Tpm2_StartEncryptedAuthSession(tpm, ekHandle, nv_handle, authInfo,
+  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, nv_handle, authInfo,
                         salt, TPM_SE_HMAC, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
@@ -1323,7 +1323,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     return false;
   }
   authInfo.sessionHandle_ = sessionHandle;
-  // Nonces were rolled in Tpm2_StartEncryptedAuthSession.
+  // Nonces were rolled in Tpm2_StartProtectedAuthSession.
 
   // Compute the HMAC.
 
@@ -1335,28 +1335,28 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("sessionKey: ");
   PrintBytes(authInfo.sessionKeySize_, authInfo.sessionKey_); printf("\n");
 
-  if (Tpm2_DefineEncryptedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
+  if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
                        NV_COUNTER | NV_AUTHREAD, size_data) ) {
-    printf("Tpm2_DefineEncryptedSpace %d succeeds\n", nv_handle);
+    printf("Tpm2_DefineProtectedSpace %d succeeds\n", nv_handle);
   } else {
-    printf("Tpm2_DefineEncryptedSpace fails\n");
+    printf("Tpm2_DefineProtectedSpace fails\n");
     return false;
   }
 
   // set name of protected object
 
-  if (Tpm2_IncrementEncryptedNv(tpm, nv_handle, authInfo)) {
-    printf("Tpm2_IncrementEncryptedNv %d succeeds\n", nv_handle);
+  if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
+    printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
   } else {
-    printf("Tpm2_IncrementEncryptedNv fails\n");
+    printf("Tpm2_IncrementProtectedNv fails\n");
     return false;
   }
-  if (Tpm2_ReadEncryptedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
-    printf("Tpm2_ReadEncryptedNv %d succeeds: ", nv_handle);
+  if (Tpm2_ReadProtectedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
+    printf("Tpm2_ReadProtectedNv %d succeeds: ", nv_handle);
     PrintBytes(size_out, data_out);
     printf("\n");
   } else {
-    printf("Tpm2_ReadEncryptedNv fails\n");
+    printf("Tpm2_ReadProtectedNv fails\n");
     return false;
   }
 #endif

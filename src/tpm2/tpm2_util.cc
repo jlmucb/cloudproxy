@@ -1364,9 +1364,16 @@ printf("\n");
     goto done;
   }
   authInfo.sessionHandle_ = sessionHandle;
+  printf("newNonce: ");
+  PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("oldNonce: ");
+  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 
   // Calculate session key
-  if (!CalculateHmacKey(authInfo, secret)) {
+  // Remove this later
+  TPM2B_DIGEST secret1;
+  secret1.size = 0;
+  if (!CalculateHmacKey(authInfo, secret1)) {
     printf("Can't calculate HMac session key\n");
     ret = false;
     goto done;

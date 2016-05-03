@@ -3321,10 +3321,26 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   byte toHash[256];
   byte cpHash[32];
 
+printf("\nCalculateSessionHmac\n");
+
   if (in.hash_alg_!= TPM_ALG_SHA1 && in.hash_alg_ != TPM_ALG_SHA256) {
     printf("CalculateSessionHmac: unsupported hash algorithm\n");
     return false;
   }
+
+  // Need to include auth too?
+  byte hmac_key[256];
+  int sizeHmacKey = 0;
+
+  memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
+  sizeHmacKey += in.sessionKeySize_;
+#if 0
+  memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer, in.targetAuthValue_.size);
+  sizeHmacKey += in.targetAuthValue_.size;
+#endif
+
+printf("hmac_key: ");
+PrintBytes(sizeHmacKey, hmac_key); printf("\n");
 
   int current_out_size = 0;
   int room_left = 256;
@@ -3334,7 +3350,12 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   memcpy(&toHash[current_out_size], in.nameProtected_.name, in.nameProtected_.size);
   current_out_size += in.nameProtected_.size;
   memcpy(&toHash[current_out_size], parms, size_parms);
+  current_out_size += size_parms;
 
+printf("toHash for cpHash: ");
+PrintBytes(current_out_size, toHash); printf("\n");
+
+  // Note: current_out_size is repurposed.
   if (in.hash_alg_ == TPM_ALG_SHA1) {
     SHA1_Init(&sha1);
     SHA1_Update(&sha1, toHash, current_out_size);
@@ -3346,6 +3367,9 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
     SHA256_Final(cpHash, &sha256);
     current_out_size = 32;
   }
+
+printf("cpHash: ");
+PrintBytes(current_out_size, cpHash); printf("\n");
 
   memcpy(toHash, cpHash, current_out_size);
   room_left -= current_out_size;
@@ -3366,14 +3390,8 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   memcpy(current, &in.tpmSessionAttributes_, 1);
   Update(1, &current, &current_out_size, &room_left);
 
-  // Need to include auth too.
-  byte hmac_key[256];
-  int sizeHmacKey = 0;
-
-  memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
-  sizeHmacKey += in.sessionKeySize_;
-  memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer, in.targetAuthValue_.size);
-  sizeHmacKey += in.targetAuthValue_.size;
+printf("Hmac in: ");
+PrintBytes(current_out_size, toHash); printf("\n");
 
   HMAC_CTX hctx;
   HMAC_CTX_init(&hctx);
@@ -3388,6 +3406,9 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   HMAC_Final(&hctx, hmac, (unsigned*)size_hmac);
   HMAC_CTX_cleanup(&hctx);
 
+printf("Hmac out: ");
+PrintBytes(*size_hmac, hmac); printf("\n");
+
   return true;
 }
 
@@ -3398,6 +3419,9 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
 bool CalculateHmacKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   int sizeKey= SizeHash(in.hash_alg_);
   in.sessionKeySize_ = sizeKey;
+printf("\nCalculateHmacKey\n");
+printf("Auth value: ");
+PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
 
   string label= "AUTH";
   string key;
@@ -3408,13 +3432,15 @@ bool CalculateHmacKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   key.append((const char*)rawSalt.buffer, rawSalt.size);
   contextV.clear();
   contextU.clear();
-  contextU.assign((const char*)in.newNonce_.buffer, in.newNonce_.size);
-  contextV.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
+  contextU.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
   if (!KDFa(in.hash_alg_, key, label, contextU, contextV,
-            sizeKey*NBITSINBYTE, 256, in.sessionKey_)) {
+            sizeKey*NBITSINBYTE, sizeKey*NBITSINBYTE, in.sessionKey_)) {
     printf("Can't KDFa symKey\n");
     return false;
   }
+
+printf("CalculateHmacKey, hmac_key: ");
+PrintBytes(sizeKey, in.sessionKey_); printf("\n");
 
 #if 0
   byte zero_iv[32];
@@ -3476,7 +3502,6 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   byte params[MAX_SIZE_PARAMS];
   byte* in = params;
   int space_left = MAX_SIZE_PARAMS;
-  TPM2B_DIGEST newNonce;
 
   memset(params, 0, MAX_SIZE_PARAMS);
 
@@ -3515,9 +3540,10 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   byte* current_out = resp_buf + sizeof(TPM_RESPONSE);
   ChangeEndian32((uint32_t*)current_out, (uint32_t*)session_handle);
   current_out += sizeof(uint32_t);
-  ChangeEndian16((uint16_t*)current_out, &newNonce.size);
+  ChangeEndian16((uint16_t*)current_out, &authInfo.newNonce_.size);
   current_out += sizeof(uint16_t);
-  memcpy(newNonce.buffer, current_out, newNonce.size);
+  memcpy(authInfo.newNonce_.buffer, current_out, authInfo.newNonce_.size);
+  current_out += authInfo.newNonce_.size;
   // RollNonces(authInfo, newNonce);
   return true;
 }
@@ -3564,7 +3590,7 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Increment,
                                 commandBuf, size_params, params_buf);
-  printCommand("IncrementNv", in_size, commandBuf);
+  printCommand("IncrementProtectedNv", in_size, commandBuf);
   if (!tpm.SendCommand(in_size, commandBuf)) {
     printf("SendCommand failed\n");
     return false;
@@ -3590,9 +3616,6 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
 
   // What happened to the new nonce?
   printf("TPM_CC_NV_Increment response size: %d\n", responseSize);
-
-  // Get new nonce.
-  // TPM2B_NONCE newNonce;
 
   // Get the new nonce and rollnonces
   // RollNonces(authInfo, newNonce);

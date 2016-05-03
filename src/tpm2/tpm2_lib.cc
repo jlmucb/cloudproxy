@@ -3342,17 +3342,24 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   byte* current = &toHash[current_out_size];
 
   // nonceNewer, nonceOlder, sessionAttrs
-  // check to see if these should be switched
-  memcpy(current, in.oldNonce_.buffer, in.oldNonce_.size);
-  Update(in.oldNonce_.size, &current, &current_out_size, &room_left);
-  memcpy(current, in.newNonce_.buffer, in.newNonce_.size);
-  Update(in.newNonce_.size, &current, &current_out_size, &room_left);
+  if (dir) {
+    memcpy(current, in.oldNonce_.buffer, in.oldNonce_.size);
+    Update(in.oldNonce_.size, &current, &current_out_size, &room_left);
+    memcpy(current, in.newNonce_.buffer, in.newNonce_.size);
+    Update(in.newNonce_.size, &current, &current_out_size, &room_left);
+  } else {
+    memcpy(current, in.newNonce_.buffer, in.newNonce_.size);
+    Update(in.newNonce_.size, &current, &current_out_size, &room_left);
+    memcpy(current, in.oldNonce_.buffer, in.oldNonce_.size);
+    Update(in.oldNonce_.size, &current, &current_out_size, &room_left);
+  }
   memcpy(current, &in.tpmSessionAttributes_, 1);
   Update(1, &current, &current_out_size, &room_left);
 
-  // need to include auth too
+  // Need to include auth too.
   byte hmac_key[256];
   int sizeHmacKey = 0;
+
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
   memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer, in.targetAuthValue_.size);
@@ -3376,6 +3383,7 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
 
 // sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
 //                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
+//  KDFa (hashAlg, seed, label, Name, Counter, primeSize)
 // SECRET as label?
 bool CalculateHmacKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   int sizeKey= SizeHash(in.hash_alg_);
@@ -3462,7 +3470,7 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
 
   memset(params, 0, MAX_SIZE_PARAMS);
 
-  // set name of bind object in the nameProtected_ variable of the
+  // Set name of bind object in the nameProtected_ variable of the
   // ProtectedSessionAuthInfo.
   authInfo.protectedHandle_ = bind_obj;
   if (!CalculateNvName(authInfo)) {
@@ -3557,14 +3565,26 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
   uint16_t cap = 0;
   uint32_t responseSize;
   uint32_t responseCode;
-  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
-                        &responseSize, &responseCode);
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap, &responseSize, &responseCode);
   printResponse("IncrementNv", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
 
-  // make sure the Hmac is right
-  // get the new nonce and rollnonces
+  // Make sure the Hmac is right.
+  if (!CalculateSessionHmac(authInfo, false, TPM_CC_NV_Increment,
+                size_params, params_buf, &sizeHmac, hmac)) {
+    printf("Can't calculate response hmac\n");
+    return false;
+  }
+
+  // What happened to the new nonce?
+  printf("TPM_CC_NV_Increment response size: %d\n", responseSize);
+
+  // Get new nonce.
+  // TPM2B_NONCE newNonce;
+
+  // Get the new nonce and rollnonces
+  // RollNonces(authInfo, newNonce);
 
   return true;
 }

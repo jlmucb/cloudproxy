@@ -1238,6 +1238,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   memset(authInfo.oldNonce_.buffer, 0, hashSize);
   memset(secret.buffer, 0, hashSize);
   RAND_bytes(authInfo.newNonce_.buffer, authInfo.newNonce_.size);
+  RAND_bytes(authInfo.oldNonce_.buffer, authInfo.oldNonce_.size);
   RAND_bytes(secret.buffer, secret.size);
 
   printf("Initial nonce: ");
@@ -1272,6 +1273,8 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("CreatePrimary failed\n");
     return false;
   }
+
+#if 0
   if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out, &pub_name,
                       &qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
@@ -1288,6 +1291,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("Qualified name: ");
   PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
   printf("\n");
+#endif
 
   // Normally, the caller would get the key from the endorsement certificate
   EVP_PKEY* tpmKey = EVP_PKEY_new();
@@ -1306,7 +1310,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("\nEncrypted salt (%d): ", n);
   PrintBytes(n, salt.secret); printf("\n");
 
-  // Create counter
+  // Create counter.
   if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Tpm2_UndefineSpace %d succeeds\n", slot);
   } else {
@@ -1314,12 +1318,14 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   }
 
   authInfo.protectedHandle_ = nv_handle;
-  authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHREAD;  // PLATFORM_CREATE?
+  authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHREAD | NV_PLATFORMCREATE;
   authInfo.protectedSize_ = size_data;
+  authInfo.hash_alg_ = TPM_ALG_SHA1;
+  authInfo.tpmSessionAttributes_ = TPM_SE_HMAC;
 
-  // Start auth session
-  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, nv_handle, authInfo,
-            salt, TPM_SE_HMAC, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
+  // Start auth session.
+  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, nv_handle, authInfo, salt,
+        authInfo.tpmSessionAttributes_, symmetric, authInfo.hash_alg_, &sessionHandle)) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
     printf("Tpm2_StartAuthSession fails\n");

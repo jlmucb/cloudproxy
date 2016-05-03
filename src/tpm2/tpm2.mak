@@ -11,7 +11,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License
 #    Project: New Cloudproxy Crypto
-#    File: symmetric.mak
+#    File: tpm2.mak
 
 #ifndef SRC_DIR
 SRC_DIR=$(HOME)

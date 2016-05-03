@@ -249,7 +249,7 @@ public:
   byte sessionKey_[64];
 };
 bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM2B_NAME& name);
-bool CalculateKeys(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
+bool CalculateHmacKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
 bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
 		int size_parms, byte* parms, int* size_hmac, byte* hmac);
 void RollNonces(ProtectedSessionAuthInfo& in, TPM2B_NONCE& newNonce);

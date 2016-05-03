@@ -1206,17 +1206,21 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
 bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   printf("Tpm2_NvCombinedSessionTest\n\n");
+  extern int CreatePasswordAuthArea(string& password, int size, byte* buf);
 
   int slot = 1000;
   string authString("01020304");
-  uint16_t size_data = 16;
-  uint16_t size_out = 16;
+  uint16_t size_data = 8;
+  uint16_t size_out = 512;
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
+  bool ret = true;
 
   TPM2B_ENCRYPTED_SECRET salt;
   TPM_HANDLE sessionHandle = 0;
   TPML_PCR_SELECTION pcrSelect;
+  memset((void*)&pcrSelect, 0, sizeof(TPML_PCR_SELECTION));
+
   TPM2B_DIGEST secret;
   ProtectedSessionAuthInfo authInfo;
   TPMT_SYM_DEF symmetric;
@@ -1238,20 +1242,19 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   memset(authInfo.oldNonce_.buffer, 0, hashSize);
   memset(secret.buffer, 0, hashSize);
   RAND_bytes(authInfo.newNonce_.buffer, authInfo.newNonce_.size);
+  RAND_bytes(authInfo.oldNonce_.buffer, authInfo.oldNonce_.size);
   RAND_bytes(secret.buffer, secret.size);
 
-  printf("Initial nonce: ");
+  printf("newNonce: ");
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("oldNonce: ");
+  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
   printf("Secret: "); PrintBytes(secret.size, secret.buffer); printf("\n");
 
   // Get endorsement key handle
   string emptyAuth;
   TPM_HANDLE ekHandle;
   TPM2B_PUBLIC pub_out;
-  TPM2B_NAME pub_name;
-  TPM2B_NAME qualified_pub_name;
-  uint16_t pub_blob_size = 2048;
-  byte pub_blob[2048];
 
   // TPM_RH_ENDORSEMENT
   TPMA_OBJECT primary_flags;
@@ -1272,6 +1275,12 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("CreatePrimary failed\n");
     return false;
   }
+
+  TPM2B_NAME pub_name;
+  TPM2B_NAME qualified_pub_name;
+  uint16_t pub_blob_size = 2048;
+  byte pub_blob[2048];
+
   if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out, &pub_name,
                       &qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
@@ -1306,40 +1315,58 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("\nEncrypted salt (%d): ", n);
   PrintBytes(n, salt.secret); printf("\n");
 
-  // Create counter
+  // Create counter.
   if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Tpm2_UndefineSpace %d succeeds\n", slot);
   } else {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
 
-  authInfo.protectedHandle_ = nv_handle;
-  authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHREAD;  // PLATFORM_CREATE?
-  authInfo.protectedSize_ = size_data;
+  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString,
+                       0, nullptr, NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD,
+                       size_data)) {
+    printf("DefineSpace succeeded\n");
+  } else {
+    printf("DefineSpace failed\n");
+    ret = false;
+    goto done;
+  }
 
-  // Start auth session
-  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, nv_handle, authInfo,
-            salt, TPM_SE_HMAC, symmetric, TPM_ALG_SHA1, &sessionHandle)) {
+  authInfo.protectedHandle_ = nv_handle;
+  authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD;
+  authInfo.protectedSize_ = size_data;
+  authInfo.hash_alg_ = TPM_ALG_SHA1;
+  authInfo.tpmSessionAttributes_ = TPM_SE_HMAC;
+  authInfo.targetAuthValue_.size = CreatePasswordAuthArea(authString,
+           64, authInfo.targetAuthValue_.buffer);
+printf("autharea: ");
+PrintBytes(authInfo.targetAuthValue_.size, authInfo.targetAuthValue_.buffer);
+printf("\n");
+
+  // Start auth session.
+  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, nv_handle, authInfo, salt,
+        authInfo.tpmSessionAttributes_, symmetric, authInfo.hash_alg_, &sessionHandle)) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
     printf("Tpm2_StartAuthSession fails\n");
-    return false;
+    ret = false;
+    goto done;
   }
   authInfo.sessionHandle_ = sessionHandle;
 
-  if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
-                       NV_COUNTER | NV_AUTHREAD, size_data) ) {
-    printf("Tpm2_DefineProtectedSpace %d succeeds\n", nv_handle);
-  } else {
-    printf("Tpm2_DefineProtectedSpace fails\n");
-    return false;
+  // Calculate session key
+  if (!CalculateHmacKey(authInfo, secret)) {
+    printf("Can't calculate HMac session key\n");
+    ret = false;
+    goto done;
   }
 
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_IncrementProtectedNv fails\n");
-    return false;
+    ret = false;
+    goto done;
   }
   if (Tpm2_ReadProtectedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
     printf("Tpm2_ReadProtectedNv %d succeeds: ", nv_handle);
@@ -1347,14 +1374,16 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("\n");
   } else {
     printf("Tpm2_ReadProtectedNv fails\n");
-    return false;
+    ret = false;
+    goto done;
   }
 
+done:
   if (sessionHandle != 0) {
     Tpm2_FlushContext(tpm, sessionHandle);
   }
   if (ekHandle != 0) {
     Tpm2_FlushContext(tpm, ekHandle);
   }
-  return true;
+  return ret;
 }

@@ -1206,6 +1206,7 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
 bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   printf("Tpm2_NvCombinedSessionTest\n\n");
+  extern int CreatePasswordAuthArea(string& password, int size, byte* buf);
 
   int slot = 1000;
   string authString("01020304");
@@ -1336,6 +1337,11 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.protectedSize_ = size_data;
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   authInfo.tpmSessionAttributes_ = TPM_SE_HMAC;
+  authInfo.targetAuthValue_.size = CreatePasswordAuthArea(authString,
+           64, authInfo.targetAuthValue_.buffer);
+printf("autharea: ");
+PrintBytes(authInfo.targetAuthValue_.size, authInfo.targetAuthValue_.buffer);
+printf("\n");
 
   // Start auth session.
   if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, nv_handle, authInfo, salt,

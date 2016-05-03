@@ -1,0 +1,272 @@
+// Copyright (c) 2016, Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package domain_service
+
+import (
+	"crypto/x509"
+	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+)
+
+var machineName = "Encode Machine Information"
+
+var hostName = &auth.Prin{
+	Type: "DummyPrin",
+	Key:  auth.Str("hostHash")}
+
+var programName = &auth.Prin{
+	Type: "DummyPrin",
+	Key:  auth.Str("programHash")}
+
+var us = "US"
+var google = "Google"
+var x509Info = &tao.X509Details{
+	Country:      &us,
+	Organization: &google}
+
+func TestVerifyHostAttestation_stackedHost(t *testing.T) {
+	domain := generateDomain(t)
+	policyKey, policyCert := domain.Keys, domain.Keys.Cert
+	hwKey, hwCert := generateEndorsementCertficate(t, policyKey, policyCert)
+	hostKey, hostAtt := generateAttestation(t, hwKey, hostName)
+	programKey, programAtt := generateAttestation(t, hostKey, programName)
+	rawEnd1, err := proto.Marshal(hostAtt)
+	if err != nil {
+		t.Fatal("Error serializing attestation.")
+	}
+	rawEnd2 := hwCert.Raw
+	programAtt.SerializedEndorsements = [][]byte{rawEnd1, rawEnd2}
+	rawAtt, err := proto.Marshal(programAtt)
+	if err != nil {
+		t.Fatal("Error serializing attestation.")
+	}
+	certPool := x509.NewCertPool()
+	certPool.AddCert(policyCert)
+	speaker, key, prog, err := VerifyHostAttestation(rawAtt, domain, certPool)
+	if err != nil {
+		t.Fatal("Test attesation failed verification checks.", err)
+	}
+	if !programName.Identical(prog) {
+		t.Fatal("Attestation program name not identical to expected program name.")
+	}
+	if !programKey.SigningKey.ToPrincipal().Identical(key) {
+		t.Fatal("Attestation program key not identical to expected program key.")
+	}
+	if !hostKey.SigningKey.ToPrincipal().Identical(speaker) {
+		t.Fatal("Attestation host key not identical to expected host key.")
+	}
+}
+
+func TestVerifyHostAttestation_rootHost(t *testing.T) {
+	domain := generateDomain(t)
+	policyKey, policyCert := domain.Keys, domain.Keys.Cert
+	hostKey, hostAtt := generateAttestation(t, policyKey, hostName)
+	programKey, programAtt := generateAttestation(t, hostKey, programName)
+	rawEnd, err := proto.Marshal(hostAtt)
+	if err != nil {
+		t.Fatal("Error serializing attestation.")
+	}
+	programAtt.SerializedEndorsements = [][]byte{rawEnd}
+	rawAtt, err := proto.Marshal(programAtt)
+	if err != nil {
+		t.Fatal("Error serializing attestation.")
+	}
+	certPool := x509.NewCertPool()
+	certPool.AddCert(policyCert)
+	speaker, key, prog, err := VerifyHostAttestation(rawAtt, domain, certPool)
+	if err != nil {
+		t.Fatal("Test attesation failed verification checks.", err)
+	}
+	if !programName.Identical(prog) {
+		t.Fatal("Attestation program name not identical to expected program name.")
+	}
+	if !programKey.SigningKey.ToPrincipal().Identical(key) {
+		t.Fatal("Attestation program key not identical to expected program key.")
+	}
+	if !hostKey.SigningKey.ToPrincipal().Identical(speaker) {
+		t.Fatal("Attestation host key not identical to expected host key.")
+	}
+}
+
+func TestGenerateProgramCert(t *testing.T) {
+	domain := generateDomain(t)
+	programKey, err := tao.NewTemporaryKeys(tao.Signing)
+	if err != nil {
+		t.Fatal("Error generating keys.", err)
+	}
+	programKprin := programKey.SigningKey.ToPrincipal()
+	att, err := GenerateProgramCert(domain, 0, programName, &programKprin)
+	if err != nil {
+		t.Fatal("Error generating Program Cert.", err)
+	}
+	saysStmt, err := att.Validate()
+	if err != nil {
+		t.Fatal("Error validating attestation.", err)
+	}
+	speaker, ok := saysStmt.Speaker.(auth.Prin)
+	if !ok {
+		t.Fatal("attestation 'Says' speaker is not a auth.Prin.")
+	}
+	if !domain.Keys.SigningKey.ToPrincipal().Identical(speaker) {
+		t.Fatal("Attestation speaker not identical to policy key.")
+	}
+	sf, ok := saysStmt.Message.(auth.Speaksfor)
+	if !ok {
+		t.Fatal("attestation statement does not have a 'SpeaksFor'.")
+	}
+	delegator, ok := sf.Delegator.(auth.Prin)
+	if !ok {
+		t.Fatal("attestation 'speaksFor' delegator is not a auth.Prin.")
+	}
+	if !programName.Identical(delegator) {
+		t.Fatal("Attestation speaker not identical to policy key.")
+	}
+	delegate, ok := sf.Delegate.(auth.Bytes)
+	if !ok {
+		t.Fatal("Attestation 'speaksFor' delegate is not a auth.Bytes.")
+	}
+	cert, err := x509.ParseCertificate(delegate)
+	if err != nil {
+		t.Fatal("Error parsing program certificate.", err)
+	}
+	rootCerts := x509.NewCertPool()
+	rootCerts.AddCert(domain.Keys.Cert)
+	options := x509.VerifyOptions{Roots: rootCerts}
+	_, err = cert.Verify(options)
+	if err != nil {
+		t.Fatal("Program cert fails verification check.", err)
+	}
+}
+
+func TestValidateEndorsementCert(t *testing.T) {
+	k, err := tao.NewTemporaryKeys(tao.Signing)
+	if k == nil || err != nil {
+		t.Fatal("Can't generate signing key")
+	}
+
+	// publicString is now a canonicalized Tao Principal name
+	us := "US"
+	google := "Google"
+	details := tao.X509Details{
+		Country:      &us,
+		Organization: &google,
+		CommonName:   &machineName}
+	subjectname := tao.NewX509Name(&details)
+
+	cert, err := k.SigningKey.CreateSelfSignedX509(subjectname)
+	if err != nil {
+		t.Fatal("Can't self sign cert\n")
+	}
+	rootCerts := x509.NewCertPool()
+	rootCerts.AddCert(cert)
+	kPrin := k.SigningKey.GetVerifier().ToPrincipal()
+	err = validateEndorsementCertificate(cert, *generateGuard(t), &kPrin, rootCerts)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func generateDomain(t *testing.T) *tao.Domain {
+	domain := tao.Domain{}
+	domain.Keys, domain.Keys.Cert = generatePolicyKey(t)
+	domain.Guard = *generateGuard(t)
+	domain.Config = tao.DomainConfig{X509Info: x509Info}
+	return &domain
+}
+
+func generatePolicyKey(t *testing.T) (*tao.Keys, *x509.Certificate) {
+	k, err := tao.NewTemporaryKeys(tao.Signing)
+	if k == nil || err != nil {
+		t.Fatal("Can't generate signing key")
+	}
+	us := "US"
+	google := "Google"
+	subjectName := "Policy"
+	details := tao.X509Details{
+		Country:      &us,
+		Organization: &google,
+		CommonName:   &subjectName}
+	subjectname := tao.NewX509Name(&details)
+	cert, err := k.SigningKey.CreateSelfSignedX509(subjectname)
+	if err != nil {
+		t.Fatal("Can't self sign cert\n")
+	}
+	return k, cert
+}
+
+func generateEndorsementCertficate(t *testing.T, policyKey *tao.Keys,
+	policyCert *x509.Certificate) (*tao.Keys, *x509.Certificate) {
+	k, err := tao.NewTemporaryKeys(tao.Signing)
+	if k == nil || err != nil {
+		t.Fatal("Can't generate signing key")
+	}
+	us := "US"
+	google := "Google"
+	details := tao.X509Details{
+		Country:      &us,
+		Organization: &google,
+		CommonName:   &machineName}
+	subject := tao.NewX509Name(&details)
+	cert, err := policyKey.SigningKey.CreateSignedX509(
+		policyCert, 0, k.SigningKey.GetVerifier(), subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return k, cert
+}
+
+func generateAttestation(t *testing.T, signingKey *tao.Keys,
+	delegator *auth.Prin) (*tao.Keys, *tao.Attestation) {
+	k, err := tao.NewTemporaryKeys(tao.Signing)
+	if k == nil || err != nil {
+		t.Fatal("Can't generate signing key")
+	}
+	speaksFor := &auth.Speaksfor{
+		Delegate:  k.SigningKey.ToPrincipal(),
+		Delegator: delegator,
+	}
+	says := &auth.Says{
+		Speaker:    signingKey.SigningKey.ToPrincipal(),
+		Time:       nil,
+		Expiration: nil,
+		Message:    speaksFor,
+	}
+	att, err := tao.GenerateAttestation(signingKey.SigningKey, nil, *says)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return k, att
+}
+
+func generateGuard(t *testing.T) *tao.Guard {
+	guard := tao.NewACLGuard(nil, tao.ACLGuardDetails{})
+	err := guard.Authorize(*hostName, "Host", []string{})
+	if err != nil {
+		t.Fatal("Error adding a rule to the guard", err)
+	}
+	err = guard.Authorize(*programName, "Execute", []string{})
+	if err != nil {
+		t.Fatal("Error adding a rule to the guard", err)
+	}
+	machinePrin := auth.Prin{Type: "MachineInfo", Key: auth.Str(machineName)}
+	err = guard.Authorize(machinePrin, "Root", []string{})
+	if err != nil {
+		t.Fatal("Error adding a rule to the guard", err)
+	}
+	return &guard
+}

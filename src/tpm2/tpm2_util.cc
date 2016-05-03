@@ -1244,8 +1244,10 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   RAND_bytes(authInfo.oldNonce_.buffer, authInfo.oldNonce_.size);
   RAND_bytes(secret.buffer, secret.size);
 
-  printf("Initial nonce: ");
+  printf("newNonce: ");
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("oldNonce: ");
+  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
   printf("Secret: "); PrintBytes(secret.size, secret.buffer); printf("\n");
 
   // Get endorsement key handle

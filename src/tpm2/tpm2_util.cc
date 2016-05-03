@@ -1213,10 +1213,13 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   uint16_t size_out = 16;
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
+  bool ret = true;
 
   TPM2B_ENCRYPTED_SECRET salt;
   TPM_HANDLE sessionHandle = 0;
   TPML_PCR_SELECTION pcrSelect;
+  memset((void*)&pcrSelect, 0, sizeof(TPML_PCR_SELECTION));
+
   TPM2B_DIGEST secret;
   ProtectedSessionAuthInfo authInfo;
   TPMT_SYM_DEF symmetric;
@@ -1249,10 +1252,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   string emptyAuth;
   TPM_HANDLE ekHandle;
   TPM2B_PUBLIC pub_out;
-  TPM2B_NAME pub_name;
-  TPM2B_NAME qualified_pub_name;
-  uint16_t pub_blob_size = 2048;
-  byte pub_blob[2048];
 
   // TPM_RH_ENDORSEMENT
   TPMA_OBJECT primary_flags;
@@ -1274,7 +1273,12 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     return false;
   }
 
-#if 0
+
+  TPM2B_NAME pub_name;
+  TPM2B_NAME qualified_pub_name;
+  uint16_t pub_blob_size = 2048;
+  byte pub_blob[2048];
+
   if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out, &pub_name,
                       &qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
@@ -1291,7 +1295,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("Qualified name: ");
   PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
   printf("\n");
-#endif
 
   // Normally, the caller would get the key from the endorsement certificate
   EVP_PKEY* tpmKey = EVP_PKEY_new();
@@ -1329,14 +1332,16 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
     printf("Tpm2_StartAuthSession fails\n");
-    return false;
+    ret = false;
+    goto done;
   }
   authInfo.sessionHandle_ = sessionHandle;
 
   // Calculate session key
   if (!CalculateHmacKey(authInfo, secret)) {
     printf("Can't calculate HMac session key\n");
-    return false;
+    ret = false;
+    goto done;
   }
 
   if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
@@ -1344,14 +1349,16 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_DefineProtectedSpace %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_DefineProtectedSpace fails\n");
-    return false;
+    ret = false;
+    goto done;
   }
 
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_IncrementProtectedNv fails\n");
-    return false;
+    ret = false;
+    goto done;
   }
   if (Tpm2_ReadProtectedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
     printf("Tpm2_ReadProtectedNv %d succeeds: ", nv_handle);
@@ -1359,14 +1366,19 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("\n");
   } else {
     printf("Tpm2_ReadProtectedNv fails\n");
-    return false;
+    ret = false;
+    goto done;
   }
 
+done:
+  if (nv_handle != 0) {
+    Tpm2_FlushContext(tpm, nv_handle);
+  }
   if (sessionHandle != 0) {
     Tpm2_FlushContext(tpm, sessionHandle);
   }
   if (ekHandle != 0) {
     Tpm2_FlushContext(tpm, ekHandle);
   }
-  return true;
+  return ret;
 }

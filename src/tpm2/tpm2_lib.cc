@@ -801,9 +801,9 @@ bool Tpm2_PCR_Event(LocalTpm& tpm, int pcr_num,
 }
 
 int Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
-                             TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
-                             TPM_SE& session_type, TPMT_SYM_DEF& symmetric,
-                             TPMI_ALG_HASH& hash_alg, int size, byte* out_buf) {
+                    TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
+                    TPM_SE& session_type, TPMT_SYM_DEF& symmetric,
+                    TPMI_ALG_HASH& hash_alg, int size, byte* out_buf) {
   int total_size = 0;
   int space_left = size;
   byte* out = out_buf;
@@ -835,13 +835,17 @@ int Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
   *out = session_type;
   Update(1, &out, &total_size, &space_left);
 
-  if (symmetric.algorithm == TPM_ALG_NULL) {
+  IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&symmetric.algorithm, (uint16_t*)out);
+  Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
+  if (symmetric.algorithm != TPM_ALG_NULL) {
     IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
-    ChangeEndian16((uint16_t*)&symmetric.algorithm, (uint16_t*)out);
+    ChangeEndian16((uint16_t*)&symmetric.keyBits.aes, (uint16_t*)out);
     Update(sizeof(uint16_t), &out, &total_size, &space_left);
-  } else {
-    printf("alg != TPM_ALG_NULL not supported\n");
-    return false;
+    IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
+    ChangeEndian16((uint16_t*)&symmetric.mode.aes, (uint16_t*)out);
+    Update(sizeof(uint16_t), &out, &total_size, &space_left);
   }
 
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
@@ -3477,7 +3481,7 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
     printf("CalculateNvName failed\n");
     return false;
   }
-  int n= Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
+  int n = Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
                                   salt, session_type, symmetric, hash_alg,
                                   MAX_SIZE_PARAMS, params);
   IF_NEG_RETURN_FALSE(n);

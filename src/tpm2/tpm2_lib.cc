@@ -3278,7 +3278,7 @@ bool CalculateNvName(ProtectedSessionAuthInfo& in) {
   int room_left = 256;
   byte* current = toHash;
 
-  ChangeEndian16(&in.hash_alg_, (uint16_t*)current);
+  ChangeEndian16(&in.hash_alg_, (uint16_t*)in.nameProtected_.name);
 
   ChangeEndian32(&in.protectedHandle_, (uint32_t*)current);
   Update(sizeof(uint32_t), &current, &current_out_size, &room_left);
@@ -3290,6 +3290,9 @@ bool CalculateNvName(ProtectedSessionAuthInfo& in) {
   Update(sizeof(uint16_t), &current, &current_out_size, &room_left);
   ChangeEndian16(&in.protectedSize_, (uint16_t*)current);
   Update(sizeof(uint16_t), &current, &current_out_size, &room_left);
+
+printf("\nCalculateNvName hash buf: ");
+PrintBytes(current_out_size, toHash); printf("\n");
 
   if (in.hash_alg_ == TPM_ALG_SHA1) {
 
@@ -3303,6 +3306,9 @@ bool CalculateNvName(ProtectedSessionAuthInfo& in) {
     SHA256_Final(&in.nameProtected_.name[2], &sha256);
     in.nameProtected_.size = 34;
   }
+
+printf("CalculateNvName name: ");
+PrintBytes(in.nameProtected_.size, in.nameProtected_.name); printf("\n");
   return true;
 }
 
@@ -3481,6 +3487,7 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
     printf("CalculateNvName failed\n");
     return false;
   }
+
   int n = Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
                                   salt, session_type, symmetric, hash_alg,
                                   MAX_SIZE_PARAMS, params);

@@ -1209,8 +1209,8 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   int slot = 1000;
   string authString("01020304");
-  uint16_t size_data = 16;
-  uint16_t size_out = 16;
+  uint16_t size_data = 8;
+  uint16_t size_out = 512;
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
   bool ret = true;
@@ -1273,7 +1273,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     return false;
   }
 
-
   TPM2B_NAME pub_name;
   TPM2B_NAME qualified_pub_name;
   uint16_t pub_blob_size = 2048;
@@ -1320,8 +1319,18 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
 
+  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString,
+                       0, nullptr, NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD,
+                       size_data)) {
+    printf("DefineSpace succeeded\n");
+  } else {
+    printf("DefineSpace failed\n");
+    ret = false;
+    goto done;
+  }
+
   authInfo.protectedHandle_ = nv_handle;
-  authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHREAD | NV_PLATFORMCREATE;
+  authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD;
   authInfo.protectedSize_ = size_data;
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   authInfo.tpmSessionAttributes_ = TPM_SE_HMAC;
@@ -1344,15 +1353,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     goto done;
   }
 
-  if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo, 0, nullptr,
-                       NV_COUNTER | NV_AUTHREAD, size_data) ) {
-    printf("Tpm2_DefineProtectedSpace %d succeeds\n", nv_handle);
-  } else {
-    printf("Tpm2_DefineProtectedSpace fails\n");
-    ret = false;
-    goto done;
-  }
-
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
   } else {
@@ -1371,9 +1371,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   }
 
 done:
-  if (nv_handle != 0) {
-    Tpm2_FlushContext(tpm, nv_handle);
-  }
   if (sessionHandle != 0) {
     Tpm2_FlushContext(tpm, sessionHandle);
   }

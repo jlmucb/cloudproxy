@@ -1339,6 +1339,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.tpmSessionAttributes_ = TPM_SE_HMAC;
   authInfo.targetAuthValue_.size = CreatePasswordAuthArea(authString,
            64, authInfo.targetAuthValue_.buffer);
+
 printf("autharea: ");
 PrintBytes(authInfo.targetAuthValue_.size, authInfo.targetAuthValue_.buffer);
 printf("\n");

@@ -3518,7 +3518,7 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   ChangeEndian16((uint16_t*)current_out, &newNonce.size);
   current_out += sizeof(uint16_t);
   memcpy(newNonce.buffer, current_out, newNonce.size);
-  RollNonces(authInfo, newNonce);
+  // RollNonces(authInfo, newNonce);
   return true;
 }
 

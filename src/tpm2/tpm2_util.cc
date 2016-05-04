@@ -1228,6 +1228,9 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   symmetric.algorithm = TPM_ALG_NULL;
 
+  int  authAreaSize = 0;
+  byte authArea[128];
+
 #if 0
   // If encryption.
   symmetric.algorithm = TPM_ALG_AES;
@@ -1344,8 +1347,11 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.protectedSize_ = size_data;
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   authInfo.tpmSessionAttributes_ = TPM_SE_HMAC;
-  authInfo.targetAuthValue_.size = CreatePasswordAuthArea(authString,
-           64, authInfo.targetAuthValue_.buffer);
+
+  authAreaSize = CreatePasswordAuthArea(authString, 128, authArea);
+  authInfo.targetAuthValue_.size = authAreaSize - 2;
+  memcpy(authInfo.targetAuthValue_.buffer, &authArea[2],
+         authInfo.targetAuthValue_.size);
 
 printf("autharea: ");
 PrintBytes(authInfo.targetAuthValue_.size, authInfo.targetAuthValue_.buffer);

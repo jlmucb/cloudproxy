@@ -3541,7 +3541,6 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   current_out += sizeof(uint16_t);
   memcpy(authInfo.newNonce_.buffer, current_out, authInfo.newNonce_.size);
   current_out += authInfo.newNonce_.size;
-  // RollNonces(authInfo, newNonce);
   return true;
 }
 
@@ -3590,11 +3589,11 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
-  ChangeEndian16((uint16_t*)&authInfo.oldNonce_.size, (uint16_t*)in);
+  ChangeEndian16((uint16_t*)&authInfo.newNonce_.size, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
-  IF_LESS_THAN_RETURN_FALSE(space_left, authInfo.oldNonce_.size)
-  memcpy(in,authInfo.oldNonce_.buffer, authInfo.oldNonce_.size);
-  Update(authInfo.oldNonce_.size, &in, &size_params, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, authInfo.newNonce_.size)
+  memcpy(in, authInfo.newNonce_.buffer, authInfo.newNonce_.size);
+  Update(authInfo.newNonce_.size, &in, &size_params, &space_left);
   IF_LESS_THAN_RETURN_FALSE(space_left, 1)
   *in = authInfo.tpmSessionAttributes_;
   Update(1, &in, &size_params, &space_left);
@@ -3626,7 +3625,7 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
     return false;
 
   // Make sure the Hmac is right.
-  if (!CalculateSessionHmac(authInfo, false, TPM_CC_NV_Increment,
+  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Increment,
                 size_params, params_buf, &sizeHmac, hmac)) {
     printf("Can't calculate response hmac\n");
     return false;

@@ -1386,6 +1386,11 @@ printf("\n");
     goto done;
   }
 
+  TPM2B_NONCE newNonce;
+  newNonce.size = authInfo.oldNonce_.size;
+  RAND_bytes(newNonce.buffer, newNonce.size);
+  RollNonces(authInfo, newNonce);
+
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
   } else {

@@ -3334,10 +3334,8 @@ printf("\nCalculateSessionHmac\n");
 
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
-#if 0
   memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer, in.targetAuthValue_.size);
   sizeHmacKey += in.targetAuthValue_.size;
-#endif
 
 printf("hmac_key: ");
 PrintBytes(sizeHmacKey, hmac_key); printf("\n");
@@ -3414,12 +3412,10 @@ PrintBytes(*size_hmac, hmac); printf("\n");
 
 // sessionKey = KDFa(sessionAlg, bind.authValue||salt, ATH,
 //                   in.newNonce_.buffer, in.oldNonce_.buffer, bits)
-//  KDFa (hashAlg, seed, label, Name, Counter, primeSize)
-// SECRET as label?
-bool CalculateHmacKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
+bool CalculateSessionKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   int sizeKey= SizeHash(in.hash_alg_);
   in.sessionKeySize_ = sizeKey;
-printf("\nCalculateHmacKey\n");
+printf("\nCalculateSessionKey\n");
 printf("Auth value: ");
 PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
 
@@ -3432,14 +3428,15 @@ PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
   key.append((const char*)rawSalt.buffer, rawSalt.size);
   contextV.clear();
   contextU.clear();
-  contextU.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
+  contextV.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
+  contextU.assign((const char*)in.newNonce_.buffer, in.newNonce_.size);
   if (!KDFa(in.hash_alg_, key, label, contextU, contextV,
             sizeKey*NBITSINBYTE, sizeKey*NBITSINBYTE, in.sessionKey_)) {
     printf("Can't KDFa symKey\n");
     return false;
   }
 
-printf("CalculateHmacKey, hmac_key: ");
+printf("CalculateSessionKey, hmac_key: ");
 PrintBytes(sizeKey, in.sessionKey_); printf("\n");
 
 #if 0
@@ -3579,11 +3576,30 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
     return false;
   }
 
-  // Set Hmac auth
+  // Set session auth.
+  //    TPMI_SH_AUTH_SESSION authHandle the handle for the authorization session
+  //    TPM2B_NONCE nonceCaller the caller-provided session nonce; size may be zero
+  //    TPMA_SESSION sessionAttributes the flags associated with the session
+  //    TPM2B_AUTH hmac the session HMAC digest value
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)current_out, (uint32_t*)session_handle);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&authInfo.oldNonce_.size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, authInfo.oldNonce_.size)
+  memcpy(in,authInfo.oldNonce_.buffer, authInfo.oldNonce_.size);
+  Update(authInfo.oldNonce_.size, &in, &size_params, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, 1)
+  *in = authInfo.tpmSessionAttributes_;
+  Update(1, &in, &size_params, &space_left);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&sizeHmac, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
-
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeHmac)
   memcpy(in, hmac, sizeHmac);
   Update(sizeHmac, &in, &size_params, &space_left);

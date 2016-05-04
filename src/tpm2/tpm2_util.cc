@@ -1346,9 +1346,9 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD;
   authInfo.protectedSize_ = size_data;
   authInfo.hash_alg_ = TPM_ALG_SHA1;
-  authInfo.tpmSessionAttributes_ = TPM_SE_HMAC;
+  authInfo.tpmSessionAttributes_ = CONTINUESESSION;
 
-  authAreaSize = CreatePasswordAuthArea(authString, 128, authArea);
+  authAreaSize = SetPasswordData(authString, 128, authArea);
   authInfo.targetAuthValue_.size = authAreaSize - 2;
   memcpy(authInfo.targetAuthValue_.buffer, &authArea[2],
          authInfo.targetAuthValue_.size);
@@ -1361,11 +1361,11 @@ printf("\n");
   // Delete the following two lines
   salt.size = 0;
   if (Tpm2_StartProtectedAuthSession(tpm, ekHandle1, nv_handle, authInfo,
-        salt, authInfo.tpmSessionAttributes_, symmetric,
+        salt, TPM_SE_HMAC, symmetric,
 	authInfo.hash_alg_, &sessionHandle)) {
-    printf("Tpm2_StartAuthSession succeeds handle: %08x\n", sessionHandle);
+    printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n", sessionHandle);
   } else {
-    printf("Tpm2_StartAuthSession fails\n");
+    printf("Tpm2_StartProtectedAuthSession fails\n");
     ret = false;
     goto done;
   }
@@ -1379,7 +1379,7 @@ printf("\n");
   // Remove this later
   TPM2B_DIGEST secret1;
   secret1.size = 0;
-  if (!CalculateHmacKey(authInfo, secret1)) {
+  if (!CalculateSessionKey(authInfo, secret1)) {
     printf("Can't calculate HMac session key\n");
     ret = false;
     goto done;

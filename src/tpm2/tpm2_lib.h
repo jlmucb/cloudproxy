@@ -233,6 +233,8 @@ bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm);
 #define NV_POLICY_DELETE  0x00000400
 #define NV_AUTHREAD       0x00040000
 
+#define CONTINUESESSION 0x01
+
 class ProtectedSessionAuthInfo {
 public:
   TPMI_ALG_HASH hash_alg_;
@@ -249,7 +251,7 @@ public:
   byte sessionKey_[64];
 };
 bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM2B_NAME& name);
-bool CalculateHmacKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
+bool CalculateSessionKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
 bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
 		int size_parms, byte* parms, int* size_hmac, byte* hmac);
 void RollNonces(ProtectedSessionAuthInfo& in, TPM2B_NONCE& newNonce);

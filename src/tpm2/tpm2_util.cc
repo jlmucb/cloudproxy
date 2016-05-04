@@ -1228,6 +1228,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   symmetric.algorithm = TPM_ALG_NULL;
 
+  extern int SetPasswordData(string& password, int size, byte* buf);
   int  authAreaSize = 0;
   byte authArea[128];
 

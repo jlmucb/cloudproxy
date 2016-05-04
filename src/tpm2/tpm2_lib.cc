@@ -3565,9 +3565,6 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-  memset(in, 0, sizeof(uint16_t));
-  Update(sizeof(uint16_t), &in, &size_params, &space_left);
-
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
   if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Increment,
@@ -3582,10 +3579,15 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
   //    TPMA_SESSION sessionAttributes the flags associated with the session
   //    TPM2B_AUTH hmac the session HMAC digest value
 
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)current_out, (uint32_t*)session_handle);
+  uint32_t sizeAuth = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(byte) +
+                      sizeof(uint16_t) + sizeHmac + authInfo.oldNonce_.size;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian32((uint32_t*)&sizeAuth, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&authInfo.sessionHandle_, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&authInfo.oldNonce_.size, (uint16_t*)in);
@@ -3619,7 +3621,7 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
   uint32_t responseSize;
   uint32_t responseCode;
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap, &responseSize, &responseCode);
-  printResponse("IncrementNv", cap, responseSize, responseCode, resp_buf);
+  printResponse("IncrementProtectedNv", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
 

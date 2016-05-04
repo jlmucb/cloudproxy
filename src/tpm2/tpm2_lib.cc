@@ -3334,7 +3334,10 @@ printf("\nCalculateSessionHmac\n");
 
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
+#if 0
+  // This only gets appended if not bound to session.
   memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer, in.targetAuthValue_.size);
+#endif
   sizeHmacKey += in.targetAuthValue_.size;
 
 printf("hmac_key: ");
@@ -3566,7 +3569,7 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
 
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
-  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Increment,
+  if (!CalculateSessionHmac(authInfo, false, TPM_CC_NV_Increment,
           size_params, params_buf, &sizeHmac, hmac)) {
     printf("CalculateSessionHmac failed\n");
     return false;

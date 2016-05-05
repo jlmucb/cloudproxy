@@ -3335,7 +3335,10 @@ printf("\nCalculateSessionHmac\n");
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
 #if 0
-  memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer, in.targetAuthValue_.size);
+  // This only gets appended if not bound to session.
+  memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
+         in.targetAuthValue_.size);
+#endif
   sizeHmacKey += in.targetAuthValue_.size;
 #endif
 

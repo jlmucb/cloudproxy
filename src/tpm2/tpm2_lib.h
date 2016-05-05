@@ -265,7 +265,7 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
                  ProtectedSessionAuthInfo& authInfo, uint16_t* size, byte* data);
 bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
-                ProtectedSessionAuthInfo& authInfo, uint16_t authPolicySize,
-                byte* authPolicy, uint32_t attributes, uint16_t size_data);
+                      ProtectedSessionAuthInfo& authInfo, uint32_t attributes,
+                      uint16_t size_data);
 #endif
 

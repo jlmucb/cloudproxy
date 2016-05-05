@@ -3338,7 +3338,6 @@ printf("\nCalculateSessionHmac\n");
   // This only gets appended if not bound to session.
   memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
          in.targetAuthValue_.size);
-#endif
   sizeHmacKey += in.targetAuthValue_.size;
 #endif
 
@@ -3350,7 +3349,8 @@ PrintBytes(sizeHmacKey, hmac_key); printf("\n");
 
   ChangeEndian32(&cmd, (uint32_t*)toHash);
   current_out_size += sizeof(uint32_t);
-  memcpy(&toHash[current_out_size], in.nameProtected_.name, in.nameProtected_.size);
+  memcpy(&toHash[current_out_size], in.nameProtected_.name,
+         in.nameProtected_.size);
   current_out_size += in.nameProtected_.size;
   memcpy(&toHash[current_out_size], parms, size_parms);
   current_out_size += size_parms;
@@ -3420,11 +3420,12 @@ PrintBytes(*size_hmac, hmac); printf("\n");
 bool CalculateSessionKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   int sizeKey= SizeHash(in.hash_alg_);
   in.sessionKeySize_ = sizeKey;
+
 printf("\nCalculateSessionKey\n");
 printf("Auth value: ");
 PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
 
-  string label= "AUTH";
+  string label= "ATH";
   string key;
   string contextU;
   string contextV;
@@ -3433,15 +3434,26 @@ PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
   key.append((const char*)rawSalt.buffer, rawSalt.size);
   contextV.clear();
   contextU.clear();
-  contextV.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
   contextU.assign((const char*)in.newNonce_.buffer, in.newNonce_.size);
+  contextV.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
+
+printf("CalculateSessionKey KDFa:\n");
+printf("    key    : ");
+PrintBytes(key.size(), (byte*)key.data()); printf("\n");
+printf("    label  : ");
+PrintBytes(label.size(), (byte*)label.data()); printf("\n");
+printf("    U      : ");
+PrintBytes(contextU.size(), (byte*)contextU.data()); printf("\n");
+printf("    V      : ");
+PrintBytes(contextV.size(), (byte*)contextV.data()); printf("\n");
+
   if (!KDFa(in.hash_alg_, key, label, contextU, contextV,
-            sizeKey*NBITSINBYTE, sizeKey*NBITSINBYTE, in.sessionKey_)) {
+            sizeKey*NBITSINBYTE, sizeKey, in.sessionKey_)) {
     printf("Can't KDFa symKey\n");
     return false;
   }
 
-printf("CalculateSessionKey, hmac_key: ");
+printf("CalculateSessionKey, key: ");
 PrintBytes(sizeKey, in.sessionKey_); printf("\n");
 
 #if 0
@@ -3549,7 +3561,8 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   return true;
 }
 
-bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedSessionAuthInfo& authInfo) {
+bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+        ProtectedSessionAuthInfo& authInfo) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -3569,10 +3582,11 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, ProtectedS
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
+  int size_param_list = 0;
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
   if (!CalculateSessionHmac(authInfo, false, TPM_CC_NV_Increment,
-          size_params, params_buf, &sizeHmac, hmac)) {
+          size_param_list, nullptr, &sizeHmac, hmac)) {
     printf("CalculateSessionHmac failed\n");
     return false;
   }

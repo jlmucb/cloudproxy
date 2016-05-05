@@ -1343,6 +1343,15 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     goto done;
   }
 
+  // Bump the count so the write bit is set for subsequent auths.
+  if (Tpm2_IncrementNv(tpm, nv_handle, authString)) {
+    printf("Tpm2_IncrementNv succeeds\n");
+  } else {
+    printf("Tpm2_IncrementNv fails\n");
+    ret = false;
+    goto done;
+  }
+
   authInfo.protectedHandle_ = nv_handle;
   authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD;
   authInfo.protectedSize_ = size_data;
@@ -1364,17 +1373,19 @@ printf("\n");
   if (Tpm2_StartProtectedAuthSession(tpm, ekHandle1, nv_handle, authInfo,
         salt, TPM_SE_HMAC, symmetric,
 	authInfo.hash_alg_, &sessionHandle)) {
-    printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n", sessionHandle);
+    printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n",
+           sessionHandle);
   } else {
     printf("Tpm2_StartProtectedAuthSession fails\n");
     ret = false;
     goto done;
   }
   authInfo.sessionHandle_ = sessionHandle;
-  printf("newNonce: ");
-  PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
-  printf("oldNonce: ");
-  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
+printf("\nAfterStartProtectedAuthSession\n");
+printf("newNonce: ");
+PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+printf("oldNonce: ");
+PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 
   // Calculate session key
   // Remove this later
@@ -1390,6 +1401,12 @@ printf("\n");
   newNonce.size = authInfo.oldNonce_.size;
   RAND_bytes(newNonce.buffer, newNonce.size);
   RollNonces(authInfo, newNonce);
+
+printf("\nAfter RollNounces\n");
+printf("newNonce: ");
+PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+printf("oldNonce: ");
+PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);

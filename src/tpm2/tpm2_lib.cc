@@ -3380,14 +3380,18 @@ PrintBytes(sizeHmacKey, hmac_key); printf("\n");
   int current_out_size = 0;
   int room_left = 256;
 
-/*
+  ChangeEndian32((uint32_t*)&cmd, (uint32_t*)&toHash[current_out_size]);
+  current_out_size += sizeof(uint32_t);
+  room_left -= sizeof(uint32_t);
+
   for (int i = 0; i < numNames; i++) {
-	memcpy(toHash, names[i].name, names[i].size);
-	current_out_size += names[i].size;
+    memcpy(&toHash[current_out_size], names[i].name, names[i].size);
+    current_out_size += names[i].size;
+    room_left -= sizeof(uint32_t);
   }
- */
   memcpy(&toHash[current_out_size], parms, size_parms);
   current_out_size += size_parms;
+  room_left -= size_parms;
 
 printf("toHash for cpHash: ");
 PrintBytes(current_out_size, toHash); printf("\n");
@@ -3693,20 +3697,6 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner,
   int space_left = MAX_SIZE_PARAMS;
   byte* in = params_buf;
 
-  int cmd_parms_available = 1024;
-  byte cmd_parms[1024];
-  int size_cmd_params = 0;
-  byte* current_cmd_parms = cmd_parms;
-  uint32_t cmd = TPM_CC_NV_DefineSpace;
-
-  IF_LESS_THAN_RETURN_FALSE(cmd_parms_available, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&cmd, (uint32_t*)cmd_parms);
-  Update(sizeof(uint32_t), &current_cmd_parms, &size_cmd_params,
-         &cmd_parms_available);
-  ChangeEndian32((uint32_t*)&owner, (uint32_t*)current_cmd_parms);
-  Update(sizeof(uint32_t), &current_cmd_parms, &size_cmd_params,
-         &cmd_parms_available);
-
   memset(commandBuf, 0, MAX_SIZE_PARAMS);
   memset(resp_buf, 0, MAX_SIZE_PARAMS);
 
@@ -3763,22 +3753,17 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner,
   ChangeEndian16((uint16_t*)&size_data, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
-  TPM2B_NAME nv_name;
-  if (!CalculateNvName(authInfo, index, authInfo.hash_alg_,
-            attributes, size_data, nv_name.name)) {
-    printf("Can't calculate nv name\n");
-    return false;
-  }
-  nv_name.size = SizeHash(authInfo.hash_alg_) + 2;
+  // handle name of owner is itself.
+  TPM2B_NAME owner_name;
+  owner_name.size = sizeof(uint32_t);
+  ChangeEndian32((uint32_t*)&owner, (uint32_t*)owner_name.name);
 
   int size_append = in - cmd_params_place;
-  memcpy(current_cmd_parms, cmd_params_place, size_append);
-  size_cmd_params += size_append;
-  current_cmd_parms += size_append;
 
   // Set auth
   n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_DefineSpace,
-            1, &nv_name, size_cmd_params, cmd_parms, auth_set, space_left);
+            1, &owner_name, size_append, cmd_params_place,
+            auth_set, space_left);
   if (n < 0) {
     printf("CalculateandSetProtectedAuth failed\n");
     return false;
@@ -3803,6 +3788,15 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner,
   printResponse("Definespace", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
+
+  // 80020000003b00000000
+  // 00000000
+  // 00140659c75daf8adce9d4e5dabb4d34dde60315ae5801
+  // 00140d73114e8124593691b10b2e71d893ed778000ce
+  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_DefineSpace,
+           responseSize - sizeof(TPM_RESPONSE), resp_buf + sizeof(TPM_RESPONSE),
+           0, resp_buf + sizeof(TPM_RESPONSE))) {
+  }
   return true;
 }
 

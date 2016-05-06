@@ -3240,8 +3240,6 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
   return true;
 }
 
-#define JETHRO
-#ifdef JETHRO
 /*
  *  The following code is for an encrypted session. Later we should fix the
  *  original functions so they allow bound sessions initiated with encrypted salts.
@@ -3348,7 +3346,9 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   byte toHash[256];
   byte cpHash[32];
 
-printf("\nCalculateSessionHmac\n");
+#if 1
+  printf("\nCalculateSessionHmac\n");
+#endif
 
   if (in.hash_alg_!= TPM_ALG_SHA1 && in.hash_alg_ != TPM_ALG_SHA256) {
     printf("CalculateSessionHmac: unsupported hash algorithm\n");
@@ -3361,7 +3361,8 @@ printf("\nCalculateSessionHmac\n");
 
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
-#if 1
+
+#if 0
   if (cmd != 0x0000012a) {
     memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
          in.targetAuthValue_.size);
@@ -3369,8 +3370,10 @@ printf("\nCalculateSessionHmac\n");
   }
 #endif
 
-printf("hmac_key: ");
-PrintBytes(sizeHmacKey, hmac_key); printf("\n");
+#if 1
+  printf("hmac_key: ");
+  PrintBytes(sizeHmacKey, hmac_key); printf("\n");
+#endif
 
   int current_out_size = 0;
   int room_left = 256;
@@ -3401,8 +3404,10 @@ PrintBytes(sizeHmacKey, hmac_key); printf("\n");
     room_left -= size_parms;
   }
 
-printf("toHash for cpHash: ");
-PrintBytes(current_out_size, toHash); printf("\n");
+#if 1
+  printf("toHash for cpHash: ");
+  PrintBytes(current_out_size, toHash); printf("\n");
+#endif
 
   // Note: current_out_size is repurposed.
   if (in.hash_alg_ == TPM_ALG_SHA1) {
@@ -3417,8 +3422,10 @@ PrintBytes(current_out_size, toHash); printf("\n");
     current_out_size = 32;
   }
 
-printf("cpHash: ");
-PrintBytes(current_out_size, cpHash); printf("\n");
+#if 1
+  printf("cpHash: ");
+  PrintBytes(current_out_size, cpHash); printf("\n");
+#endif
 
   memcpy(toHash, cpHash, current_out_size);
   room_left -= current_out_size;
@@ -3432,8 +3439,10 @@ PrintBytes(current_out_size, cpHash); printf("\n");
   memcpy(current, &in.tpmSessionAttributes_, 1);
   Update(1, &current, &current_out_size, &room_left);
 
-printf("Hmac in: ");
-PrintBytes(current_out_size, toHash); printf("\n");
+#if 1
+  printf("Hmac in: ");
+  PrintBytes(current_out_size, toHash); printf("\n");
+#endif
 
   HMAC_CTX hctx;
   HMAC_CTX_init(&hctx);
@@ -3448,8 +3457,10 @@ PrintBytes(current_out_size, toHash); printf("\n");
   HMAC_Final(&hctx, hmac, (unsigned*)size_hmac);
   HMAC_CTX_cleanup(&hctx);
 
-printf("Hmac out: ");
-PrintBytes(*size_hmac, hmac); printf("\n");
+#if 1
+  printf("Hmac out: ");
+  PrintBytes(*size_hmac, hmac); printf("\n");
+#endif
 
   return true;
 }
@@ -3460,9 +3471,11 @@ bool CalculateSessionKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   int sizeKey= SizeHash(in.hash_alg_);
   in.sessionKeySize_ = sizeKey;
 
-printf("\nCalculateSessionKey\n");
-printf("Auth value: ");
-PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
+#if 1
+  printf("\nCalculateSessionKey\n");
+  printf("Auth value: ");
+  PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
+#endif
 
   string label= "ATH";
   string key;
@@ -3476,15 +3489,17 @@ PrintBytes(in.targetAuthValue_.size, in.targetAuthValue_.buffer); printf("\n");
   contextU.assign((const char*)in.newNonce_.buffer, in.newNonce_.size);
   contextV.assign((const char*)in.oldNonce_.buffer, in.oldNonce_.size);
 
-printf("CalculateSessionKey KDFa:\n");
-printf("    key    : ");
-PrintBytes(key.size(), (byte*)key.data()); printf("\n");
-printf("    label  : ");
-PrintBytes(label.size(), (byte*)label.data()); printf("\n");
-printf("    U      : ");
-PrintBytes(contextU.size(), (byte*)contextU.data()); printf("\n");
-printf("    V      : ");
-PrintBytes(contextV.size(), (byte*)contextV.data()); printf("\n");
+#if 1
+  printf("CalculateSessionKey KDFa:\n");
+  printf("    key    : ");
+  PrintBytes(key.size(), (byte*)key.data()); printf("\n");
+  printf("    label  : ");
+  PrintBytes(label.size(), (byte*)label.data()); printf("\n");
+  printf("    U      : ");
+  PrintBytes(contextU.size(), (byte*)contextU.data()); printf("\n");
+  printf("    V      : ");
+  PrintBytes(contextV.size(), (byte*)contextV.data()); printf("\n");
+#endif
 
   if (!KDFa(in.hash_alg_, key, label, contextU, contextV,
             sizeKey*NBITSINBYTE, sizeKey, in.sessionKey_)) {
@@ -3492,47 +3507,10 @@ PrintBytes(contextV.size(), (byte*)contextV.data()); printf("\n");
     return false;
   }
 
-printf("CalculateSessionKey, key: ");
-PrintBytes(sizeKey, in.sessionKey_); printf("\n");
-
-#if 0
-  byte zero_iv[32];
-  memset(zero_iv, 0, 32);
-
-  int in_size = 64;
-  int out_size = 64;
-  int check_size = 64;
-  byte in_bytes[64] = {
-    0, 1, 2, 3, 4, 5, 6, 7,
-    0, 1, 2, 3, 4, 5, 6, 7,
-    0, 1, 2, 3, 4, 5, 6, 7,
-    0, 1, 2, 3, 4, 5, 6, 7,
-    0, 1, 2, 3, 4, 5, 6, 7,
-    0, 1, 2, 3, 4, 5, 6, 7,
-    0, 1, 2, 3, 4, 5, 6, 7,
-    0, 1, 2, 3, 4, 5, 6, 7,
-  };
-  byte out_bytes[64];
-  byte check_bytes[64];
-
-  if (!AesCFBEncrypt(in.sessionKey_, in_size, in_bytes, 16, zero_iv,
-                     &out_size, out_bytes)) {
-    printf("Can't AesCFBEncrypt\n");
-    return false;
-  }
-
-  if (!AesCFBDecrypt(in.sessionKey_, out_size, out_bytes, 16, zero_iv,
-                     &check_size, check_bytes)) {
-    printf("Can't AesCFBDecrypt\n");
-    return false;
-  }
-  if (!Equal(in_size, in_bytes, check_size, check_bytes)) {
-    printf("Decrypt failure\n");
-    return false;
-  }
-  printf("AesCFBEncrypt/AesCFBDecrypt worked\n");
+#if 1
+  printf("CalculateSessionKey, key: ");
+  PrintBytes(sizeKey, in.sessionKey_); printf("\n");
 #endif
-
   return true;
 }
 
@@ -3562,16 +3540,21 @@ int CalculateandSetProtectedAuth(ProtectedSessionAuthInfo& authInfo,
   TPM2B_NONCE newNonce;
   newNonce.size = authInfo.oldNonce_.size;
   RAND_bytes(newNonce.buffer, newNonce.size);
-printf("CalculateandSetProtectedAuth nonce: ");
-PrintBytes(newNonce.size, newNonce.buffer); printf("\n");
+
+#if 1
+  printf("CalculateandSetProtectedAuth nonce: ");
+  PrintBytes(newNonce.size, newNonce.buffer); printf("\n");
+#endif
 
   RollNonces(authInfo, newNonce);
 
-printf("\nAfter RollNounces\n");
-printf("newNonce: ");
+#if 1
+  printf("\nAfter RollNounces\n");
+  printf("newNonce: ");
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("oldNonce: ");
   PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
+#endif
 
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
@@ -3642,10 +3625,12 @@ PrintBytes(size_params, params); printf("\n");
   memcpy(submitted_hmac.buffer, current, submitted_hmac.size);
   current += submitted_hmac.size;
 
-printf("NewNonce: ");
-PrintBytes(newNonce.size, newNonce.buffer); printf("\n");
-printf("submitted: ");
-PrintBytes(submitted_hmac.size, submitted_hmac.buffer); printf("\n");
+#if 1
+  printf("NewNonce: ");
+  PrintBytes(newNonce.size, newNonce.buffer); printf("\n");
+  printf("submitted: ");
+  PrintBytes(submitted_hmac.size, submitted_hmac.buffer); printf("\n");
+#endif
 
   RollNonces(authInfo, newNonce);
 
@@ -4017,6 +4002,4 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   memcpy(data, out, *size);
   return true;
 }
-
-#endif
 

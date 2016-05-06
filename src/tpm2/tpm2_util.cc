@@ -1291,14 +1291,15 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   memset(secret.buffer, 0, 32);
   secret.size = 20;
-  memcpy(secret.buffer, (byte*)"12345678901234567890", secret.size);
-  //RAND_bytes(secret.buffer, secret.size);
+  RAND_bytes(secret.buffer, secret.size);
 
+#if 1
   printf("newNonce: ");
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("oldNonce: ");
   PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
   printf("Secret:   "); PrintBytes(secret.size, secret.buffer); printf("\n");
+#endif
 
   // Get endorsement key handle
   string emptyAuth;
@@ -1314,21 +1315,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   primary_flags.userWithAuth = 1;
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
-
-#if 1
-  // temporary to get authstring
-  TPM_HANDLE ekHandle1;
-  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags,
-                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
-                         2048, 0x010001, &ekHandle1, &pub_out)) {
-    printf("CreatePrimary succeeded: %08x\n", ekHandle);
-  } else {
-    printf("CreatePrimary failed\n");
-    return false;
-  }
-
-#endif
 
   // Get rid of the old counter.
   if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
@@ -1374,15 +1360,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("ReadPublic failed\n");
     return false;
   }
-  printf("Public blob: ");
-  PrintBytes(pub_blob_size, pub_blob);
-  printf("\n");
-  printf("Name: ");
-  PrintBytes(pub_name.size, pub_name.name);
-  printf("\n");
-  printf("Qualified name: ");
-  PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
-  printf("\n");
 
   // Normally, the caller would get the key from the endorsement certificate
   EVP_PKEY* tpmKey = EVP_PKEY_new();
@@ -1402,8 +1379,6 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   int l = RSA_padding_add_PKCS1_OAEP(padded_secret, 256,
                   secret.buffer, secret.size,
                   (byte*)"SECRET", strlen("SECRET")+1);
-printf("padded secret (%d), size: %d: ", l, secret.size);
-PrintBytes(256, padded_secret); printf("\n");
   int n = RSA_public_encrypt(256, padded_secret, salt.secret,
                              rsa_tpmKey, RSA_NO_PADDING);
   salt.size = n;
@@ -1417,20 +1392,7 @@ PrintBytes(256, padded_secret); printf("\n");
   authInfo.tpmSessionAttributes_ = CONTINUESESSION;
   authInfo.targetAuthValue_.size = 0;
   
-// delete later
-#if 1
-  byte xx[32];
-  extern int SetPasswordData(string& password, int size, byte* buf);
-  int t = SetPasswordData(authString, 32, xx);
-  memcpy(authInfo.targetAuthValue_.buffer, &xx[2], 4); 
-  printf("xx: ");PrintBytes(4, authInfo.targetAuthValue_.buffer); printf("\n");
-  authInfo.targetAuthValue_.size = 4;
-#endif
-
   // Start auth session.
-  // salt.size = 0;
-printf("Salt size: %d\n", salt.size);
-  //if (Tpm2_StartProtectedAuthSession(tpm, TPM_RH_NULL, ekHandle1, authInfo,
     if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, TPM_RH_NULL, authInfo,
          salt, TPM_SE_HMAC, symmetric, authInfo.hash_alg_, &sessionHandle)) {
     printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n",
@@ -1442,27 +1404,28 @@ printf("Salt size: %d\n", salt.size);
   }
   authInfo.sessionHandle_ = sessionHandle;
 
-printf("\nAfterStartProtectedAuthSession\n");
-printf("newNonce: ");
-PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
-printf("oldNonce: ");
-PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
-
-  // REMOVE later
 #if 1
-  secret.size = 0;
+  printf("\nAfterStartProtectedAuthSession\n");
+  printf("newNonce: ");
+  PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("oldNonce: ");
+  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 #endif
+
+  // Calculate session key.
   if (!CalculateSessionKey(authInfo, secret)) {
     printf("Can't calculate HMac session key\n");
     ret = false;
     goto done;
   }
 
-printf("After CalculateSessionKey\n");
-printf("newNonce: ");
-PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
-printf("oldNonce: ");
-PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
+#if 1
+  printf("After CalculateSessionKey\n");
+  printf("newNonce: ");
+  PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("oldNonce: ");
+  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
+#endif
 
 #if 0
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {

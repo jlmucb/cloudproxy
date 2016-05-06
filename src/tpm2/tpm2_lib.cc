@@ -3263,7 +3263,9 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
 //   TPMA_NV          attributes;
 //   TPM2B_DIGEST     authPolicy;
 //   uint16_t         dataSize;
-bool CalculateNvName(ProtectedSessionAuthInfo& in) {
+bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM_HANDLE nv_handle,
+         uint16_t nv_hash_alg,
+         uint32_t nv_attributes, uint16_t data_size, byte* out) {
   SHA_CTX sha1;
   SHA256_CTX sha256;
   byte toHash[256];
@@ -3274,47 +3276,79 @@ bool CalculateNvName(ProtectedSessionAuthInfo& in) {
     return false;
   }
 
+  ChangeEndian16(&nv_hash_alg, (uint16_t*)out);
+
   int current_out_size = 0;
   int room_left = 256;
   byte* current = toHash;
 
-  ChangeEndian16(&in.hash_alg_, (uint16_t*)in.nameProtected_.name);
-
-  ChangeEndian32(&in.protectedHandle_, (uint32_t*)current);
+  ChangeEndian32((uint32_t*)&nv_handle, (uint32_t*)current);
   Update(sizeof(uint32_t), &current, &current_out_size, &room_left);
-  ChangeEndian16(&in.hash_alg_, (uint16_t*)current);
+  ChangeEndian16(&nv_hash_alg, (uint16_t*)current);
   Update(sizeof(uint16_t), &current, &current_out_size, &room_left);
-  ChangeEndian32(&in.protectedAttributes_, (uint32_t*)current);
+  ChangeEndian32(&nv_attributes, (uint32_t*)current);
   Update(sizeof(uint32_t), &current, &current_out_size, &room_left);
   ChangeEndian16(&zero, (uint16_t*)current);
   Update(sizeof(uint16_t), &current, &current_out_size, &room_left);
-  ChangeEndian16(&in.protectedSize_, (uint16_t*)current);
+  ChangeEndian16(&data_size, (uint16_t*)current);
   Update(sizeof(uint16_t), &current, &current_out_size, &room_left);
 
 printf("\nCalculateNvName hash buf: ");
 PrintBytes(current_out_size, toHash); printf("\n");
 
+  int size_out = 0;
   if (in.hash_alg_ == TPM_ALG_SHA1) {
 
     SHA1_Init(&sha1);
     SHA1_Update(&sha1, toHash, current_out_size);
-    SHA1_Final(&in.nameProtected_.name[2], &sha1);
-    in.nameProtected_.size = 22;
+    SHA1_Final(out + 2, &sha1);
+    size_out = 22;
   } else {
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, toHash, current_out_size);
-    SHA256_Final(&in.nameProtected_.name[2], &sha256);
-    in.nameProtected_.size = 34;
+    SHA256_Final(out + 2, &sha256);
+    size_out = 34;
   }
 
 printf("CalculateNvName name: ");
-PrintBytes(in.nameProtected_.size, in.nameProtected_.name); printf("\n");
+PrintBytes(size_out, out); printf("\n");
   return true;
 }
+
+bool CalculateBindName(LocalTpm& tpm, TPM_HANDLE bind_obj,
+          ProtectedSessionAuthInfo& authInfo) {
+  uint16_t pub_blob_size = 4096;
+  byte pub_blob[4096];
+  TPM2B_PUBLIC outPublic;
+  TPM2B_NAME pub_name;
+  TPM2B_NAME qualified_pub_name;
+
+  if (Tpm2_ReadPublic(tpm, bind_obj, &pub_blob_size, pub_blob, &outPublic, &pub_name,
+                      &qualified_pub_name)) {
+    printf("ReadPublic succeeded\n");
+  } else {
+    printf("ReadPublic failed\n");
+    return false;
+  }
+  printf("Public blob: ");
+  PrintBytes(pub_blob_size, pub_blob);
+  printf("\n");
+  printf("Name: ");
+  PrintBytes(pub_name.size, pub_name.name);
+  printf("\n");
+  printf("Qualified name: ");
+  PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
+  printf("\n");
+  authInfo.nameProtected_.size = pub_name.size;
+  memcpy(authInfo.nameProtected_.name, pub_name.name, pub_name.size);
+  return true;
+}
+
 
 // HMac(sessionkey||auth, cpHash, nonceNewer, nonceOlder, sessionAttrs)
 // cpHash ≔ Hash(commandCode {|| Name1 {|| Name2 {|| Name3 }}} {|| parameters })
 bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
+                int numNames, TPM2B_NAME* names,
                 int size_parms, byte* parms, int* size_hmac, byte* hmac) {
   SHA_CTX sha1;
   SHA256_CTX sha256;
@@ -3334,7 +3368,6 @@ printf("\nCalculateSessionHmac\n");
 
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
-  // This only gets appended if not bound to session.
   memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
          in.targetAuthValue_.size);
   sizeHmacKey += in.targetAuthValue_.size;
@@ -3347,9 +3380,15 @@ PrintBytes(sizeHmacKey, hmac_key); printf("\n");
 
   ChangeEndian32(&cmd, (uint32_t*)toHash);
   current_out_size += sizeof(uint32_t);
+#if 0
   memcpy(&toHash[current_out_size], in.nameProtected_.name,
          in.nameProtected_.size);
   current_out_size += in.nameProtected_.size;
+#endif
+  for (int i = 0; i < numNames; i++) {
+	memcpy(toHash, names[i].name, names[i].size);
+	current_out_size += names[i].size;
+  }
   memcpy(&toHash[current_out_size], parms, size_parms);
   current_out_size += size_parms;
 
@@ -3515,6 +3554,7 @@ int CalculateandSetProtectedAuthSize(ProtectedSessionAuthInfo& authInfo,
 }
 
 int CalculateandSetProtectedAuth(ProtectedSessionAuthInfo& authInfo, uint32_t cmd,
+        int numNames, TPM2B_NAME* names,
         int size_cmd_params, byte* cmd_params, byte* out, int space_left) {
 
   TPM2B_NONCE newNonce;
@@ -3533,7 +3573,7 @@ printf("newNonce: ");
 
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
-  if (!CalculateSessionHmac(authInfo, false, cmd,
+  if (!CalculateSessionHmac(authInfo, false, cmd, numNames, names,
           size_cmd_params, cmd_params, &sizeHmac, hmac)) {
     printf("CalculateSessionHmac failed\n");
     return false;
@@ -3610,10 +3650,6 @@ bool Tpm2_StartProtectedAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_o
   // Set name of bind object in the nameProtected_ variable of the
   // ProtectedSessionAuthInfo.
   authInfo.protectedHandle_ = bind_obj;
-  if (!CalculateNvName(authInfo)) {
-    printf("CalculateNvName failed\n");
-    return false;
-  }
 
   int n = Marshal_AuthSession_Info(tpm_obj, bind_obj, authInfo.oldNonce_,
                                   salt, session_type, symmetric, hash_alg,
@@ -3712,8 +3748,17 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX
   ChangeEndian16((uint16_t*)&size_data, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
+  TPM2B_NAME nv_name;
+  if (!CalculateNvName(authInfo, index, authInfo.hash_alg_,
+            attributes, size_data, nv_name.name)) {
+    printf("Can't calculate nv name\n");
+    return false;
+  }
+  nv_name.size = SizeHash(authInfo.hash_alg_) + 2;
+
   // Set auth
   n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_DefineSpace,
+            1, &nv_name,
             in - cmd_params, cmd_params, auth_set, space_left);
   if (n < 0) {
     printf("CalculateandSetProtectedAuth failed\n");
@@ -3763,8 +3808,9 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-  int n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_Increment, 0, nullptr,
-                           in, space_left);
+  TPM2B_NAME nv_name;
+  int n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_Increment, 1,
+              &nv_name, 0, nullptr, in, space_left);
   if (n < 0) {
     printf("CalculateandSetProtectedAuth failed\n");
     return false;
@@ -3833,7 +3879,8 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   // Set Hmac suth
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
-  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Read,
+  TPM2B_NAME nv_name;
+  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Read, 1, &nv_name,
           size_params, params_buf, &sizeHmac, hmac)) {
     printf("CalculateSessionHmac failed\n");
     return false;

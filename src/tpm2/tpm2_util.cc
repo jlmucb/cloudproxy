@@ -1202,10 +1202,61 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   return true;
 }
 
+
+void seperate_key_test() {
+  RSA* rsa_key = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
+  if (rsa_key == nullptr) {
+    printf("Can't generate RSA key\n");
+    return;
+  }
+  TPM2B_DIGEST secret;
+  TPM2B_ENCRYPTED_SECRET salt;
+  secret.size = 20;
+  memcpy(secret.buffer, (byte*)"12345678901234567890", secret.size);
+
+// Encrypt salt
+  printf("\nencrypting test\n");
+  int size_padded_secret= 256;
+  byte padded_secret[256];
+  RSA_padding_add_PKCS1_OAEP(padded_secret, 256, secret.buffer, secret.size,
+      (byte*)"SECRET", strlen("SECRET")+1);
+  int n = RSA_public_encrypt(size_padded_secret, padded_secret, salt.secret,
+                             rsa_key, RSA_NO_PADDING);
+  salt.size = n;
+
+  byte decrypted_with_pad[512];
+  int size_recovered_secret = 0;
+  byte recovered_secret[512];
+  memset(recovered_secret, 0, 512);
+  memset(decrypted_with_pad, 0, 512);
+
+  printf("\nEncrypted salt (%d): ", n);
+  PrintBytes(n, salt.secret); printf("\n");
+  int m = RSA_private_decrypt(n, (byte*) salt.secret,
+               (byte*)decrypted_with_pad, rsa_key,
+               RSA_NO_PADDING);
+  if (m<0) {
+    printf("Can't decrypt\n");
+    return;
+  }
+  printf("decrypted(%d): ", m);
+  PrintBytes(m, decrypted_with_pad);printf("\n");
+  salt.size = m;
+  int k = 0;
+  while(k < 256 && decrypted_with_pad[k] == 0) k++;
+  int l = RSA_padding_check_PKCS1_OAEP(recovered_secret, 256, 
+                &decrypted_with_pad[k], 256-k, 256,
+                (byte*)"SECRET", strlen("SECRET")+1);
+  printf("check k=%d, %03d    : ", k, l);
+  PrintBytes(l, recovered_secret);printf("\n");
+}
+
 // For Jethro
 bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   printf("Tpm2_NvCombinedSessionTest\n\n");
+
+  seperate_key_test(); return true;
   extern int CreatePasswordAuthArea(string& password, int size, byte* buf);
 
   int slot = 1000;
@@ -1270,10 +1321,8 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  // Remove this later.
-  TPM_HANDLE ekHandle1 = TPM_RH_NULL;
-
-  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
+  // if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, emptyAuth, pcrSelect,
                          TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &ekHandle, &pub_out)) {
@@ -1326,7 +1375,19 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   printf("\nEncrypted salt (%d): ", n);
   PrintBytes(n, salt.secret); printf("\n");
 
-  // Create counter.
+#if 0
+  int k = 0;
+  byte decrypted_with_pad[512];
+  memset(check, 0, 512);
+  while(k < 256 && secret_buf[k] == 0) k++;
+  int check_len = RSA_padding_check_PKCS1_OAEP(check, 256, &secret_buf[k], 256-k,
+                    256, (byte*)"IDENTITY", strlen("IDENTITY")+1);
+  printf("Seed         : ");PrintBytes(size_seed, seed);printf("\n");
+  printf("Funny padding: ");PrintBytes(256, secret_buf);printf("\n");
+  printf("check %03d    : ", check_len);PrintBytes(check_len, check);printf("\n");
+#endif
+
+  // Get rid of the old counter.
   if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Tpm2_UndefineSpace %d succeeds\n", slot);
   } else {
@@ -1341,9 +1402,9 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.targetAuthValue_.size = 0;
 
   // Start auth session.
-  // Delete the following two lines
-  salt.size = 0;
-  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle1, TPM_RH_NULL, authInfo,
+  // TPM_HANDLE ekHandle1 = TPM_RH_NULL;
+  // salt.size = 0;
+  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, TPM_RH_NULL, authInfo,
         salt, TPM_SE_HMAC, symmetric, authInfo.hash_alg_, &sessionHandle)) {
     printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n",
            sessionHandle);

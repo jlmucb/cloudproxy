@@ -3334,12 +3334,10 @@ printf("\nCalculateSessionHmac\n");
 
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
-#if 0
   // This only gets appended if not bound to session.
   memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
          in.targetAuthValue_.size);
   sizeHmacKey += in.targetAuthValue_.size;
-#endif
 
 printf("hmac_key: ");
 PrintBytes(sizeHmacKey, hmac_key); printf("\n");
@@ -3504,25 +3502,43 @@ void RollNonces(ProtectedSessionAuthInfo& in, TPM2B_NONCE& newNonce) {
   in.newNonce_.size = newNonce.size;
 }
 
+int CalculateandSetProtectedAuthSize(ProtectedSessionAuthInfo& authInfo,
+        uint32_t cmd, int size_cmd_params, byte* cmd_params,
+        byte* out, int space_left) {
+  //    TPMI_SH_AUTH_SESSION authHandle the handle for the authorization session
+  //    TPM2B_NONCE nonceCaller the caller-provided session nonce; size may be zero
+  //    TPMA_SESSION sessionAttributes the flags associated with the session
+  //    TPM2B_AUTH hmac the session HMAC digest value
+  return sizeof(uint32_t) +sizeof(TPMI_SH_AUTH_SESSION) + 
+         sizeof(uint16_t) + authInfo.newNonce_.size + sizeof(byte) +
+         sizeof(uint16_t) + SizeHash(authInfo.hash_alg_);
+}
+
 int CalculateandSetProtectedAuth(ProtectedSessionAuthInfo& authInfo, uint32_t cmd,
         int size_cmd_params, byte* cmd_params, byte* out, int space_left) {
-/*
+
   TPM2B_NONCE newNonce;
   newNonce.size = authInfo.oldNonce_.size;
   RAND_bytes(newNonce.buffer, newNonce.size);
-  RollNonces(authInfo, newNonce);
- */
+printf("CalculateandSetProtectedAuth nonce: ");
+PrintBytes(newNonce.size, newNonce.buffer); printf("\n");
 
-  int size_param_list = 0;
+  RollNonces(authInfo, newNonce);
+
+printf("\nAfter RollNounces\n");
+printf("newNonce: ");
+  PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("oldNonce: ");
+  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
+
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
-  if (!CalculateSessionHmac(authInfo, false, TPM_CC_NV_Increment,
-          size_param_list, nullptr, &sizeHmac, hmac)) {
+  if (!CalculateSessionHmac(authInfo, false, cmd,
+          size_cmd_params, cmd_params, &sizeHmac, hmac)) {
     printf("CalculateSessionHmac failed\n");
     return false;
   }
 
-printf("\nAfter RollNounces\n");
 
   // Set session auth.
   //    TPMI_SH_AUTH_SESSION authHandle the handle for the authorization session
@@ -3647,9 +3663,25 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX
   memset(commandBuf, 0, MAX_SIZE_PARAMS);
   memset(resp_buf, 0, MAX_SIZE_PARAMS);
 
-  // Set auth
-  uint16_t authPolicySize = 0;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&owner, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
+  // Set auth
+  int n = CalculateandSetProtectedAuthSize(authInfo, TPM_CC_NV_DefineSpace,
+                 0, nullptr, in, space_left);
+  if (n < 0) {
+    printf("CalculateandSetProtectedAuthSize failed\n");
+    return false;
+  }
+
+  byte* auth_set = in;
+  space_left -= n;
+  size_params += n;
+  in += n;
+
+  byte* cmd_params = in;
+  uint16_t authPolicySize = 0;
   // TPM2B_NV_PUBLIC
   uint16_t size_nv_area = sizeof(uint32_t) + sizeof(TPMI_RH_NV_INDEX) +
                           sizeof(TPMI_ALG_HASH) + 2*sizeof(uint16_t) +
@@ -3658,24 +3690,14 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX
   ChangeEndian16((uint16_t*)&size_nv_area, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-
   // nvIndex;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
-
-  TPMI_ALG_HASH alg = TPM_ALG_SHA256;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
-  ChangeEndian16((uint16_t*)&alg, (uint16_t*)in);
+  ChangeEndian16((uint16_t*)&authInfo.hash_alg_, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
-#if 0
-  uint32_t attributes;
-  memset((byte*)&attributes, 0 , sizeof(uint32_t));
-
-  // TODO(jlm): what attributes is this?  Remove
-  // attributes = 0x00040004;
-  attributes = NV_AUTHWRITE | NV_AUTHREAD;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
@@ -3684,17 +3706,19 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX
   ChangeEndian16((uint16_t*)&authPolicySize, (uint16_t*)in);
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
-  if (authPolicySize > 0) {
-    IF_LESS_THAN_RETURN_FALSE(space_left, authPolicySize)
-    memcpy(in, authPolicy, authPolicySize);
-    Update(authPolicySize, &in, &size_params, &space_left);
-  }
-#endif
 
   // dataSize
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&size_data, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  // Set auth
+  n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_DefineSpace,
+            in - cmd_params, cmd_params, auth_set, space_left);
+  if (n < 0) {
+    printf("CalculateandSetProtectedAuth failed\n");
+    return false;
+  }
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_DefineSpace,
                                 commandBuf, size_params, params_buf);

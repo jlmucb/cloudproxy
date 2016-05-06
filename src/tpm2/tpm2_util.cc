@@ -1225,7 +1225,6 @@ void seperate_key_test() {
   salt.size = n;
 
   byte decrypted_with_pad[512];
-  int size_recovered_secret = 0;
   byte recovered_secret[512];
   memset(recovered_secret, 0, 512);
   memset(decrypted_with_pad, 0, 512);
@@ -1235,7 +1234,7 @@ void seperate_key_test() {
   int m = RSA_private_decrypt(n, (byte*) salt.secret,
                (byte*)decrypted_with_pad, rsa_key,
                RSA_NO_PADDING);
-  if (m<0) {
+  if (m < 0) {
     printf("Can't decrypt\n");
     return;
   }
@@ -1254,9 +1253,8 @@ void seperate_key_test() {
 // For Jethro
 bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
+seperate_key_test();
   printf("Tpm2_NvCombinedSessionTest\n\n");
-
-  seperate_key_test(); return true;
   extern int CreatePasswordAuthArea(string& password, int size, byte* buf);
 
   int slot = 1000;
@@ -1321,9 +1319,23 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  // if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
-  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, emptyAuth, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+#if 1
+  // temporary to get authstring
+  TPM_HANDLE ekHandle1;
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect,
+                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
+                         2048, 0x010001, &ekHandle1, &pub_out)) {
+    printf("CreatePrimary succeeded: %08x\n", ekHandle);
+  } else {
+    printf("CreatePrimary failed\n");
+    return false;
+  }
+
+#endif
+
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
+                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &ekHandle, &pub_out)) {
     printf("CreatePrimary succeeded: %08x\n", ekHandle);
@@ -1365,27 +1377,15 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
 
   // Encrypt salt
   printf("\nencrypting salt\n");
-  int size_padded_secret= 256;
-  byte padded_secret[256];
-  RSA_padding_add_PKCS1_OAEP(padded_secret, 256, secret.buffer, secret.size,
+  byte padded_secret[512];
+  int l = RSA_padding_add_PKCS1_OAEP(padded_secret, 256, secret.buffer, secret.size,
       (byte*)"SECRET", strlen("SECRET")+1);
-  int n = RSA_public_encrypt(size_padded_secret, padded_secret, salt.secret,
+printf("padded secret (%d): ", l); PrintBytes(256, padded_secret); printf("\n");
+  int n = RSA_public_encrypt(256, padded_secret, salt.secret,
                              rsa_tpmKey, RSA_NO_PADDING);
   salt.size = n;
   printf("\nEncrypted salt (%d): ", n);
   PrintBytes(n, salt.secret); printf("\n");
-
-#if 0
-  int k = 0;
-  byte decrypted_with_pad[512];
-  memset(check, 0, 512);
-  while(k < 256 && secret_buf[k] == 0) k++;
-  int check_len = RSA_padding_check_PKCS1_OAEP(check, 256, &secret_buf[k], 256-k,
-                    256, (byte*)"IDENTITY", strlen("IDENTITY")+1);
-  printf("Seed         : ");PrintBytes(size_seed, seed);printf("\n");
-  printf("Funny padding: ");PrintBytes(256, secret_buf);printf("\n");
-  printf("check %03d    : ", check_len);PrintBytes(check_len, check);printf("\n");
-#endif
 
   // Get rid of the old counter.
   if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
@@ -1400,11 +1400,18 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   authInfo.tpmSessionAttributes_ = CONTINUESESSION;
   authInfo.targetAuthValue_.size = 0;
+  
+// delete later
+  byte xx[32];
+  extern int SetPasswordData(string& password, int size, byte* buf);
+  int t = SetPasswordData(authString, 32, xx);
+  memcpy(authInfo.targetAuthValue_.buffer, &xx[2], 4); 
+  printf("xx: ");PrintBytes(4, authInfo.targetAuthValue_.buffer); printf("\n");
+  authInfo.targetAuthValue_.size = 4;
 
   // Start auth session.
-  // TPM_HANDLE ekHandle1 = TPM_RH_NULL;
-  // salt.size = 0;
-  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, TPM_RH_NULL, authInfo,
+  salt.size = 0;
+  if (Tpm2_StartProtectedAuthSession(tpm, TPM_RH_NULL, ekHandle1, authInfo,
         salt, TPM_SE_HMAC, symmetric, authInfo.hash_alg_, &sessionHandle)) {
     printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n",
            sessionHandle);
@@ -1421,10 +1428,8 @@ PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
 printf("oldNonce: ");
 PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 
-  // Calculate session key
-  // TPM2B_DIGEST secret1;
-  // secret1.size = 0;
-  // if (!CalculateSessionKey(authInfo, secret1)) {
+  // REMOVE later
+  secret.size = 0;
   if (!CalculateSessionKey(authInfo, secret)) {
     printf("Can't calculate HMac session key\n");
     ret = false;
@@ -1436,15 +1441,15 @@ PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
 printf("oldNonce: ");
 PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 
-#if 0
   if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo,
-                                attributes, size_data)) {
-    printf("DefineSpace succeeded\n");
+                                authInfo.protectedAttributes_, size_data)) {
+    printf("Tpm2_DefineProtectedSpace succeeded\n");
   } else {
-    printf("DefineSpace failed\n");
+    printf("Tpm2_DefineProtectedSpace failed\n");
     ret = false;
     goto done;
   }
+#if 0
 
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);

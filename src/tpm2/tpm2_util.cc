@@ -1215,7 +1215,7 @@ void seperate_key_test() {
   memcpy(secret.buffer, (byte*)"12345678901234567890", secret.size);
 
 // Encrypt salt
-  printf("\nencrypting test\n");
+  printf("\nencrypting salt\n");
   int size_padded_secret= 256;
   byte padded_secret[256];
   RSA_padding_add_PKCS1_OAEP(padded_secret, 256, secret.buffer, secret.size,
@@ -1252,8 +1252,6 @@ void seperate_key_test() {
 
 // For Jethro
 bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
-
-seperate_key_test();
   printf("Tpm2_NvCombinedSessionTest\n\n");
   extern int CreatePasswordAuthArea(string& password, int size, byte* buf);
 
@@ -1334,6 +1332,28 @@ seperate_key_test();
 
 #endif
 
+  // Get rid of the old counter.
+  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
+    printf("Tpm2_UndefineSpace %d succeeds\n", slot);
+  } else {
+    printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
+  }
+  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString,
+                        0, nullptr, NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD,
+                        size_data)) {
+     printf("DefineSpace succeeded\n");
+   } else {
+     printf("DefineSpace failed\n");
+     return false;
+   }
+  if (Tpm2_IncrementNv(tpm, nv_handle, authString)) {
+    printf("Initial Tpm2_IncrementNv succeeds\n");
+  } else {
+    printf("Initial Tpm2_IncrementNv fails\n");
+     return false;
+  }
+
+  // Get endorsement key.
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
                          TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
@@ -1349,8 +1369,8 @@ seperate_key_test();
   uint16_t pub_blob_size = 2048;
   byte pub_blob[2048];
 
-  if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out, &pub_name,
-                      &qualified_pub_name)) {
+  if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob, &pub_out,
+                      &pub_name, &qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
     printf("ReadPublic failed\n");
@@ -1378,21 +1398,17 @@ seperate_key_test();
   // Encrypt salt
   printf("\nencrypting salt\n");
   byte padded_secret[512];
-  int l = RSA_padding_add_PKCS1_OAEP(padded_secret, 256, secret.buffer, secret.size,
-      (byte*)"SECRET", strlen("SECRET")+1);
-printf("padded secret (%d): ", l); PrintBytes(256, padded_secret); printf("\n");
+  memset(padded_secret, 0, 512);
+  int l = RSA_padding_add_PKCS1_OAEP(padded_secret, 256,
+                  secret.buffer, secret.size,
+                  (byte*)"SECRET", strlen("SECRET")+1);
+printf("padded secret (%d): ", l);
+PrintBytes(256, padded_secret); printf("\n");
   int n = RSA_public_encrypt(256, padded_secret, salt.secret,
                              rsa_tpmKey, RSA_NO_PADDING);
   salt.size = n;
   printf("\nEncrypted salt (%d): ", n);
   PrintBytes(n, salt.secret); printf("\n");
-
-  // Get rid of the old counter.
-  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
-    printf("Tpm2_UndefineSpace %d succeeds\n", slot);
-  } else {
-    printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
-  }
 
   authInfo.protectedHandle_ = nv_handle;
   authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD;
@@ -1413,8 +1429,10 @@ printf("padded secret (%d): ", l); PrintBytes(256, padded_secret); printf("\n");
 
   // Start auth session.
   salt.size = 0;
+printf("Salt size: %d\n", salt.size);
+//  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, TPM_RH_NULL, authInfo,
   if (Tpm2_StartProtectedAuthSession(tpm, TPM_RH_NULL, ekHandle1, authInfo,
-        salt, TPM_SE_HMAC, symmetric, authInfo.hash_alg_, &sessionHandle)) {
+         salt, TPM_SE_HMAC, symmetric, authInfo.hash_alg_, &sessionHandle)) {
     printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n",
            sessionHandle);
   } else {
@@ -1440,20 +1458,13 @@ PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
     goto done;
   }
 
+printf("After CalculateSessionKey\n");
 printf("newNonce: ");
 PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
 printf("oldNonce: ");
 PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 
-  if (Tpm2_DefineProtectedSpace(tpm, TPM_RH_OWNER, nv_handle, authInfo,
-                                authInfo.protectedAttributes_, size_data)) {
-    printf("Tpm2_DefineProtectedSpace succeeded\n");
-  } else {
-    printf("Tpm2_DefineProtectedSpace failed\n");
-    ret = false;
-    goto done;
-  }
-
+#if 0
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
   } else {
@@ -1461,6 +1472,7 @@ PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
     ret = false;
     goto done;
   }
+#endif
   size_out = 8;
   if (Tpm2_ReadProtectedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
     printf("Tpm2_ReadProtectedNv %d succeeds: ", nv_handle);

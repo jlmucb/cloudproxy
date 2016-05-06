@@ -2737,19 +2737,12 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-  TPMI_ALG_HASH alg = TPM_ALG_SHA256;
+  // TPMI_ALG_HASH alg = TPM_ALG_SHA256;
+  TPMI_ALG_HASH alg = TPM_ALG_SHA1;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&alg, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
-#if 0
-  uint32_t attributes;
-  memset((byte*)&attributes, 0 , sizeof(uint32_t));
-
-  // TODO(jlm): what attributes is this?  Remove
-  // attributes = 0x00040004;
-  attributes = NV_AUTHWRITE | NV_AUTHREAD;
-#endif
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
@@ -3856,20 +3849,25 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 
   // handle
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  //ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
-  ChangeEndian32((uint32_t*)&authInfo.sessionHandle_, (uint32_t*)in);
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-  TPM2B_NAME sess_name;
-  sess_name.size = sizeof(uint32_t);
-  ChangeEndian32((uint32_t*)&authInfo.sessionHandle_, (uint32_t*)sess_name.name);
-  TPM2B_NAME nv_name;
+  TPM2B_NAME nv_name[2];
   if (!CalculateNvName(authInfo, index,
          authInfo.hash_alg_, authInfo.protectedAttributes_,
-         authInfo.protectedSize_, nv_name.name)) {
+         authInfo.protectedSize_, nv_name[0].name)) {
   }
   // Fix this
-  nv_name.size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
+  nv_name[0].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
+  if (!CalculateNvName(authInfo, index,
+         authInfo.hash_alg_, authInfo.protectedAttributes_,
+         authInfo.protectedSize_, nv_name[1].name)) {
+  }
+  // Fix this
+  nv_name[1].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
 
   int n = CalculateandSetProtectedAuthSize(authInfo, TPM_CC_NV_Increment,
               0, nullptr, in, space_left);
@@ -3882,22 +3880,13 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   size_params += n;
   in += n;
 
-  // param 
-  byte* cmd_params_place = in;
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
-  Update(sizeof(uint32_t), &in, &size_params, &space_left);
-
   // Set auth
   n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_Increment,
-            // 1, &nv_name, sizeof(uint32_t), cmd_params_place,
-            1, &sess_name, sizeof(uint32_t), cmd_params_place,
-            auth_set, space_left);
+            2, nv_name, 0, nullptr, auth_set, space_left);
   if (n < 0) {
     printf("CalculateandSetProtectedAuth failed\n");
     return false;
   }
-
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Increment,
                                 commandBuf, size_params, params_buf);
@@ -3943,38 +3932,43 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   byte params_buf[MAX_SIZE_PARAMS];
   int space_left = MAX_SIZE_PARAMS;
   byte* in = params_buf;
-  int n = 0;
 
   memset(commandBuf, 0, MAX_SIZE_PARAMS);
   memset(params_buf, 0, MAX_SIZE_PARAMS);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&authInfo.sessionHandle_, (uint32_t*)in);
-  //ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
-
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
+  byte* auth_set = in;
 
   // Set Hmac auth
-  int sizeHmac = SizeHash(authInfo.hash_alg_);
-  byte hmac[128];
-  TPM2B_NAME nv_name;
-  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Read, 1, &nv_name,
-          size_params, params_buf, &sizeHmac, hmac)) {
-    printf("CalculateSessionHmac failed\n");
+  TPM2B_NAME nv_name[2];
+  if (!CalculateNvName(authInfo, index,
+         authInfo.hash_alg_, authInfo.protectedAttributes_,
+         authInfo.protectedSize_, nv_name[0].name)) {
+  }
+  // Fix this
+  nv_name[0].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
+  if (!CalculateNvName(authInfo, index,
+         authInfo.hash_alg_, authInfo.protectedAttributes_,
+         authInfo.protectedSize_, nv_name[1].name)) {
+  }
+  // Fix this
+  nv_name[1].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
+
+  int n = CalculateandSetProtectedAuthSize(authInfo, TPM_CC_NV_Increment,
+              0, nullptr, in, space_left);
+  if (n < 0) {
+    printf("CalculateandSetProtectedAuth failed\n");
     return false;
   }
-
-  // Set Hmac auth
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
-  ChangeEndian16((uint16_t*)&sizeHmac, (uint16_t*)in);
-  Update(sizeof(uint16_t), &in, &size_params, &space_left);
-
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeHmac)
-  memcpy(in, hmac, sizeHmac);
-  Update(sizeHmac, &in, &size_params, &space_left);
+  space_left -= n;
+  size_params += n;
+  in += n;
+  byte* cmd_params_place = in;
 
   // parameters
   uint16_t offset = 0;
@@ -3984,6 +3978,15 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   IF_NEG_RETURN_FALSE(n);
   ChangeEndian16((uint16_t*)&offset, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  // Set auth
+  n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_Read,
+          2, nv_name, in - cmd_params_place, cmd_params_place,
+          auth_set, space_left);
+  if (n < 0) {
+    printf("CalculateSessionHmac failed\n");
+    return false;
+  }
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Read,
                                 commandBuf, size_params, params_buf);

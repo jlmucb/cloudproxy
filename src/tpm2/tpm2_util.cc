@@ -1453,7 +1453,6 @@ PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
     ret = false;
     goto done;
   }
-#if 0
 
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
@@ -1462,6 +1461,7 @@ PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
     ret = false;
     goto done;
   }
+  size_out = 8;
   if (Tpm2_ReadProtectedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
     printf("Tpm2_ReadProtectedNv %d succeeds: ", nv_handle);
     PrintBytes(size_out, data_out);
@@ -1471,7 +1471,6 @@ PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
     ret = false;
     goto done;
   }
-#endif
 
 done:
   if (sessionHandle != 0) {

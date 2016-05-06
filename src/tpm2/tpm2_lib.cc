@@ -2592,10 +2592,10 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
   memset(in, 0, sizeof(uint16_t));
-  ChangeEndian16((uint16_t*)size, (uint16_t*)in);
-  Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
   uint16_t offset = 0;
+  ChangeEndian16((uint16_t*)size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
   IF_NEG_RETURN_FALSE(n);
   ChangeEndian16((uint16_t*)&offset, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
@@ -3368,10 +3368,12 @@ printf("\nCalculateSessionHmac\n");
 
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
-#if 0
-  memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
+#if 1
+  if (cmd != 0x0000012a) {
+    memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
          in.targetAuthValue_.size);
-  sizeHmacKey += in.targetAuthValue_.size;
+    sizeHmacKey += in.targetAuthValue_.size;
+  }
 #endif
 
 printf("hmac_key: ");
@@ -3399,7 +3401,7 @@ PrintBytes(sizeHmacKey, hmac_key); printf("\n");
     for (int i = 0; i < numNames; i++) {
       memcpy(&toHash[current_out_size], names[i].name, names[i].size);
       current_out_size += names[i].size;
-      room_left -= sizeof(uint32_t);
+      room_left -= names[i].size;
     }
     memcpy(&toHash[current_out_size], parms, size_parms);
     current_out_size += size_parms;
@@ -3560,8 +3562,8 @@ int CalculateandSetProtectedAuthSize(ProtectedSessionAuthInfo& authInfo,
          sizeof(uint16_t) + SizeHash(authInfo.hash_alg_);
 }
 
-int CalculateandSetProtectedAuth(ProtectedSessionAuthInfo& authInfo, uint32_t cmd,
-        int numNames, TPM2B_NAME* names,
+int CalculateandSetProtectedAuth(ProtectedSessionAuthInfo& authInfo,
+        uint32_t cmd, int numNames, TPM2B_NAME* names,
         int size_cmd_params, byte* cmd_params, byte* out, int space_left) {
 
   TPM2B_NONCE newNonce;
@@ -3586,13 +3588,11 @@ printf("newNonce: ");
     return false;
   }
 
-
   // Set session auth.
   //    TPMI_SH_AUTH_SESSION authHandle the handle for the authorization session
   //    TPM2B_NONCE nonceCaller the caller-provided session nonce; size may be zero
   //    TPMA_SESSION sessionAttributes the flags associated with the session
   //    TPM2B_AUTH hmac the session HMAC digest value
-
   int space_used = 0;
   uint32_t sizeAuth = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(byte) +
                       sizeof(uint16_t) + sizeHmac + authInfo.oldNonce_.size;
@@ -3854,24 +3854,50 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   memset(commandBuf, 0, MAX_SIZE_PARAMS);
   memset(resp_buf, 0, MAX_SIZE_PARAMS);
 
+  // handle
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  //ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  ChangeEndian32((uint32_t*)&authInfo.sessionHandle_, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
-  Update(sizeof(uint32_t), &in, &size_params, &space_left);
-
+  TPM2B_NAME sess_name;
+  sess_name.size = sizeof(uint32_t);
+  ChangeEndian32((uint32_t*)&authInfo.sessionHandle_, (uint32_t*)sess_name.name);
   TPM2B_NAME nv_name;
-  int n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_Increment, 1,
-              &nv_name, 0, nullptr, in, space_left);
+  if (!CalculateNvName(authInfo, index,
+         authInfo.hash_alg_, authInfo.protectedAttributes_,
+         authInfo.protectedSize_, nv_name.name)) {
+  }
+  // Fix this
+  nv_name.size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
+
+  int n = CalculateandSetProtectedAuthSize(authInfo, TPM_CC_NV_Increment,
+              0, nullptr, in, space_left);
   if (n < 0) {
     printf("CalculateandSetProtectedAuth failed\n");
     return false;
   }
+  byte* auth_set = in;
   space_left -= n;
   size_params += n;
   in += n;
+
+  // param 
+  byte* cmd_params_place = in;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  // Set auth
+  n = CalculateandSetProtectedAuth(authInfo, TPM_CC_NV_Increment,
+            // 1, &nv_name, sizeof(uint32_t), cmd_params_place,
+            1, &sess_name, sizeof(uint32_t), cmd_params_place,
+            auth_set, space_left);
+  if (n < 0) {
+    printf("CalculateandSetProtectedAuth failed\n");
+    return false;
+  }
+
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Increment,
                                 commandBuf, size_params, params_buf);
@@ -3907,7 +3933,8 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 }
 
 bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
-                 ProtectedSessionAuthInfo& authInfo, uint16_t* size, byte* data) {
+                 ProtectedSessionAuthInfo& authInfo,
+                 uint16_t* size, byte* data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -3922,18 +3949,15 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   memset(params_buf, 0, MAX_SIZE_PARAMS);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  ChangeEndian32((uint32_t*)&authInfo.sessionHandle_, (uint32_t*)in);
+  //ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
-  memset(in, 0, sizeof(uint16_t));
-  Update(sizeof(uint16_t), &in, &size_params, &space_left);
-
-  // Set Hmac suth
+  // Set Hmac auth
   int sizeHmac = SizeHash(authInfo.hash_alg_);
   byte hmac[128];
   TPM2B_NAME nv_name;
@@ -3952,7 +3976,11 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   memcpy(in, hmac, sizeHmac);
   Update(sizeHmac, &in, &size_params, &space_left);
 
+  // parameters
   uint16_t offset = 0;
+  IF_NEG_RETURN_FALSE(n);
+  ChangeEndian16((uint16_t*)size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
   IF_NEG_RETURN_FALSE(n);
   ChangeEndian16((uint16_t*)&offset, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);

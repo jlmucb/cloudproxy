@@ -1273,28 +1273,26 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   TPMT_SYM_DEF symmetric;
 
   authInfo.hash_alg_ = TPM_ALG_SHA1;
-  symmetric.algorithm = TPM_ALG_NULL;
+  int hashSize = SizeHash(authInfo.hash_alg_);
 
-#if 0
   // If encryption.
   symmetric.algorithm = TPM_ALG_AES;
   symmetric.keyBits.aes = 128;
   symmetric.mode.aes = TPM_ALG_CFB;
-#endif
-
-  int hashSize = SizeHash(authInfo.hash_alg_);
 
   authInfo.targetAuthValue_.size = authString.size();
   memset(authInfo.targetAuthValue_.buffer, 0, authString.size());
 
   authInfo.newNonce_.size = hashSize;
   authInfo.oldNonce_.size = hashSize;
-  secret.size = hashSize;
   memset(authInfo.newNonce_.buffer, 0, hashSize);
   memset(authInfo.oldNonce_.buffer, 0, hashSize);
-  memset(secret.buffer, 0, hashSize);
   RAND_bytes(authInfo.oldNonce_.buffer, authInfo.oldNonce_.size);
-  RAND_bytes(secret.buffer, secret.size);
+
+  memset(secret.buffer, 0, 32);
+  secret.size = 20;
+  memcpy(secret.buffer, (byte*)"12345678901234567890", secret.size);
+  //RAND_bytes(secret.buffer, secret.size);
 
   printf("newNonce: ");
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
@@ -1392,17 +1390,19 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   rsa_tpmKey->n = bin_to_BN((int)pub_out.publicArea.unique.rsa.size,
                             pub_out.publicArea.unique.rsa.buffer);
   uint64_t exp = 0x010001ULL;
-  rsa_tpmKey->e = bin_to_BN(sizeof(uint64_t), (byte*)&exp);
+  byte b_exp[16];
+  ChangeEndian64((uint64_t*)&exp, (uint64_t*)b_exp);
+  rsa_tpmKey->e = bin_to_BN(sizeof(uint64_t), b_exp);
   EVP_PKEY_assign_RSA(tpmKey, rsa_tpmKey);
 
   // Encrypt salt
   printf("\nencrypting salt\n");
-  byte padded_secret[512];
-  memset(padded_secret, 0, 512);
+  byte padded_secret[1024];
+  memset(padded_secret, 0, 1024);
   int l = RSA_padding_add_PKCS1_OAEP(padded_secret, 256,
                   secret.buffer, secret.size,
                   (byte*)"SECRET", strlen("SECRET")+1);
-printf("padded secret (%d): ", l);
+printf("padded secret (%d), size: %d: ", l, secret.size);
 PrintBytes(256, padded_secret); printf("\n");
   int n = RSA_public_encrypt(256, padded_secret, salt.secret,
                              rsa_tpmKey, RSA_NO_PADDING);
@@ -1428,10 +1428,10 @@ PrintBytes(256, padded_secret); printf("\n");
 #endif
 
   // Start auth session.
-  salt.size = 0;
+  // salt.size = 0;
 printf("Salt size: %d\n", salt.size);
-//  if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, TPM_RH_NULL, authInfo,
-  if (Tpm2_StartProtectedAuthSession(tpm, TPM_RH_NULL, ekHandle1, authInfo,
+  //if (Tpm2_StartProtectedAuthSession(tpm, TPM_RH_NULL, ekHandle1, authInfo,
+    if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, TPM_RH_NULL, authInfo,
          salt, TPM_SE_HMAC, symmetric, authInfo.hash_alg_, &sessionHandle)) {
     printf("Tpm2_StartProtectedAuthSession succeeds handle: %08x\n",
            sessionHandle);

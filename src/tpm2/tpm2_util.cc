@@ -1402,12 +1402,14 @@ printf("padded secret (%d): ", l); PrintBytes(256, padded_secret); printf("\n");
   authInfo.targetAuthValue_.size = 0;
   
 // delete later
+#if 1
   byte xx[32];
   extern int SetPasswordData(string& password, int size, byte* buf);
   int t = SetPasswordData(authString, 32, xx);
   memcpy(authInfo.targetAuthValue_.buffer, &xx[2], 4); 
   printf("xx: ");PrintBytes(4, authInfo.targetAuthValue_.buffer); printf("\n");
   authInfo.targetAuthValue_.size = 4;
+#endif
 
   // Start auth session.
   salt.size = 0;
@@ -1429,7 +1431,9 @@ printf("oldNonce: ");
 PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 
   // REMOVE later
+#if 1
   secret.size = 0;
+#endif
   if (!CalculateSessionKey(authInfo, secret)) {
     printf("Can't calculate HMac session key\n");
     ret = false;

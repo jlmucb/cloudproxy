@@ -3380,18 +3380,31 @@ PrintBytes(sizeHmacKey, hmac_key); printf("\n");
   int current_out_size = 0;
   int room_left = 256;
 
-  ChangeEndian32((uint32_t*)&cmd, (uint32_t*)&toHash[current_out_size]);
-  current_out_size += sizeof(uint32_t);
-  room_left -= sizeof(uint32_t);
-
-  for (int i = 0; i < numNames; i++) {
-    memcpy(&toHash[current_out_size], names[i].name, names[i].size);
-    current_out_size += names[i].size;
+  if (dir) {
+    memcpy(&toHash[current_out_size], parms, size_parms);
+    current_out_size += size_parms;
+    room_left -= size_parms;
+    for (int i = 0; i < numNames; i++) {
+      memcpy(&toHash[current_out_size], names[i].name, names[i].size);
+      current_out_size += names[i].size;
+      room_left -= sizeof(uint32_t);
+    }
+    ChangeEndian32((uint32_t*)&cmd, (uint32_t*)&toHash[current_out_size]);
+    current_out_size += sizeof(uint32_t);
     room_left -= sizeof(uint32_t);
+  } else {
+    ChangeEndian32((uint32_t*)&cmd, (uint32_t*)&toHash[current_out_size]);
+    current_out_size += sizeof(uint32_t);
+    room_left -= sizeof(uint32_t);
+    for (int i = 0; i < numNames; i++) {
+      memcpy(&toHash[current_out_size], names[i].name, names[i].size);
+      current_out_size += names[i].size;
+      room_left -= sizeof(uint32_t);
+    }
+    memcpy(&toHash[current_out_size], parms, size_parms);
+    current_out_size += size_parms;
+    room_left -= size_parms;
   }
-  memcpy(&toHash[current_out_size], parms, size_parms);
-  current_out_size += size_parms;
-  room_left -= size_parms;
 
 printf("toHash for cpHash: ");
 PrintBytes(current_out_size, toHash); printf("\n");
@@ -3417,17 +3430,10 @@ PrintBytes(current_out_size, cpHash); printf("\n");
   byte* current = &toHash[current_out_size];
 
   // nonceNewer, nonceOlder, sessionAttrs
-  if (dir) {
-    memcpy(current, in.oldNonce_.buffer, in.oldNonce_.size);
-    Update(in.oldNonce_.size, &current, &current_out_size, &room_left);
-    memcpy(current, in.newNonce_.buffer, in.newNonce_.size);
-    Update(in.newNonce_.size, &current, &current_out_size, &room_left);
-  } else {
-    memcpy(current, in.newNonce_.buffer, in.newNonce_.size);
-    Update(in.newNonce_.size, &current, &current_out_size, &room_left);
-    memcpy(current, in.oldNonce_.buffer, in.oldNonce_.size);
-    Update(in.oldNonce_.size, &current, &current_out_size, &room_left);
-  }
+  memcpy(current, in.newNonce_.buffer, in.newNonce_.size);
+  Update(in.newNonce_.size, &current, &current_out_size, &room_left);
+  memcpy(current, in.oldNonce_.buffer, in.oldNonce_.size);
+  Update(in.oldNonce_.size, &current, &current_out_size, &room_left);
   memcpy(current, &in.tpmSessionAttributes_, 1);
   Update(1, &current, &current_out_size, &room_left);
 
@@ -3620,16 +3626,44 @@ printf("newNonce: ");
 }
 
 bool GetandVerifyProtectedAuth(ProtectedSessionAuthInfo& authInfo, uint32_t cmd,
+                         int numNames, TPM2B_NAME* names,
                          int size_in, byte* in,
                          int size_params, byte* params) {
+printf("GetandVerifyProtectedAuth: ");
+PrintBytes(size_in, in); printf("\n");
+printf("size_params %d: ", size_params);
+PrintBytes(size_params, params); printf("\n");
+
+  // New nonce
+  TPM2B_NONCE newNonce;
+  byte* current = in + size_params;
+  ChangeEndian16((uint16_t*)current, &newNonce.size);
+  current += sizeof(uint16_t);
+  memcpy(newNonce.buffer, current, newNonce.size);
+  current += newNonce.size;
+  byte prop = *current;
+  current += 1;
+  TPM2B_DIGEST submitted_hmac;
+  ChangeEndian16((uint16_t*) current, &submitted_hmac.size);
+  current += sizeof(uint16_t);
+  memcpy(submitted_hmac.buffer, current, submitted_hmac.size);
+  current += submitted_hmac.size;
+
+printf("NewNonce: ");
+PrintBytes(newNonce.size, newNonce.buffer); printf("\n");
+printf("submitted: ");
+PrintBytes(submitted_hmac.size, submitted_hmac.buffer); printf("\n");
+
+  RollNonces(authInfo, newNonce);
+
   // Make sure the Hmac is right.
-  /*
-  if (!CalculateSessionHmac(authInfo, true, TPM_CC_NV_Increment,
-                size_params, params_buf, &sizeHmac, hmac)) {
+  int sizeHmac = 256;
+  byte hmac[256];
+  if (!CalculateSessionHmac(authInfo, true, cmd, numNames, names,
+                size_params, params, &sizeHmac, hmac)) {
     printf("Can't calculate response hmac\n");
     return false;
   }
-  */
   return true;
 }
 
@@ -3789,13 +3823,15 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner,
   if (responseCode != TPM_RC_SUCCESS)
     return false;
 
-  // 80020000003b00000000
-  // 00000000
-  // 00140659c75daf8adce9d4e5dabb4d34dde60315ae5801
-  // 00140d73114e8124593691b10b2e71d893ed778000ce
-  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_DefineSpace,
-           responseSize - sizeof(TPM_RESPONSE), resp_buf + sizeof(TPM_RESPONSE),
-           0, resp_buf + sizeof(TPM_RESPONSE))) {
+  TPM2B_NAME no_name;
+  no_name.size = sizeof(uint32_t);
+  memset(no_name.name, 0, no_name.size);
+  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_DefineSpace, 0,
+           &no_name, responseSize - sizeof(TPM_RESPONSE),
+           resp_buf + sizeof(TPM_RESPONSE),
+           sizeof(uint32_t), resp_buf + sizeof(TPM_RESPONSE))) {
+    printf("GetandVerifyProtectedAuth failed\n");
+    return false;
   }
   return true;
 }
@@ -3852,12 +3888,15 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
     return false;
   printf("TPM_CC_NV_Increment response size: %d\n", responseSize);
 
+/*
   int size_in = 0;
   int size_resp_params = 0;
   byte* resp_parms = nullptr;
-  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_Increment, size_in, resp_buf,
+  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_Increment, 
+                                 1, &owner_name, size_in, resp_buf,
                                  size_resp_params, resp_parms)) {
   }
+ */
 
   return true;
 }

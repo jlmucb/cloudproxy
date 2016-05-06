@@ -3664,6 +3664,11 @@ PrintBytes(submitted_hmac.size, submitted_hmac.buffer); printf("\n");
     printf("Can't calculate response hmac\n");
     return false;
   }
+  if (submitted_hmac.size != sizeHmac ||
+      memcmp(submitted_hmac.buffer, hmac, sizeHmac) != 0) {
+    printf("Response hmac failure\n");
+    return false;
+  }
   return true;
 }
 

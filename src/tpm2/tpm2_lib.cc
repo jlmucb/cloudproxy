@@ -3379,6 +3379,8 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   int current_out_size = 0;
   int room_left = 256;
 
+  // If dir is true, this is a response buffer and we add 4 bytes of 0
+  // for some reason.
   if (dir) {
     uint32_t zero = 0;
     memcpy(&toHash[current_out_size], (byte*)&zero, sizeof(uint32_t));
@@ -3451,7 +3453,7 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
 
 #if 1
   printf("Hmac out: ");
-  PrintBytes(*size_hmac, hmac); printf("\n");
+  PrintBytes(*size_hmac, hmac); printf("\n\n");
 #endif
 
   return true;
@@ -3474,8 +3476,8 @@ bool CalculateSessionKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   string contextU;
   string contextV;
 
-  //key.assign((const char*)in.targetAuthValue_.buffer, in.targetAuthValue_.size);
   key.append((const char*)rawSalt.buffer, rawSalt.size);
+  // For bound sessions we'd have to append the bound key auth.
   contextV.clear();
   contextU.clear();
   contextU.assign((const char*)in.newNonce_.buffer, in.newNonce_.size);
@@ -3814,13 +3816,18 @@ bool Tpm2_DefineProtectedSpace(LocalTpm& tpm, TPM_HANDLE owner,
   if (responseCode != TPM_RC_SUCCESS)
     return false;
 
+  int size_resp_params = 0;
+  byte* current_in = resp_buf + sizeof(TPM_RESPONSE);
+  ChangeEndian32((uint32_t*)current_in, (uint32_t*)&size_resp_params);
+  byte* resp_params = current_in + sizeof(uint32_t);
+
   TPM2B_NAME no_name;
   no_name.size = sizeof(uint32_t);
   memset(no_name.name, 0, no_name.size);
   if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_DefineSpace, 0,
            &no_name, responseSize - sizeof(TPM_RESPONSE),
            resp_buf + sizeof(TPM_RESPONSE),
-           sizeof(uint32_t), resp_buf + sizeof(TPM_RESPONSE))) {
+           size_resp_params, resp_params)) {
     printf("GetandVerifyProtectedAuth failed\n");
     return false;
   }

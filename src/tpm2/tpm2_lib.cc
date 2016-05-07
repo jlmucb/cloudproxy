@@ -3483,7 +3483,7 @@ bool CalculateSessionKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt) {
   string contextU;
   string contextV;
 
-  key.assign((const char*)in.targetAuthValue_.buffer, in.targetAuthValue_.size);
+  //key.assign((const char*)in.targetAuthValue_.buffer, in.targetAuthValue_.size);
   key.append((const char*)rawSalt.buffer, rawSalt.size);
   contextV.clear();
   contextU.clear();

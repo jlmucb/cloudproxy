@@ -8,6 +8,7 @@
 #include <tpm20.h>
 #include <tpm2_lib.h>
 #include <errno.h>
+#include <conversions.h>
 
 #include <openssl/aes.h>
 #include <openssl/rsa.h>
@@ -3255,8 +3256,8 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
 //   TPM2B_DIGEST     authPolicy;
 //   uint16_t         dataSize;
 bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM_HANDLE nv_handle,
-         uint16_t nv_hash_alg,
-         uint32_t nv_attributes, uint16_t data_size, byte* out) {
+         uint16_t nv_hash_alg, uint32_t nv_attributes,
+         uint16_t data_size, bool wasWritten, byte* out) {
   SHA_CTX sha1;
   SHA256_CTX sha256;
   byte toHash[256];
@@ -3273,11 +3274,15 @@ bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM_HANDLE nv_handle,
   int room_left = 256;
   byte* current = toHash;
 
+  uint32_t new_attributes = nv_attributes;
+  if (wasWritten)
+    new_attributes |= NV_WRITTEN;
+
   ChangeEndian32((uint32_t*)&nv_handle, (uint32_t*)current);
   Update(sizeof(uint32_t), &current, &current_out_size, &room_left);
   ChangeEndian16(&nv_hash_alg, (uint16_t*)current);
   Update(sizeof(uint16_t), &current, &current_out_size, &room_left);
-  ChangeEndian32(&nv_attributes, (uint32_t*)current);
+  ChangeEndian32(&new_attributes, (uint32_t*)current);
   Update(sizeof(uint32_t), &current, &current_out_size, &room_left);
   ChangeEndian16(&zero, (uint16_t*)current);
   Update(sizeof(uint16_t), &current, &current_out_size, &room_left);
@@ -3362,13 +3367,9 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   memcpy(hmac_key, in.sessionKey_, in.sessionKeySize_);
   sizeHmacKey += in.sessionKeySize_;
 
-#if 0
-  if (cmd != 0x0000012a) {
-    memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
-         in.targetAuthValue_.size);
-    sizeHmacKey += in.targetAuthValue_.size;
-  }
-#endif
+  memcpy(&hmac_key[in.sessionKeySize_], in.targetAuthValue_.buffer,
+       in.targetAuthValue_.size);
+  sizeHmacKey += in.targetAuthValue_.size;
 
 #if 1
   printf("hmac_key: ");
@@ -3843,13 +3844,13 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   TPM2B_NAME nv_name[2];
   if (!CalculateNvName(authInfo, index,
          authInfo.hash_alg_, authInfo.protectedAttributes_,
-         authInfo.protectedSize_, nv_name[0].name)) {
+         authInfo.protectedSize_, true, nv_name[0].name)) {
   }
   // Fix this
   nv_name[0].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
   if (!CalculateNvName(authInfo, index,
          authInfo.hash_alg_, authInfo.protectedAttributes_,
-         authInfo.protectedSize_, nv_name[1].name)) {
+         authInfo.protectedSize_, true, nv_name[1].name)) {
   }
   // Fix this
   nv_name[1].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
@@ -3933,13 +3934,13 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   TPM2B_NAME nv_name[2];
   if (!CalculateNvName(authInfo, index,
          authInfo.hash_alg_, authInfo.protectedAttributes_,
-         authInfo.protectedSize_, nv_name[0].name)) {
+         authInfo.protectedSize_, true, nv_name[0].name)) {
   }
   // Fix this
   nv_name[0].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
   if (!CalculateNvName(authInfo, index,
          authInfo.hash_alg_, authInfo.protectedAttributes_,
-         authInfo.protectedSize_, nv_name[1].name)) {
+         authInfo.protectedSize_, true, nv_name[1].name)) {
   }
   // Fix this
   nv_name[1].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);

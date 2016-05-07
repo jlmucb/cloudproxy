@@ -1243,11 +1243,9 @@ void seperate_key_test() {
   salt.size = m;
   int k = 0;
   while(k < 256 && decrypted_with_pad[k] == 0) k++;
-  int l = RSA_padding_check_PKCS1_OAEP(recovered_secret, 256, 
-                &decrypted_with_pad[k], 256-k, 256,
-                (byte*)"SECRET", strlen("SECRET")+1);
-  printf("check k=%d, %03d    : ", k, l);
-  PrintBytes(l, recovered_secret);printf("\n");
+  RSA_padding_check_PKCS1_OAEP(recovered_secret, 256, 
+      &decrypted_with_pad[k], 256-k, 256,
+      (byte*)"SECRET", strlen("SECRET")+1);
 }
 
 // For Jethro
@@ -1373,24 +1371,30 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   EVP_PKEY_assign_RSA(tpmKey, rsa_tpmKey);
 
   // Encrypt salt
-  printf("\nencrypting salt\n");
   byte padded_secret[1024];
   memset(padded_secret, 0, 1024);
-  int l = RSA_padding_add_PKCS1_OAEP(padded_secret, 256,
-                  secret.buffer, secret.size,
-                  (byte*)"SECRET", strlen("SECRET")+1);
+  RSA_padding_add_PKCS1_OAEP(padded_secret, 256,
+      secret.buffer, secret.size,
+      (byte*)"SECRET", strlen("SECRET")+1);
   int n = RSA_public_encrypt(256, padded_secret, salt.secret,
                              rsa_tpmKey, RSA_NO_PADDING);
   salt.size = n;
+
+#if 1
   printf("\nEncrypted salt (%d): ", n);
   PrintBytes(n, salt.secret); printf("\n");
+#endif
 
   authInfo.protectedHandle_ = nv_handle;
   authInfo.protectedAttributes_ = NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD;
   authInfo.protectedSize_ = size_data;
   authInfo.hash_alg_ = TPM_ALG_SHA1;
   authInfo.tpmSessionAttributes_ = CONTINUESESSION;
-  authInfo.targetAuthValue_.size = 0;
+  extern int SetPasswordData(string& password, int size, byte* buf);
+  byte tbuf[128];
+  int l = SetPasswordData(authString, 128, tbuf);
+  authInfo.targetAuthValue_.size = l - 2;
+  memcpy(authInfo.targetAuthValue_.buffer, &tbuf[2], l - 2);
   
   // Start auth session.
     if (Tpm2_StartProtectedAuthSession(tpm, ekHandle, TPM_RH_NULL, authInfo,
@@ -1420,14 +1424,13 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   }
 
 #if 1
-  printf("After CalculateSessionKey\n");
+  printf("After CalculateSessionKey before IncrementProtected\n");
   printf("newNonce: ");
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("oldNonce: ");
   PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
 #endif
 
-#if 0
   if (Tpm2_IncrementProtectedNv(tpm, nv_handle, authInfo)) {
     printf("Tpm2_IncrementProtectedNv %d succeeds\n", nv_handle);
   } else {
@@ -1435,7 +1438,11 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     ret = false;
     goto done;
   }
+
+#if 1
+  printf("Read Protected\n");
 #endif
+
   size_out = 8;
   if (Tpm2_ReadProtectedNv(tpm, nv_handle, authInfo, &size_out, data_out)) {
     printf("Tpm2_ReadProtectedNv %d succeeds: ", nv_handle);

@@ -232,6 +232,7 @@ bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm);
 #define NV_EXTEND         0x00000040
 #define NV_POLICY_DELETE  0x00000400
 #define NV_AUTHREAD       0x00040000
+#define NV_WRITTEN        0x20000000
 
 #define CONTINUESESSION 0x01
 
@@ -250,7 +251,10 @@ public:
   int sessionKeySize_;
   byte sessionKey_[64];
 };
-bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM2B_NAME& name);
+
+bool CalculateNvName(ProtectedSessionAuthInfo& in, TPM_HANDLE nv_handle,
+         uint16_t nv_hash_alg, uint32_t nv_attributes,
+         uint16_t data_size, bool wasWritten, byte* out);
 bool CalculateSessionKey(ProtectedSessionAuthInfo& in, TPM2B_DIGEST& rawSalt);
 bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
 		int size_parms, byte* parms, int* size_hmac, byte* hmac);

@@ -3380,30 +3380,21 @@ bool CalculateSessionHmac(ProtectedSessionAuthInfo& in, bool dir, uint32_t cmd,
   int room_left = 256;
 
   if (dir) {
-    memcpy(&toHash[current_out_size], parms, size_parms);
-    current_out_size += size_parms;
-    room_left -= size_parms;
-    for (int i = 0; i < numNames; i++) {
-      memcpy(&toHash[current_out_size], names[i].name, names[i].size);
-      current_out_size += names[i].size;
-      room_left -= sizeof(uint32_t);
-    }
-    ChangeEndian32((uint32_t*)&cmd, (uint32_t*)&toHash[current_out_size]);
+    uint32_t zero = 0;
+    memcpy(&toHash[current_out_size], (byte*)&zero, sizeof(uint32_t));
     current_out_size += sizeof(uint32_t);
-    room_left -= sizeof(uint32_t);
-  } else {
-    ChangeEndian32((uint32_t*)&cmd, (uint32_t*)&toHash[current_out_size]);
-    current_out_size += sizeof(uint32_t);
-    room_left -= sizeof(uint32_t);
-    for (int i = 0; i < numNames; i++) {
-      memcpy(&toHash[current_out_size], names[i].name, names[i].size);
-      current_out_size += names[i].size;
-      room_left -= names[i].size;
-    }
-    memcpy(&toHash[current_out_size], parms, size_parms);
-    current_out_size += size_parms;
-    room_left -= size_parms;
   }
+  ChangeEndian32((uint32_t*)&cmd, (uint32_t*)&toHash[current_out_size]);
+  current_out_size += sizeof(uint32_t);
+  room_left -= sizeof(uint32_t);
+  for (int i = 0; i < numNames; i++) {
+    memcpy(&toHash[current_out_size], names[i].name, names[i].size);
+    current_out_size += names[i].size;
+    room_left -= names[i].size;
+  }
+  memcpy(&toHash[current_out_size], parms, size_parms);
+  current_out_size += size_parms;
+  room_left -= size_parms;
 
 #if 1
   printf("toHash for cpHash: ");
@@ -3616,7 +3607,11 @@ PrintBytes(size_params, params); printf("\n");
 
   // New nonce
   TPM2B_NONCE newNonce;
-  byte* current = in + size_params;
+  byte* current = nullptr;
+  if (params != nullptr) 
+    current = params + size_params;
+  else
+    current = in + size_params;
   ChangeEndian16((uint16_t*)current, &newNonce.size);
   current += sizeof(uint16_t);
   memcpy(newNonce.buffer, current, newNonce.size);
@@ -3907,10 +3902,13 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
     return false;
   printf("TPM_CC_NV_Increment response size: %d\n", responseSize);
 
+  int size_resp_params = 0;
+  byte* resp_params = resp_buf + sizeof(TPM_RESPONSE) + sizeof(uint32_t);
+
   if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_Increment, 0,
            nv_name, responseSize - sizeof(TPM_RESPONSE),
            resp_buf + sizeof(TPM_RESPONSE),
-          sizeof(uint32_t), resp_buf + sizeof(TPM_RESPONSE))) {
+          size_resp_params, resp_params)) {
     printf("GetandVerifyProtectedAuth failed\n");
     return false;
   }
@@ -3986,7 +3984,7 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Read,
                                 commandBuf, size_params, params_buf);
-  printCommand("ReadNv", in_size, commandBuf);
+  printCommand("ReadProtectedNv", in_size, commandBuf);
   if (!tpm.SendCommand(in_size, commandBuf)) {
     printf("SendCommand failed\n");
     return false;
@@ -4004,13 +4002,22 @@ bool Tpm2_ReadProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   if (responseCode != TPM_RC_SUCCESS)
     return false;
 
-  // make sure the Hmac is right
-  // get the new nonce and rollnonces
+  int size_resp_params = 0;
+  byte* current_in = resp_buf + sizeof(TPM_RESPONSE);
+  ChangeEndian32((uint32_t*)current_in, (uint32_t*)&size_resp_params);
+  byte* resp_params = current_in + sizeof(uint32_t);
 
-  byte* out = resp_buf + sizeof(TPM_RESPONSE) + sizeof(uint32_t);
-  ChangeEndian16((uint16_t*)out, (uint16_t*)size);
-  out += sizeof(uint16_t);
-  memcpy(data, out, *size);
+  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_Read, 0,
+           nv_name, responseSize - sizeof(TPM_RESPONSE),
+           resp_buf + sizeof(TPM_RESPONSE),
+          size_resp_params, resp_params)) {
+    printf("GetandVerifyProtectedAuth failed\n");
+    return false;
+  }
+
+  ChangeEndian16((uint16_t*)resp_params, (uint16_t*)size);
+  resp_params += sizeof(uint16_t);
+  memcpy(data, resp_params, *size);
   return true;
 }
 

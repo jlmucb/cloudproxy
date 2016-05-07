@@ -3550,7 +3550,7 @@ int CalculateandSetProtectedAuth(ProtectedSessionAuthInfo& authInfo,
   RollNonces(authInfo, newNonce);
 
 #if 1
-  printf("\nAfter RollNounces\n");
+  printf("\nAfter RollNounces in CalculateandSetProtectedAuth\n");
   printf("newNonce: ");
   PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
   printf("oldNonce: ");
@@ -3606,10 +3606,13 @@ bool GetandVerifyProtectedAuth(ProtectedSessionAuthInfo& authInfo, uint32_t cmd,
                          int numNames, TPM2B_NAME* names,
                          int size_in, byte* in,
                          int size_params, byte* params) {
+
+#if 1
 printf("GetandVerifyProtectedAuth: ");
 PrintBytes(size_in, in); printf("\n");
 printf("size_params %d: ", size_params);
 PrintBytes(size_params, params); printf("\n");
+#endif
 
   // New nonce
   TPM2B_NONCE newNonce;
@@ -3620,6 +3623,7 @@ PrintBytes(size_params, params); printf("\n");
   current += newNonce.size;
   byte prop = *current;
   current += 1;
+
   TPM2B_DIGEST submitted_hmac;
   ChangeEndian16((uint16_t*) current, &submitted_hmac.size);
   current += sizeof(uint16_t);
@@ -3634,6 +3638,14 @@ PrintBytes(size_params, params); printf("\n");
 #endif
 
   RollNonces(authInfo, newNonce);
+
+#if 1
+  printf("\nAfter RollNounces in GetandVerifyProtectedAuth\n");
+  printf("newNonce: ");
+  PrintBytes(authInfo.newNonce_.size, authInfo.newNonce_.buffer); printf("\n");
+  printf("oldNonce: ");
+  PrintBytes(authInfo.oldNonce_.size, authInfo.oldNonce_.buffer); printf("\n");
+#endif
 
   // Make sure the Hmac is right.
   int sizeHmac = 256;
@@ -3846,15 +3858,16 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
          authInfo.hash_alg_, authInfo.protectedAttributes_,
          authInfo.protectedSize_, true, nv_name[0].name)) {
   }
+
   // Fix this
   nv_name[0].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
   if (!CalculateNvName(authInfo, index,
          authInfo.hash_alg_, authInfo.protectedAttributes_,
          authInfo.protectedSize_, true, nv_name[1].name)) {
   }
+
   // Fix this
   nv_name[1].size = SizeHash(authInfo.hash_alg_) + sizeof(uint16_t);
-
   int n = CalculateandSetProtectedAuthSize(authInfo, TPM_CC_NV_Increment,
               0, nullptr, in, space_left);
   if (n < 0) {
@@ -3894,16 +3907,13 @@ bool Tpm2_IncrementProtectedNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
     return false;
   printf("TPM_CC_NV_Increment response size: %d\n", responseSize);
 
-/*
-  int size_in = 0;
-  int size_resp_params = 0;
-  byte* resp_parms = nullptr;
-  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_Increment, 
-                                 1, &owner_name, size_in, resp_buf,
-                                 size_resp_params, resp_parms)) {
+  if (!GetandVerifyProtectedAuth(authInfo, TPM_CC_NV_Increment, 0,
+           nv_name, responseSize - sizeof(TPM_RESPONSE),
+           resp_buf + sizeof(TPM_RESPONSE),
+          sizeof(uint32_t), resp_buf + sizeof(TPM_RESPONSE))) {
+    printf("GetandVerifyProtectedAuth failed\n");
+    return false;
   }
- */
-
   return true;
 }
 

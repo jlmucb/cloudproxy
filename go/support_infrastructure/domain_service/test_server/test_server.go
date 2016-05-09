@@ -27,11 +27,11 @@ import (
 var machineName = "Encode Machine Information"
 
 var hostName = &auth.Prin{
-	Type: "DummyPrin",
+	Type: "program",
 	Key:  auth.Str("hostHash")}
 
 var programName = &auth.Prin{
-	Type: "DummyPrin",
+	Type: "program",
 	Key:  auth.Str("programHash")}
 
 var network = flag.String("network", "tcp", "The network to use for connections")
@@ -110,8 +110,36 @@ func main() {
 	if v := programKey.SigningKey.GetVerifier(); !v.Equals(cert) {
 		log.Fatalln("Key in Program cert differs from expected value.", v, ver)
 	}
-	log.Println("YAY!")
 
+	// Test Certificate Revocation.
+	serialNumber := cert.SerialNumber
+	says := auth.Says{
+		Speaker: domain.Keys.SigningKey.ToPrincipal(),
+		Message: auth.Pred{
+			Name: "revoke",
+			Arg:  []auth.Term{auth.Bytes(serialNumber.Bytes())}}}
+
+	att, err = tao.GenerateAttestation(domain.Keys.SigningKey, nil, says)
+	if err != nil {
+		log.Fatalln("Error generating attestation for certificate revocation.")
+	}
+	err = domain_service.RequestRevokeCertificate(att, *network, *addr)
+	if err != nil {
+		log.Fatalln("Error revoking certificate: ", err)
+	}
+	crl, err := domain_service.RequestCrl(*network, *addr)
+
+	if err != nil {
+		log.Fatalln("Error getting CRL: ", err)
+	}
+	revokedCerts := crl.TBSCertList.RevokedCertificates
+	if len(revokedCerts) != 1 {
+		log.Fatalf("Revoked 1 cert and got back CRL with %v revoked certs", len(revokedCerts))
+	}
+	if num := revokedCerts[0].SerialNumber.Int64(); num != serialNumber.Int64() {
+		log.Fatalf("Serial number %v doesnt match expected value %v", num, serialNumber)
+	}
+	log.Println("YAY!")
 }
 
 func generateEndorsementCertficate(policyKey *tao.Keys, policyCert *x509.Certificate) (*tao.Keys,

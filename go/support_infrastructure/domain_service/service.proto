@@ -11,11 +11,17 @@ message domain_service_request {
     DOMAIN_CERT_REQUEST = 1;
     MANAGE_POLICY = 2;
     REVOKE_CERTIFICATE = 3;
+    GET_CRL = 4;
   }
   optional request_type type = 1;
 
   // Fields for type: DOMAIN_CERT_REQUEST.
   optional bytes serialized_host_attestation = 2;
+
+  // Fields for type: REVOKE_CERTIFICATE.
+  // This is an attestation signed by the policy key with the statement:
+  // policyKey says revoke certificateSerialNumber
+  optional bytes serialized_policy_attestation = 3;
 }
 
 message domain_service_response {
@@ -23,4 +29,17 @@ message domain_service_response {
 
   // Fields for response to DOMAIN_CERT_REQUEST.
   optional bytes serialized_domain_attestation = 2;
+
+  // Fields for response to GET_CRL.
+  optional bytes crl = 3;
+}
+
+message trusted_entities {
+  repeated string trusted_program_tao_names = 1;
+
+  repeated string trusted_host_tao_names = 2;
+
+  repeated string trusted_machine_infos = 3;
+
+  repeated bytes trusted_root_certs = 4;
 }

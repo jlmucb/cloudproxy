@@ -12,8 +12,15 @@
 
 package domain_service
 
+// This provides the client stub for using the domain service.
+// This code is relatively dull, all it does is marshal/serialize the
+// domain service requests and responses.
+
 import (
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
+	"log"
 	"net"
 
 	"github.com/golang/protobuf/proto"
@@ -21,6 +28,9 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+// This function packages a host attestation into a DomainServiceRequest of the type
+// DOMAIN_CERT_REQUEST, sends it to the domain service and deserializes the response
+// into an attestation that contains the domain program certificate.
 func RequestProgramCert(hostAtt *tao.Attestation, network string, addr string) (*tao.Attestation,
 	error) {
 	serAtt, err := proto.Marshal(hostAtt)
@@ -41,11 +51,14 @@ func RequestProgramCert(hostAtt *tao.Attestation, network string, addr string) (
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("Sent Program cert request to Domain Service using network %s at address %s.",
+		network, addr)
 	var response DomainServiceResponse
 	err = ms.ReadMessage(&response)
 	if err != nil {
 		return nil, err
 	}
+	log.Println("Got response from Domain Service.")
 
 	if errStr := response.GetErrorMessage(); errStr != "" {
 		return nil, errors.New(errStr)
@@ -56,4 +69,73 @@ func RequestProgramCert(hostAtt *tao.Attestation, network string, addr string) (
 		return nil, err
 	}
 	return &a, nil
+}
+
+// This function packages a certificate revoke request into a DomainServiceRequest of type
+// REVOKE_CERTIFICATE and sends it to the domain service. It expects att to be an attestation
+// signed by the domain policy key with a statement of the form:
+// policyKey says revoke certificateSerialNumber
+func RequestRevokeCertificate(att *tao.Attestation, network, addr string) error {
+	serAtt, err := proto.Marshal(att)
+	if err != nil {
+		return err
+	}
+	reqType := DomainServiceRequest_REVOKE_CERTIFICATE
+	request := &DomainServiceRequest{
+		Type: &reqType,
+		SerializedPolicyAttestation: serAtt}
+
+	conn, err := net.Dial(network, addr)
+	if err != nil {
+		return err
+	}
+	ms := util.NewMessageStream(conn)
+	_, err = ms.WriteMessage(request)
+	if err != nil {
+		return err
+	}
+	log.Printf("Sent cert revoke request to Domain Service using network %s at address %s.",
+		network, addr)
+
+	var response DomainServiceResponse
+	err = ms.ReadMessage(&response)
+	if err != nil {
+		return err
+	}
+	log.Println("Got response from Domain Service.")
+	if errStr := response.GetErrorMessage(); errStr != "" {
+		return errors.New(errStr)
+	}
+	return nil
+}
+
+// This function sends a DomainServiceRequest of the type GET_CRL to the domain service,
+// and deserializes the response into a pkix.CertificateList containing the revoked certificates.
+func RequestCrl(network, addr string) (*pkix.CertificateList, error) {
+	reqType := DomainServiceRequest_GET_CRL
+	request := &DomainServiceRequest{
+		Type: &reqType}
+
+	conn, err := net.Dial(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	ms := util.NewMessageStream(conn)
+	_, err = ms.WriteMessage(request)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("Sent crl request to Domain Service using network %s at address %s.",
+		network, addr)
+	var response DomainServiceResponse
+	err = ms.ReadMessage(&response)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("Got response from Domain Service.")
+	if errStr := response.GetErrorMessage(); errStr != "" {
+		return nil, errors.New(errStr)
+	}
+	parsedCrl, err := x509.ParseCRL(response.GetCrl())
+	return parsedCrl, err
 }

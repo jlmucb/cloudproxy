@@ -14,7 +14,12 @@ package domain_service
 
 import (
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"math/big"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -44,7 +49,6 @@ import (
 // If all above checks go through, the function returns the principals: Speaker, Key, Program.
 func VerifyHostAttestation(serializedHostAttestation []byte, domain *tao.Domain,
 	rootCerts *x509.CertPool) (*auth.Prin, *auth.Prin, *auth.Prin, error) {
-
 	var hostAttestation tao.Attestation
 	err := proto.Unmarshal(serializedHostAttestation, &hostAttestation)
 	if err != nil {
@@ -56,7 +60,7 @@ func VerifyHostAttestation(serializedHostAttestation []byte, domain *tao.Domain,
 	statement, err := hostAttestation.Validate()
 	if err != nil {
 		return nil, nil, nil, errors.New(
-			"domain_service: host attestation fails validation check: " + err.Error())
+			"host attestation fails validation check: " + err.Error())
 	}
 
 	// Next, check if SpeaksFor delegator is authorized to execute (i.e. the program is allowed to
@@ -67,7 +71,7 @@ func VerifyHostAttestation(serializedHostAttestation []byte, domain *tao.Domain,
 	}
 	if !domain.Guard.IsAuthorized(*prog, "Execute", []string{}) {
 		return nil, nil, nil, errors.New(
-			"domain_service: program not authorized to run in this domain.")
+			"program not authorized to run in this domain")
 	}
 
 	// Look for endorsement cert(s), rooted in the policy key, that ultimately certify the
@@ -108,14 +112,14 @@ func VerifyHostAttestation(serializedHostAttestation []byte, domain *tao.Domain,
 
 		} else {
 			return nil, nil, nil, errors.New(
-				"domain_service: error parsing host endorsement.")
+				"error parsing host endorsement")
 		}
 	}
 	if domain.Keys.SigningKey.ToPrincipal().Identical(*kPrin) {
 		return speaker, key, prog, nil
 	}
 	return nil, nil, nil, errors.New(
-		"domain_service: endorsement chain does not terminate in policy key.")
+		"endorsement chain does not terminate in policy key")
 
 }
 
@@ -136,13 +140,11 @@ func validateEndorsementAttestation(attestation *tao.Attestation, guard tao.Guar
 	}
 	if !key.Identical(kPrin) {
 		return nil, errors.New(
-			"domain_service: endorsement does not endorse signer of attestaton.\n" +
-				"Key endorsed: " + key.String() + "\n" +
-				"Signer: " + kPrin.String())
+			"endorsement does not endorse signer of (previous) attestaton")
 	}
 	if !guard.IsAuthorized(*host, "Host", []string{}) {
 		return nil, errors.New(
-			"domain_service: endorsment host not authorized to run in this domain.")
+			"endorsement host not authorized to run in this domain")
 	}
 	return speaker, nil
 }
@@ -164,7 +166,7 @@ func validateEndorsementCertificate(cert *x509.Certificate, guard tao.Guard,
 	}
 	if !verifier.Equals(cert) {
 		return errors.New(
-			"domain_service: endorsement cert does not endorse signer of attestation.")
+			"endorsement cert does not endorse signer of (previous) attestation")
 	}
 	machinePrin := auth.Prin{
 		Type: "MachineInfo",
@@ -172,7 +174,7 @@ func validateEndorsementCertificate(cert *x509.Certificate, guard tao.Guard,
 	}
 	if !guard.IsAuthorized(machinePrin, "Root", []string{}) {
 		return errors.New(
-			"domain_service: machine endorsed by certificate is not authorized by policy.")
+			"machine endorsed by certificate is not authorized by policy")
 	}
 	return nil
 }
@@ -180,39 +182,39 @@ func validateEndorsementCertificate(cert *x509.Certificate, guard tao.Guard,
 func parseSaysStatement(saysStatement *auth.Says) (*auth.Prin, *auth.Prin, *auth.Prin, error) {
 	if saysStatement.Speaker == nil {
 		return nil, nil, nil,
-			errors.New("domain_service: attestation 'Says' does not have a speaker.")
+			errors.New("attestation 'Says' does not have a speaker")
 	}
 	speaker, ok := saysStatement.Speaker.(auth.Prin)
 	if !ok {
 		return nil, nil, nil, errors.New(
-			"domain_service: attestation 'Says' speaker is not a auth.Prin.")
+			"attestation 'Says' speaker is not a auth.Prin")
 	}
 	if saysStatement.Message == nil {
 		return nil, nil, nil, errors.New(
-			"domain_service: attestation 'Says' does not have a message.")
+			"attestation 'Says' does not have a message")
 	}
 	sf, ok := saysStatement.Message.(auth.Speaksfor)
 	if !ok {
 		return nil, nil, nil, errors.New(
-			"domain_service: attestation statement does not have a 'SpeaksFor'.")
+			"attestation statement does not have a 'SpeaksFor'")
 	}
 	if sf.Delegator == nil {
 		return nil, nil, nil, errors.New(
-			"domain_service: attestation 'speaksFor' has no delegator.")
+			"attestation 'speaksFor' has no delegator")
 	}
 	delegator, ok := sf.Delegator.(auth.Prin)
 	if !ok {
 		return nil, nil, nil, errors.New(
-			"domain_service: Endorsement attestation 'speaksFor' delegator is not a auth.Prin.")
+			"attestation 'speaksFor' delegator is not a auth.Prin")
 	}
 	if sf.Delegate == nil {
 		return nil, nil, nil, errors.New(
-			"domain_service: attestation 'speaksFor' has no delegate.")
+			"attestation 'speaksFor' has no delegate.")
 	}
 	delegate, ok := sf.Delegate.(auth.Prin)
 	if !ok {
 		return nil, nil, nil, errors.New(
-			"domain_service: Endorsement attestation 'speaksFor' delegate is not a auth.Prin.")
+			"ttestation 'speaksFor' delegate is not a auth.Prin")
 	}
 	return &speaker, &delegate, &delegator, nil
 }
@@ -224,7 +226,7 @@ func parseSaysStatement(saysStatement *auth.Says) (*auth.Prin, *auth.Prin, *auth
 // Tao name of the program and subject public key being programKey.
 // Certificate expiration time is one year from issuing time.
 func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth.Prin,
-	programKey *auth.Prin) (*tao.Attestation, error) {
+	programKey *auth.Prin, now, expiry time.Time) (*tao.Attestation, error) {
 
 	policyCert := domain.Keys.Cert
 	x509Info := domain.Config.GetX509Info()
@@ -242,8 +244,8 @@ func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth
 	}
 	clientDerCert := clientCert.Raw
 
-	nowTime := time.Now().UnixNano()
-	expireTime := time.Now().AddDate(1, 0, 0).UnixNano()
+	nowTime := now.UnixNano()
+	expireTime := expiry.UnixNano()
 
 	speaksFor := &auth.Speaksfor{
 		Delegate:  auth.Bytes(clientDerCert),
@@ -259,4 +261,119 @@ func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth
 		return nil, err
 	}
 	return ra, nil
+}
+
+// This function reads in trusted entities from a file at trustedEntitiesPath. In particular,
+// this file contains the text representation of a trusted_entities proto message, which contains
+// the Tao names of trusted programs and hosts, information about trusted machines and trusted
+// machine certificates.
+// For each such trusted entity, this function adds ACL rules to the domain guard, and saves
+// the changes before returning.
+func InitAcls(domain *tao.Domain, trustedEntitiesPath string) error {
+	text, err := ioutil.ReadFile(trustedEntitiesPath)
+	if err != nil {
+		log.Printf("Can't open trusted entities file: %s", trustedEntitiesPath)
+		return err
+	}
+	trustedEntities := TrustedEntities{}
+	err = proto.UnmarshalText(string(text), &trustedEntities)
+	if err != nil {
+		log.Printf("Can't parse trusted entities file: %s", trustedEntitiesPath)
+		return err
+	}
+	for _, programTaoName := range trustedEntities.GetTrustedProgramTaoNames() {
+		var programPrin auth.Prin
+		_, err := fmt.Sscanf(programTaoName, "%v", &programPrin)
+		if err != nil {
+			log.Printf("Can't create program principal from: %s\nError: %s",
+				programTaoName, err)
+			return err
+		}
+		err = domain.Guard.Authorize(programPrin, "Execute", []string{})
+		if err != nil {
+			log.Printf("Can't authorize principal: %s\nError: %s", programPrin, err)
+			return err
+		}
+	}
+	for _, hostTaoName := range trustedEntities.GetTrustedHostTaoNames() {
+		var hostPrin auth.Prin
+		_, err := fmt.Sscanf(hostTaoName, "%v", &hostPrin)
+		if err != nil {
+			log.Printf("Can't create host principal from: %s\nError: %s",
+				hostTaoName, err)
+			return err
+		}
+		err = domain.Guard.Authorize(hostPrin, "Host", []string{})
+		if err != nil {
+			log.Printf("Can't authorize principal: %s\nError: %s", hostPrin, err)
+			return err
+		}
+	}
+	for _, machineInfo := range trustedEntities.GetTrustedMachineInfos() {
+		machinePrin := auth.Prin{
+			Type: "MachineInfo",
+			Key:  auth.Str(machineInfo),
+		}
+		err = domain.Guard.Authorize(machinePrin, "Root", []string{})
+		if err != nil {
+			log.Printf("Can't authorize principal: %s\nError: %s", machinePrin, err)
+			return err
+		}
+	}
+	err = domain.Save()
+	if err != nil {
+		log.Println("Can't save domain.", err)
+	}
+	return err
+}
+
+// This function helps process a certificate revocation request.
+// It expects serAtt to be a serialized attestation signed by the domain policy key,
+// with a statement of the form:
+// policyKey says revoke certificateSerialNumber
+// This function gets a list of revoked certificates, updates it if the cert revocation
+// request is valid, and returns the updated list.
+func RevokeCertificate(serAtt []byte, revokedCerts []pkix.RevokedCertificate,
+	domain *tao.Domain) ([]pkix.RevokedCertificate, error) {
+
+	var policyAtt tao.Attestation
+	err := proto.Unmarshal(serAtt, &policyAtt)
+	if err != nil {
+		return revokedCerts, err
+	}
+	if signer, err := policyAtt.ValidSigner(); err != nil {
+		return revokedCerts, err
+	} else if !signer.Identical(domain.Keys.SigningKey.ToPrincipal()) {
+		return revokedCerts, errors.New("revoke cert request not signed by the policy key")
+	}
+	saysStmt, err := policyAtt.Validate()
+	if err != nil {
+		return revokedCerts, err
+	}
+	if saysStmt.Message == nil {
+		return revokedCerts, errors.New("policy attestation 'Says' does not have a message")
+	}
+	pred, ok := saysStmt.Message.(auth.Pred)
+	if !ok {
+		return revokedCerts,
+			errors.New("policy attestation 'Says' does not have a auth.Pred message")
+	}
+	if pred.Name != "revoke" {
+		return revokedCerts, errors.New("policy attestation predicate name is not 'revoke'")
+	}
+	if len(pred.Arg) != 1 {
+		return revokedCerts,
+			errors.New("policy attestation predicate has more or less than one Arg")
+	}
+	serialNumberBytes, ok := pred.Arg[0].(auth.Bytes)
+	if !ok {
+		return revokedCerts,
+			errors.New("policy attestation serial number is not bytes")
+	}
+	serialNumber := new(big.Int)
+	serialNumber.SetBytes(serialNumberBytes)
+	revokedCert := pkix.RevokedCertificate{
+		SerialNumber:   serialNumber,
+		RevocationTime: time.Now()}
+	return append(revokedCerts, revokedCert), nil
 }

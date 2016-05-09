@@ -14,37 +14,31 @@ package main
 
 import (
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"flag"
 	"io/ioutil"
 	"log"
 	"net"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
-	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 
 	"github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"
 )
 
-var machineName = "Encode Machine Information"
-
-var hostName = &auth.Prin{
-	Type: "DummyPrin",
-	Key:  auth.Str("hostHash")}
-
-var programName = &auth.Prin{
-	Type: "DummyPrin",
-	Key:  auth.Str("programHash")}
-
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "xxx", "The domain password")
 var configPath = flag.String("config", "/Domains/domainserver/tao.config", "The Tao domain config")
+var trustedEntitiesPath = flag.String("trusted entities", "/Domains/domainserver/TrustedEntities", "File containing trusted entities.")
+var createDomainFlag = flag.Bool("createDomain", false, "To create new domain from specified config.")
 
 var serialNumber = 0
+var revokedCertificates []pkix.RevokedCertificate
 
-func loadDomain() (*tao.Domain, *x509.CertPool, error) {
+func createDomain() (*tao.Domain, *x509.CertPool, error) {
 	var cfg tao.DomainConfig
 	d, err := ioutil.ReadFile(*configPath)
 	if err != nil {
@@ -63,17 +57,12 @@ func loadDomain() (*tao.Domain, *x509.CertPool, error) {
 			*configPath, err)
 		return nil, nil, err
 	}
-	log.Printf("domainserver: Loaded domain\n")
-	err = domain.Guard.Authorize(*hostName, "Host", []string{})
+	log.Printf("domainserver: Created domain\n")
+	err = domain_service.InitAcls(domain, *trustedEntitiesPath)
 	if err != nil {
 		return nil, nil, err
 	}
-	err = domain.Guard.Authorize(*programName, "Execute", []string{})
-	if err != nil {
-		return nil, nil, err
-	}
-	machinePrin := auth.Prin{Type: "MachineInfo", Key: auth.Str(machineName)}
-	err = domain.Guard.Authorize(machinePrin, "Root", []string{})
+	err = domain.Save()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -82,9 +71,35 @@ func loadDomain() (*tao.Domain, *x509.CertPool, error) {
 	return domain, certPool, nil
 }
 
+func loadDomain() (*tao.Domain, *x509.CertPool, error) {
+	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
+	if domain == nil {
+		log.Printf("domainserver: no domain path - %s, pass - %s, err - %s\n",
+			*configPath, *domainPass, err)
+		return nil, nil, err
+	} else if err != nil {
+		log.Printf("domainserver: Couldn't load the config path %s: %s\n",
+			*configPath, err)
+		return nil, nil, err
+	}
+	log.Printf("domainserver: Loaded domain\n")
+	certPool := x509.NewCertPool()
+	certPool.AddCert(domain.Keys.Cert)
+	return domain, certPool, nil
+}
+
 func main() {
 	flag.Parse()
-	domain, rootCerts, err := loadDomain()
+	var domain *tao.Domain
+	var rootCerts *x509.CertPool
+	var err error
+	if *createDomainFlag {
+		log.Println("Creating new domain...")
+		domain, rootCerts, err = createDomain()
+	} else {
+		log.Println("Loading domain info...")
+		domain, rootCerts, err = loadDomain()
+	}
 	if err != nil {
 		log.Fatalln("domain_server: could not load domain:", err)
 	}
@@ -113,8 +128,8 @@ func main() {
 				sendError(err, ms)
 				continue
 			}
-			att, err := domain_service.GenerateProgramCert(
-				domain, serialNumber, prog, key)
+			att, err := domain_service.GenerateProgramCert(domain, serialNumber, prog,
+				key, time.Now(), time.Now().AddDate(1, 0, 0))
 			if err != nil {
 				log.Printf("domain_server: Error generating program cert: %s\n", err)
 				sendError(err, ms)
@@ -134,13 +149,38 @@ func main() {
 				continue
 			}
 		case domain_service.DomainServiceRequest_MANAGE_POLICY:
+			// TODO(sidtelang)
 		case domain_service.DomainServiceRequest_REVOKE_CERTIFICATE:
+			revokedCertificates, err = domain_service.RevokeCertificate(
+				request.GetSerializedPolicyAttestation(), revokedCertificates, domain)
+			if err != nil {
+				log.Printf("domain_server: Error revoking certificate: %s\n", err)
+			}
+			sendError(err, ms)
+		case domain_service.DomainServiceRequest_GET_CRL:
+			nowTime := time.Now()
+			expireTime := time.Now().AddDate(1, 0, 0)
+			crl, err := domain.Keys.SigningKey.CreateCRL(domain.Keys.Cert,
+				revokedCertificates, nowTime, expireTime)
+			resp := domain_service.DomainServiceResponse{}
+			if err != nil {
+				errStr := err.Error()
+				resp.ErrorMessage = &errStr
+			} else {
+				resp.Crl = crl
+			}
+			if _, err := ms.WriteMessage(&resp); err != nil {
+				log.Printf("domain_server: Error sending response on the channel: %s\n ", err)
+			}
 		}
 	}
 }
 
 func sendError(err error, ms *util.MessageStream) {
-	errStr := err.Error()
+	var errStr = ""
+	if err != nil {
+		errStr = err.Error()
+	}
 	resp := &domain_service.DomainServiceResponse{ErrorMessage: &errStr}
 	if _, err := ms.WriteMessage(resp); err != nil {
 		log.Printf("domain_server: Error sending resp on the channel: %s\n ", err)

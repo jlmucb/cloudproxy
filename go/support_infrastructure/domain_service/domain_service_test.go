@@ -16,7 +16,12 @@ package domain_service
 
 import (
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"fmt"
+	"math/big"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -26,11 +31,11 @@ import (
 var machineName = "Encode Machine Information"
 
 var hostName = &auth.Prin{
-	Type: "DummyPrin",
+	Type: "program",
 	Key:  auth.Str("hostHash")}
 
 var programName = &auth.Prin{
-	Type: "DummyPrin",
+	Type: "program",
 	Key:  auth.Str("programHash")}
 
 var us = "US"
@@ -110,7 +115,8 @@ func TestGenerateProgramCert(t *testing.T) {
 		t.Fatal("Error generating keys.", err)
 	}
 	programKprin := programKey.SigningKey.ToPrincipal()
-	att, err := GenerateProgramCert(domain, 0, programName, &programKprin)
+	att, err := GenerateProgramCert(domain, 0, programName, &programKprin,
+		time.Now(), time.Now().AddDate(1, 0, 0))
 	if err != nil {
 		t.Fatal("Error generating Program Cert.", err)
 	}
@@ -178,6 +184,89 @@ func TestValidateEndorsementCert(t *testing.T) {
 	err = validateEndorsementCertificate(cert, *generateGuard(t), &kPrin, rootCerts)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestInitAcls(t *testing.T) {
+	if _, err := os.Stat("./tmpdir"); os.IsNotExist(err) {
+		err = os.Mkdir("./tmpdir", 0777)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	trustedEntities := TrustedEntities{
+		TrustedProgramTaoNames: []string{fmt.Sprintf("%v", programName)},
+		TrustedHostTaoNames:    []string{fmt.Sprintf("%v", hostName)},
+		TrustedMachineInfos:    []string{machineName}}
+	f, err := os.Create("./tmpdir/TrustedEntities")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = proto.MarshalText(f, &trustedEntities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	aclGuardType := "ACLs"
+	aclGuardPath := "acls"
+	cfg := tao.DomainConfig{
+		DomainInfo: &tao.DomainDetails{
+			GuardType: &aclGuardType},
+		AclGuardInfo: &tao.ACLGuardDetails{
+			SignedAclsPath: &aclGuardPath}}
+	domain, err := tao.CreateDomain(cfg, "./tmpdir/domain", []byte("xxx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = InitAcls(domain, "./tmpdir/TrustedEntities")
+	if err != nil {
+		t.Fatal(err)
+	}
+	machinePrin := auth.Prin{
+		Type: "MachineInfo",
+		Key:  auth.Str(machineName),
+	}
+	if !domain.Guard.IsAuthorized(*programName, "Execute", []string{}) ||
+		!domain.Guard.IsAuthorized(*hostName, "Host", []string{}) ||
+		!domain.Guard.IsAuthorized(machinePrin, "Root", []string{}) {
+		t.Fatal("Authorization checks fail")
+	}
+	err = os.RemoveAll("./tmpdir")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRevokeCertificate(t *testing.T) {
+	k, err := tao.NewTemporaryKeys(tao.Signing)
+	if k == nil || err != nil {
+		t.Fatal("Can't generate signing key")
+	}
+	serialNumber := big.NewInt(5)
+	says := auth.Says{
+		Speaker: k.SigningKey.ToPrincipal(),
+		Message: auth.Pred{
+			Name: "revoke",
+			Arg:  []auth.Term{auth.Bytes(serialNumber.Bytes())}}}
+
+	att, err := tao.GenerateAttestation(k.SigningKey, nil, says)
+	if err != nil {
+		t.Fatal("Error generating attestation.")
+	}
+	serAtt, err := proto.Marshal(att)
+	if err != nil {
+		t.Fatal("Error serializing attestation.")
+	}
+	revokedCerts := []pkix.RevokedCertificate{}
+	revokedCerts, err = RevokeCertificate(serAtt, revokedCerts, &tao.Domain{Keys: k})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if num := revokedCerts[0].SerialNumber.Int64(); num != 5 {
+		t.Fatal(fmt.Sprintf("Serial number %v doesnt match expected value 5", num))
 	}
 }
 

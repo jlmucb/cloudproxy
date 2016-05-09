@@ -1,0 +1,26 @@
+// To compile: protoc -I=. --go_out=. directive.proto
+
+// Definition of protobufs for directives.
+syntax = "proto2";
+
+package domain_service;
+
+message domain_service_request {
+  // TODO: explain different types
+  enum request_type {
+    DOMAIN_CERT_REQUEST = 1;
+    MANAGE_POLICY = 2;
+    REVOKE_CERTIFICATE = 3;
+  }
+  optional request_type type = 1;
+
+  // Fields for type: DOMAIN_CERT_REQUEST.
+  optional bytes serialized_host_attestation = 2;
+}
+
+message domain_service_response {
+  optional string error_message = 1;
+
+  // Fields for response to DOMAIN_CERT_REQUEST.
+  optional bytes serialized_domain_attestation = 2;
+}

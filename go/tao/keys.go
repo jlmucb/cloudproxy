@@ -175,6 +175,14 @@ func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error
 	return x509.ParseCertificate(der)
 }
 
+// CreateCRL creates a signed X.509 certificate list for revoked certificates.
+func (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error) {
+	if cert == nil {
+		return nil, newError("Missing issuing certificate required to create CRL.")
+	}
+	return cert.CreateCRL(rand.Reader, s.ec, revokedCerts, now, expiry)
+}
+
 // CreateSignedX509 creates a signed X.509 certificate for some other subject's
 // key.
 func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) (*x509.Certificate, error) {

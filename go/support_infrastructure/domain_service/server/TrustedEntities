@@ -1,0 +1,3 @@
+trusted_program_tao_names: "program(\"programHash\")"
+trusted_host_tao_names: "program(\"hostHash\")"
+trusted_machine_infos: "Encode Machine Information"

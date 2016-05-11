@@ -99,7 +99,7 @@ func TestBinaryTerm(t *testing.T) {
 		buf := Marshal(f)
 		g, err := UnmarshalTerm(buf)
 		if err != nil {
-			t.Fatalf("can't unmarshal: %s", s)
+			t.Fatalf("can't unmarshal %s: %v", s, err)
 		}
 		if f.String() != g.String() {
 			t.Fatalf("bad binary: %s vs %s", f.String(), g.String())

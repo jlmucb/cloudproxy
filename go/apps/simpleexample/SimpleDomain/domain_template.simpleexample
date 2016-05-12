@@ -45,6 +45,7 @@ host_predicate_name: "TrustedHost"
 program_paths: "/Domains/simpledomainservice"
 program_paths: "/Domains/simpleclient"
 program_paths: "/Domains/simpleserver"
+program_paths: "/Domains/go-child"
 program_paths: "mixnet_router"
 program_predicate_name: "TrustedProgramHash"
 

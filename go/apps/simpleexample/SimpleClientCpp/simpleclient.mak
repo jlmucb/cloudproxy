@@ -35,7 +35,7 @@ TARGET_MACHINE_TYPE= x64
 S= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleClientCpp
 SL= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src
 O= $(OBJ_DIR)/simpleclient_obj
-INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(SL)
+INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(SL) -I/usr/local/ssl/include
 
 CFLAGS=$(INCLUDE) -DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
 CFLAGS1=$(INCLUDE) -DOS_POSIX -O1 -g -Wall -std=c++11

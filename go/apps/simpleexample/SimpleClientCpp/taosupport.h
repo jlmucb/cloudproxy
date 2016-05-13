@@ -16,7 +16,13 @@
 #ifndef __TAOSUPPORT_H__
 #define __TAOSUPPORT_H__
 
+#include "tao/fd_message_channel.h"
+#include "tao/tao_rpc.h"
+#include "tao/util.h"
 #include <taosupport.pb.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 typedef unsigned char byte;
 
@@ -25,6 +31,8 @@ void PrintBytes(int n, byte* in);
 class TaoProgramData {
 public:
   bool  initialized_;
+  FDMessageChannel* msg_;
+  Tao* tao_;
   string tao_name_;
   int size_policy_cert_;
   byte* policy_cert_;
@@ -38,8 +46,20 @@ public:
   TaoProgramData();
   ~TaoProgramData();
   void ClearProgramData();
-  bool InitTao(FDMessageChannel& msg, Tao& tao, string&, string&);
+  bool InitTao(FDMessageChannel* msg, Tao* tao, string&, string&);
   void Print();
+
+  bool InitializeProgramKey(string& path, int keysize,
+          byte* keys, RSA** myKey);
+  bool InitializeSymmetricKeys(string& path, int keysize, int* key_size_out,
+          byte* keys);
+  bool Seal(Tao& tao, int size_to_seal, byte* to_seal,
+          int* size_sealed, byte* sealed);
+  bool Unseal(Tao& tao, int size_to_unseal, byte* to_unseal,
+          int* size_unsealed, byte* unsealed);
+  bool RequestDomainServiceCert(string& network, string& address,
+          RSA* myKey, RSA* verifyKey,
+          int* size_cert, byte* cert);
 };
 
 class TaoChannel {
@@ -49,7 +69,7 @@ public:
 
   TaoChannel();
   ~TaoChannel();
-  bool OpenTaoChannel(FDMessageChannel& msg, Tao& tao, TaoProgramData& client_program_data,
+  bool OpenTaoChannel(TaoProgramData& client_program_data,
                       string& serverAddress);
   void CloseTaoChannel();
   bool SendRequest(taosupport::SimpleMessage& out);

@@ -32,6 +32,9 @@ using tao::TaoRPC;
 
 #include "taosupport.h"
 #include <taosupport.pb.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 void PrintBytes(int n, byte* in) {
   for (int i = 0; i < n; i++) printf("%02x", in[i]);
@@ -45,8 +48,15 @@ TaoChannel::~TaoChannel() {
   fd_ = 0;
 }
 
-bool TaoChannel::OpenTaoChannel(FDMessageChannel& msg, Tao& tao,
-       TaoProgramData& client_program_data, string& serverAddress) {
+bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
+                    string& serverAddress) {
+
+  // Parse policy cert and make it root of chain.
+
+  // Open TLS channel with Program cert.
+
+  // Get peer name from organizational unit.
+
   return false;
 }
 
@@ -88,7 +98,20 @@ void TaoProgramData::ClearProgramData() {
   program_file_path_.clear();
 }
 
-bool TaoProgramData::InitTao(FDMessageChannel& msg, Tao& tao, string&, string&) {
+bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, string& path) {
+
+  // Load domain
+
+  // Get policy cert.
+
+  // Extend principal name, hash of policy cert identifies policy extension.
+
+  // Retrieve extended name.
+
+  // Get (or initialize) my symmetric keys.
+
+  // Get (or initialize) my program key.
+
   return false;
 }
 
@@ -109,6 +132,39 @@ void TaoProgramData::Print() {
 void TaoChannel::Print() {
   printf("fd: %d\n", fd_);
   printf("Server name: %s\n", server_name_.c_str());
+}
+
+bool TaoProgramData::Seal(Tao& tao, int size_to_seal, byte* to_seal, int* size_sealed, byte* sealed) {
+  return true;
+}
+
+bool TaoProgramData::Unseal(Tao& tao, int size_to_unseal, byte* to_unseal, int* size_unsealed, byte* unsealed) {
+  return true;
+}
+
+bool TaoProgramData::RequestDomainServiceCert(string& network, string& address, RSA* myKey,
+                              RSA* verifyKey, int* size_cert, byte* cert) {
+  return true;
+}
+
+bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize, int* key_size_out, byte* keys) {
+  return true;
+}
+
+bool TaoProgramData::InitializeProgramKey(string& path, int keysize, byte* keys, RSA** myKey) {
+  // RSA* rsa_tpmKey = RSA_new();
+  //rsa_tpmKey->n = bin_to_BN((int)pub_out.publicArea.unique.rsa.size,
+  //                          pub_out.publicArea.unique.rsa.buffer);
+  // bool VerifyX509CertificateChain(certificate_chain_message& chain);
+  // bool GenerateX509CertificateRequest(x509_cert_request_parameters_message& params,
+  //                                  bool sign_request, X509_REQ* req);
+  // bool SignX509Certificate(RSA* signing_key, bool isCa, signing_instructions_message& signing_instructions,
+  //                       EVP_PKEY* signedKey,
+  //                       X509_REQ* req, bool verify_req_sig, X509* cert);
+  // BIGNUM* bin_to_BN(int len, byte* buf);
+  // string* BN_to_bin(BIGNUM& n)
+  //void print_internal_private_key(RSA& key);
+  return true;
 }
 
 /*

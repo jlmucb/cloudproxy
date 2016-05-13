@@ -30,6 +30,15 @@ using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
 
+include "taosupport.h"
+
+DEFINE_string(config_file, "/Domains/domain.simpleexample/tao.config",
+              "path to tao configuration");
+DEFINE_string(client_path, "/Domains/domain.simpleexample/SimpleClient",
+              "path to SimpleClient files");
+DEFINE_string(server_host, "localhost", "address for client/server");
+DEFINE_string(server_port, "8123", "port for client/server");
+
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, false);
 
@@ -38,81 +47,43 @@ int main(int argc, char **argv) {
   // directly with these fds.
   unique_ptr<FDMessageChannel> msg(new FDMessageChannel(3, 4));
   unique_ptr<Tao> tao(new TaoRPC(msg.release()));
-  string bytes;
-  if (!tao->GetRandomBytes(10, &bytes)) {
-    LOG(FATAL) << "Couldn't get 10 bytes from the Tao RPC channel";
+
+  // Did InitializeApp parse the flags?
+  GFLAGS_NS::ParseCommandLineFlags(&argc, &argv, true);
+
+  TaoProgramData client_program_data;
+  TaoChannel client_channel;
+  string serverAddr = FLAGS_server_host + ":" + FLAGS_server_port;
+
+  client_program_data.ClearTaoProgramData();
+
+  if (!client_program_data.InitTao(*FLAGS_config_file, *FLAGS_client_path)) {
   }
+  printf("Simple client name: %s\n", client_program_data.tao_name_.c_str());
 
-  if (bytes.size() == 10) {
-    LOG(INFO) << "Got 10 bytes from the Tao RPC channel";
-  } else {
-    LOG(FATAL) << "Got " << bytes.size() << " bytes from the channel, but "
-                                            "expected 10";
+  // Open the Tao Channel using the Program key.  This program does all the
+  // standard channel negotiation and presents the secure server name after
+  // negotiation is complete.
+  if (!client_channel.InitTao(client_program_data, serverAdd)) {
   }
+        log.Printf("simpleclient: establish Tao Channel with %s, %s\n",
+                serverAddr, serverName)
+  printf("simpleclient: established Tao Channel with %s\n",
+         client_channel.server_name_.c_str()) ;
 
-  string encodedBytes;
-  if (!Base64WEncode(bytes, &encodedBytes)) {
-    LOG(FATAL) << "Couldn't encode 10 bytes in Base64W";
+
+  // Send a simple request and get response.
+  taosupport::SimpleMessage req_message;
+  taosupport::SimpleMessage resp_message;
+  req_message.message_type = REQUEST;
+  req_message.request_type = "SecretRequest";
+  if (!client_channel.SendRequest(req_message)) {
+    printf("simpleclient: Error in response to SendRequest\n")
   }
-  LOG(INFO) << "Encoded bytes: " << encodedBytes;
-
-  string sealed;
-  if (!tao->Seal(bytes, Tao::SealPolicyDefault, &sealed)) {
-    LOG(FATAL) << "Couldn't seal bytes across the channel";
+  if (!client_channel.GetRequest(resp_message)) {
+    printf("simpleclient: Error in response to GetRequest\n")
   }
+  printf("simpleclient: secret is %s, done\n", resp_message.data())
 
-  string encodedSealed;
-  if (!Base64WEncode(sealed, &encodedSealed)) {
-    LOG(FATAL) << "Couldn't encode the sealed bytes";
-  }
-  LOG(INFO) << "Encoded sealed bytes: " << encodedSealed;
-
-  string unsealed;
-  string policy;
-  if (!tao->Unseal(sealed, &unsealed, &policy)) {
-    LOG(FATAL) << "Couldn't unseal the tao-sealed data";
-  }
-  LOG(INFO) << "Got a seal policy '" << policy << "'";
-
-  if (policy.compare(Tao::SealPolicyDefault) != 0) {
-    LOG(FATAL) << "The policy returned by Unseal didn't match the Seal policy";
-  }
-
-  if (unsealed.compare(bytes) != 0) {
-    LOG(FATAL) << "The unsealed data didn't match the sealed data";
-  }
-
-  string encodedUnsealed;
-  if (!Base64WEncode(unsealed, &encodedUnsealed)) {
-    LOG(FATAL) << "Couldn't encoded the unsealed bytes";
-  }
-
-  LOG(INFO) << "Encoded unsealed bytes: " << encodedUnsealed;
-
-  // Set up a fake attestation using a fake key.
-  string taoName;
-  if (!tao->GetTaoName(&taoName)) {
-    LOG(FATAL) << "Couldn't get the name of the Tao";
-  }
-
-  string fakeKey("This is a fake key");
-  string msf;
-  if (!MarshalSpeaksfor(fakeKey, taoName, &msf)) {
-    LOG(FATAL) << "Couldn't marshal a speaksfor statement";
-  }
-
-  string attest;
-  if (!tao->Attest(msf, &attest)) {
-    LOG(FATAL) << "Couldn't attest to a fake key delegation";
-  }
-
-  string encodedAttest;
-  if (!Base64WEncode(attest, &encodedAttest)) {
-    LOG(FATAL) << "Couldn't encode the attestation";
-  }
-
-  LOG(INFO) << "Got attestation " << encodedAttest;
-
-  LOG(INFO) << "All Go Tao tests pass";
   return 0;
 }

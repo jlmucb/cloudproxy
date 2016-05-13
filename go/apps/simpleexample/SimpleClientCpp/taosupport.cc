@@ -33,6 +33,10 @@ using tao::TaoRPC;
 include "taosupport.h"
 #include <taosupport.pb.h>
 
+void PrintBytes(int n, byte* in) {
+  for (int i = 0; i < n; i++) printf("%02x", in[i]);
+}
+
 TaoChannel::TaoChannel() {
   fd_ = 0;
 }
@@ -73,7 +77,9 @@ TaoProgramData::ClearProgramData() {
   tao_name_.clear();
   free(policy_cert_);
   size_policy_cert_ = 0;
+
   // clear private key
+
   memset(program_sym_key_, 0, size_program_sym_key_);
   free(program_sym_key_);
   size_program_sym_key_ = 0;
@@ -87,6 +93,22 @@ bool TaoProgramData::InitTao(FDMessageChannel& msg, Tao& tao, string&, string&) 
 }
 
 void TaoProgramData::Print() {
+  if (!initialized_) {
+    printf("Program object is NOT initialized\n");
+    return;
+  }
+  printf("Program object is NOT initialized\n");
+  printf("Tao name: %s\n", tao_name_.c_str());
+  printf("Policy cert: ");PrintBytes(size_policy_cert_, policy_cert_);printf("\n");
+  printf("Program key: "); printf("TODO"); printf("\n");
+  printf("Sym key: ");PrintBytes(size_program_sym_key_, program_sym_key_);printf("\n");
+  printf("Program cert: ");PrintBytes(size_program_cert_, program_cert_);printf("\n");
+  printf("Program path: %s\n", program_file_path_.c_str());
+}
+
+void TaoChannel::Print() {
+  printf("fd: %d\n", fd_);
+  printf("Server name: %s\n", server_name_.c_str());
 }
 
 /*

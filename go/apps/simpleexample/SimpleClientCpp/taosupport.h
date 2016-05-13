@@ -18,6 +18,8 @@
 
 #include <taosupport.pb.h>
 
+void PrintBytes(int n, byte* in);
+
 class TaoProgramData {
 public:
   bool  initialized_;
@@ -46,6 +48,7 @@ public:
   bool CloseTaoChannel();
   bool SendRequest(SimpleMessage& out);
   bool GetRequest(SimpleMessage* in);
+  void Print();
 };
 #endif
 

@@ -30,7 +30,7 @@ using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
 
-include "taosupport.h"
+#include "taosupport.h"
 #include <taosupport.pb.h>
 
 void PrintBytes(int n, byte* in) {
@@ -56,11 +56,11 @@ void TaoChannel::CloseTaoChannel() {
   fd_ = 0;
 }
 
-bool TaoChannel::SendRequest(SimpleMessage& out) {
+bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
   return false;
 }
 
-bool TaoChannel::GetRequest(SimpleMessage* in) {
+bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
   return false;
 }
 
@@ -72,7 +72,7 @@ TaoProgramData::~TaoProgramData() {
   ClearProgramData();
 }
 
-TaoProgramData::ClearProgramData() {
+void TaoProgramData::ClearProgramData() {
   initialized_ = false;
   tao_name_.clear();
   free(policy_cert_);

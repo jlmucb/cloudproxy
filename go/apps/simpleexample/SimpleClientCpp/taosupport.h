@@ -18,13 +18,15 @@
 
 #include <taosupport.pb.h>
 
+typedef unsigned char byte;
+
 void PrintBytes(int n, byte* in);
 
 class TaoProgramData {
 public:
   bool  initialized_;
   string tao_name_;
-  int size_policy_cert_
+  int size_policy_cert_;
   byte* policy_cert_;
   // need a key representation
   int size_program_sym_key_;
@@ -33,6 +35,8 @@ public:
   byte* program_cert_;
   string program_file_path_;
 
+  TaoProgramData();
+  ~TaoProgramData();
   void ClearProgramData();
   bool InitTao(FDMessageChannel& msg, Tao& tao, string&, string&);
   void Print();
@@ -43,11 +47,13 @@ public:
   string server_name_;
   int fd_;
 
+  TaoChannel();
+  ~TaoChannel();
   bool OpenTaoChannel(FDMessageChannel& msg, Tao& tao, TaoProgramData& client_program_data,
                       string& serverAddress);
-  bool CloseTaoChannel();
-  bool SendRequest(SimpleMessage& out);
-  bool GetRequest(SimpleMessage* in);
+  void CloseTaoChannel();
+  bool SendRequest(taosupport::SimpleMessage& out);
+  bool GetRequest(taosupport::SimpleMessage* in);
   void Print();
 };
 #endif

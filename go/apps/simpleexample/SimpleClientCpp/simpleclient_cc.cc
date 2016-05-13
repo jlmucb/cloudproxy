@@ -30,7 +30,7 @@ using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
 
-include "taosupport.h"
+#include "taosupport.h"
 
 DEFINE_string(config_file, "/Domains/domain.simpleexample/tao.config",
               "path to tao configuration");
@@ -49,13 +49,14 @@ int main(int argc, char **argv) {
   unique_ptr<Tao> tao(new TaoRPC(msg.release()));
 
   // Did InitializeApp parse the flags?
-  GFLAGS_NS::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   TaoProgramData client_program_data;
   TaoChannel client_channel;
   string serverAddr = FLAGS_server_host + ":" + FLAGS_server_port;
 
-  client_program_data.ClearTaoProgramData();
+#if 0
+  client_program_data.ClearProgramData();
 
   if (!client_program_data.InitTao(*FLAGS_config_file, *FLAGS_client_path)) {
   }
@@ -84,6 +85,7 @@ int main(int argc, char **argv) {
     printf("simpleclient: Error in response to GetRequest\n")
   }
   printf("simpleclient: secret is %s, done\n", resp_message.data())
+#endif
 
   return 0;
 }

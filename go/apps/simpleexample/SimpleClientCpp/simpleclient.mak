@@ -33,16 +33,12 @@ TARGET_MACHINE_TYPE= x64
 #endif
 
 S= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleClientCpp
+SL= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src
 O= $(OBJ_DIR)/simpleclient_obj
-INCLUDE= -I$(S) -I/usr/local/include \
--I$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src \
--I$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/third_party/google-glog/src \
--I$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/third_party \
--I$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/third_party/chromium/include \
--I$(GOOGLE_INCLUDE)
+INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(SL)
 
-CFLAGS=$(INCLUDE) -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
-CFLAGS1=$(INCLUDE) -O1 -g -Wall -std=c++11
+CFLAGS=$(INCLUDE) -DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
+CFLAGS1=$(INCLUDE) -DOS_POSIX -O1 -g -Wall -std=c++11
 
 CC=g++
 LINK=g++
@@ -51,7 +47,7 @@ AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
 LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -l/Domains/libauth.a
 
-dobj_simpleclient=$(O)/simpleclient_cc.o
+dobj_simpleclient=$(O)/simpleclient_cc.o $(O)/taosupport.o
 
 all:	$(EXE_DIR)/simpleclient_cc.exe
 
@@ -65,13 +61,9 @@ $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	@echo "linking simpleclient"
 	$(LINK) -o $(EXE_DIR)/tpm2_util.exe $(dobj_simpleclient) $(LDFLAGS)
 
-#$(O)/tpm2.pb.o: $(S)/tpm2.pb.cc
-#	@echo "compiling protobuf object"
-#	$(CC) $(CFLAGS) -c -o $(O)/tpm2.pb.o $(S)/tpm2.pb.cc
-
-#$(S)/tpm2.pb.cc tpm2.pb.h: $(S)/tpm2.proto
-#	@echo "creating protobuf files"
-#	$(PROTO) -I=$(S) --cpp_out=$(S) $(S)/tpm2.proto
+$(O)/taosupport.o: $(S)/taosupport.cc
+	@echo "compiling taosupport.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/taosupport.o $(S)/taosupport.cc
 
 $(O)/simpleclient_cc.o: $(S)/simpleclient_cc.cc
 	@echo "compiling simpleclient_cc.cc"

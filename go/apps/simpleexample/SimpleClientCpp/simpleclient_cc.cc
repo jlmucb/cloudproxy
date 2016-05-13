@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   // Open the Tao Channel using the Program key.  This program does all the
   // standard channel negotiation and presents the secure server name after
   // negotiation is complete.
-  if (!client_channel.InitTao(client_program_data, serverAdd)) {
+  if (!client_channel.OpenTaoChannel(client_program_data, serverAdd)) {
   }
         log.Printf("simpleclient: establish Tao Channel with %s, %s\n",
                 serverAddr, serverName)

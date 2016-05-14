@@ -108,6 +108,10 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   // Extend principal name, hash of policy cert identifies policy extension.
 
   // Retrieve extended name.
+  string taoName;
+  if (!tao->GetTaoName(&tao_name_)) {
+    return false;
+  }
 
   // Get (or initialize) my symmetric keys.
 
@@ -135,12 +139,20 @@ void TaoChannel::Print() {
   printf("Server name: %s\n", server_name_.c_str());
 }
 
-bool TaoProgramData::Seal(Tao& tao, int size_to_seal, byte* to_seal, int* size_sealed, byte* sealed) {
-  return true;
+bool TaoProgramData::Attest(string& to_attest, string* attested) {
+  return tao_->Attest(to_attest, attested);
 }
 
-bool TaoProgramData::Unseal(Tao& tao, int size_to_unseal, byte* to_unseal, int* size_unsealed, byte* unsealed) {
-  return true;
+bool TaoProgramData::Seal(string& to_seal, string* sealed) {
+  // string encodedBytes;
+  // if (!Base64WEncode(to_seal, &encodedBytes)) { }
+  return tao_->Seal(to_seal, Tao::SealPolicyDefault, sealed);
+}
+
+bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
+  string policy;
+  return tao_->Unseal(sealed, unsealed, &policy);
+  //if (unsealed->compare(bytes) != 0) { }
 }
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address, RSA* myKey,
@@ -153,6 +165,12 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize, int* key
 }
 
 bool TaoProgramData::InitializeProgramKey(string& path, int keysize, byte* keys, RSA** myKey) {
+/*
+  string taoName;
+  if (!MarshalSpeaksfor(fakeKey, taoName, &msf)) {
+    return false;
+  }
+ */
   // RSA* rsa_tpmKey = RSA_new();
   //rsa_tpmKey->n = bin_to_BN((int)pub_out.publicArea.unique.rsa.size,
   //                          pub_out.publicArea.unique.rsa.buffer);
@@ -168,82 +186,3 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize, byte* keys,
   return true;
 }
 
-/*
-
-  string bytes;
-  if (!tao->GetRandomBytes(10, &bytes)) {
-    LOG(FATAL) << "Couldn't get 10 bytes from the Tao RPC channel";
-  }
-
-  if (bytes.size() == 10) {
-    LOG(INFO) << "Got 10 bytes from the Tao RPC channel";
-  } else {
-    LOG(FATAL) << "Got " << bytes.size() << " bytes from the channel, but "
-                                            "expected 10";
-  }
-
-  string encodedBytes;
-  if (!Base64WEncode(bytes, &encodedBytes)) {
-    LOG(FATAL) << "Couldn't encode 10 bytes in Base64W";
-  }
-  LOG(INFO) << "Encoded bytes: " << encodedBytes;
-
-  string sealed;
-  if (!tao->Seal(bytes, Tao::SealPolicyDefault, &sealed)) {
-    LOG(FATAL) << "Couldn't seal bytes across the channel";
-  }
-
-  string encodedSealed;
-  if (!Base64WEncode(sealed, &encodedSealed)) {
-    LOG(FATAL) << "Couldn't encode the sealed bytes";
-  }
-  LOG(INFO) << "Encoded sealed bytes: " << encodedSealed;
-
-  string unsealed;
-  string policy;
-  if (!tao->Unseal(sealed, &unsealed, &policy)) {
-    LOG(FATAL) << "Couldn't unseal the tao-sealed data";
-  }
-  LOG(INFO) << "Got a seal policy '" << policy << "'";
-
-  if (policy.compare(Tao::SealPolicyDefault) != 0) {
-    LOG(FATAL) << "The policy returned by Unseal didn't match the Seal policy";
-  }
-
-  if (unsealed.compare(bytes) != 0) {
-    LOG(FATAL) << "The unsealed data didn't match the sealed data";
-  }
-
-  string encodedUnsealed;
-  if (!Base64WEncode(unsealed, &encodedUnsealed)) {
-    LOG(FATAL) << "Couldn't encoded the unsealed bytes";
-  }
-
-  LOG(INFO) << "Encoded unsealed bytes: " << encodedUnsealed;
-
-  // Set up a fake attestation using a fake key.
-  string taoName;
-  if (!tao->GetTaoName(&taoName)) {
-    LOG(FATAL) << "Couldn't get the name of the Tao";
-  }
-
-  string fakeKey("This is a fake key");
-  string msf;
-  if (!MarshalSpeaksfor(fakeKey, taoName, &msf)) {
-    LOG(FATAL) << "Couldn't marshal a speaksfor statement";
-  }
-
-  string attest;
-  if (!tao->Attest(msf, &attest)) {
-    LOG(FATAL) << "Couldn't attest to a fake key delegation";
-  }
-
-  string encodedAttest;
-  if (!Base64WEncode(attest, &encodedAttest)) {
-    LOG(FATAL) << "Couldn't encode the attestation";
-  }
-
-  LOG(INFO) << "Got attestation " << encodedAttest;
-
-  LOG(INFO) << "All Go Tao tests pass";
- */

@@ -53,10 +53,9 @@ public:
           byte* keys, RSA** myKey);
   bool InitializeSymmetricKeys(string& path, int keysize, int* key_size_out,
           byte* keys);
-  bool Seal(Tao& tao, int size_to_seal, byte* to_seal,
-          int* size_sealed, byte* sealed);
-  bool Unseal(Tao& tao, int size_to_unseal, byte* to_unseal,
-          int* size_unsealed, byte* unsealed);
+  bool Seal(string& to_seal, string* sealed);
+  bool Unseal(string& sealed, string* unsealed);
+  bool Attest(string& to_attest, string* attested);
   bool RequestDomainServiceCert(string& network, string& address,
           RSA* myKey, RSA* verifyKey,
           int* size_cert, byte* cert);

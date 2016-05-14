@@ -37,6 +37,9 @@ public:
   string tao_name_;
   int size_policy_cert_;
   byte* policy_cert_;
+  RSA* policy_key_;
+  int size_endorsement_cert_;
+  byte* endorsement_cert_;
   RSA* program_key_;
   int size_program_sym_key_;
   byte* program_sym_key_;
@@ -47,18 +50,21 @@ public:
   TaoProgramData();
   ~TaoProgramData();
   void ClearProgramData();
-  bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&);
+  bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&,
+               string& network, string& address);
   void Print();
 
-  bool InitializeProgramKey(string& path, int keysize);
+  bool InitializeProgramKey(string& path, int keysize,
+                            string& network, string& address);
   bool InitializeSymmetricKeys(string& path, int keysize);
+  bool ExtendName(string& subprin);
 
   bool Seal(string& to_seal, string* sealed);
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
   bool RequestDomainServiceCert(string& network, string& address,
-          RSA* myKey, RSA* verifyKey,
-          int* size_cert, byte* cert);
+          string& attestation, int size_endorse_cert, byte* endorse_cert,
+          string* program_cert);
 };
 
 class TaoChannel {

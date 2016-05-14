@@ -87,6 +87,9 @@ TaoProgramData::TaoProgramData() {
   program_sym_key_ = nullptr;
   size_program_cert_ = 0;
   program_cert_ = 0;
+  policy_key_ = nullptr;
+  size_endorsement_cert_ = 0;
+  endorsement_cert_ = nullptr;
 }
 
 TaoProgramData::~TaoProgramData() {
@@ -115,13 +118,52 @@ void TaoProgramData::ClearProgramData() {
   }
 }
 
-bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, string& path) {
+bool TaoProgramData::ExtendName(string& subprin) {
+  return false;
+}
+
+// if (unsealed->compare(bytes) != 0) { }
+
+bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, string& path,
+			      string& network, string& address) {
+
+  // Set tao and msg for later calls.
+  msg_ = msg;
+  tao_ = tao;
 
   // Load domain
+  string policy_cert_file = path + "policyCert";
 
   // Get policy cert.
+  string cert;
+  if (ReadFile(policy_cert_file, &cert)) {
+    return false;
+  }
+  size_policy_cert_ = cert.size();
+  policy_cert_ = (byte*) malloc(size_policy_cert_);
+  memcpy(policy_cert_, cert.data(), size_policy_cert_);
+
+  // Parse policy cert.
+  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&policy_cert_,
+                         size_policy_cert_);
+  if (parsed_policy_cert == nullptr) {
+    return false;
+  }
+  EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
+  policy_key_ = EVP_PKEY_get1_RSA(evp_policy_key);
+  if (policy_key_ == nullptr) {
+    return false;
+  }
+  int cert_OK = X509_verify(parsed_policy_cert, X509_get_pubkey(parsed_policy_cert));
+  if (cert_OK <= 0) {
+    return false;
+  }
 
   // Extend principal name, hash of policy cert identifies policy extension.
+  string subprin;
+  if (!ExtendName(subprin)) {
+    return false;
+  }
 
   // Retrieve extended name.
   if (!tao->GetTaoName(&tao_name_)) {
@@ -134,7 +176,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   }
 
   // Get (or initialize) my program key.
-  if (!InitializeProgramKey(path, 2048)) {
+  if (!InitializeProgramKey(path, 2048, network, address)) {
     return false;
   }
   return true;
@@ -164,19 +206,19 @@ bool TaoProgramData::Attest(string& to_attest, string* attested) {
 }
 
 bool TaoProgramData::Seal(string& to_seal, string* sealed) {
-  // string encodedBytes;
-  // if (!Base64WEncode(to_seal, &encodedBytes)) { }
+  // string encodedBytes; if (!Base64WEncode(to_seal, &encodedBytes)) { }
   return tao_->Seal(to_seal, Tao::SealPolicyDefault, sealed);
 }
 
 bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
   string policy;
   return tao_->Unseal(sealed, unsealed, &policy);
-  //if (unsealed->compare(bytes) != 0) { }
 }
 
-bool TaoProgramData::RequestDomainServiceCert(string& network, string& address, RSA* myKey,
-                              RSA* verifyKey, int* size_cert, byte* cert) {
+bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
+			      string& attestation,
+                              int size_endorse_cert, byte* endorse_cert,
+			      string* program_cert) {
   return true;
 }
 
@@ -210,7 +252,7 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
 
   // Seal the key and save it.
   unsealed.assign((const char*)program_sym_key_, size_program_sym_key_);
-  string policy;
+  string policy = Tao::SealPolicyDefault;
   if (!tao_->Seal(unsealed, policy, &sealed)) {
     unsealed.clear();
     return false;
@@ -222,15 +264,9 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   return true;
 }
 
-/*
-  taosupport::RsaPrivateKeyMessage rsa_msg;
-    rsa_msg.m
-    rsa_msg.e
-    rsa_msg.d
-    rsa_msg.p
-    rsa_msg.q
- */
-bool TaoProgramData::InitializeProgramKey(string& path, int keysize) {
+bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
+	string& network, string& address) {
+
   string sealed_key_file_name = path + "sealedsigningKey";
   string signer_cert_file_name = path + "signerCert";
   string sealed_key;
@@ -260,20 +296,50 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize) {
   }
   program_key_ = rsa_key;
 
+  // Get the program cert from the domain service.
+  // First we need the endorsement cert.
+  string endorsement_cert_file_name = path + "endorsementCert";
+  string endorse_cert;
+  if (ReadFile(endorsement_cert_file_name, &endorse_cert)) {
+    return false;
+  }
+  size_endorsement_cert_= endorse_cert.size();
+  endorsement_cert_ = (byte*) malloc(size_endorsement_cert_);;
+  memcpy(endorsement_cert_, endorse_cert.data(), size_endorsement_cert_);
+
   // Construct a delegation statement.
-  // string taoName;
+  string msf;
   // if (!MarshalSpeaksfor(fakeKey, taoName, &msf)) {
   //  return false;
   // }
 
-  // Get an attestation.
+  // Get an attestation using delegation and program key;
+  string attestation;
 
-  // Get the program cert from the domain service.
+  // Get Program Cert.
+  if (!RequestDomainServiceCert(network, address, attestation, size_endorsement_cert_,
+	  endorsement_cert_, &program_cert)) {
+    return false;
+  }
+  size_program_cert_= endorse_cert.size();
+  program_cert_ = (byte*) malloc(size_program_cert_);
+  memcpy(program_cert_, program_cert.data(), size_program_cert_);
+
+  // Save the program cert.
+  if (WriteFile(signer_cert_file_name, program_cert)) {
+    return false;
+  }
 
   // Serialize the RSAKey.
+  string out_buf;
+  if (!SerializeRsaPrivateKey(rsa_key, &out_buf)) {
+    return false;
+  }
 
-  // Save the sealed key and cert.
-
+  // Save the sealed key.
+  if (WriteFile(sealed_key_file_name, out_buf)) {
+    return false;
+  }
   return true;
 }
 

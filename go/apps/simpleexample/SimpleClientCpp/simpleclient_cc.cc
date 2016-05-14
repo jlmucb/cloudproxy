@@ -39,6 +39,8 @@ DEFINE_string(client_path, "/Domains/domain.simpleexample/SimpleClient",
               "path to SimpleClient files");
 DEFINE_string(server_host, "localhost", "address for client/server");
 DEFINE_string(server_port, "8123", "port for client/server");
+DEFINE_string(domain_server_host, "localhost", "address for client/server");
+DEFINE_string(domain_server_port, "8123", "port for client/server");
 
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, false);
@@ -59,7 +61,8 @@ int main(int argc, char **argv) {
 #if 0
   client_program_data.ClearProgramData();
 
-  if (!client_program_data.InitTao(*FLAGS_config_file, *FLAGS_client_path)) {
+  if (!client_program_data.InitTao(*FLAGS_config_file, *FLAGS_client_path,
+				  "tcp", serverAddr)) {
   }
   printf("Simple client name: %s\n", client_program_data.tao_name_.c_str());
 

@@ -404,13 +404,10 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
 }
 
 bool VerifyX509CertificateChain(X509* cacert, X509* cert) {
-  X509_STORE *store;
-  X509_STORE_CTX *ctx;
+  X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+  X509_STORE *store = X509_STORE_new();
 
-  store = X509_STORE_new();
-  X509_STORE_set_verify_cb(store, nullptr);
   X509_STORE_add_cert(store, cacert);
-  ctx = X509_STORE_CTX_new();
   X509_STORE_CTX_init(ctx, store, cert, NULL);
   return X509_verify_cert(ctx) == 1;
 }

@@ -58,38 +58,40 @@ int main(int argc, char **argv) {
   TaoChannel client_channel;
   string serverAddr = FLAGS_server_host + ":" + FLAGS_server_port;
 
-#if 0
   client_program_data.ClearProgramData();
 
-  if (!client_program_data.InitTao(*FLAGS_config_file, *FLAGS_client_path,
-				  "tcp", serverAddr)) {
+  string tcp("tcp");
+  if (!client_program_data.InitTao(msg.get(), tao.get(), FLAGS_config_file, FLAGS_client_path,
+				  tcp, serverAddr)) {
+    printf("client_program_data.InitTao failed\n");
+    return 1;
   }
   printf("Simple client name: %s\n", client_program_data.tao_name_.c_str());
 
   // Open the Tao Channel using the Program key.  This program does all the
   // standard channel negotiation and presents the secure server name after
   // negotiation is complete.
-  if (!client_channel.OpenTaoChannel(client_program_data, serverAdd)) {
+  if (!client_channel.OpenTaoChannel(client_program_data, serverAddr)) {
+    printf("client_channel.OpenTaoChannel failed\n");
+    return 1;
   }
-        log.Printf("simpleclient: establish Tao Channel with %s, %s\n",
-                serverAddr, serverName)
   printf("simpleclient: established Tao Channel with %s\n",
          client_channel.server_name_.c_str()) ;
-
 
   // Send a simple request and get response.
   taosupport::SimpleMessage req_message;
   taosupport::SimpleMessage resp_message;
-  req_message.message_type = REQUEST;
-  req_message.request_type = "SecretRequest";
+  req_message.set_message_type(taosupport::REQUEST);
+  req_message.set_request_type("SecretRequest");
   if (!client_channel.SendRequest(req_message)) {
-    printf("simpleclient: Error in response to SendRequest\n")
+    printf("simpleclient: Error in response to SendRequest\n");
   }
-  if (!client_channel.GetRequest(resp_message)) {
-    printf("simpleclient: Error in response to GetRequest\n")
+  if (!client_channel.GetRequest(&resp_message)) {
+    printf("simpleclient: Error in response to GetRequest\n");
+  } else {
+    const char* secret = (const char*) resp_message.data().data();
+    printf("simpleclient: secret is %s, done\n", secret);
   }
-  printf("simpleclient: secret is %s, done\n", resp_message.data())
-#endif
 
   return 0;
 }

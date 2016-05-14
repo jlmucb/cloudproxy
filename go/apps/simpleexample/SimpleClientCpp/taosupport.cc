@@ -308,13 +308,18 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   memcpy(endorsement_cert_, endorse_cert.data(), size_endorsement_cert_);
 
   // Construct a delegation statement.
+  // TODO: make serialized key.
+  string serialized_key;
   string msf;
-  // if (!MarshalSpeaksfor(fakeKey, taoName, &msf)) {
-  //  return false;
-  // }
+  string attestation;
+  if (!MarshalSpeaksfor(serialized_key, tao_name_, &msf)) {
+    return false;
+  }
 
   // Get an attestation using delegation and program key;
-  string attestation;
+  if (!Attest(msf, &attestation)) {
+    return false;
+  }
 
   // Get Program Cert.
   if (!RequestDomainServiceCert(network, address, attestation, size_endorsement_cert_,
@@ -330,13 +335,11 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
     return false;
   }
 
-  // Serialize the RSAKey.
+  // Serialize and save the RSAKey.
   string out_buf;
   if (!SerializeRsaPrivateKey(rsa_key, &out_buf)) {
     return false;
   }
-
-  // Save the sealed key.
   if (WriteFile(sealed_key_file_name, out_buf)) {
     return false;
   }

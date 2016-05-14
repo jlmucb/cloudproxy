@@ -51,8 +51,42 @@ TaoChannel::~TaoChannel() {
   fd_ = 0;
 }
 
+/*
+int create_socket(addr, port, BIO *out) {
+  int sockfd;
+  char      *tmp_ptr = NULL;
+  struct sockaddr_in dest_addr;
+
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  dest_addr.sin_family=AF_INET;
+  dest_addr.sin_port=htons(port);
+  dest_addr.sin_addr.s_addr = *(long*)(host->h_addr);
+  memset(&(dest_addr.sin_zero), '\0', 8);
+  tmp_ptr = inet_ntoa(dest_addr.sin_addr);
+  if (connect(sockfd, (struct sockaddr *) &dest_addr,
+              sizeof(struct sockaddr)) == -1) {
+    printf(out, "Error: Cannot connect to host %s [%s] on port %d.\n",
+             hostname, tmp_ptr, port);
+  }
+  return sockfd;
+}
+ */
+
 bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     string& serverAddress) {
+
+  // SSL_CTX *ctx;
+  // OpenSSL_add_all_algorithms();
+  // if(SSL_library_init() < 0)
+  // int server = create_socket();
+  // set root?
+  // SSL_set_fd(ssl, server);
+  // if ( SSL_connect(ssl) != 1 )
+  // cert = SSL_get_peer_certificate(ssl);
+  // SSL_free(ssl);
+  // close(server);
+  // X509_free(cert);
+  // SSL_CTX_free(ctx);
 
   // Parse policy cert and make it root of chain.
 
@@ -69,12 +103,29 @@ void TaoChannel::CloseTaoChannel() {
   fd_ = 0;
 }
 
+#define BUFSIZE 2048
 bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
-  return false;
+  string msg_buf;
+  if (!out.SerializeToString(&msg_buf)) {
+    return false;
+  }
+  int k = write(fd_, (byte*)msg_buf.data(), msg_buf.size());
+  return k > 0;
 }
 
 bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
-  return false;
+  byte buf[BUFSIZE];
+
+  int k = read(fd_, buf, BUFSIZE);
+  if (k <= 0) {
+    return false;
+  }
+  string in_msg;
+  in_msg.assign((const char*) buf, k);
+  if (!in->ParseFromString(in_msg)) {
+    return false;
+  }
+  return true;
 }
 
 TaoProgramData::TaoProgramData() {
@@ -125,7 +176,7 @@ bool TaoProgramData::ExtendName(string& subprin) {
 // if (unsealed->compare(bytes) != 0) { }
 
 bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, string& path,
-			      string& network, string& address) {
+                              string& network, string& address) {
 
   // Set tao and msg for later calls.
   msg_ = msg;
@@ -216,9 +267,9 @@ bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
 }
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
-			      string& attestation,
+                              string& attestation,
                               int size_endorse_cert, byte* endorse_cert,
-			      string* program_cert) {
+                              string* program_cert) {
   return true;
 }
 
@@ -265,7 +316,7 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
 }
 
 bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
-	string& network, string& address) {
+        string& network, string& address) {
 
   string sealed_key_file_name = path + "sealedsigningKey";
   string signer_cert_file_name = path + "signerCert";
@@ -323,7 +374,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Get Program Cert.
   if (!RequestDomainServiceCert(network, address, attestation, size_endorsement_cert_,
-	  endorsement_cert_, &program_cert)) {
+          endorsement_cert_, &program_cert)) {
     return false;
   }
   size_program_cert_= endorse_cert.size();

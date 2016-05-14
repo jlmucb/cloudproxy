@@ -47,7 +47,7 @@ AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
 LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -l/Domains/libauth.a
 
-dobj_simpleclient=$(O)/simpleclient_cc.o $(O)/taosupport.o
+dobj_simpleclient=$(O)/simpleclient_cc.o $(O)/taosupport.o $(O)/helpers.o
 
 all:	$(EXE_DIR)/simpleclient_cc.exe
 
@@ -60,6 +60,10 @@ clean:
 $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	@echo "linking simpleclient"
 	$(LINK) -o $(EXE_DIR)/tpm2_util.exe $(dobj_simpleclient) $(LDFLAGS)
+
+$(O)/helpers.o: $(S)/helpers.cc
+	@echo "compiling helpers.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/helpers.o $(S)/helpers.cc
 
 $(O)/taosupport.o: $(S)/taosupport.cc
 	@echo "compiling taosupport.cc"

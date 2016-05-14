@@ -30,6 +30,7 @@ using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
 
+#include "helpers.h"
 #include "taosupport.h"
 #include <taosupport.pb.h>
 #include <openssl/rsa.h>

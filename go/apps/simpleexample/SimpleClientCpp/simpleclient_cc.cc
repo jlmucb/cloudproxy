@@ -30,6 +30,7 @@ using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
 
+#include "helpers.h"
 #include "taosupport.h"
 
 DEFINE_string(config_file, "/Domains/domain.simpleexample/tao.config",

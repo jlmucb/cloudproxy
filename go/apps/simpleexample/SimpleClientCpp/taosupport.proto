@@ -26,3 +26,11 @@ message SimpleMessage {
   repeated bytes   data = 4;
 }
 
+message RsaPrivateKeyMessage {
+  optional bytes   m = 1;
+  optional bytes   e = 2;
+  optional bytes   d = 3;
+  optional bytes   p = 4;
+  optional bytes   q = 5;
+}
+

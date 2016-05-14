@@ -33,6 +33,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "taosupport.pb.h"
+
 #include <string>
 using std::string;
 
@@ -44,6 +46,11 @@ typedef long long unsigned int64;
 #endif
 
 void PrintBytes(int n, byte* in);
+bool ReadFile(string& file_name, string* out);
+bool WriteFile(string& file_name, string& in);
+
+bool SerializeRsaPrivateKey(RSA* rsa_key, string* out);
+RSA* DeserializeRsaPrivateKey(string& in);
 
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
             string& exponent, string& modulus, bool sign_request, X509_REQ* req);

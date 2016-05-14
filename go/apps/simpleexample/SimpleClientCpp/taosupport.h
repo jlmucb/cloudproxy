@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 #include <string>
+#include <stdlib.h>
 #include <taosupport.pb.h>
 
 #ifndef __TAOSUPPORT_H__
@@ -31,8 +32,8 @@ void PrintBytes(int n, byte* in);
 class TaoProgramData {
 public:
   bool  initialized_;
-  FDMessageChannel* msg_;
-  Tao* tao_;
+  tao::FDMessageChannel* msg_;
+  tao::Tao* tao_;
   string tao_name_;
   int size_policy_cert_;
   byte* policy_cert_;
@@ -46,7 +47,7 @@ public:
   TaoProgramData();
   ~TaoProgramData();
   void ClearProgramData();
-  bool InitTao(FDMessageChannel* msg, Tao* tao, string&, string&);
+  bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&);
   void Print();
 
   bool InitializeProgramKey(string& path, int keysize);

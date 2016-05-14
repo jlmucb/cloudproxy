@@ -19,7 +19,10 @@
 #include <openssl/rand.h>
 
 #include <string>
+#include <taosupport.pb.h>
+
 using std::string;
+using std::unique_ptr;
 
 //
 // Copyright 2015 Google Corporation, All Rights Reserved.
@@ -43,6 +46,64 @@ using std::string;
 
 void PrintBytes(int n, byte* in) {
   for (int i = 0; i < n; i++) printf("%02x", in[i]);
+}
+
+bool ReadFile(string& file_name, string* out) {
+  struct stat file_info;
+  int k = stat(file_name.c_str(), &file_info);
+  if (k != 0)
+    return false;
+  unique_ptr<byte> buf(new byte[file_info.st_size]);
+  int fd = open(file_name.c_str(), O_RDONLY);
+  if (fd < 0)
+    return false;
+  size_t n = read(fd, buf.get(), file_info.st_size);
+  out->assign((const char*)buf.get(), n);
+  close(fd);
+  return true;
+}
+
+bool WriteFile(string& file_name, string& in) {
+  int fd = creat(file_name.c_str(), S_IRWXU | S_IRWXG);
+  if (fd < 0)
+    return false;
+  int n = write(fd, (byte*)in.data(), in.size());
+  close(fd);
+  return n > 0;
+  return true;
+}
+
+bool SerializeRsaPrivateKey(RSA* rsa_key, string* out_buf) {
+  taosupport::RsaPrivateKeyMessage msg;
+
+  // Fill msg.
+  string* m_str = BN_to_bin(*rsa_key->n);
+  msg.set_m(*m_str);
+  string* e_str = BN_to_bin(*rsa_key->e);
+  msg.set_e(*e_str);
+  string* d_str = BN_to_bin(*rsa_key->d);
+  msg.set_d(*d_str);
+
+  if (!msg.SerializeToString(out_buf)) {
+    return false;
+  }
+  return true;
+}
+
+RSA* DeserializeRsaPrivateKey(string& in_buf) {
+  taosupport::RsaPrivateKeyMessage msg;
+
+  if (!msg.ParseFromString(in_buf)) {
+    return nullptr;
+  }
+  RSA* rsa_key = RSA_new();
+  if (msg.has_m())
+    rsa_key->n = bin_to_BN(msg.m().size(), (byte*)msg.m().data());
+  if (msg.has_e())
+    rsa_key->e = bin_to_BN(msg.e().size(), (byte*)msg.e().data());
+  if (msg.has_d())
+    rsa_key->d = bin_to_BN(msg.d().size(), (byte*)msg.d().data());
+  return rsa_key;
 }
 
 // standard buffer size

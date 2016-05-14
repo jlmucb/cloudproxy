@@ -108,16 +108,20 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   // Extend principal name, hash of policy cert identifies policy extension.
 
   // Retrieve extended name.
-  string taoName;
   if (!tao->GetTaoName(&tao_name_)) {
     return false;
   }
 
   // Get (or initialize) my symmetric keys.
+  if (!InitializeSymmetricKeys(path, 32)) {
+    return false;
+  }
 
   // Get (or initialize) my program key.
-
-  return false;
+  if (!InitializeProgramKey(path, 2048)) {
+    return false;
+  }
+  return true;
 }
 
 void TaoProgramData::Print() {
@@ -160,29 +164,18 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address, 
   return true;
 }
 
-bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize, int* key_size_out, byte* keys) {
+bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   return true;
 }
 
-bool TaoProgramData::InitializeProgramKey(string& path, int keysize, byte* keys, RSA** myKey) {
+bool TaoProgramData::InitializeProgramKey(string& path, int keysize) {
 /*
   string taoName;
   if (!MarshalSpeaksfor(fakeKey, taoName, &msf)) {
     return false;
   }
  */
-  // RSA* rsa_tpmKey = RSA_new();
-  //rsa_tpmKey->n = bin_to_BN((int)pub_out.publicArea.unique.rsa.size,
-  //                          pub_out.publicArea.unique.rsa.buffer);
-  // bool VerifyX509CertificateChain(certificate_chain_message& chain);
-  // bool GenerateX509CertificateRequest(x509_cert_request_parameters_message& params,
-  //                                  bool sign_request, X509_REQ* req);
-  // bool SignX509Certificate(RSA* signing_key, bool isCa, signing_instructions_message& signing_instructions,
-  //                       EVP_PKEY* signedKey,
-  //                       X509_REQ* req, bool verify_req_sig, X509* cert);
-  // BIGNUM* bin_to_BN(int len, byte* buf);
-  // string* BN_to_bin(BIGNUM& n)
-  //void print_internal_private_key(RSA& key);
+  // RSA* program_key_ = RSA_new();
   return true;
 }
 

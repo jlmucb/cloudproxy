@@ -36,7 +36,7 @@ public:
   string tao_name_;
   int size_policy_cert_;
   byte* policy_cert_;
-  // need a key representation
+  RSA* program_key_;
   int size_program_sym_key_;
   byte* program_sym_key_;
   int size_program_cert_;
@@ -49,10 +49,9 @@ public:
   bool InitTao(FDMessageChannel* msg, Tao* tao, string&, string&);
   void Print();
 
-  bool InitializeProgramKey(string& path, int keysize,
-          byte* keys, RSA** myKey);
-  bool InitializeSymmetricKeys(string& path, int keysize, int* key_size_out,
-          byte* keys);
+  bool InitializeProgramKey(string& path, int keysize);
+  bool InitializeSymmetricKeys(string& path, int keysize);
+
   bool Seal(string& to_seal, string* sealed);
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);

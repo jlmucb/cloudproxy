@@ -36,6 +36,8 @@
 #include "taosupport.pb.h"
 
 #include <string>
+#include <memory>
+
 using std::string;
 
 #define AESBLKSIZE 16

@@ -81,7 +81,6 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
   SSL_CTX *ssl_ctx;
   SSL* ssl;
 
-  // Parse policy cert and make it root of chain.
 
   // Open TLS channel with Program cert.
   ssl_ctx = SSL_CTX_new(TLSv1_client_method());
@@ -89,18 +88,31 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
     return false;
   }
 
-  // Set root and certificate.
-  // X509* myCert = nullptr;
+  // Set my cert chain aand private key
+  // First, parse policy cert and my cert.
+  SSL_CTX_clear_extra_chain_certs(ssl_ctx);
+  // SSL_CTX_add_extra_chain_cert(ssl_ctx, programCert);
+  // SSL_CTX_add_extra_chain_cert(ssl_ctx, caCert);
+
   // int use_cert = SSL_CTX_use_certificate(ssl_ctx, myCert);
   // int SSL_CTX_use_RSAPrivateKey(ssl_ctx, RSA *rsa);
-  // SSL_CTX_set_options(ssl, SSL_OP_SINGLE_DH_USE);
-  // int SSL_clear_chain_certs(SSL *ssl);
-  // int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509);
+
+  // Set root store and certificate.
+  X509_STORE *store = X509_STORE_new();
+  // X590_STORE_add_cert(store, caCert);
+  SSL_CTX_set_cert_store(ssl_ctx, store);
+  //(not used)  SSL_CTX_load_verify_locations(ctx, "", "");
+
+  // Setup verification stuff.
+  SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+  SSL_CTX_set_verify_depth(ssl_ctx, 3);
 
   SSL_set_fd(ssl, client);
   if (SSL_connect(ssl) != 1) {
     return false;
   }
+  // check connection?
+  
   X509* cert = SSL_get_peer_certificate(ssl);
   SSL_free(ssl);
   close(client);

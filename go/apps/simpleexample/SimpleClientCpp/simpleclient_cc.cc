@@ -57,14 +57,12 @@ int main(int argc, char **argv) {
 
   TaoProgramData client_program_data;
   TaoChannel client_channel;
-  string domainServerAddr = FLAGS_domain_server_host + ":" + FLAGS_domain_server_port;
-  string serverAddr = FLAGS_server_host + ":" + FLAGS_server_port;
 
   client_program_data.ClearProgramData();
 
   string tcp("tcp");
   if (!client_program_data.InitTao(msg.get(), tao.get(), FLAGS_config_file, FLAGS_client_path,
-				  tcp, domainServerAddr)) {
+				  tcp, FLAGS_domain_server_host, FLAGS_domain_server_port)) {
     printf("client_program_data.InitTao failed\n");
     return 1;
   }
@@ -73,7 +71,7 @@ int main(int argc, char **argv) {
   // Open the Tao Channel using the Program key.  This program does all the
   // standard channel negotiation and presents the secure server name after
   // negotiation is complete.
-  if (!client_channel.OpenTaoChannel(client_program_data, serverAddr)) {
+  if (!client_channel.OpenTaoChannel(client_program_data, FLAGS_server_host, FLAGS_server_port)) {
     printf("client_channel.OpenTaoChannel failed\n");
     return 1;
   }

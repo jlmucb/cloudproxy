@@ -33,14 +33,15 @@ using tao::TaoRPC;
 #include "helpers.h"
 #include "taosupport.h"
 
+// localhost is 127.0.0.1
 DEFINE_string(config_file, "/Domains/domain.simpleexample/tao.config",
               "path to tao configuration");
 DEFINE_string(client_path, "/Domains/domain.simpleexample/SimpleClient",
               "path to SimpleClient files");
 DEFINE_string(server_host, "localhost", "address for client/server");
 DEFINE_string(server_port, "8123", "port for client/server");
-DEFINE_string(domain_server_host, "localhost", "address for client/server");
-DEFINE_string(domain_server_port, "8123", "port for client/server");
+DEFINE_string(domain_server_host, "localhost", "address for domain service");
+DEFINE_string(domain_server_port, "8124", "port for domain service");
 
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, false);
@@ -56,13 +57,14 @@ int main(int argc, char **argv) {
 
   TaoProgramData client_program_data;
   TaoChannel client_channel;
+  string domainServerAddr = FLAGS_domain_server_host + ":" + FLAGS_domain_server_port;
   string serverAddr = FLAGS_server_host + ":" + FLAGS_server_port;
 
   client_program_data.ClearProgramData();
 
   string tcp("tcp");
   if (!client_program_data.InitTao(msg.get(), tao.get(), FLAGS_config_file, FLAGS_client_path,
-				  tcp, serverAddr)) {
+				  tcp, domainServerAddr)) {
     printf("client_program_data.InitTao failed\n");
     return 1;
   }

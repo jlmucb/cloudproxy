@@ -23,6 +23,12 @@
 #include "helpers.h"
 #include "taosupport.h"
 #include <taosupport.pb.h>
+
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+#include <openssl/ssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -51,46 +57,58 @@ TaoChannel::~TaoChannel() {
   fd_ = 0;
 }
 
-/*
-int create_socket(addr, port, BIO *out) {
+int create_socket(string& addr, string& port) {
   int sockfd;
-  char      *tmp_ptr = NULL;
+  char* tmp_ptr = NULL;
   struct sockaddr_in dest_addr;
 
+  uint16_t s_port = stoi(port);
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   dest_addr.sin_family=AF_INET;
-  dest_addr.sin_port=htons(port);
-  dest_addr.sin_addr.s_addr = *(long*)(host->h_addr);
-  memset(&(dest_addr.sin_zero), '\0', 8);
+  dest_addr.sin_port = htons(s_port);
+  inet_aton(addr.c_str(), &dest_addr.sin_addr);
   tmp_ptr = inet_ntoa(dest_addr.sin_addr);
   if (connect(sockfd, (struct sockaddr *) &dest_addr,
               sizeof(struct sockaddr)) == -1) {
-    printf(out, "Error: Cannot connect to host %s [%s] on port %d.\n",
-             hostname, tmp_ptr, port);
+    printf("Error: Cannot connect to host\n");
   }
   return sockfd;
 }
- */
 
 bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
-                    string& serverAddress) {
-
-  // SSL_CTX *ctx;
-  // OpenSSL_add_all_algorithms();
-  // if(SSL_library_init() < 0)
-  // int server = create_socket();
-  // set root?
-  // SSL_set_fd(ssl, server);
-  // if ( SSL_connect(ssl) != 1 )
-  // cert = SSL_get_peer_certificate(ssl);
-  // SSL_free(ssl);
-  // close(server);
-  // X509_free(cert);
-  // SSL_CTX_free(ctx);
+                    string& serverAddress, string& port) {
+  int client = create_socket(serverAddress, port);
+  SSL_CTX *ssl_ctx;
+  SSL* ssl;
 
   // Parse policy cert and make it root of chain.
 
   // Open TLS channel with Program cert.
+  ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+  if ((ssl= SSL_new(ssl_ctx)) == nullptr) {
+    return false;
+  }
+
+  // Set root and certificate.
+  // X509* myCert = nullptr;
+  // int use_cert = SSL_CTX_use_certificate(ssl_ctx, myCert);
+  // int SSL_CTX_use_RSAPrivateKey(ssl_ctx, RSA *rsa);
+  // SSL_CTX_set_options(ssl, SSL_OP_SINGLE_DH_USE);
+  // int SSL_clear_chain_certs(SSL *ssl);
+  // int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509);
+
+  SSL_set_fd(ssl, client);
+  if (SSL_connect(ssl) != 1) {
+    return false;
+  }
+  X509* cert = SSL_get_peer_certificate(ssl);
+  SSL_free(ssl);
+  close(client);
+  X509_free(cert);
+  SSL_CTX_free(ssl_ctx);
+  // SSL_read(ssl, buffer, length);
+
+  // TODO: put these in the structure
 
   // Get peer name from organizational unit.
 
@@ -176,7 +194,7 @@ bool TaoProgramData::ExtendName(string& subprin) {
 // if (unsealed->compare(bytes) != 0) { }
 
 bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, string& path,
-                              string& network, string& address) {
+                              string& network, string& address, string& port) {
 
   // Set tao and msg for later calls.
   msg_ = msg;
@@ -227,7 +245,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   }
 
   // Get (or initialize) my program key.
-  if (!InitializeProgramKey(path, 2048, network, address)) {
+  if (!InitializeProgramKey(path, 2048, network, address, port)) {
     return false;
   }
   return true;
@@ -267,9 +285,41 @@ bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
 }
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
-                              string& attestation,
+                              string& port, string& attestation,
                               int size_endorse_cert, byte* endorse_cert,
                               string* program_cert) {
+  int client = create_socket(address, port);
+
+
+  SSL_CTX *ssl_ctx;
+  SSL* ssl;
+
+  // Parse policy cert and make it root of chain.
+
+  // Open TLS channel with Program cert.
+  ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+  if ((ssl= SSL_new(ssl_ctx)) == nullptr) {
+    return false;
+  }
+
+  // Set root and certificate.
+  // X509* myCert = nullptr;
+  // int use_cert = SSL_CTX_use_certificate(ssl_ctx, myCert);
+  // int SSL_CTX_use_RSAPrivateKey(ssl_ctx, RSA *rsa);
+  // SSL_CTX_set_options(ssl, SSL_OP_SINGLE_DH_USE);
+  // int SSL_clear_chain_certs(SSL *ssl);
+  // int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509);
+
+  SSL_set_fd(ssl, client);
+  if (SSL_connect(ssl) != 1) {
+    return false;
+  }
+  X509* cert = SSL_get_peer_certificate(ssl);
+  SSL_free(ssl);
+  close(client);
+  X509_free(cert);
+  SSL_CTX_free(ssl_ctx);
+  // SSL_read(ssl, buffer, length);
   return true;
 }
 
@@ -316,7 +366,7 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
 }
 
 bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
-        string& network, string& address) {
+        string& network, string& address, string& port) {
 
   string sealed_key_file_name = path + "sealedsigningKey";
   string signer_cert_file_name = path + "signerCert";
@@ -373,7 +423,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   }
 
   // Get Program Cert.
-  if (!RequestDomainServiceCert(network, address, attestation, size_endorsement_cert_,
+  if (!RequestDomainServiceCert(network, address, port, attestation, size_endorsement_cert_,
           endorsement_cert_, &program_cert)) {
     return false;
   }

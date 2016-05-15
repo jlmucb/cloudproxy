@@ -51,18 +51,18 @@ public:
   ~TaoProgramData();
   void ClearProgramData();
   bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&,
-               string& network, string& address);
+               string& network, string& address, string& port);
   void Print();
 
   bool InitializeProgramKey(string& path, int keysize,
-                            string& network, string& address);
+                            string& network, string& address, string& port);
   bool InitializeSymmetricKeys(string& path, int keysize);
   bool ExtendName(string& subprin);
 
   bool Seal(string& to_seal, string* sealed);
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
-  bool RequestDomainServiceCert(string& network, string& address,
+  bool RequestDomainServiceCert(string& network, string& address, string& port,
           string& attestation, int size_endorse_cert, byte* endorse_cert,
           string* program_cert);
 };
@@ -75,7 +75,7 @@ public:
   TaoChannel();
   ~TaoChannel();
   bool OpenTaoChannel(TaoProgramData& client_program_data,
-                      string& serverAddress);
+                      string& serverAddress, string& port);
   void CloseTaoChannel();
   bool SendRequest(taosupport::SimpleMessage& out);
   bool GetRequest(taosupport::SimpleMessage* in);

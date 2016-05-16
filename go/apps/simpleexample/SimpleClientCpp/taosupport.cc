@@ -232,12 +232,11 @@ bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& port, string& attestation,
-                              string& policy_cert,
                               string& endorsement_cert,
                               string* program_cert) {
 
   if (policyCertificate_ == nullptr) {
-    // Parse policy certificate.
+    return false;
   }
 
   // Construct temporary channel key.
@@ -357,7 +356,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Get Program Cert.
   if (!RequestDomainServiceCert(network, address, port, attestation, endorse_cert,
-          policy_cert_, &program_cert_)) {
+          &program_cert_)) {
     return false;
   }
 

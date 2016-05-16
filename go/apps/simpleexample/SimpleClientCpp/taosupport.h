@@ -67,7 +67,7 @@ public:
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
   bool RequestDomainServiceCert(string& network, string& address, string& port,
-          string& attestation, string& policy_cert, string& endorsement_cert,
+          string& attestation, string& endorsement_cert,
           string* program_cert);
 };
 

@@ -29,6 +29,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <openssl/ssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -71,5 +72,29 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
                    int* out_size, byte* out);
 bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
                    int* out_size, byte* out);
+
+
+class SslChannel {
+private:
+  int fd_;
+  SSL_CTX *ssl_ctx_;
+  SSL* ssl_;
+  X509* peer_cert_;
+  X509_STORE *store_;
+public:
+  SslChannel();
+  ~SslChannel();
+
+  int CreateSocket(string& addr, string& port);
+  bool InitSslChannel(string& network, string& address, string& port,
+                                X509* caCert, X509* programCert, 
+                                RSA* privateKey, bool verify = true);
+  int Read(int size, byte* buf);
+  int Write(int size, byte* buf);
+  void Close();
+
+  X509* GetPeerCert();
+};
+
 #endif
 

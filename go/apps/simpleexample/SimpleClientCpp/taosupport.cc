@@ -24,10 +24,6 @@
 #include "taosupport.h"
 #include <taosupport.pb.h>
 
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-
 #include <openssl/ssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -57,70 +53,11 @@ TaoChannel::~TaoChannel() {
   fd_ = 0;
 }
 
-int create_socket(string& addr, string& port) {
-  int sockfd;
-  char* tmp_ptr = NULL;
-  struct sockaddr_in dest_addr;
-
-  uint16_t s_port = stoi(port);
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  dest_addr.sin_family=AF_INET;
-  dest_addr.sin_port = htons(s_port);
-  inet_aton(addr.c_str(), &dest_addr.sin_addr);
-  tmp_ptr = inet_ntoa(dest_addr.sin_addr);
-  if (connect(sockfd, (struct sockaddr *) &dest_addr,
-              sizeof(struct sockaddr)) == -1) {
-    printf("Error: Cannot connect to host\n");
-  }
-  return sockfd;
-}
-
 bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     string& serverAddress, string& port) {
-  int client = create_socket(serverAddress, port);
-  SSL_CTX *ssl_ctx;
-  SSL* ssl;
-
-
   // Open TLS channel with Program cert.
-  ssl_ctx = SSL_CTX_new(TLSv1_client_method());
-  if ((ssl= SSL_new(ssl_ctx)) == nullptr) {
-    return false;
-  }
 
-  // Set my cert chain aand private key
-  // First, parse policy cert and my cert.
-  SSL_CTX_clear_extra_chain_certs(ssl_ctx);
-  // SSL_CTX_add_extra_chain_cert(ssl_ctx, programCert);
-  // SSL_CTX_add_extra_chain_cert(ssl_ctx, caCert);
-
-  // int use_cert = SSL_CTX_use_certificate(ssl_ctx, myCert);
-  // int SSL_CTX_use_RSAPrivateKey(ssl_ctx, RSA *rsa);
-
-  // Set root store and certificate.
-  X509_STORE *store = X509_STORE_new();
-  // X590_STORE_add_cert(store, caCert);
-  SSL_CTX_set_cert_store(ssl_ctx, store);
-  //(not used)  SSL_CTX_load_verify_locations(ctx, "", "");
-
-  // Setup verification stuff.
-  SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-  SSL_CTX_set_verify_depth(ssl_ctx, 3);
-
-  SSL_set_fd(ssl, client);
-  if (SSL_connect(ssl) != 1) {
-    return false;
-  }
-  // check connection?
-  
-  X509* cert = SSL_get_peer_certificate(ssl);
-  SSL_free(ssl);
-  close(client);
-  X509_free(cert);
-  SSL_CTX_free(ssl_ctx);
-  // SSL_read(ssl, buffer, length);
-
-  // TODO: put these in the structure
+  // Parse policy cert and program cert.
 
   // Get peer name from organizational unit.
 
@@ -300,38 +237,6 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& port, string& attestation,
                               int size_endorse_cert, byte* endorse_cert,
                               string* program_cert) {
-  int client = create_socket(address, port);
-
-
-  SSL_CTX *ssl_ctx;
-  SSL* ssl;
-
-  // Parse policy cert and make it root of chain.
-
-  // Open TLS channel with Program cert.
-  ssl_ctx = SSL_CTX_new(TLSv1_client_method());
-  if ((ssl= SSL_new(ssl_ctx)) == nullptr) {
-    return false;
-  }
-
-  // Set root and certificate.
-  // X509* myCert = nullptr;
-  // int use_cert = SSL_CTX_use_certificate(ssl_ctx, myCert);
-  // int SSL_CTX_use_RSAPrivateKey(ssl_ctx, RSA *rsa);
-  // SSL_CTX_set_options(ssl, SSL_OP_SINGLE_DH_USE);
-  // int SSL_clear_chain_certs(SSL *ssl);
-  // int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509);
-
-  SSL_set_fd(ssl, client);
-  if (SSL_connect(ssl) != 1) {
-    return false;
-  }
-  X509* cert = SSL_get_peer_certificate(ssl);
-  SSL_free(ssl);
-  close(client);
-  X509_free(cert);
-  SSL_CTX_free(ssl_ctx);
-  // SSL_read(ssl, buffer, length);
   return true;
 }
 

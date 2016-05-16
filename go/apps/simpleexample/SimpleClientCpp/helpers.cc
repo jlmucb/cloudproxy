@@ -7,7 +7,12 @@
 #include <string.h>
 #include <errno.h>
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 #include <helpers.h>
+
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/ssl.h>
@@ -471,5 +476,142 @@ bool VerifyX509CertificateChain(X509* cacert, X509* cert) {
   X509_STORE_add_cert(store, cacert);
   X509_STORE_CTX_init(ctx, store, cert, NULL);
   return X509_verify_cert(ctx) == 1;
+}
+
+SslChannel::SslChannel() {
+  fd_ = -1;
+  ssl_ctx_ = nullptr;
+  ssl_ = nullptr;
+  peer_cert_ = nullptr;
+  store_ = nullptr;
+}
+
+SslChannel::~SslChannel() {
+  if (fd_ > 0) {
+    close(fd_);
+  }
+  fd_ = -1;
+  if (ssl_ != nullptr) {
+    SSL_free(ssl_);
+  }
+  ssl_ = nullptr;
+  if (peer_cert_ != nullptr) {
+    X509_free(peer_cert_);
+  }
+  peer_cert_ = nullptr;
+  if (ssl_ctx_ != nullptr) {
+    SSL_CTX_free(ssl_ctx_);
+  }
+  ssl_ctx_ = nullptr;
+  if (store_ != nullptr) {
+    X509_STORE_free(store_);
+  }
+  store_ = nullptr;
+}
+
+int SslChannel::CreateSocket(string& addr, string& port) {
+  int sockfd;
+  char* tmp_ptr = nullptr;
+  struct sockaddr_in dest_addr;
+
+  uint16_t s_port = stoi(port);
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  dest_addr.sin_family=AF_INET;
+  dest_addr.sin_port = htons(s_port);
+  inet_aton(addr.c_str(), &dest_addr.sin_addr);
+  tmp_ptr = inet_ntoa(dest_addr.sin_addr);
+  if (connect(sockfd, (struct sockaddr *) &dest_addr,
+              sizeof(struct sockaddr)) == -1) {
+    printf("Error: Cannot connect to host\n");
+  }
+  return sockfd;
+}
+
+bool SslChannel::InitSslChannel(string& network, string& address, string& port,
+        X509* policyCert, X509* programCert, RSA* privateKey, bool verify) {
+
+  fd_ = CreateSocket(address, port);
+  if(fd_ <=0) {
+    return false;
+  }
+
+  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
+  if (ssl_ctx_ == nullptr) {
+    return false;
+  }
+  ssl_ = SSL_new(ssl_ctx_);
+  if (ssl_ == nullptr) {
+    return false;
+  }
+
+  // Set my cert chain and private key.
+  SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
+  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+  SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
+  if (SSL_CTX_use_RSAPrivateKey(ssl_ctx_, privateKey) <= 0) {
+    return false;
+  }
+
+  // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
+
+  // Set root store and certificate.
+  store_ = X509_STORE_new();
+  if (store_ == nullptr) {
+    return false;
+  }
+  X509_STORE_add_cert(store_, policyCert);
+  SSL_CTX_set_cert_store(ssl_ctx_, store_);
+
+  // Setup verification stuff.
+  if (verify) {
+    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+  } else {
+  }
+
+  // Set fd.
+  SSL_set_fd(ssl_, fd_);
+  if (SSL_connect(ssl_) != 1) {
+    return false;
+  }
+  // check connection?
+  
+  peer_cert_ = SSL_get_peer_certificate(ssl_);
+  return true;
+}
+
+int SslChannel::Read(int size, byte* buf) {
+  return SSL_read(ssl_, buf, size);
+}
+
+int SslChannel::Write(int size, byte* buf) {
+  return SSL_write(ssl_, buf, size);
+}
+
+void SslChannel::Close() {
+  if (fd_ > 0) {
+    close(fd_);
+  }
+  fd_ = -1;
+  if (ssl_ != nullptr) {
+    SSL_free(ssl_);
+  }
+  ssl_ = nullptr;
+  if (peer_cert_ != nullptr) {
+    X509_free(peer_cert_);
+  }
+  peer_cert_ = nullptr;
+  if (ssl_ctx_ != nullptr) {
+    SSL_CTX_free(ssl_ctx_);
+  }
+  ssl_ctx_ = nullptr;
+  if (store_ != nullptr) {
+    X509_STORE_free(store_);
+  }
+  store_ = nullptr;
+}
+
+X509* SslChannel::GetPeerCert() {
+  return peer_cert_;
 }
 

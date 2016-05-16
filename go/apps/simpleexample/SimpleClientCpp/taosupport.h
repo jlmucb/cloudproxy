@@ -70,7 +70,7 @@ public:
 class TaoChannel {
 public:
   string server_name_;
-  int fd_;
+  SslChannel peer_channel_;
 
   TaoChannel();
   ~TaoChannel();

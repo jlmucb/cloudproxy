@@ -46,11 +46,9 @@ void PrintBytes(int n, byte* in) {
 }
 
 TaoChannel::TaoChannel() {
-  fd_ = 0;
 }
 
 TaoChannel::~TaoChannel() {
-  fd_ = 0;
 }
 
 bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
@@ -65,25 +63,24 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
 }
 
 void TaoChannel::CloseTaoChannel() {
-  if (fd_ > 0)
-    close(fd_);
-  fd_ = 0;
+  peer_channel_.Close();
 }
 
 #define BUFSIZE 2048
 bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
   string msg_buf;
+
   if (!out.SerializeToString(&msg_buf)) {
     return false;
   }
-  int k = write(fd_, (byte*)msg_buf.data(), msg_buf.size());
+  int k = peer_channel_.Write(msg_buf.size(), (byte*)msg_buf.data());
   return k > 0;
 }
 
 bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
   byte buf[BUFSIZE];
 
-  int k = read(fd_, buf, BUFSIZE);
+  int k = peer_channel_.Read(BUFSIZE, buf);
   if (k <= 0) {
     return false;
   }
@@ -215,7 +212,6 @@ void TaoProgramData::Print() {
 }
 
 void TaoChannel::Print() {
-  printf("fd: %d\n", fd_);
   printf("Server name: %s\n", server_name_.c_str());
 }
 
@@ -237,6 +233,9 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& port, string& attestation,
                               int size_endorse_cert, byte* endorse_cert,
                               string* program_cert) {
+
+  SslChannel domainChannel;
+
   return true;
 }
 

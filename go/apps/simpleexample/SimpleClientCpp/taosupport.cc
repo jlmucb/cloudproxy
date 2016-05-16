@@ -99,6 +99,8 @@ TaoProgramData::TaoProgramData() {
   size_program_sym_key_ = 0;
   program_sym_key_ = nullptr;
   policy_key_ = nullptr;
+  programCertificate_ = nullptr;
+  policyCertificate_ = nullptr;
 }
 
 TaoProgramData::~TaoProgramData() {
@@ -123,6 +125,15 @@ void TaoProgramData::ClearProgramData() {
     memset(program_sym_key_, 0, size_program_sym_key_);
     free(program_sym_key_);
   }
+
+  if (policyCertificate_ != nullptr) {
+    // free it.
+  }
+  policyCertificate_ = nullptr;
+  if (programCertificate_ != nullptr) {
+    // free it.
+  }
+  programCertificate_ = nullptr;
 }
 
 bool TaoProgramData::ExtendName(string& subprin) {
@@ -225,11 +236,25 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& endorsement_cert,
                               string* program_cert) {
 
+  if (policyCertificate_ == nullptr) {
+    // Parse policy certificate.
+  }
+
+  // Construct temporary channel key.
+  RSA* tmpChannelKey = nullptr;
+  X509* tmpChannelCert = nullptr;
   SslChannel domainChannel;
 
   if (!domainChannel.InitSslChannel(network, address, port,
-        policyCertificate_, programCertificate_, program_key_, false)) {
+        policyCertificate_, tmpChannelCert, tmpChannelKey, false)) {
+    return false;
   }
+
+  // Format request and send it.
+
+  // Get response
+
+  // Fill progam cert.
   return true;
 }
 

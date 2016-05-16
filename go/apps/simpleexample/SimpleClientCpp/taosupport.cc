@@ -185,9 +185,8 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
     return false;
   }
 
-  byte* pc = (byte*)policy_cert_.data();
-
   // Parse policy cert.
+  byte* pc = (byte*)policy_cert_.data();
   X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc, policy_cert_.size());
   if (parsed_policy_cert == nullptr) {
     return false;
@@ -274,14 +273,28 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
 
   // Self signed cert.
   X509* tmpChannelCert = nullptr;
-  /*
-  X509* cert = nullptr;
-  X509_REQ* req = nullptr;
+  X509_REQ* req = X509_REQ_new();;
+  X509* cert = X509_new();
+  string key_type("RSA");
+  string common_name("Fred");
+  string issuer("Self");
+  string purpose("signing");
+
+  string* modulus = nullptr; // FIX BN_to_bin(BIGNUM& n);
+  string* exponent = nullptr; // FIX BN_to_bin(BIGNUM& n);
+  EVP_PKEY* self = new EVP_PKEY();
+  EVP_PKEY_assign_RSA(self, tmpChannelKey);
+  if (!GenerateX509CertificateRequest(key_type, common_name, *exponent,
+      *modulus, false, req)) {
+    printf("Can't generate x509 request\n");
+    return false;
+  }
   if (!SignX509Certificate(tmpChannelKey, true, true,
-                         "self", "signing", 86400,
-                         EVP_PKEY* signedKey,
-                         req, cert);
-   */
+                         issuer, purpose, 86400,
+                         self, req, false, cert)) {
+    printf("Can't sign x509 request\n");
+    return false;
+  }
 
   SslChannel domainChannel;
 
@@ -290,11 +303,11 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
     return false;
   }
 
-  // Format request and send it.
+  // Format request and send it to Domain service and get response.
+  // int bytes_written = domainChannel.Write();
+  // int bytes_read = domainChannel.Read();
 
-  // Get response
-
-  // Fill progam cert.
+  // Fill in program cert.
   return true;
 }
 

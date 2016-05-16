@@ -95,16 +95,10 @@ bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
 TaoProgramData::TaoProgramData() {
   initialized_ = false;
   tao_ = nullptr;
-  size_policy_cert_ = 0;
-  policy_cert_ = nullptr;
   program_key_ = nullptr;
   size_program_sym_key_ = 0;
   program_sym_key_ = nullptr;
-  size_program_cert_ = 0;
-  program_cert_ = 0;
   policy_key_ = nullptr;
-  size_endorsement_cert_ = 0;
-  endorsement_cert_ = nullptr;
 }
 
 TaoProgramData::~TaoProgramData() {
@@ -114,13 +108,11 @@ TaoProgramData::~TaoProgramData() {
 void TaoProgramData::ClearProgramData() {
   initialized_ = false;
   tao_name_.clear();
-  if (policy_cert_ != nullptr) {
-    free(policy_cert_);
-  }
-  tao_ = nullptr;
-  size_policy_cert_ = 0;
-  policy_cert_ = nullptr;
+  policy_cert_.clear();
 
+  tao_ = nullptr;
+
+  // TODO: erase key first.
   // Clear private key.
   if (program_key_ != nullptr) {
     RSA_free(program_key_);
@@ -154,13 +146,11 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   if (ReadFile(policy_cert_file, &cert)) {
     return false;
   }
-  size_policy_cert_ = cert.size();
-  policy_cert_ = (byte*) malloc(size_policy_cert_);
-  memcpy(policy_cert_, cert.data(), size_policy_cert_);
+
+  byte* pc = (byte*)policy_cert_.data();
 
   // Parse policy cert.
-  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&policy_cert_,
-                         size_policy_cert_);
+  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc, policy_cert_.size());
   if (parsed_policy_cert == nullptr) {
     return false;
   }
@@ -204,10 +194,10 @@ void TaoProgramData::Print() {
   }
   printf("Program object is NOT initialized\n");
   printf("Tao name: %s\n", tao_name_.c_str());
-  printf("Policy cert: ");PrintBytes(size_policy_cert_, policy_cert_);printf("\n");
+  printf("Policy cert: ");PrintBytes(policy_cert_.size(), (byte*)policy_cert_.data());printf("\n");
   printf("Program key: "); printf("TODO"); printf("\n");
   printf("Sym key: ");PrintBytes(size_program_sym_key_, program_sym_key_);printf("\n");
-  printf("Program cert: ");PrintBytes(size_program_cert_, program_cert_);printf("\n");
+  printf("Program cert: ");PrintBytes(program_cert_.size(), (byte*)program_cert_.data());printf("\n");
   printf("Program path: %s\n", program_file_path_.c_str());
 }
 
@@ -231,11 +221,15 @@ bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& port, string& attestation,
-                              int size_endorse_cert, byte* endorse_cert,
+                              string& policy_cert,
+                              string& endorsement_cert,
                               string* program_cert) {
 
   SslChannel domainChannel;
 
+  if (!domainChannel.InitSslChannel(network, address, port,
+        policyCertificate_, programCertificate_, program_key_, false)) {
+  }
   return true;
 }
 
@@ -286,6 +280,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   string sealed_key_file_name = path + "sealedsigningKey";
   string signer_cert_file_name = path + "signerCert";
+  string policy_cert_file_name = path + "policyCert";
   string sealed_key;
   string unsealed_key;
   string program_cert;
@@ -300,9 +295,9 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
     program_key_ = DeserializeRsaPrivateKey(unsealed_key);
 
     // Fill the policy cert.
-    size_program_cert_ = program_cert.size();
-    program_cert_ = (byte*) malloc(size_program_cert_);;
-    memcpy(program_cert_, program_cert.data(), size_program_cert_);
+    if (ReadFile(policy_cert_file_name, &policy_cert_)) {
+      return false;
+    }
     return true;
   }
 
@@ -320,9 +315,6 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   if (ReadFile(endorsement_cert_file_name, &endorse_cert)) {
     return false;
   }
-  size_endorsement_cert_= endorse_cert.size();
-  endorsement_cert_ = (byte*) malloc(size_endorsement_cert_);;
-  memcpy(endorsement_cert_, endorse_cert.data(), size_endorsement_cert_);
 
   // Construct a delegation statement.
   // TODO: make serialized key.
@@ -339,13 +331,10 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   }
 
   // Get Program Cert.
-  if (!RequestDomainServiceCert(network, address, port, attestation, size_endorsement_cert_,
-          endorsement_cert_, &program_cert)) {
+  if (!RequestDomainServiceCert(network, address, port, attestation, endorse_cert,
+          policy_cert_, &program_cert_)) {
     return false;
   }
-  size_program_cert_= endorse_cert.size();
-  program_cert_ = (byte*) malloc(size_program_cert_);
-  memcpy(program_cert_, program_cert.data(), size_program_cert_);
 
   // Save the program cert.
   if (WriteFile(signer_cert_file_name, program_cert)) {

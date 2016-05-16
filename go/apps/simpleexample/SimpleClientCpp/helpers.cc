@@ -530,11 +530,11 @@ int SslChannel::CreateSocket(string& addr, string& port) {
 bool SslChannel::InitSslChannel(string& network, string& address, string& port,
         X509* policyCert, X509* programCert, RSA* privateKey, bool verify) {
 
+  // Create socket and contexts.
   fd_ = CreateSocket(address, port);
   if(fd_ <=0) {
     return false;
   }
-
   ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
   if (ssl_ctx_ == nullptr) {
     return false;

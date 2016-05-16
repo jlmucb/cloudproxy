@@ -34,17 +34,21 @@ public:
   bool  initialized_;
   tao::FDMessageChannel* msg_;
   tao::Tao* tao_;
+
+  int endorsement_cert_;
+
   string tao_name_;
-  int size_policy_cert_;
-  byte* policy_cert_;
+
+  string policy_cert_;
   RSA* policy_key_;
-  int size_endorsement_cert_;
-  byte* endorsement_cert_;
+  X509* policyCertificate_;
+
+  // Tao data.
   RSA* program_key_;
+  string program_cert_;
+  X509* programCertificate_;
   int size_program_sym_key_;
   byte* program_sym_key_;
-  int size_program_cert_;
-  byte* program_cert_;
   string program_file_path_;
 
   TaoProgramData();
@@ -63,7 +67,7 @@ public:
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
   bool RequestDomainServiceCert(string& network, string& address, string& port,
-          string& attestation, int size_endorse_cert, byte* endorse_cert,
+          string& attestation, string& policy_cert, string& endorsement_cert,
           string* program_cert);
 };
 

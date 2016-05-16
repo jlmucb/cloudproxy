@@ -53,13 +53,42 @@ TaoChannel::~TaoChannel() {
 
 bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     string& serverAddress, string& port) {
-  // Open TLS channel with Program cert.
 
   // Parse policy cert and program cert.
+  if (client_program_data.policy_cert_.size() ==0 ) {
+    return false;
+  }
+  if (client_program_data.policyCertificate_ == nullptr) {
+    byte* pc = (byte*)client_program_data.policy_cert_.data();
+    client_program_data.policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
+          client_program_data.policy_cert_.size());
+    if (client_program_data.policyCertificate_ == nullptr) {
+      return false;
+    }
+  }
+  if (client_program_data.program_cert_.size() ==0 ) {
+    return false;
+  }
+  if (client_program_data.programCertificate_ == nullptr) {
+    byte* pc = (byte*)client_program_data.program_cert_.data();
+    client_program_data.policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
+          client_program_data.program_cert_.size());
+    if (client_program_data.programCertificate_ == nullptr) {
+      return false;
+    }
+  }
+
+  // Open TLS channel with Program cert.
+  string network("tcp");
+  if (!peer_channel_.InitSslChannel(network, serverAddress, port,
+                    client_program_data.policyCertificate_,
+                    client_program_data.programCertificate_,
+                    client_program_data.program_key_, true)) {
+  }
 
   // Get peer name from organizational unit.
 
-  return false;
+  return true;
 }
 
 void TaoChannel::CloseTaoChannel() {
@@ -149,10 +178,8 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   msg_ = msg;
   tao_ = tao;
 
-  // Load domain
+  // Read policy cert.
   string policy_cert_file = path + "policyCert";
-
-  // Get policy cert.
   string cert;
   if (ReadFile(policy_cert_file, &cert)) {
     return false;
@@ -240,8 +267,22 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   }
 
   // Construct temporary channel key.
-  RSA* tmpChannelKey = nullptr;
+  RSA* tmpChannelKey = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
+  if (tmpChannelKey == nullptr) {
+    return false;
+  }
+
+  // Self signed cert.
   X509* tmpChannelCert = nullptr;
+  /*
+  X509* cert = nullptr;
+  X509_REQ* req = nullptr;
+  if (!SignX509Certificate(tmpChannelKey, true, true,
+                         "self", "signing", 86400,
+                         EVP_PKEY* signedKey,
+                         req, cert);
+   */
+
   SslChannel domainChannel;
 
   if (!domainChannel.InitSslChannel(network, address, port,
@@ -309,6 +350,18 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   string unsealed_key;
   string program_cert;
 
+
+  // Read and parse policy cert.
+  if (!ReadFile(policy_cert_file_name, &policy_cert_)) {
+    return false;
+  }
+  byte* pc = (byte*)policy_cert_.data();
+  policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
+        policy_cert_.size());
+  if (policyCertificate_ == nullptr) {
+    return false;
+  }
+
   if (ReadFile(sealed_key_file_name, &sealed_key) &&
       ReadFile(signer_cert_file_name, &program_cert)) {
     if (!Unseal(sealed_key, &unsealed_key)) {
@@ -317,11 +370,6 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
     }
     // Deserialize the key.
     program_key_ = DeserializeRsaPrivateKey(unsealed_key);
-
-    // Fill the policy cert.
-    if (ReadFile(policy_cert_file_name, &policy_cert_)) {
-      return false;
-    }
     return true;
   }
 

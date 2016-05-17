@@ -44,10 +44,13 @@ using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
 
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/stubs/common.h>
 using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::CodedOutputStream;
-// using google::protobuf::io::StringOutputStream;
-// using google::protobuf::io::ArrayInputStream;
+using google::protobuf::io::StringOutputStream;
+using google::protobuf::io::ArrayInputStream;
 
 #define BUFSIZE 4096
 
@@ -226,13 +229,11 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   tao::Prin p("key", tao::make_unique<tao::Bytes>("These are not key bytes"),
          tao::make_unique<tao::SubPrin>(std::move(v)));
   string subprin;
-  /*
   {
     StringOutputStream raw_output_stream(&subprin);
     CodedOutputStream output_stream(&raw_output_stream);
     p.Marshal(&output_stream);
   }
-   */
   if (!ExtendName(subprin)) {
     return false;
   }

@@ -30,6 +30,8 @@
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
 
+#include "ca.pb.h"
+
 using std::string;
 using std::unique_ptr;
 
@@ -46,6 +48,7 @@ void PrintBytes(int n, byte* in) {
 }
 
 TaoChannel::TaoChannel() {
+  peerCertificate_ = nullptr;
 }
 
 TaoChannel::~TaoChannel() {
@@ -87,6 +90,15 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
   }
 
   // Get peer name from organizational unit.
+  peerCertificate_ = peer_channel_.GetPeerCert();
+  if (peerCertificate_ != nullptr) {
+    X509_NAME* name = X509_get_subject_name(peerCertificate_);
+    int nid = OBJ_txt2nid("OU");
+    char buf[4096];
+    if (X509_NAME_get_text_by_NID(name, nid, buf, 4096) == 1) {
+      peer_name_ = buf ;
+    }
+  }
 
   return true;
 }
@@ -239,7 +251,7 @@ void TaoProgramData::Print() {
 }
 
 void TaoChannel::Print() {
-  printf("Server name: %s\n", server_name_.c_str());
+  printf("Peer name: %s\n", peer_name_.c_str());
 }
 
 bool TaoProgramData::Attest(string& to_attest, string* attested) {
@@ -257,7 +269,7 @@ bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
 }
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
-                              string& port, string& attestation,
+                              string& port, string& attestation_string,
                               string& endorsement_cert,
                               string* program_cert) {
 
@@ -303,11 +315,35 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
     return false;
   }
 
+
   // Format request and send it to Domain service and get response.
-  // int bytes_written = domainChannel.Write();
-  // int bytes_read = domainChannel.Read();
+  tao::CARequest request;
+  tao::CAResponse response;
+  tao::Attestation attestation;
+  attestation.ParseFromString(attestation_string);
+  request.set_type(tao::CAType::ATTESTATION);
+  request.set_allocated_attestation(&attestation);
+  string request_buf;
+  request.SerializeToString(&request_buf);
+  int bytes_written = domainChannel.Write(request_buf.size(), (byte*)request_buf.data());
+  if (bytes_written <= 0) {
+    return false;
+  }
+  byte read_buf[4096];
+  string response_buf;
+  int bytes_read = domainChannel.Read(4096, read_buf);
+  if (bytes_read <= 0) {
+    return false;
+  }
+  if (!response.ParseFromString(response_buf)) {
+    return false;
+  }
+  if (response.type() != tao::CAType::ATTESTATION) {
+    return false;
+  }
 
   // Fill in program cert.
+  program_cert_ = response.attestation().serialized_statement();
   return true;
 }
 
@@ -405,18 +441,18 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   // TODO: make serialized key.
   string serialized_key;
   string msf;
-  string attestation;
   if (!MarshalSpeaksfor(serialized_key, tao_name_, &msf)) {
     return false;
   }
 
   // Get an attestation using delegation and program key;
-  if (!Attest(msf, &attestation)) {
+  string attestation_string;
+  if (!Attest(msf, &attestation_string)) {
     return false;
   }
 
   // Get Program Cert.
-  if (!RequestDomainServiceCert(network, address, port, attestation, endorse_cert,
+  if (!RequestDomainServiceCert(network, address, port, attestation_string, endorse_cert,
           &program_cert_)) {
     return false;
   }

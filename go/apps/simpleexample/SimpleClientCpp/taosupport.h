@@ -20,6 +20,9 @@
 #include "tao/fd_message_channel.h"
 #include "tao/tao_rpc.h"
 #include "tao/util.h"
+
+#include "attestation.pb.h"
+
 #include <taosupport.pb.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -67,14 +70,15 @@ public:
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
   bool RequestDomainServiceCert(string& network, string& address, string& port,
-          string& attestation, string& endorsement_cert,
+          string& attestation_string, string& endorsement_cert,
           string* program_cert);
 };
 
 class TaoChannel {
 public:
-  string server_name_;
   SslChannel peer_channel_;
+  X509* peerCertificate_;
+  string peer_name_;
 
   TaoChannel();
   ~TaoChannel();

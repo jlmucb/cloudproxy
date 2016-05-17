@@ -31,6 +31,7 @@
 #include <openssl/rand.h>
 
 #include "ca.pb.h"
+#include "auth.h"
 
 using std::string;
 using std::unique_ptr;
@@ -42,6 +43,13 @@ using tao::InitializeApp;
 using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
+
+using google::protobuf::io::CodedInputStream;
+using google::protobuf::io::CodedOutputStream;
+// using google::protobuf::io::StringOutputStream;
+// using google::protobuf::io::ArrayInputStream;
+
+#define BUFSIZE 4096
 
 void PrintBytes(int n, byte* in) {
   for (int i = 0; i < n; i++) printf("%02x", in[i]);
@@ -94,8 +102,8 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
   if (peerCertificate_ != nullptr) {
     X509_NAME* name = X509_get_subject_name(peerCertificate_);
     int nid = OBJ_txt2nid("OU");
-    char buf[4096];
-    if (X509_NAME_get_text_by_NID(name, nid, buf, 4096) == 1) {
+    char buf[BUFSIZE];
+    if (X509_NAME_get_text_by_NID(name, nid, buf, BUFSIZE) == 1) {
       peer_name_ = buf ;
     }
   }
@@ -107,7 +115,6 @@ void TaoChannel::CloseTaoChannel() {
   peer_channel_.Close();
 }
 
-#define BUFSIZE 2048
 bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
   string msg_buf;
 
@@ -168,20 +175,18 @@ void TaoProgramData::ClearProgramData() {
   }
 
   if (policyCertificate_ != nullptr) {
-    // free it.
+    X509_free(policyCertificate_);
   }
   policyCertificate_ = nullptr;
   if (programCertificate_ != nullptr) {
-    // free it.
+    X509_free(programCertificate_);
   }
   programCertificate_ = nullptr;
 }
 
 bool TaoProgramData::ExtendName(string& subprin) {
-  return false;
+  return tao_->ExtendTaoName(subprin);
 }
-
-// if (unsealed->compare(bytes) != 0) { }
 
 bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, string& path,
                               string& network, string& address, string& port) {
@@ -214,7 +219,20 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   }
 
   // Extend principal name, hash of policy cert identifies policy extension.
+  // TODO: Extend name with hash of policy cert.
+  std::vector<std::unique_ptr<tao::PrinExt>> v;
+  v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
+
+  tao::Prin p("key", tao::make_unique<tao::Bytes>("These are not key bytes"),
+         tao::make_unique<tao::SubPrin>(std::move(v)));
   string subprin;
+  /*
+  {
+    StringOutputStream raw_output_stream(&subprin);
+    CodedOutputStream output_stream(&raw_output_stream);
+    p.Marshal(&output_stream);
+  }
+   */
   if (!ExtendName(subprin)) {
     return false;
   }
@@ -329,9 +347,9 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   if (bytes_written <= 0) {
     return false;
   }
-  byte read_buf[4096];
+  byte read_buf[BUFSIZE];
   string response_buf;
-  int bytes_read = domainChannel.Read(4096, read_buf);
+  int bytes_read = domainChannel.Read(BUFSIZE, read_buf);
   if (bytes_read <= 0) {
     return false;
   }

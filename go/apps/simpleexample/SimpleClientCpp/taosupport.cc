@@ -222,11 +222,19 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   }
 
   // Extend principal name, hash of policy cert identifies policy extension.
-  // TODO: Extend name with hash of policy cert.
+
+  // Hash of policy cert.
+  byte policy_hash[32];
+  SHA256_CTX sha256;
+  SHA256_Init(&sha256);
+  SHA256_Update(&sha256, (byte*)policy_cert_.data(), policy_cert_.size());
+  SHA256_Final(policy_hash, &sha256);
+  string* hexPolicyHash = ByteToHexLeftToRight(32, policy_hash);
+
   std::vector<std::unique_ptr<tao::PrinExt>> v;
   v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
 
-  tao::Prin p("key", tao::make_unique<tao::Bytes>("These are not key bytes"),
+  tao::Prin p("key", tao::make_unique<tao::Bytes>(hexPolicyHash->c_str()),
          tao::make_unique<tao::SubPrin>(std::move(v)));
   string subprin;
   {

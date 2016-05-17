@@ -96,5 +96,13 @@ public:
   X509* GetPeerCert();
 };
 
+char ValueToHex(byte x);
+byte HexToValue(char x);
+
+string* ByteToHexLeftToRight(int, byte*);
+string* ByteToHexRightToLeft(int, byte*);
+int HexToByteLeftToRight(char*, int, byte*);
+int HexToByteRightToLeft(char*, int, byte*);
+
 #endif
 

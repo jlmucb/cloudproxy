@@ -615,3 +615,111 @@ X509* SslChannel::GetPeerCert() {
   return peer_cert_;
 }
 
+
+int NumHexInBytes(int size, byte* in) { return 2 * size; }
+
+int NumBytesInHex(char* in) {
+  if (in == nullptr)
+    return -1;
+  int len = strlen(in);
+  return ((len + 1) / 2);
+}
+
+char ValueToHex(byte x) {
+  if (x >= 0 && x <= 9) {
+    return x + '0';
+  } else if (x >= 10 && x <= 15) {
+    return x - 10 + 'a';
+  } else {
+    return ' ';
+  }
+}
+
+byte HexToValue(char x) {
+  if (x >= '0' && x <= '9') {
+    return x - '0';
+  } else if (x >= 'a' && x <= 'f') {
+    return x + 10 - 'a';
+  } else {
+    return 0;
+  }
+}
+
+string* ByteToHexLeftToRight(int size, byte* in) {
+  if (in == nullptr)
+    return nullptr;
+  int n = NumHexInBytes(size, in);
+  string* out = new string(n, 0);
+  char* str = (char*)out->c_str();
+  byte a, b;
+
+  while (size > 0) {
+    a = (*in) >> 4;
+    b = (*in) & 0xf;
+    in++;
+    *(str++) = ValueToHex(a);
+    *(str++) = ValueToHex(b);
+    size--;
+  }
+  return out;
+}
+
+int HexToByteLeftToRight(char* in, int size, byte* out) {
+  if (in == nullptr)
+    return -1;
+  int n = NumBytesInHex(in);
+  int m = strlen(in);
+  byte a, b;
+
+  if (n > size) {
+    return -1;
+  }
+  while (m > 0) {
+    a = HexToValue(*(in++));
+    b = HexToValue(*(in++));
+    *(out++) = (a << 4) | b;
+    m -= 2;
+  }
+  return n;
+}
+
+string* ByteToHexRightToLeft(int size, byte* in) {
+  if (in == nullptr)
+    return nullptr;
+  int n = NumHexInBytes(size, in);
+  string* out = new string(n, 0);
+  char* str = (char*)out->c_str();
+  byte a, b;
+
+  in += size - 1;
+  while (size > 0) {
+    a = (*in) >> 4;
+    b = (*in) & 0xf;
+    in--;
+    *(str++) = ValueToHex(a);
+    *(str++) = ValueToHex(b);
+    size--;
+  }
+  return out;
+}
+
+int HexToByteRightToLeft(char* in, int size, byte* out) {
+  if (in == nullptr) {
+    return -1;
+  }
+  int n = NumBytesInHex(in);
+  int m = strlen(in);
+  byte a, b;
+
+  out += n - 1;
+  if (m < 0) {
+    return -1;
+  }
+  while (m > 0) {
+    a = HexToValue(*(in++));
+    b = HexToValue(*(in++));
+    *(out--) = (a << 4) | b;
+    m -= 2;
+  }
+  return n;
+}

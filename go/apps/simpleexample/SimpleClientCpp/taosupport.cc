@@ -467,6 +467,18 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   // Construct a delegation statement.
   // TODO: make serialized key.
   string serialized_key;
+  string* key_bytes = BN_to_bin(*rsa_key->n);
+
+  std::vector<std::unique_ptr<tao::PrinExt>> v;
+  v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
+
+  tao::Prin p("key", tao::make_unique<tao::Bytes>(key_bytes->c_str()),
+         tao::make_unique<tao::SubPrin>(std::move(v)));
+  {
+    StringOutputStream raw_output_stream(&serialized_key);
+    CodedOutputStream output_stream(&raw_output_stream);
+    p.Marshal(&output_stream);
+  }
   string msf;
   if (!MarshalSpeaksfor(serialized_key, tao_name_, &msf)) {
     return false;

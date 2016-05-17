@@ -319,11 +319,15 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   string issuer("Self");
   string purpose("signing");
 
-  string* modulus = nullptr; // FIX BN_to_bin(BIGNUM& n);
-  string* exponent = nullptr; // FIX BN_to_bin(BIGNUM& n);
+  string* modulus = BN_to_bin(*tmpChannelKey->n);
+  byte big_endian_exp[]= {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01
+    };
+  string exponent;
+  exponent.assign((const char*)big_endian_exp, 8);
   EVP_PKEY* self = new EVP_PKEY();
   EVP_PKEY_assign_RSA(self, tmpChannelKey);
-  if (!GenerateX509CertificateRequest(key_type, common_name, *exponent,
+  if (!GenerateX509CertificateRequest(key_type, common_name, exponent,
       *modulus, false, req)) {
     printf("Can't generate x509 request\n");
     return false;
@@ -450,11 +454,10 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   }
 
   // Generate the key;
-  RSA* rsa_key = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
-  if (rsa_key == nullptr) {
+  program_key_ = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
+  if (program_key_ == nullptr) {
     return false;
   }
-  program_key_ = rsa_key;
 
   // Get the program cert from the domain service.
   // First we need the endorsement cert.
@@ -465,9 +468,8 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   }
 
   // Construct a delegation statement.
-  // TODO: make serialized key.
   string serialized_key;
-  string* key_bytes = BN_to_bin(*rsa_key->n);
+  string* key_bytes = BN_to_bin(*program_key_->n);
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
   v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
@@ -503,7 +505,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Serialize and save the RSAKey.
   string out_buf;
-  if (!SerializeRsaPrivateKey(rsa_key, &out_buf)) {
+  if (!SerializeRsaPrivateKey(program_key_, &out_buf)) {
     return false;
   }
   if (WriteFile(sealed_key_file_name, out_buf)) {

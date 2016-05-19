@@ -270,7 +270,8 @@ void TaoProgramData::Print() {
   }
   printf("Program object is NOT initialized\n");
   printf("Tao name: %s\n", tao_name_.c_str());
-  printf("Policy cert: ");PrintBytes(policy_cert_.size(), (byte*)policy_cert_.data());printf("\n");
+  printf("Policy cert: ");
+  PrintBytes(policy_cert_.size(), (byte*)policy_cert_.data());printf("\n");
   printf("Program key: "); printf("TODO"); printf("\n");
   printf("Sym key: ");PrintBytes(size_program_sym_key_, program_sym_key_);printf("\n");
   printf("Program cert: ");PrintBytes(program_cert_.size(), (byte*)program_cert_.data());printf("\n");

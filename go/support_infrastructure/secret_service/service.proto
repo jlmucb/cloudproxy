@@ -1,0 +1,43 @@
+// To compile: protoc -I=. --go_out=. service.proto
+
+// Definition of protobufs for directives.
+syntax = "proto2";
+
+// TODO: fix this: import "github.com/jlmucb/cloudproxy/go/support_libraries/protected_objects/protected_objects.proto";
+
+package secret_service;
+
+// Epochs must increase monotonically and be > 0
+message object_id_message {
+  required string obj_name                    = 1;
+  optional int32 obj_epoch                    = 2;
+}
+
+message secret_service_request {
+
+  enum operation_type {
+    READ = 1;
+    WRITE = 2;
+    CREATE = 3;
+    DELETE = 4;
+  }
+  optional operation_type op = 1;
+
+  optional object_id_message secret_id = 2;
+
+  // Fields for type: WRITE.
+  optional string new_secret_type = 3;
+  optional bytes new_secret_val  = 4;
+
+  // Fields for type: CREATE (in addition to above fields).
+  optional object_id_message new_secret_id = 5;
+  optional object_id_message protector_id = 6;
+}
+
+message secret_service_response {
+  optional string error_message = 1;
+
+  // Fields for response to READ.
+  optional string secret_type = 2;
+  optional bytes secret_val = 3;
+}

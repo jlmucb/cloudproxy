@@ -15,7 +15,7 @@
 // Package protected_objects stores, searches and chains protected objects like keys
 // and files.
 
-package protected_objects 
+package protected_objects
 
 import (
 	"container/list"
@@ -50,7 +50,7 @@ func stringMatch(name *string, names []string) bool {
 	if name == nil {
 		return false
 	}
-	for _, v := range(names) {
+	for _, v := range names {
 		if v == *name {
 			return true
 		}
@@ -60,20 +60,20 @@ func stringMatch(name *string, names []string) bool {
 
 // Create the object with the provided data.
 func CreateObject(name string, epoch int32, obj_type *string, status *string, notBefore *time.Time,
-		notAfter *time.Time, v []byte) (*ObjectMessage, error) {
-	obj_id := &ObjectIdMessage {
-		ObjName: &name,
+	notAfter *time.Time, v []byte) (*ObjectMessage, error) {
+	obj_id := &ObjectIdMessage{
+		ObjName:  &name,
 		ObjEpoch: &epoch,
 	}
 	str_notBefore := notBefore.String()
 	str_notAfter := notAfter.String()
-	obj := &ObjectMessage {
-		ObjId: obj_id,
-		ObjType: obj_type,
+	obj := &ObjectMessage{
+		ObjId:     obj_id,
+		ObjType:   obj_type,
 		ObjStatus: status,
 		NotBefore: &str_notBefore,
-		NotAfter: &str_notAfter,
-		ObjVal: v,
+		NotAfter:  &str_notAfter,
+		ObjVal:    v,
 	}
 	return obj, nil
 }
@@ -107,9 +107,9 @@ func AddProtectedObject(l *list.List, obj ProtectedObjectMessage) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ProtectedObjectMessage)
 		if o.ProtectedObjId.ObjName == obj.ProtectedObjId.ObjName &&
-		   o.ProtectedObjId.ObjEpoch == obj.ProtectedObjId.ObjEpoch &&
-		   o.ProtectorObjId.ObjName == obj.ProtectorObjId.ObjName &&
-		   o.ProtectorObjId.ObjEpoch == obj.ProtectorObjId.ObjEpoch {
+			o.ProtectedObjId.ObjEpoch == obj.ProtectedObjId.ObjEpoch &&
+			o.ProtectorObjId.ObjName == obj.ProtectorObjId.ObjName &&
+			o.ProtectorObjId.ObjEpoch == obj.ProtectorObjId.ObjEpoch {
 			return nil
 		}
 	}
@@ -123,7 +123,7 @@ func DeleteObject(l *list.List, name string, epoch int32) error {
 		o := e.Value.(ObjectMessage)
 		if *o.ObjId.ObjName == name && *o.ObjId.ObjEpoch == epoch {
 			l.Remove(e)
-			break;
+			break
 		}
 	}
 	return nil
@@ -135,14 +135,14 @@ func DeleteProtectedObject(l *list.List, name string, epoch int32) error {
 		o := e.Value.(ProtectedObjectMessage)
 		if *o.ProtectedObjId.ObjName == name && *o.ProtectedObjId.ObjEpoch == epoch {
 			l.Remove(e)
-			break;
+			break
 		}
 	}
 	return nil
 }
 
 // Find objects protected by object with given name and epoch.
-func FindProtectedObjects(l *list.List, name string, epoch int32) (*list.List) {
+func FindProtectedObjects(l *list.List, name string, epoch int32) *list.List {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -153,12 +153,12 @@ func FindProtectedObjects(l *list.List, name string, epoch int32) (*list.List) {
 		if name == *o.ProtectorObjId.ObjName {
 			r.PushFront(o)
 		}
-        }
+	}
 	return r
 }
 
 // Find protectors of the object with given name and epoch.
-func FindProtectorObjects(l *list.List, name string, epoch int32) (*list.List) {
+func FindProtectorObjects(l *list.List, name string, epoch int32) *list.List {
 	r := list.New()
 
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -169,13 +169,28 @@ func FindProtectorObjects(l *list.List, name string, epoch int32) (*list.List) {
 		if name == *o.ProtectedObjId.ObjName {
 			r.PushFront(o)
 		}
-        }
+	}
 	return r
+}
+
+func FindElementById(l *list.List, name string, epoch int32) *list.Element {
+	var elem *list.Element = nil
+	for e := l.Front(); e != nil; e = e.Next() {
+		o := e.Value.(ProtectedObjectMessage)
+		if epoch != 0 && epoch != *o.ProtectedObjId.ObjEpoch {
+			continue
+		}
+		if name == *o.ProtectedObjId.ObjName {
+			elem = e
+		}
+	}
+	return elem
 }
 
 // Find object with given name, epoch, with one of the offered types and names.
 // A nil types or names list matches anything (even nil)
-func FindObject(l *list.List, name string, epoch int32, types []string, statuses []string) (*ObjectMessage) {
+func FindObject(l *list.List, name string, epoch int32, types []string,
+	statuses []string) *ObjectMessage {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectMessage)
 		if !stringMatch(o.ObjStatus, statuses) || !stringMatch(o.ObjType, statuses) {
@@ -187,12 +202,12 @@ func FindObject(l *list.List, name string, epoch int32, types []string, statuses
 		if name == *o.ObjId.ObjName {
 			return &o
 		}
-        }
+	}
 	return nil
 }
 
 // Get object with given name and latest epoch.
-func GetLatestEpoch(l *list.List, name string, status []string) (*ObjectMessage) {
+func GetLatestEpoch(l *list.List, name string, status []string) *ObjectMessage {
 	latest := 0
 	var result *ObjectMessage
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -214,11 +229,11 @@ func GetLatestEpoch(l *list.List, name string, status []string) (*ObjectMessage)
 			result = &o
 		}
 	}
-	return result 
+	return result
 }
 
 // Get object with given name and earliest epoch.
-func GetEarliestEpoch(l *list.List, name string, status []string) (*ObjectMessage) {
+func GetEarliestEpoch(l *list.List, name string, status []string) *ObjectMessage {
 	earliest := 0
 	var result *ObjectMessage
 	for e := l.Front(); e != nil; e = e.Next() {
@@ -239,7 +254,7 @@ func GetEarliestEpoch(l *list.List, name string, status []string) (*ObjectMessag
 			result = &o
 		}
 	}
-	return result 
+	return result
 }
 
 // Marshal protected objects and save them in a file.
@@ -254,7 +269,7 @@ func SaveProtectedObjects(l *list.List, file string) error {
 		p.ProtectedObjId.ObjEpoch = o.ProtectedObjId.ObjEpoch
 		p.ProtectorObjId.ObjName = o.ProtectorObjId.ObjName
 		p.ProtectorObjId.ObjEpoch = o.ProtectorObjId.ObjEpoch
-		p.Blob= o.Blob
+		p.Blob = o.Blob
 		po_store.ProtectedObjects = append(po_store.ProtectedObjects, p)
 	}
 	b, err := proto.Marshal(&po_store)
@@ -292,7 +307,7 @@ func SaveObjects(l *list.List, file string) error {
 }
 
 // Read and unmarshal an protected object file.
-func LoadProtectedObjects(file string) (*list.List) {
+func LoadProtectedObjects(file string) *list.List {
 	var po_store ProtectedObjectStoreMessage
 
 	buf, err := ioutil.ReadFile(file)
@@ -304,7 +319,7 @@ func LoadProtectedObjects(file string) (*list.List) {
 		return nil
 	}
 	l := list.New()
-	for _, v := range(po_store.ProtectedObjects) {
+	for _, v := range po_store.ProtectedObjects {
 		o := new(ProtectedObjectMessage)
 		o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
 		o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
@@ -317,7 +332,7 @@ func LoadProtectedObjects(file string) (*list.List) {
 }
 
 // Read and unmarshal an object file.
-func LoadObjects(file string) (*list.List) {
+func LoadObjects(file string) *list.List {
 	var o_store ObjectStoreMessage
 
 	buf, err := ioutil.ReadFile(file)
@@ -329,7 +344,7 @@ func LoadObjects(file string) (*list.List) {
 		return nil
 	}
 	l := list.New()
-	for _, v := range(o_store.Objects) {
+	for _, v := range o_store.Objects {
 		o := new(ObjectMessage)
 		o.ObjId = new(ObjectIdMessage)
 		o.ObjId.ObjName = v.ObjId.ObjName
@@ -347,7 +362,7 @@ func LoadObjects(file string) (*list.List) {
 
 // Create, marshal and encrypt a protected object blob protecting obj.
 func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch int32,
-		protectorKeys []byte) (*ProtectedObjectMessage, error) {
+	protectorKeys []byte) (*ProtectedObjectMessage, error) {
 	p := new(ProtectedObjectMessage)
 	p.ProtectedObjId = new(ObjectIdMessage)
 	p.ProtectorObjId = new(ObjectIdMessage)
@@ -382,7 +397,7 @@ func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (
 }
 
 // Is object the right type, have the right status and in it's validity period?
-func IsValid(obj ObjectMessage, statuses []string, types []string) (bool) {
+func IsValid(obj ObjectMessage, statuses []string, types []string) bool {
 	// if object is not active or the dates are wrong, return false
 	if !stringMatch(obj.ObjStatus, statuses) {
 		return false
@@ -412,7 +427,7 @@ func ConstructProtectorChain(obj_list *list.List, nameProtector string, epochPro
 	statuses []string, types []string, seen_list *list.List,
 	protected_object_list *list.List) (*list.List, error) {
 
-	if nameTop != nil &&  *nameTop == nameProtector {
+	if nameTop != nil && *nameTop == nameProtector {
 		if epochTop == nil || *epochTop == epochProtector {
 			return seen_list, nil
 		}
@@ -424,7 +439,7 @@ func ConstructProtectorChain(obj_list *list.List, nameProtector string, epochPro
 	for e := pl.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ProtectedObjectMessage)
 		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
-                        *o.ProtectorObjId.ObjEpoch, statuses, types)
+			*o.ProtectorObjId.ObjEpoch, statuses, types)
 		if t != nil {
 			return nil, errors.New("Circular list")
 		}
@@ -448,14 +463,14 @@ func ConstructProtectorChain(obj_list *list.List, nameProtector string, epochPro
 // Construct chain of protector objects for (nameProtected, epochProtected)
 //	Chain must terminate with an object from the base list
 func ConstructProtectorChainFromBase(obj_list *list.List, nameProtected string, epochProtected int32,
-		statuses []string, types []string, base_list *list.List,
-		seen_list *list.List, protected_object_list *list.List) (*list.List, error) {
+	statuses []string, types []string, base_list *list.List,
+	seen_list *list.List, protected_object_list *list.List) (*list.List, error) {
 
 	// if object is in base list, we're done
 	for e := base_list.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ObjectIdMessage)
 		if *o.ObjName == nameProtected {
-			if o.ObjEpoch == nil  || *o.ObjEpoch == epochProtected {
+			if o.ObjEpoch == nil || *o.ObjEpoch == epochProtected {
 				return seen_list, nil
 			}
 		}
@@ -468,7 +483,7 @@ func ConstructProtectorChainFromBase(obj_list *list.List, nameProtected string, 
 	for e := pl.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ProtectedObjectMessage)
 		t := FindObject(seen_list, *o.ProtectorObjId.ObjName,
-                        *o.ProtectorObjId.ObjEpoch, statuses, types)
+			*o.ProtectorObjId.ObjEpoch, statuses, types)
 		if t != nil {
 			return nil, errors.New("Circular list")
 		}

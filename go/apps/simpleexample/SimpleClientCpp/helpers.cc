@@ -523,6 +523,7 @@ int SslChannel::CreateSocket(string& addr, string& port) {
   if (connect(sockfd, (struct sockaddr *) &dest_addr,
               sizeof(struct sockaddr)) == -1) {
     printf("Error: Cannot connect to host\n");
+    return -1;
   }
   return sockfd;
 }
@@ -533,14 +534,17 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
   // Create socket and contexts.
   fd_ = CreateSocket(address, port);
   if(fd_ <=0) {
+    printf("CreateSocket failed.\n");
     return false;
   }
   ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
   if (ssl_ctx_ == nullptr) {
+    printf("SSL_CTX_new failed.\n");
     return false;
   }
   ssl_ = SSL_new(ssl_ctx_);
   if (ssl_ == nullptr) {
+    printf("SSL_new failed.\n");
     return false;
   }
 
@@ -549,6 +553,7 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
   SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
   SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
   if (SSL_CTX_use_RSAPrivateKey(ssl_ctx_, privateKey) <= 0) {
+    printf("SSL_CTX_use_RSAPrivateKey failed.\n");
     return false;
   }
 
@@ -557,6 +562,7 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
   // Set root store and certificate.
   store_ = X509_STORE_new();
   if (store_ == nullptr) {
+    printf("X509_STORE_new failed.\n");
     return false;
   }
   X509_STORE_add_cert(store_, policyCert);
@@ -566,12 +572,12 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
   if (verify) {
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
-  } else {
-  }
+  } 
 
   // Set fd.
   SSL_set_fd(ssl_, fd_);
   if (SSL_connect(ssl_) != 1) {
+    printf("SSL_connect failed.\n");
     return false;
   }
   // check connection?
@@ -615,7 +621,7 @@ X509* SslChannel::GetPeerCert() {
   return peer_cert_;
 }
 
-
+// TODO: consider using std::to_string
 int NumHexInBytes(int size, byte* in) { return 2 * size; }
 
 int NumBytesInHex(char* in) {

@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   printf("simpleclient: established Tao Channel with %s\n",
-         client_channel.server_name_.c_str()) ;
+         client_channel.peer_name_.c_str()) ;
 
   // Send a simple request and get response.
   taosupport::SimpleMessage req_message;

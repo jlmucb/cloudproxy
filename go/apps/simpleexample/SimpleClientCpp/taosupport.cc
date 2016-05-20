@@ -54,10 +54,6 @@ using google::protobuf::io::ArrayInputStream;
 
 #define BUFSIZE 4096
 
-void PrintBytes(int n, byte* in) {
-  for (int i = 0; i < n; i++) printf("%02x", in[i]);
-}
-
 TaoChannel::TaoChannel() {
   peerCertificate_ = nullptr;
 }
@@ -548,9 +544,10 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   string sealed_out;
   string policy = Tao::SealPolicyDefault;
   if (!tao_->Seal(out_buf, policy, &sealed_out)) {
-    unsealed.clear();
+    out_buf.clear();
     printf("InitializeProgramKeys: Can't seal program key\n");
     return false;
+  }
   if (WriteFile(sealed_key_file_name, sealed_out)) {
     printf("InitializeProgramKey: couldn't write sealed private key.\n");
     return false;

@@ -45,9 +45,11 @@ LINK=g++
 PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
-LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -l/Domains/libauth.a
+LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl
 
-dobj_simpleclient=$(O)/simpleclient_cc.o $(O)/taosupport.o $(O)/helpers.o
+dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o \
+	$(O)/ca.pb.o $(O)/attestation.pb.o $(O)/datalog_guard.pb.o \
+	$(O)/acl_guard.pb.o $(O)/taosupport.pb.o $(O)/simpleclient_cc.o
 
 all:	$(EXE_DIR)/simpleclient_cc.exe
 
@@ -59,11 +61,32 @@ clean:
 
 $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	@echo "linking simpleclient"
-	$(LINK) -o $(EXE_DIR)/tpm2_util.exe $(dobj_simpleclient) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/simpleclient_cc.exe $(dobj_simpleclient) \
+	-L/Domains -lauth -ltao $(LDFLAGS)
 
 $(O)/helpers.o: $(S)/helpers.cc
 	@echo "compiling helpers.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/helpers.o $(S)/helpers.cc
+
+$(O)/ca.pb.o: $(S)/ca.pb.cc
+	@echo "compiling ca.pb.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/ca.pb.o $(S)/ca.pb.cc
+
+$(O)/taosupport.pb.o: $(S)/taosupport.pb.cc
+	@echo "compiling taosupport.pb.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/taosupport.pb.o $(S)/taosupport.pb.cc
+
+$(O)/attestation.pb.o: $(S)/attestation.pb.cc
+	@echo "compiling attestation.pb.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/attestation.pb.o $(S)/attestation.pb.cc
+
+$(O)/datalog_guard.pb.o: $(S)/datalog_guard.pb.cc
+	@echo "compiling datalog_guard.pb.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/datalog_guard.pb.o $(S)/datalog_guard.pb.cc
+
+$(O)/acl_guard.pb.o: $(S)/acl_guard.pb.cc
+	@echo "compiling acl_guard.pb.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/acl_guard.pb.o $(S)/acl_guard.pb.cc
 
 $(O)/taosupport.o: $(S)/taosupport.cc
 	@echo "compiling taosupport.cc"
@@ -72,9 +95,5 @@ $(O)/taosupport.o: $(S)/taosupport.cc
 $(O)/simpleclient_cc.o: $(S)/simpleclient_cc.cc
 	@echo "compiling simpleclient_cc.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/simpleclient_cc.o $(S)/simpleclient_cc.cc
-
-$(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient_cc)
-	@echo "linking simpleclient_cc"
-	$(LINK) -o $(EXE_DIR)/simpleclient_cc.exe $(dobj_simpleclient_cc) $(LDFLAGS)
 
 

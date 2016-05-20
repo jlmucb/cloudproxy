@@ -28,9 +28,9 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#ifndef byte
 typedef unsigned char byte;
-
-void PrintBytes(int n, byte* in);
+#endif
 
 class TaoProgramData {
 public:

@@ -69,7 +69,8 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     string& serverAddress, string& port) {
 
   // Parse policy cert and program cert.
-  if (client_program_data.policy_cert_.size() ==0 ) {
+  if (client_program_data.policy_cert_.size() == 0 ) {
+    printf("No policy cert.\n");
     return false;
   }
   if (client_program_data.policyCertificate_ == nullptr) {
@@ -77,10 +78,12 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
     client_program_data.policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
           client_program_data.policy_cert_.size());
     if (client_program_data.policyCertificate_ == nullptr) {
+      printf("No policy certificate.\n");
       return false;
     }
   }
-  if (client_program_data.program_cert_.size() ==0 ) {
+  if (client_program_data.program_cert_.size() == 0 ) {
+    printf("No program certificate.\n");
     return false;
   }
   if (client_program_data.programCertificate_ == nullptr) {
@@ -88,6 +91,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
     client_program_data.policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
           client_program_data.program_cert_.size());
     if (client_program_data.programCertificate_ == nullptr) {
+      printf("Can't translate program certificate.\n");
       return false;
     }
   }
@@ -98,6 +102,8 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     client_program_data.policyCertificate_,
                     client_program_data.programCertificate_,
                     client_program_data.program_key_, true)) {
+    printf("Can't Init SSl channel.\n");
+    return false;
   }
 
   // Get peer name from organizational unit.
@@ -122,6 +128,7 @@ bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
   string msg_buf;
 
   if (!out.SerializeToString(&msg_buf)) {
+    printf("Can't serialize request.\n");
     return false;
   }
   int k = peer_channel_.Write(msg_buf.size(), (byte*)msg_buf.data());
@@ -133,11 +140,13 @@ bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
 
   int k = peer_channel_.Read(BUFSIZE, buf);
   if (k <= 0) {
+    printf("Can't read request channel.\n");
     return false;
   }
   string in_msg;
   in_msg.assign((const char*) buf, k);
   if (!in->ParseFromString(in_msg)) {
+    printf("Can't parse response from channel.\n");
     return false;
   }
   return true;
@@ -202,6 +211,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   string policy_cert_file = path + "policyCert";
   string cert;
   if (ReadFile(policy_cert_file, &cert)) {
+    printf("Can't read policy cert.\n");
     return false;
   }
 
@@ -209,15 +219,18 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
   byte* pc = (byte*)policy_cert_.data();
   X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc, policy_cert_.size());
   if (parsed_policy_cert == nullptr) {
+    printf("Can't DER parse policy cert.\n");
     return false;
   }
   EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
   policy_key_ = EVP_PKEY_get1_RSA(evp_policy_key);
   if (policy_key_ == nullptr) {
+    printf("Can't set policy public key.\n");
     return false;
   }
   int cert_OK = X509_verify(parsed_policy_cert, X509_get_pubkey(parsed_policy_cert));
   if (cert_OK <= 0) {
+    printf("Can't set verify policy cert.\n");
     return false;
   }
 
@@ -243,21 +256,25 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, strin
     p.Marshal(&output_stream);
   }
   if (!ExtendName(subprin)) {
+    printf("Can't extend name.\n");
     return false;
   }
 
   // Retrieve extended name.
   if (!tao->GetTaoName(&tao_name_)) {
+    printf("Can't get tao name.\n");
     return false;
   }
 
   // Get (or initialize) my symmetric keys.
   if (!InitializeSymmetricKeys(path, 32)) {
+    printf("Can't init symmetric keys.\n");
     return false;
   }
 
   // Get (or initialize) my program key.
   if (!InitializeProgramKey(path, 2048, network, address, port)) {
+    printf("Can't init program keys.\n");
     return false;
   }
   return true;
@@ -302,12 +319,14 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string* program_cert) {
 
   if (policyCertificate_ == nullptr) {
+    printf("Policy cert is null.\n");
     return false;
   }
 
   // Construct temporary channel key.
   RSA* tmpChannelKey = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
   if (tmpChannelKey == nullptr) {
+    printf("Can't Generate temporary channel key.\n");
     return false;
   }
 
@@ -344,6 +363,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
 
   if (!domainChannel.InitSslChannel(network, address, port,
         policyCertificate_, tmpChannelCert, tmpChannelKey, false)) {
+    printf("Can't init ssl channel to domain server.\n");
     return false;
   }
 
@@ -359,18 +379,22 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   request.SerializeToString(&request_buf);
   int bytes_written = domainChannel.Write(request_buf.size(), (byte*)request_buf.data());
   if (bytes_written <= 0) {
+    printf("Domain channel write failure.\n");
     return false;
   }
   byte read_buf[BUFSIZE];
   string response_buf;
   int bytes_read = domainChannel.Read(BUFSIZE, read_buf);
   if (bytes_read <= 0) {
+    printf("Domain channel read failure.\n");
     return false;
   }
   if (!response.ParseFromString(response_buf)) {
+    printf("Domain channel parse failure.\n");
     return false;
   }
   if (response.type() != tao::CAType::ATTESTATION) {
+    printf("Not attestation type.\n");
     return false;
   }
 
@@ -412,9 +436,11 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   string policy = Tao::SealPolicyDefault;
   if (!tao_->Seal(unsealed, policy, &sealed)) {
     unsealed.clear();
+    printf("InitializeSymmetricKeys: Can't seal sym keys\n");
     return false;
   }
   if (!WriteFile(file_name, sealed)) {
+    printf("InitializeSymmetricKeys: write sealed sym keys.\n");
     return false;
   }
   unsealed.clear();
@@ -434,12 +460,14 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Read and parse policy cert.
   if (!ReadFile(policy_cert_file_name, &policy_cert_)) {
+    printf("InitializeProgramKey: Can't read policy cert.\n");
     return false;
   }
   byte* pc = (byte*)policy_cert_.data();
   policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
         policy_cert_.size());
   if (policyCertificate_ == nullptr) {
+    printf("InitializeProgramKey: policy certificate is null.\n");
     return false;
   }
 
@@ -457,6 +485,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   // Generate the key;
   program_key_ = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
   if (program_key_ == nullptr) {
+    printf("InitializeProgramKey: couldn't generate program key.\n");
     return false;
   }
 
@@ -465,6 +494,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   string endorsement_cert_file_name = path + "endorsementCert";
   string endorse_cert;
   if (ReadFile(endorsement_cert_file_name, &endorse_cert)) {
+    printf("InitializeProgramKey: couldn't read endorsement cert.\n");
     return false;
   }
 
@@ -484,32 +514,45 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   }
   string msf;
   if (!MarshalSpeaksfor(serialized_key, tao_name_, &msf)) {
+    printf("InitializeProgramKey: couldn't MarshalSpeaksfor.\n");
     return false;
   }
 
   // Get an attestation using delegation and program key;
   string attestation_string;
   if (!Attest(msf, &attestation_string)) {
+    printf("InitializeProgramKey: couldn't Attest.\n");
     return false;
   }
 
   // Get Program Cert.
   if (!RequestDomainServiceCert(network, address, port, attestation_string, endorse_cert,
           &program_cert_)) {
+    printf("InitializeProgramKey: couldn't RequestDomainServiceCert.\n");
     return false;
   }
 
   // Save the program cert.
   if (WriteFile(signer_cert_file_name, program_cert)) {
+    printf("InitializeProgramKey: couldn't writed signed program cert.\n");
     return false;
   }
 
-  // Serialize and save the RSAKey.
+  // Serialize RSAKey.
   string out_buf;
   if (!SerializeRsaPrivateKey(program_key_, &out_buf)) {
+    printf("InitializeProgramKey: couldn't serialize private RSA key.\n");
     return false;
   }
-  if (WriteFile(sealed_key_file_name, out_buf)) {
+  // Seal the key and save it.
+  string sealed_out;
+  string policy = Tao::SealPolicyDefault;
+  if (!tao_->Seal(out_buf, policy, &sealed_out)) {
+    unsealed.clear();
+    printf("InitializeProgramKeys: Can't seal program key\n");
+    return false;
+  if (WriteFile(sealed_key_file_name, sealed_out)) {
+    printf("InitializeProgramKey: couldn't write sealed private key.\n");
     return false;
   }
   return true;

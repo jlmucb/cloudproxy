@@ -44,6 +44,8 @@ DEFINE_string(domain_server_host, "localhost", "address for domain service");
 DEFINE_string(domain_server_port, "8124", "port for domain service");
 
 int main(int argc, char **argv) {
+
+  // Parse flags, signal handlers, openssl init.
   InitializeApp(&argc, &argv, false);
 
   // This code expects fd 3 and 4 to be the pipes from and to the Tao, so it
@@ -51,9 +53,6 @@ int main(int argc, char **argv) {
   // directly with these fds.
   unique_ptr<FDMessageChannel> msg(new FDMessageChannel(3, 4));
   unique_ptr<Tao> tao(new TaoRPC(msg.release()));
-
-  // Did InitializeApp parse the flags?
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   TaoProgramData client_program_data;
   TaoChannel client_channel;
@@ -86,12 +85,12 @@ int main(int argc, char **argv) {
   if (!client_channel.SendRequest(req_message)) {
     printf("simpleclient: Error in response to SendRequest\n");
   }
+  printf("Sent request\n");
   if (!client_channel.GetRequest(&resp_message)) {
     printf("simpleclient: Error in response to GetRequest\n");
   } else {
     const char* secret = (const char*) resp_message.data().data();
     printf("simpleclient: secret is %s, done\n", secret);
   }
-
   return 0;
 }

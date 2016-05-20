@@ -1,5 +1,5 @@
 #
 source ./defines
 # $BINPATH/tao run $BINPATH/simpleclient &
-sudo $BINPATH/tao run -tao_domain $DOMAIN ../simple_cc_client.exe &
+sudo $BINPATH/tao run -tao_domain $DOMAIN ../simpleclient_cc.exe &
 

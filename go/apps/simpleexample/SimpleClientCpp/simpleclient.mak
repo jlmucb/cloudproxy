@@ -45,7 +45,7 @@ LINK=g++
 PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
-LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl
+LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
 
 dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o \
 	$(O)/ca.pb.o $(O)/attestation.pb.o $(O)/datalog_guard.pb.o \

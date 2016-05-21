@@ -43,11 +43,11 @@ public:
   string tao_name_;
 
   string policy_cert_;
-  RSA* policy_key_;
   X509* policyCertificate_;
 
   // Tao data.
-  RSA* program_key_;
+  RSA* rsa_program_key_;
+  EC_KEY* ec_program_key_;
   string program_cert_;
   X509* programCertificate_;
   int size_program_sym_key_;

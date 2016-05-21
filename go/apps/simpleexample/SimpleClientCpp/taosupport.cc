@@ -93,11 +93,12 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
   }
 
   // Open TLS channel with Program cert.
+  // FIX
   string network("tcp");
   if (!peer_channel_.InitSslChannel(network, serverAddress, port,
                     client_program_data.policyCertificate_,
                     client_program_data.programCertificate_,
-                    client_program_data.program_key_, true)) {
+                    client_program_data.rsa_program_key_, true)) {
     printf("Can't Init SSl channel.\n");
     return false;
   }
@@ -151,10 +152,10 @@ bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
 TaoProgramData::TaoProgramData() {
   initialized_ = false;
   tao_ = nullptr;
-  program_key_ = nullptr;
+  rsa_program_key_ = nullptr;
+  ec_program_key_ = nullptr;
   size_program_sym_key_ = 0;
   program_sym_key_ = nullptr;
-  policy_key_ = nullptr;
   programCertificate_ = nullptr;
   policyCertificate_ = nullptr;
 }
@@ -172,10 +173,14 @@ void TaoProgramData::ClearProgramData() {
 
   // TODO: erase key first.
   // Clear private key.
-  if (program_key_ != nullptr) {
-    RSA_free(program_key_);
+  if (rsa_program_key_ != nullptr) {
+    RSA_free(rsa_program_key_);
   }
-  program_key_ = nullptr;
+  rsa_program_key_ = nullptr;
+  if (ec_program_key_ != nullptr) {
+    EC_KEY_free(ec_program_key_);
+  }
+  ec_program_key_ = nullptr;
 
   if (size_program_sym_key_ > 0 && program_sym_key_ != nullptr) {
     memset(program_sym_key_, 0, size_program_sym_key_);
@@ -222,16 +227,6 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
   if (evp_policy_key == nullptr) {
     printf("Can't get policy public key from cert.\n");
-    return false;
-  }
-  policy_key_ = EVP_PKEY_get1_RSA(evp_policy_key);
-  if (policy_key_ == nullptr) {
-    printf("Can't set policy public key.\n");
-    return false;
-  }
-  int cert_OK = X509_verify(parsed_policy_cert, X509_get_pubkey(parsed_policy_cert));
-  if (cert_OK <= 0) {
-    printf("Can't set verify policy cert.\n");
     return false;
   }
 
@@ -479,13 +474,14 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
       return false;
     }
     // Deserialize the key.
-    program_key_ = DeserializeRsaPrivateKey(unsealed_key);
+    // Fix
+    rsa_program_key_ = DeserializeRsaPrivateKey(unsealed_key);
     return true;
   }
 
   // Generate the key;
-  program_key_ = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
-  if (program_key_ == nullptr) {
+  rsa_program_key_ = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
+  if (rsa_program_key_ == nullptr) {
     printf("InitializeProgramKey: couldn't generate program key.\n");
     return false;
   }
@@ -501,7 +497,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Construct a delegation statement.
   string serialized_key;
-  string* key_bytes = BN_to_bin(*program_key_->n);
+  string* key_bytes = BN_to_bin(*rsa_program_key_->n);
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
   v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
@@ -541,7 +537,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Serialize RSAKey.
   string out_buf;
-  if (!SerializeRsaPrivateKey(program_key_, &out_buf)) {
+  if (!SerializeRsaPrivateKey(rsa_program_key_, &out_buf)) {
     printf("InitializeProgramKey: couldn't serialize private RSA key.\n");
     return false;
   }

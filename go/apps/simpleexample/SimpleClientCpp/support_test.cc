@@ -41,7 +41,6 @@ bool readwritetest() {
 }
 
 bool cert_test() {
-/*
   string policy_cert;
   string policy_cert_file = "/Domains/domain.simpleexample/SimpleClientCpp/policy_keys/cert";
 
@@ -64,17 +63,26 @@ bool cert_test() {
     printf("Can't get policy public key from cert.\n");
     return false;
   }
-  RSA* policy_key = EVP_PKEY_get1_RSA(evp_policy_key);
+  int key_type = EVP_PKEY_id(evp_policy_key);
+  if (EVP_PKEY_EC == key_type) {
+    printf("EC key type\n");
+  } else if (EVP_PKEY_RSA == key_type) {
+    printf("RSA key type\n");
+  } else {
+    printf("Unknown key type\n");
+  }
+  EC_KEY* policy_key = EVP_PKEY_get1_EC_KEY(evp_policy_key);
   if (policy_key == nullptr) {
     printf("Can't set policy public key.\n");
     return false;
   }
-  int cert_OK = X509_verify(parsed_policy_cert, X509_get_pubkey(parsed_policy_cert));
+  EVP_PKEY* pubkey = X509_get_pubkey(parsed_policy_cert);
+  int cert_OK = X509_verify(parsed_policy_cert,
+           pubkey);
   if (cert_OK <= 0) {
-    printf("Can't set verify policy cert.\n");
+    printf("Can't verify policy cert %d.\n", cert_OK);
     return false;
   }
-*/
   return true;
 }
 

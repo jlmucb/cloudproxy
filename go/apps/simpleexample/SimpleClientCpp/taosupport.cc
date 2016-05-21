@@ -193,10 +193,6 @@ void TaoProgramData::ClearProgramData() {
   programCertificate_ = nullptr;
 }
 
-bool TaoProgramData::ExtendName(string& subprin) {
-  return tao_->ExtendTaoName(subprin);
-}
-
 bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
        string& path, string& network, string& address, string& port) {
 
@@ -262,7 +258,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     CodedOutputStream output_stream(&raw_output_stream);
     p.Marshal(&output_stream);
   }
-  if (!ExtendName(subprin)) {
+  if (!tao_->ExtendTaoName(subprin)) {
     printf("Can't extend name.\n");
     return false;
   }
@@ -511,6 +507,10 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
     byte out[4096];
     byte* ptr = out;
     int n = i2d_RSA_PUBKEY(rsa_program_key, &ptr);
+    if (n <= 0) {
+      printf("Can't i2d RSA public key\n");
+      return false;
+    }
     byte rsa_key_hash[32];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
@@ -533,6 +533,10 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
     byte out[4096];
     byte* ptr = out;
     int n = i2d_EC_PUBKEY(ec_program_key, &ptr);
+    if (n <= 0) {
+      printf("Can't i2d ECC public key\n");
+      return false;
+    }
     byte ec_key_hash[32];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);

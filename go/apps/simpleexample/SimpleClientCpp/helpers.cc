@@ -96,6 +96,10 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
     byte out[4096];
     byte* ptr = out;
     int n = i2d_ECPrivateKey(ec_key, &ptr);
+    if (n <= 0) {
+      printf("Can't i2d ECC private key\n");
+      return false;
+    }
     msg.mutable_ec_key()->set_der_blob((void*)out, (size_t)n);
   } else {
     printf("SerializePrivateKey: Unknown key type\n");
@@ -135,6 +139,10 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
     const byte* ptr = (byte*)msg.ec_key().der_blob().data();
     EC_KEY* ec_key = d2i_ECPrivateKey(nullptr, &ptr,
                                       msg.ec_key().der_blob().size());
+    if (ec_key == nullptr) {
+      printf("Can't i2d ECC private key\n");
+      return false;
+    }
     EVP_PKEY* pKey = new EVP_PKEY();
     EVP_PKEY_assign_EC_KEY(pKey, ec_key);
     *key = pKey;

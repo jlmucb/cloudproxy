@@ -40,7 +40,46 @@ bool readwritetest() {
   return true;
 }
 
+bool cert_test() {
+/*
+  string policy_cert;
+  string policy_cert_file = "/Domains/domain.simpleexample/SimpleClientCpp/policy_keys/cert";
+
+  if (!ReadFile(policy_cert_file, &policy_cert)) {
+    printf("Can't read policy cert.\n");
+    return false;
+  }
+  PrintBytes((int)policy_cert.size(), (byte*)policy_cert.data()); printf("\n");
+
+  // Parse policy cert.
+  byte* pc = (byte*)policy_cert.data();
+  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc,
+          policy_cert.size());
+  if (parsed_policy_cert == nullptr) {
+    printf("Can't DER parse policy cert.\n");
+    return false;
+  }
+  EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
+  if (evp_policy_key == nullptr) {
+    printf("Can't get policy public key from cert.\n");
+    return false;
+  }
+  RSA* policy_key = EVP_PKEY_get1_RSA(evp_policy_key);
+  if (policy_key == nullptr) {
+    printf("Can't set policy public key.\n");
+    return false;
+  }
+  int cert_OK = X509_verify(parsed_policy_cert, X509_get_pubkey(parsed_policy_cert));
+  if (cert_OK <= 0) {
+    printf("Can't set verify policy cert.\n");
+    return false;
+  }
+*/
+  return true;
+}
+
 TEST(ReadWriteTest, ReadWriteTest) { EXPECT_TRUE(readwritetest()); }
+TEST(cert_test, cert_test) { EXPECT_TRUE(cert_test()); }
 
 int main(int an, char** av) {
   ::testing::InitGoogleTest(&an, av);

@@ -476,8 +476,14 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
       return false;
     }
     // Deserialize the key.
-    // Fix
+#if 0
     rsa_program_key_ = DeserializeRsaPrivateKey(unsealed_key);
+#else
+    if (!DeserializePrivateKey(unsealed_key, &program_key_type_, &program_key_)) {
+      printf("Can't DeserializePrivateKey\n");
+      return false;
+    }
+#endif
     return true;
   }
 
@@ -539,10 +545,17 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Serialize Key.
   string out_buf;
+#if 0
   if (!SerializeRsaPrivateKey(rsa_program_key_, &out_buf)) {
     printf("InitializeProgramKey: couldn't serialize private RSA key.\n");
     return false;
   }
+#else
+  if (!SerializePrivateKey(program_key_type_, program_key_, &out_buf)) {
+    printf("InitializeProgramKey: couldn't serialize private key.\n");
+    return false;
+  }
+#endif
   // Seal the key and save it.
   string sealed_out;
   string policy = Tao::SealPolicyDefault;

@@ -78,39 +78,6 @@ bool WriteFile(string& file_name, string& in) {
   return true;
 }
 
-bool SerializeRsaPrivateKey(RSA* rsa_key, string* out_buf) {
-  taosupport::RsaPrivateKeyMessage msg;
-
-  // Fill msg.
-  string* m_str = BN_to_bin(*rsa_key->n);
-  msg.set_m(*m_str);
-  string* e_str = BN_to_bin(*rsa_key->e);
-  msg.set_e(*e_str);
-  string* d_str = BN_to_bin(*rsa_key->d);
-  msg.set_d(*d_str);
-
-  if (!msg.SerializeToString(out_buf)) {
-    return false;
-  }
-  return true;
-}
-
-RSA* DeserializeRsaPrivateKey(string& in_buf) {
-  taosupport::RsaPrivateKeyMessage msg;
-
-  if (!msg.ParseFromString(in_buf)) {
-    return nullptr;
-  }
-  RSA* rsa_key = RSA_new();
-  if (msg.has_m())
-    rsa_key->n = bin_to_BN(msg.m().size(), (byte*)msg.m().data());
-  if (msg.has_e())
-    rsa_key->e = bin_to_BN(msg.e().size(), (byte*)msg.e().data());
-  if (msg.has_d())
-    rsa_key->d = bin_to_BN(msg.d().size(), (byte*)msg.d().data());
-  return rsa_key;
-}
-
 bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
   taosupport::PrivateKeyMessage msg;
 
@@ -125,6 +92,7 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
     msg.mutable_rsa_key()->set_d(*d_str);
   } else if (msg.key_type() == "ECC") {
     msg.set_allocated_ec_key(new taosupport::EcPrivateKeyMessage());
+    return false;
   } else {
     printf("SerializePrivateKey: Unknown key type\n");
     return false;
@@ -154,6 +122,7 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
     if (msg.rsa_key().has_d())
       rsa_key->d = bin_to_BN(msg.rsa_key().d().size(), (byte*)msg.rsa_key().d().data());
   } else if (msg.key_type() == "ECC") {
+    return false;
   } else {
     printf("DeserializePrivateKey: Unknown key type\n");
     return false;
@@ -579,8 +548,8 @@ int SslChannel::CreateSocket(string& addr, string& port) {
 }
 
 bool SslChannel::InitSslChannel(string& network, string& address, string& port,
-                X509* policyCert, X509* programCert, string& keyType, EVP_PKEY* privateKey,
-                bool verify) {
+                X509* policyCert, X509* programCert, string& keyType,
+                EVP_PKEY* privateKey, bool verify) {
   // Create socket and contexts.
   fd_ = CreateSocket(address, port);
   if(fd_ <=0) {

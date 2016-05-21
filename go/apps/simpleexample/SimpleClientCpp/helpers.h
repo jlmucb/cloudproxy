@@ -55,9 +55,6 @@ bool WriteFile(string& file_name, string& in);
 bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf);
 bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key);
 
-bool SerializeRsaPrivateKey(RSA* rsa_key, string* out);
-RSA* DeserializeRsaPrivateKey(string& in);
-
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
             string& exponent, string& modulus, bool sign_request, X509_REQ* req);
 bool SignX509Certificate(RSA* signing_key, bool f_isCa, bool f_canSign,

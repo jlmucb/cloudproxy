@@ -24,6 +24,19 @@
 #include "helpers.h"
 
 bool readwritetest() {
+  string filename("/tmp/test1");
+  string in("12345");
+  string out;
+
+  if (!WriteFile(filename, in)) {
+    return false
+  }
+  if (!ReadFile(filename, &out)) {
+    return false
+  }
+  if (out != in) {
+    return false
+  }
   return true;
 }
 

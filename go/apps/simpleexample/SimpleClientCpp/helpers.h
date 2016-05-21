@@ -52,6 +52,9 @@ void PrintBytes(int n, byte* in);
 bool ReadFile(string& file_name, string* out);
 bool WriteFile(string& file_name, string& in);
 
+bool SerializePrivateKey(string& key_type, void* key, string* out_buf);
+bool DeserializePrivateKey(string& in_buf, string* key_type, void* key);
+
 bool SerializeRsaPrivateKey(RSA* rsa_key, string* out);
 RSA* DeserializeRsaPrivateKey(string& in);
 

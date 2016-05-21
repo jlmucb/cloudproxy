@@ -152,6 +152,8 @@ bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
 TaoProgramData::TaoProgramData() {
   initialized_ = false;
   tao_ = nullptr;
+  program_key_type_.clear();
+  program_key_ = nullptr;
   rsa_program_key_ = nullptr;
   ec_program_key_ = nullptr;
   size_program_sym_key_ = 0;
@@ -535,7 +537,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
     return false;
   }
 
-  // Serialize RSAKey.
+  // Serialize Key.
   string out_buf;
   if (!SerializeRsaPrivateKey(rsa_program_key_, &out_buf)) {
     printf("InitializeProgramKey: couldn't serialize private RSA key.\n");

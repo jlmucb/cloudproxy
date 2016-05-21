@@ -111,6 +111,14 @@ RSA* DeserializeRsaPrivateKey(string& in_buf) {
   return rsa_key;
 }
 
+bool SerializePrivateKey(string& key_type, void* key, string* out_buf) {
+  return false;
+}
+
+bool DeserializePrivateKey(string& in_buf, string* key_type, void* key) {
+  return false;
+}
+
 // standard buffer size
 #define MAX_SIZE_PARAMS 4096
 

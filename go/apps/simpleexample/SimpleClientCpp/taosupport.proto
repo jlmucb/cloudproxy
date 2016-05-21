@@ -34,3 +34,12 @@ message RsaPrivateKeyMessage {
   optional bytes   q = 5;
 }
 
+message EcPrivateKeyMessage {
+}
+
+message PrivateKeyMessage {
+  required string key_type = 1;
+  optional RsaPrivateKeyMessage rsa_key = 2;
+  optional EcPrivateKeyMessage ec_key = 3;
+}
+

@@ -46,8 +46,11 @@ public:
   X509* policyCertificate_;
 
   // Tao data.
+  string program_key_type_;
+  void* program_key_;
   RSA* rsa_program_key_;
   EC_KEY* ec_program_key_;
+
   string program_cert_;
   X509* programCertificate_;
   int size_program_sym_key_;

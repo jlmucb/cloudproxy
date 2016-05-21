@@ -52,8 +52,8 @@ void PrintBytes(int n, byte* in);
 bool ReadFile(string& file_name, string* out);
 bool WriteFile(string& file_name, string& in);
 
-bool SerializePrivateKey(string& key_type, void* key, string* out_buf);
-bool DeserializePrivateKey(string& in_buf, string* key_type, void* key);
+bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf);
+bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key);
 
 bool SerializeRsaPrivateKey(RSA* rsa_key, string* out);
 RSA* DeserializeRsaPrivateKey(string& in);
@@ -90,8 +90,12 @@ public:
 
   int CreateSocket(string& addr, string& port);
   bool InitSslChannel(string& network, string& address, string& port,
-                                X509* caCert, X509* programCert, 
+                                X509* caCert, X509* programCert,
                                 RSA* privateKey, bool verify = true);
+  bool InitSslChannel(string& network, string& address, string& port,
+                                X509* caCert, X509* programCert,
+                                string& keyType, EVP_PKEY* key,
+                                bool verify = true);
   int Read(int size, byte* buf);
   int Write(int size, byte* buf);
   void Close();

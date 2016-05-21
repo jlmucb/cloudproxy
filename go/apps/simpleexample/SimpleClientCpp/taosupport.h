@@ -47,7 +47,7 @@ public:
 
   // Tao data.
   string program_key_type_;
-  void* program_key_;
+  EVP_PKEY* program_key_;
   RSA* rsa_program_key_;
   EC_KEY* ec_program_key_;
 

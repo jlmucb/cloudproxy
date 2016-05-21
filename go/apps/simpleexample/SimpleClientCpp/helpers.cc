@@ -111,12 +111,54 @@ RSA* DeserializeRsaPrivateKey(string& in_buf) {
   return rsa_key;
 }
 
-bool SerializePrivateKey(string& key_type, void* key, string* out_buf) {
-  return false;
+bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
+  taosupport::PrivateKeyMessage msg;
+
+  if (msg.key_type() == "RSA") {
+    RSA* rsa_key = EVP_PKEY_get1_RSA(key);
+    msg.set_allocated_rsa_key(new taosupport::RsaPrivateKeyMessage());
+    string* m_str = BN_to_bin(*rsa_key->n);
+    msg.mutable_rsa_key()->set_m(*m_str);
+    string* e_str = BN_to_bin(*rsa_key->e);
+    msg.mutable_rsa_key()->set_e(*e_str);
+    string* d_str = BN_to_bin(*rsa_key->d);
+    msg.mutable_rsa_key()->set_d(*d_str);
+  } else if (msg.key_type() == "ECC") {
+    msg.set_allocated_ec_key(new taosupport::EcPrivateKeyMessage());
+  } else {
+    printf("SerializePrivateKey: Unknown key type\n");
+    return false;
+  }
+
+  if (!msg.SerializeToString(out_buf)) {
+    return false;
+  }
+  return true;
 }
 
-bool DeserializePrivateKey(string& in_buf, string* key_type, void* key) {
-  return false;
+bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
+  taosupport::PrivateKeyMessage msg;
+
+  if (!msg.ParseFromString(in_buf)) {
+    return nullptr;
+  }
+  if (msg.key_type() == "RSA") {
+    if (!msg.has_rsa_key()) {
+      return false;
+    }
+    RSA* rsa_key = RSA_new();
+    if (msg.rsa_key().has_m())
+      rsa_key->n = bin_to_BN(msg.rsa_key().m().size(), (byte*)msg.rsa_key().m().data());
+    if (msg.rsa_key().has_e())
+      rsa_key->e = bin_to_BN(msg.rsa_key().e().size(), (byte*)msg.rsa_key().e().data());
+    if (msg.rsa_key().has_d())
+      rsa_key->d = bin_to_BN(msg.rsa_key().d().size(), (byte*)msg.rsa_key().d().data());
+  } else if (msg.key_type() == "ECC") {
+  } else {
+    printf("DeserializePrivateKey: Unknown key type\n");
+    return false;
+  }
+  return true;
 }
 
 // standard buffer size
@@ -537,6 +579,63 @@ int SslChannel::CreateSocket(string& addr, string& port) {
 }
 
 bool SslChannel::InitSslChannel(string& network, string& address, string& port,
+                X509* policyCert, X509* programCert, string& keyType, EVP_PKEY* privateKey,
+                bool verify) {
+  // Create socket and contexts.
+  fd_ = CreateSocket(address, port);
+  if(fd_ <=0) {
+    printf("CreateSocket failed.\n");
+    return false;
+  }
+  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
+  if (ssl_ctx_ == nullptr) {
+    printf("SSL_CTX_new failed.\n");
+    return false;
+  }
+  ssl_ = SSL_new(ssl_ctx_);
+  if (ssl_ == nullptr) {
+    printf("SSL_new failed.\n");
+    return false;
+  }
+
+  // Set my cert chain and private key.
+  SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
+  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+  SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
+  if (SSL_use_PrivateKey(ssl_, privateKey) <= 0) {
+    printf("SSL_CTX_use_PrivateKey failed.\n");
+    return false;
+  }
+  // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
+
+  // Set root store and certificate.
+  store_ = X509_STORE_new();
+  if (store_ == nullptr) {
+    printf("X509_STORE_new failed.\n");
+    return false;
+  }
+  X509_STORE_add_cert(store_, policyCert);
+  SSL_CTX_set_cert_store(ssl_ctx_, store_);
+
+  // Setup verification stuff.
+  if (verify) {
+    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+  }
+
+  // Set fd.
+  SSL_set_fd(ssl_, fd_);
+  if (SSL_connect(ssl_) != 1) {
+    printf("SSL_connect failed.\n");
+    return false;
+  }
+  // check connection?
+  
+  peer_cert_ = SSL_get_peer_certificate(ssl_);
+  return true;
+}
+
+bool SslChannel::InitSslChannel(string& network, string& address, string& port,
         X509* policyCert, X509* programCert, RSA* privateKey, bool verify) {
 
   // Create socket and contexts.
@@ -580,7 +679,7 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
   if (verify) {
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
-  } 
+  }
 
   // Set fd.
   SSL_set_fd(ssl_, fd_);

@@ -86,8 +86,106 @@ bool cert_test() {
   return true;
 }
 
+EVP_PKEY* key_choice(string& key_type, int key_size) {
+  EVP_PKEY* key = nullptr;
+#if 0
+  string* key_bytes;
+  key = EVP_PKEY_new();
+  if (key == nullptr)
+    return nullptr;
+
+  if (key_type == "RSA") {
+    RSA* rsa_program_key = RSA_generate_key(key_size, 0x010001ULL, nullptr, nullptr);
+    if (rsa_program_key == nullptr) {
+      printf("key_choice: couldn't generate RSA program key.\n");
+      return nullptr;
+    }
+    program_key_type_ = "RSA";
+    EVP_PKEY_assign_RSA(key, rsa_program_key);
+    // Bytes for public key are the hash of the der encoding of it.
+    byte out[4096];
+    byte* ptr = out;
+    int n = i2d_RSA_PUBKEY(rsa_program_key, &ptr);
+    if (n <= 0) {
+      printf("key_choice: Can't i2d RSA public key\n");
+      return nullptr;
+    }
+    byte rsa_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(rsa_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
+  } else if (key_type == "ECC") {
+    EC_KEY* ec_program_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if (ec_program_key == nullptr) {
+      printf("key_choice: couldn't generate ECC program key.\n");
+      return nullptr;
+    }
+    if (1 != EC_KEY_generate_key(ec_program_key)) {
+      printf("key_choice: couldn't generate ECC program key(2).\n");
+      return nullptr;
+    }
+    program_key_type_ = "ECC";
+    EVP_PKEY_assign_EC_KEY(key, ec_program_key);
+    // Bytes for public key are the hash of the der encoding of it.
+    byte out[4096];
+    byte* ptr = out;
+    int n = i2d_EC_PUBKEY(ec_program_key, &ptr);
+    if (n <= 0) {
+      printf("key_choice: Can't i2d ECC public key\n");
+      return nullptr;
+    }
+    byte ec_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(ec_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
+  } else {
+    printf("unsupported key type.\n");
+    return nullptr;
+  }
+  // Print key bytes
+  printf("Bytes: ");
+  PrintBytes((int)key_bytes->size(), (byte*)key_bytes->data());
+  printf("\n");
+#endif
+  return key;
+}
+
+
+bool crypt_test() {
+#if 0
+  int n;
+  string key_type("RSA");
+  int key_size = 2048;
+  EVP_PKEY* key = key_choice(string& key_type, int key_size);
+  if (key == nullptr) {
+  }
+  int n = RSA_public_encrypt(int flen, unsigned char *from,
+    unsigned char *to, RSA *rsa, RSA_PKCS1_OAEP_PADDING);
+
+  n = RSA_private_decrypt(int flen, unsigned char *from,
+     unsigned char *to, RSA *rsa, RSA_PKCS1_OAEP_PADDING);
+
+  key_type = "ECC";
+  key_size = 256;
+  EVP_PKEY* key = key_choice(string& key_type, int key_size);
+  if (key == nullptr) {
+  }
+  n =  ECDSA_sign(int type, const unsigned char *dgst, int dgstlen,
+                unsigned char *sig, unsigned int *siglen, EC_KEY *eckey);
+  n = ECDSA_do_verify(const unsigned char *dgst, int dgst_len,
+                     const ECDSA_SIG *sig, EC_KEY* eckey);
+#endif
+  return true;
+}
+
+
 TEST(ReadWriteTest, ReadWriteTest) { EXPECT_TRUE(readwritetest()); }
 TEST(cert_test, cert_test) { EXPECT_TRUE(cert_test()); }
+TEST(crypt_test, crypt_test) { EXPECT_TRUE(crypt_test()); }
 
 int main(int an, char** av) {
   ::testing::InitGoogleTest(&an, av);

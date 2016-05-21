@@ -121,6 +121,9 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
       rsa_key->e = bin_to_BN(msg.rsa_key().e().size(), (byte*)msg.rsa_key().e().data());
     if (msg.rsa_key().has_d())
       rsa_key->d = bin_to_BN(msg.rsa_key().d().size(), (byte*)msg.rsa_key().d().data());
+      EVP_PKEY* pKey = new EVP_PKEY();
+      EVP_PKEY_assign_RSA(pKey, rsa_key);
+      *key = pKey;
   } else if (msg.key_type() == "ECC") {
     return false;
   } else {

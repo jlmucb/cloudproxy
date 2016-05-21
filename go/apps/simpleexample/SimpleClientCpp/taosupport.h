@@ -48,8 +48,6 @@ public:
   // Tao data.
   string program_key_type_;
   EVP_PKEY* program_key_;
-  RSA* rsa_program_key_;
-  EC_KEY* ec_program_key_;
 
   string program_cert_;
   X509* programCertificate_;
@@ -64,7 +62,7 @@ public:
                string& network, string& address, string& port);
   void Print();
 
-  bool InitializeProgramKey(string& path, int keysize,
+  bool InitializeProgramKey(string& path, string& key_type, int key_size,
                             string& network, string& address, string& port);
   bool InitializeSymmetricKeys(string& path, int keysize);
   bool ExtendName(string& subprin);

@@ -88,9 +88,6 @@ public:
   int CreateSocket(string& addr, string& port);
   bool InitSslChannel(string& network, string& address, string& port,
                                 X509* caCert, X509* programCert,
-                                RSA* privateKey, bool verify = true);
-  bool InitSslChannel(string& network, string& address, string& port,
-                                X509* caCert, X509* programCert,
                                 string& keyType, EVP_PKEY* key,
                                 bool verify = true);
   int Read(int size, byte* buf);

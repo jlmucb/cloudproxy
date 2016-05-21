@@ -93,12 +93,12 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
   }
 
   // Open TLS channel with Program cert.
-  // FIX
   string network("tcp");
   if (!peer_channel_.InitSslChannel(network, serverAddress, port,
                     client_program_data.policyCertificate_,
                     client_program_data.programCertificate_,
-                    client_program_data.rsa_program_key_, true)) {
+                    client_program_data.program_key_type_,
+                    client_program_data.program_key_, true)) {
     printf("Can't Init SSl channel.\n");
     return false;
   }
@@ -154,8 +154,6 @@ TaoProgramData::TaoProgramData() {
   tao_ = nullptr;
   program_key_type_.clear();
   program_key_ = nullptr;
-  rsa_program_key_ = nullptr;
-  ec_program_key_ = nullptr;
   size_program_sym_key_ = 0;
   program_sym_key_ = nullptr;
   programCertificate_ = nullptr;
@@ -175,14 +173,10 @@ void TaoProgramData::ClearProgramData() {
 
   // TODO: erase key first.
   // Clear private key.
-  if (rsa_program_key_ != nullptr) {
-    RSA_free(rsa_program_key_);
+  if (program_key_ != nullptr) {
+    EVP_PKEY_free(program_key_);
   }
-  rsa_program_key_ = nullptr;
-  if (ec_program_key_ != nullptr) {
-    EC_KEY_free(ec_program_key_);
-  }
-  ec_program_key_ = nullptr;
+  program_key_ = nullptr;
 
   if (size_program_sym_key_ > 0 && program_sym_key_ != nullptr) {
     memset(program_sym_key_, 0, size_program_sym_key_);
@@ -226,11 +220,26 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     printf("Can't DER parse policy cert.\n");
     return false;
   }
+
+  string keyType;
+  int key_size;
   EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
   if (evp_policy_key == nullptr) {
     printf("Can't get policy public key from cert.\n");
     return false;
   }
+  int key_type = EVP_PKEY_id(evp_policy_key);
+  if (EVP_PKEY_EC == key_type) {
+    keyType = "ECC";
+    key_size = 256;
+  } else if (EVP_PKEY_RSA == key_type) {
+    keyType = "RSA";
+    key_size = 2048;
+  } else {
+    printf("Unsupported key type.\n");
+    return false;
+  }
+
 
   // Extend principal name, hash of policy cert identifies policy extension.
 
@@ -271,7 +280,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   }
 
   // Get (or initialize) my program key.
-  if (!InitializeProgramKey(path, 2048, network, address, port)) {
+  if (!InitializeProgramKey(path, keyType, key_size, network, address, port)) {
     printf("Can't init program keys.\n");
     return false;
   }
@@ -358,9 +367,10 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   }
 
   SslChannel domainChannel;
+  string keyType("RSA");
 
   if (!domainChannel.InitSslChannel(network, address, port,
-        policyCertificate_, tmpChannelCert, tmpChannelKey, false)) {
+        policyCertificate_, tmpChannelCert, keyType, self, false)) {
     printf("Can't init ssl channel to domain server.\n");
     return false;
   }
@@ -445,8 +455,8 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   return true;
 }
 
-bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
-        string& network, string& address, string& port) {
+bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
+        int key_size, string& network, string& address, string& port) {
 
   string sealed_key_file_name = path + "sealedsigningKey";
   string signer_cert_file_name = path + "signerCert";
@@ -483,15 +493,41 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
     return true;
   }
 
-  // Generate the key;
-  rsa_program_key_ = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
-  if (rsa_program_key_ == nullptr) {
-    printf("InitializeProgramKey: couldn't generate program key.\n");
+  // Generate the key and specify key bytes.
+  string* key_bytes;
+  EVP_PKEY* program_key_ = EVP_PKEY_new();
+  if (program_key_ == nullptr) {
+    return false;
+  }
+  if (key_type == "RSA") {
+    RSA* rsa_program_key = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
+    if (rsa_program_key == nullptr) {
+      printf("InitializeProgramKey: couldn't generate RSA program key.\n");
+      return false;
+    }
+    program_key_type_ = "RSA";
+    EVP_PKEY_assign_RSA(program_key_, rsa_program_key);
+    key_bytes = BN_to_bin(*rsa_program_key->n);
+  } else if (key_type == "ECC") {
+    EC_KEY* ec_program_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if (ec_program_key == nullptr) {
+      printf("InitializeProgramKey: couldn't generate ECC program key.\n");
+      return false;
+    }
+    if (1 != EC_KEY_generate_key(ec_program_key)) {
+      printf("InitializeProgramKey: couldn't generate ECC program key(2).\n");
+      return false;
+    }
+    program_key_type_ = "ECC";
+    EVP_PKEY_assign_EC_KEY(program_key_, ec_program_key);
+    // key_bytes = BN_to_bin(*rsa_program_key->n);
+  } else {
+    printf("InitializeProgramKey: unsupported key type.\n");
     return false;
   }
 
   // Get the program cert from the domain service.
-  // First we need the endorsement cert.
+  // First, we need the endorsement cert.
   string endorsement_cert_file_name = path + "endorsementCert";
   string endorse_cert;
   if (!ReadFile(endorsement_cert_file_name, &endorse_cert)) {
@@ -501,7 +537,6 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
 
   // Construct a delegation statement.
   string serialized_key;
-  string* key_bytes = BN_to_bin(*rsa_program_key_->n);
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
   v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));

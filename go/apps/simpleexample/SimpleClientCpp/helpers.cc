@@ -565,7 +565,7 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
                 EVP_PKEY* privateKey, bool verify) {
   // Create socket and contexts.
   fd_ = CreateSocket(address, port);
-  if(fd_ <=0) {
+  if(fd_ <= 0) {
     printf("CreateSocket failed.\n");
     return false;
   }
@@ -588,64 +588,6 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
     printf("SSL_CTX_use_PrivateKey failed.\n");
     return false;
   }
-  // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
-
-  // Set root store and certificate.
-  store_ = X509_STORE_new();
-  if (store_ == nullptr) {
-    printf("X509_STORE_new failed.\n");
-    return false;
-  }
-  X509_STORE_add_cert(store_, policyCert);
-  SSL_CTX_set_cert_store(ssl_ctx_, store_);
-
-  // Setup verification stuff.
-  if (verify) {
-    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
-  }
-
-  // Set fd.
-  SSL_set_fd(ssl_, fd_);
-  if (SSL_connect(ssl_) != 1) {
-    printf("SSL_connect failed.\n");
-    return false;
-  }
-  // check connection?
-  
-  peer_cert_ = SSL_get_peer_certificate(ssl_);
-  return true;
-}
-
-bool SslChannel::InitSslChannel(string& network, string& address, string& port,
-        X509* policyCert, X509* programCert, RSA* privateKey, bool verify) {
-
-  // Create socket and contexts.
-  fd_ = CreateSocket(address, port);
-  if(fd_ <=0) {
-    printf("CreateSocket failed.\n");
-    return false;
-  }
-  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
-  if (ssl_ctx_ == nullptr) {
-    printf("SSL_CTX_new failed.\n");
-    return false;
-  }
-  ssl_ = SSL_new(ssl_ctx_);
-  if (ssl_ == nullptr) {
-    printf("SSL_new failed.\n");
-    return false;
-  }
-
-  // Set my cert chain and private key.
-  SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
-  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
-  SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
-  if (SSL_CTX_use_RSAPrivateKey(ssl_ctx_, privateKey) <= 0) {
-    printf("SSL_CTX_use_RSAPrivateKey failed.\n");
-    return false;
-  }
-
   // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
 
   // Set root store and certificate.

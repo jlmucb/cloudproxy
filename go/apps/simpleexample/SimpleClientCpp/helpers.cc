@@ -93,7 +93,10 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
   } else if (msg.key_type() == "ECC") {
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(key);
     msg.set_allocated_ec_key(new taosupport::EcPrivateKeyMessage());
-    return false;
+    byte out[4096];
+    byte* ptr = out;
+    int n = i2d_ECPrivateKey(ec_key, &ptr);
+    msg.mutable_ec_key()->set_der_blob((void*)out, (size_t)n);
   } else {
     printf("SerializePrivateKey: Unknown key type\n");
     return false;
@@ -129,9 +132,11 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
     if (!msg.has_rsa_key()) {
       return false;
     }
-    EC_KEY* rsa_key = EC_KEY_new();
+    const byte* ptr = (byte*)msg.ec_key().der_blob().data();
+    EC_KEY* ec_key = d2i_ECPrivateKey(nullptr, &ptr,
+                                      msg.ec_key().der_blob().size());
     EVP_PKEY* pKey = new EVP_PKEY();
-    EVP_PKEY_assign_EC_KEY(pKey, rsa_key);
+    EVP_PKEY_assign_EC_KEY(pKey, ec_key);
     *key = pKey;
   } else {
     printf("DeserializePrivateKey: Unknown key type\n");
@@ -540,7 +545,6 @@ SslChannel::~SslChannel() {
 
 int SslChannel::CreateSocket(string& addr, string& port) {
   int sockfd;
-  char* tmp_ptr = nullptr;
   struct sockaddr_in dest_addr;
 
   uint16_t s_port = stoi(port);
@@ -548,7 +552,6 @@ int SslChannel::CreateSocket(string& addr, string& port) {
   dest_addr.sin_family=AF_INET;
   dest_addr.sin_port = htons(s_port);
   inet_aton(addr.c_str(), &dest_addr.sin_addr);
-  tmp_ptr = inet_ntoa(dest_addr.sin_addr);
   if (connect(sockfd, (struct sockaddr *) &dest_addr,
               sizeof(struct sockaddr)) == -1) {
     printf("Error: Cannot connect to host\n");

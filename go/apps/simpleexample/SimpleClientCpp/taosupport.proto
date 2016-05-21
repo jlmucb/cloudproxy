@@ -34,7 +34,9 @@ message RsaPrivateKeyMessage {
   optional bytes   q = 5;
 }
 
+// The cheap way
 message EcPrivateKeyMessage {
+  optional bytes der_blob = 1;
 }
 
 message PrivateKeyMessage {

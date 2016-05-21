@@ -507,7 +507,16 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
     }
     program_key_type_ = "RSA";
     EVP_PKEY_assign_RSA(program_key_, rsa_program_key);
-    key_bytes = BN_to_bin(*rsa_program_key->n);
+    // Bytes for public key are the hash of the der encoding of it.
+    byte out[4096];
+    byte* ptr = out;
+    int n = i2d_RSA_PUBKEY(rsa_program_key, &ptr);
+    byte rsa_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(rsa_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
   } else if (key_type == "ECC") {
     EC_KEY* ec_program_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
     if (ec_program_key == nullptr) {
@@ -520,7 +529,16 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
     }
     program_key_type_ = "ECC";
     EVP_PKEY_assign_EC_KEY(program_key_, ec_program_key);
-    // key_bytes = BN_to_bin(*rsa_program_key->n);
+    // Bytes for public key are the hash of the der encoding of it.
+    byte out[4096];
+    byte* ptr = out;
+    int n = i2d_EC_PUBKEY(ec_program_key, &ptr);
+    byte ec_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(ec_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
   } else {
     printf("InitializeProgramKey: unsupported key type.\n");
     return false;

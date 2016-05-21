@@ -205,12 +205,10 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
 
   // Read policy cert.
   string policy_cert_file = path + "/policy_keys/cert";
-  string cert;
-  if (!ReadFile(policy_cert_file, &cert)) {
+  if (!ReadFile(policy_cert_file, &policy_cert_)) {
     printf("Can't read policy cert.\n");
     return false;
   }
-  printf("Read %s, size: %d\n", policy_cert_file.c_str(), (int)policy_cert_.size());
   PrintBytes((int)policy_cert_.size(), (byte*)policy_cert_.data());
 
   // Parse policy cert.

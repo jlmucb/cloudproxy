@@ -91,6 +91,7 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
     string* d_str = BN_to_bin(*rsa_key->d);
     msg.mutable_rsa_key()->set_d(*d_str);
   } else if (msg.key_type() == "ECC") {
+    EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(key);
     msg.set_allocated_ec_key(new taosupport::EcPrivateKeyMessage());
     return false;
   } else {
@@ -125,7 +126,13 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
       EVP_PKEY_assign_RSA(pKey, rsa_key);
       *key = pKey;
   } else if (msg.key_type() == "ECC") {
-    return false;
+    if (!msg.has_rsa_key()) {
+      return false;
+    }
+    EC_KEY* rsa_key = EC_KEY_new();
+    EVP_PKEY* pKey = new EVP_PKEY();
+    EVP_PKEY_assign_EC_KEY(pKey, rsa_key);
+    *key = pKey;
   } else {
     printf("DeserializePrivateKey: Unknown key type\n");
     return false;

@@ -196,24 +196,27 @@ bool TaoProgramData::ExtendName(string& subprin) {
   return tao_->ExtendTaoName(subprin);
 }
 
-bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg, string& path,
-                              string& network, string& address, string& port) {
+bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
+       string& path, string& network, string& address, string& port) {
 
   // Set tao and msg for later calls.
   msg_ = msg;
   tao_ = tao;
 
   // Read policy cert.
-  string policy_cert_file = path + "policyCert";
+  string policy_cert_file = path + "/policy_keys/cert";
   string cert;
-  if (ReadFile(policy_cert_file, &cert)) {
+  if (!ReadFile(policy_cert_file, &cert)) {
     printf("Can't read policy cert.\n");
     return false;
   }
+  printf("Read %s, size: %d\n", policy_cert_file.c_str(), (int)policy_cert_.size());
+  PrintBytes((int)policy_cert_.size(), (byte*)policy_cert_.data());
 
   // Parse policy cert.
   byte* pc = (byte*)policy_cert_.data();
-  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc, policy_cert_.size());
+  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc,
+          policy_cert_.size());
   if (parsed_policy_cert == nullptr) {
     printf("Can't DER parse policy cert.\n");
     return false;
@@ -405,7 +408,7 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   string file_name = path + "sealedsymmetricKey";
 
   // Read key file.
-  if (ReadFile(file_name, &sealed)) {
+  if (!ReadFile(file_name, &sealed)) {
     if (!Unseal(sealed, &unsealed)) {
       printf("Can't open InitializeSymmetricKeys\n");
       return false;
@@ -489,7 +492,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   // First we need the endorsement cert.
   string endorsement_cert_file_name = path + "endorsementCert";
   string endorse_cert;
-  if (ReadFile(endorsement_cert_file_name, &endorse_cert)) {
+  if (!ReadFile(endorsement_cert_file_name, &endorse_cert)) {
     printf("InitializeProgramKey: couldn't read endorsement cert.\n");
     return false;
   }
@@ -529,7 +532,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
   }
 
   // Save the program cert.
-  if (WriteFile(signer_cert_file_name, program_cert)) {
+  if (!WriteFile(signer_cert_file_name, program_cert)) {
     printf("InitializeProgramKey: couldn't writed signed program cert.\n");
     return false;
   }
@@ -548,7 +551,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, int keysize,
     printf("InitializeProgramKeys: Can't seal program key\n");
     return false;
   }
-  if (WriteFile(sealed_key_file_name, sealed_out)) {
+  if (!WriteFile(sealed_key_file_name, sealed_out)) {
     printf("InitializeProgramKey: couldn't write sealed private key.\n");
     return false;
   }

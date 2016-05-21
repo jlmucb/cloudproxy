@@ -36,7 +36,7 @@ using tao::TaoRPC;
 // localhost is 127.0.0.1
 DEFINE_string(config_file, "/Domains/domain.simpleexample/tao.config",
               "path to tao configuration");
-DEFINE_string(client_path, "/Domains/domain.simpleexample/SimpleClient",
+DEFINE_string(client_path, "/Domains/domain.simpleexample/SimpleClientCpp",
               "path to SimpleClient files");
 DEFINE_string(server_host, "localhost", "address for client/server");
 DEFINE_string(server_port, "8123", "port for client/server");
@@ -60,8 +60,9 @@ int main(int argc, char **argv) {
   client_program_data.ClearProgramData();
 
   string tcp("tcp");
-  if (!client_program_data.InitTao(msg.get(), tao.get(), FLAGS_config_file, FLAGS_client_path,
-				  tcp, FLAGS_domain_server_host, FLAGS_domain_server_port)) {
+  if (!client_program_data.InitTao(msg.get(), tao.get(), FLAGS_config_file,
+            FLAGS_client_path, tcp, FLAGS_domain_server_host,
+            FLAGS_domain_server_port)) {
     printf("client_program_data.InitTao failed\n");
     return 1;
   }

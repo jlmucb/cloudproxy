@@ -209,7 +209,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     printf("Can't read policy cert.\n");
     return false;
   }
-  PrintBytes((int)policy_cert_.size(), (byte*)policy_cert_.data());
+  PrintBytes((int)policy_cert_.size(), (byte*)policy_cert_.data()); printf("\n");
 
   // Parse policy cert.
   byte* pc = (byte*)policy_cert_.data();
@@ -220,6 +220,10 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     return false;
   }
   EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
+  if (evp_policy_key == nullptr) {
+    printf("Can't get policy public key from cert.\n");
+    return false;
+  }
   policy_key_ = EVP_PKEY_get1_RSA(evp_policy_key);
   if (policy_key_ == nullptr) {
     printf("Can't set policy public key.\n");

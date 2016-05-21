@@ -29,15 +29,22 @@ bool readwritetest() {
   string out;
 
   if (!WriteFile(filename, in)) {
-    return false
+    return false;
   }
   if (!ReadFile(filename, &out)) {
-    return false
+    return false;
   }
   if (out != in) {
-    return false
+    return false;
   }
   return true;
 }
 
 TEST(ReadWriteTest, ReadWriteTest) { EXPECT_TRUE(readwritetest()); }
+
+int main(int an, char** av) {
+  ::testing::InitGoogleTest(&an, av);
+  int result = RUN_ALL_TESTS();
+  return result;
+}
+

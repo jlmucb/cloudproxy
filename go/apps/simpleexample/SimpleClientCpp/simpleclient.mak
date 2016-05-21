@@ -51,7 +51,7 @@ dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o \
 	$(O)/ca.pb.o $(O)/attestation.pb.o $(O)/datalog_guard.pb.o \
 	$(O)/acl_guard.pb.o $(O)/taosupport.pb.o $(O)/simpleclient_cc.o
 
-dobj_test=$(O)/helpers.o $(O)/support_test.o
+dobj_test=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/support_test.o
 
 all:	$(EXE_DIR)/simpleclient_cc.exe $(EXE_DIR)/support_test.exe
 
@@ -68,7 +68,7 @@ $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 
 $(EXE_DIR)/support_test.exe: $(dobj_test)
 	@echo "linking support_test"
-	$(LINK) -o $(EXE_DIR)/support_test.exe $(dobj_test) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/support_test.exe $(dobj_test) -L/Domains $(LDFLAGS)
 
 $(O)/helpers.o: $(S)/helpers.cc
 	@echo "compiling helpers.cc"

@@ -45,13 +45,15 @@ LINK=g++
 PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
-LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
+LDFLAGS=-lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
 
 dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o \
 	$(O)/ca.pb.o $(O)/attestation.pb.o $(O)/datalog_guard.pb.o \
 	$(O)/acl_guard.pb.o $(O)/taosupport.pb.o $(O)/simpleclient_cc.o
 
-all:	$(EXE_DIR)/simpleclient_cc.exe
+dobj_test=$(O)/helpers.o $(O)/support_test.o
+
+all:	$(EXE_DIR)/simpleclient_cc.exe $(EXE_DIR)/support_test.exe
 
 clean:
 	@echo "removing object files"
@@ -63,6 +65,10 @@ $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	@echo "linking simpleclient"
 	$(LINK) -o $(EXE_DIR)/simpleclient_cc.exe $(dobj_simpleclient) \
 	-L/Domains -lauth -ltao $(LDFLAGS)
+
+$(EXE_DIR)/support_test.exe: $(dobj_test)
+	@echo "linking support_test"
+	$(LINK) -o $(EXE_DIR)/support_test.exe $(dobj_test) $(LDFLAGS)
 
 $(O)/helpers.o: $(S)/helpers.cc
 	@echo "compiling helpers.cc"
@@ -96,4 +102,7 @@ $(O)/simpleclient_cc.o: $(S)/simpleclient_cc.cc
 	@echo "compiling simpleclient_cc.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/simpleclient_cc.o $(S)/simpleclient_cc.cc
 
+$(O)/support_test.o: $(S)/support_test.cc
+	@echo "compiling support_test.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/support_test.o $(S)/support_test.cc
 

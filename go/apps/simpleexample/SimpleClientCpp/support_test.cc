@@ -77,18 +77,22 @@ bool cert_test() {
     return false;
   }
   EVP_PKEY* pubkey = X509_get_pubkey(parsed_policy_cert);
+  if (pubkey == nullptr) {
+    return false;
+  }
+#if 0
   int cert_OK = X509_verify(parsed_policy_cert,
            pubkey);
   if (cert_OK <= 0) {
     printf("Can't verify policy cert %d.\n", cert_OK);
     return false;
   }
+#endif
   return true;
 }
 
 EVP_PKEY* key_choice(string& key_type, int key_size) {
   EVP_PKEY* key = nullptr;
-#if 0
   string* key_bytes;
   key = EVP_PKEY_new();
   if (key == nullptr)
@@ -100,7 +104,6 @@ EVP_PKEY* key_choice(string& key_type, int key_size) {
       printf("key_choice: couldn't generate RSA program key.\n");
       return nullptr;
     }
-    program_key_type_ = "RSA";
     EVP_PKEY_assign_RSA(key, rsa_program_key);
     // Bytes for public key are the hash of the der encoding of it.
     byte out[4096];
@@ -126,7 +129,6 @@ EVP_PKEY* key_choice(string& key_type, int key_size) {
       printf("key_choice: couldn't generate ECC program key(2).\n");
       return nullptr;
     }
-    program_key_type_ = "ECC";
     EVP_PKEY_assign_EC_KEY(key, ec_program_key);
     // Bytes for public key are the hash of the der encoding of it.
     byte out[4096];
@@ -150,35 +152,63 @@ EVP_PKEY* key_choice(string& key_type, int key_size) {
   printf("Bytes: ");
   PrintBytes((int)key_bytes->size(), (byte*)key_bytes->data());
   printf("\n");
-#endif
   return key;
 }
 
 
 bool crypt_test() {
-#if 0
   int n;
   string key_type("RSA");
   int key_size = 2048;
-  EVP_PKEY* key = key_choice(string& key_type, int key_size);
+  EVP_PKEY* key = key_choice(key_type, key_size);
   if (key == nullptr) {
+    return false;
   }
-  int n = RSA_public_encrypt(int flen, unsigned char *from,
-    unsigned char *to, RSA *rsa, RSA_PKCS1_OAEP_PADDING);
 
-  n = RSA_private_decrypt(int flen, unsigned char *from,
-     unsigned char *to, RSA *rsa, RSA_PKCS1_OAEP_PADDING);
+  byte in[20] = {
+    0,1,2,3,4,5,6,7,8,9,
+    0,1,2,3,4,5,6,7,8,9,
+  };
+  byte out[512];
+
+  RSA* rsa = EVP_PKEY_get1_RSA(key);
+  if (rsa == nullptr) {
+    return false;
+  }
+  n = RSA_public_encrypt(20, in, out, rsa, RSA_PKCS1_OAEP_PADDING);
+  if (n <= 0) {
+    return false;
+  }
+
+  byte recover[512];
+  int m = RSA_private_decrypt(n, out, recover, rsa, RSA_PKCS1_OAEP_PADDING);
+  if (m != 20 || memcmp(in, recover, m) !=0) {
+    return false;
+  }
 
   key_type = "ECC";
   key_size = 256;
-  EVP_PKEY* key = key_choice(string& key_type, int key_size);
+  key = key_choice(key_type, key_size);
   if (key == nullptr) {
+    return false;
   }
-  n =  ECDSA_sign(int type, const unsigned char *dgst, int dgstlen,
-                unsigned char *sig, unsigned int *siglen, EC_KEY *eckey);
-  n = ECDSA_do_verify(const unsigned char *dgst, int dgst_len,
-                     const ECDSA_SIG *sig, EC_KEY* eckey);
-#endif
+  EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(key);
+  if (ec_key == nullptr) {
+    return false;
+  }
+
+  byte sig[8192];
+  unsigned int len = 8192;
+  n =  ECDSA_sign(0, in, 20, sig, &len, ec_key);
+  if (n <= 0) {
+    return false;
+  }
+  printf("Len: %d\n", len);
+
+  m = ECDSA_verify(0, in, 20, sig, len, ec_key);
+  if (m <= 0) {
+    return false;
+  }
   return true;
 }
 

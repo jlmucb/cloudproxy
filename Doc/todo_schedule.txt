@@ -14,14 +14,13 @@ Tpm2 integration	Tpm2 support, tpm1.2 and tpm2 scripts and Doc complete		John/Si
 State-protection	Local state rollback protection and monotonic counters		John		June, 2016
 
 Code walk-through		
-
 Security Review		Full security review						John/Ben	July, 2016
 
-Key management library	CPRotation library: Epochs, key-protection chains		John		June, 2016
-			"PolicyKey says Program-Name canRead zone-keys"			John
+Key management library	CPRotation library: Epochs, key-protection chains		John		June, 2016 (done)
+			"PolicyKey says Program-Name canRead zone-keys"			Sid 		done
 
-Infrastructure servers	Full feature CPDomainServer					Sid, John?	Aug, 2016
-			Full feature CPSecretServer					Albert?		Oct, 2016
+Infrastructure servers	Full feature CPDomainServer					Sid, John?	Aug, 2016 (done)
+			Full feature CPSecretServer					Albert?		Oct, 2016 (done)
 			Auth for the masses
 
 New SecApp		Some nifty new app						Albert		Dec, 2016
@@ -39,14 +38,14 @@ Docker/Kubernetes in	Packaged support for Docker and Kubernetes deployment		John
 a box
 
 
-Check: key wiping
+More:
 
-Change domain program loading:  should a host name be extended by a program loading policy?  The policy
-key for the host should almost certainly not have to sign every image that is run.  In a cloud
-setting it would kill scale and make the host policy key vulnerable. Check with Tom.
+Check: key wiping everywhere especially with errors.
 
-Revise simple example to use acl guard.
-Fix policy key generation.  Can policy key be RSA key?
+Revise simple example to use acl guard. (july)
+Fix policy key generation.
+Fix policy enforcement.  It should be loaded in and measured.  Default should be run everything. (july)
 
-Add additional key certification for binding key?  (Key that seals secrets for another program.)
+Support RSA keys too? (august)
+C++ library for domain support including key serialization stuff?
 

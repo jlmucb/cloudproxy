@@ -46,6 +46,7 @@ key for the host should almost certainly not have to sign every image that is ru
 setting it would kill scale and make the host policy key vulnerable. Check with Tom.
 
 Revise simple example to use acl guard.
+Fix policy key generation.  Can policy key be RSA key?
 
 Add additional key certification for binding key?  (Key that seals secrets for another program.)
 

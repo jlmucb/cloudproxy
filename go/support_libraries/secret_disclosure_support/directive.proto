@@ -18,9 +18,12 @@ message directive_message {
   // policy_key says program_name can read (secret_name, epoch).
   optional bytes serialized_statement = 2;
 
-  // The signer's public key, encoded using clouddproxy/tao/auth.Marshal().
+  // The signer's public key principal, encoded using clouddproxy/tao/auth.Marshal().
   optional bytes signer = 3;
 
   // Signature over the serialized statement.
   optional bytes signature = 4;
+
+  // Program certificate, to be used in case signer is a program key.
+  optional bytes cert = 5;
 }

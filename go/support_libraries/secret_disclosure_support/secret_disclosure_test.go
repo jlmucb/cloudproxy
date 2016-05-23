@@ -20,6 +20,8 @@ package secret_disclosure
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -28,9 +30,14 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
-var ProgramName = auth.Prin{
+var Delegate = auth.Prin{
 	Type: "program",
 	Key:  auth.Bytes([]byte(`fake program`)),
+}
+
+var Delegator = auth.Prin{
+	Type: "program",
+	Key:  auth.Bytes([]byte(`speaker program`)),
 }
 
 var ProtectedObjectName = "obj_name"
@@ -40,25 +47,59 @@ var ProtectedObjectId = po.ObjectIdMessage{
 	ObjEpoch: &ProtectedObjectEpoch,
 }
 
+var us = "US"
+var google = "Google"
+var x509Info = tao.X509Details{
+	Country:      &us,
+	Organization: &google}
+
+func TestProcessDirectiveAndUpdateGuard(t *testing.T) {
+	domain := setUpDomain(t)
+	err := domain.Guard.Authorize(Delegator, OwnPredicate,
+		[]string{ProtectedObjectId.String()})
+	failOnError(t, err)
+
+	programKey, err := tao.NewTemporaryKeys(tao.Signing)
+	failOnError(t, err)
+	info := x509Info
+	speakerStr := Delegator.String()
+	info.CommonName = &speakerStr
+	subject := tao.NewX509Name(&info)
+	programKey.Cert, err = domain.Keys.SigningKey.CreateSignedX509(
+		domain.Keys.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
+	failOnError(t, err)
+	directive, err := CreateSecretDisclosureDirective(programKey, &Delegator,
+		&Delegate, ReadPredicate, &ProtectedObjectId)
+	failOnError(t, err)
+	directive.Cert = programKey.Cert.Raw
+
+	err = ProcessDirectiveAndUpdateGuard(domain, directive)
+	failOnError(t, err)
+
+	if !domain.Guard.IsAuthorized(Delegate, ReadPredicate,
+		[]string{ProtectedObjectId.String()}) {
+		t.Fatal("Domain guard not updated as expected.")
+	}
+
+	tearDown(t)
+}
+
 func TestCreateDirective(t *testing.T) {
 	policyKey, testDirective, err := generatePolicyKeyAndSignedDirective(Params{})
-	if err != nil {
-		t.Fatal("Error generating test directive and policy key.", err)
-	}
-	directive, err := CreateSecretDisclosureDirective(policyKey, &ProgramName, &ProtectedObjectId)
-	if err != nil {
-		t.Fatal("Error generating real directive.", err)
-	}
+	failOnError(t, err)
+	signer := policyKey.SigningKey.ToPrincipal()
+	directive, err := CreateSecretDisclosureDirective(policyKey, &signer, &Delegate,
+		ReadPredicate, &ProtectedObjectId)
+	failOnError(t, err)
 	signatureValid, err := policyKey.SigningKey.GetVerifier().Verify(
 		directive.SerializedStatement, SigningContext, directive.Signature)
-	if err != nil {
-		t.Fatal("Error verifying the signature")
-	}
+	failOnError(t, err)
 	if !signatureValid {
 		t.Fatal("Signature on directive not valid")
 	}
 	if testDirective.GetType() != directive.GetType() ||
-		!bytes.Equal(testDirective.GetSerializedStatement(), directive.GetSerializedStatement()) ||
+		!bytes.Equal(testDirective.GetSerializedStatement(),
+			directive.GetSerializedStatement()) ||
 		!bytes.Equal(testDirective.GetSigner(), directive.GetSigner()) {
 		t.Fatal("Fields in directive do not match expected value")
 	}
@@ -66,15 +107,18 @@ func TestCreateDirective(t *testing.T) {
 
 func TestVerifyDirective(t *testing.T) {
 	policyKey, directive, err := generatePolicyKeyAndSignedDirective(Params{})
-	if err != nil {
-		t.Fatal("Error generating test directive and policy key.", err)
+	failOnError(t, err)
+	prin, programName, pred, protectedObjectId, err :=
+		VerifySecretDisclosureDirective(policyKey, directive)
+	failOnError(t, err)
+	if !prin.Identical(policyKey.SigningKey.ToPrincipal()) {
+		t.Fatal("Verify returns different speaker principal from expected value.")
 	}
-	programName, protectedObjectId, err := VerifySecretDisclosureDirective(policyKey, directive)
-	if err != nil {
-		t.Fatal("Error verifying test directive", err)
-	}
-	if !ProgramName.Identical(programName) {
+	if !Delegate.Identical(programName) {
 		t.Fatal("Verify returns different programName from expected value.")
+	}
+	if *pred != ReadPredicate {
+		t.Fatal("Verify returns different predicate name from expected value.")
 	}
 	if *protectedObjectId.ObjName != *ProtectedObjectId.ObjName ||
 		*protectedObjectId.ObjEpoch != *ProtectedObjectId.ObjEpoch {
@@ -84,19 +128,22 @@ func TestVerifyDirective(t *testing.T) {
 
 func TestCreateAndVerifyDirective(t *testing.T) {
 	policyKey, _, err := generatePolicyKeyAndSignedDirective(Params{})
-	if err != nil {
-		t.Fatal("Error generating test directive and policy key.", err)
+	failOnError(t, err)
+	signer := policyKey.SigningKey.ToPrincipal()
+	directive, err := CreateSecretDisclosureDirective(policyKey, &signer, &Delegate,
+		ReadPredicate, &ProtectedObjectId)
+	failOnError(t, err)
+	prin, programName, pred, protectedObjectId, err := VerifySecretDisclosureDirective(policyKey,
+		directive)
+	failOnError(t, err)
+	if !prin.Identical(policyKey.SigningKey.ToPrincipal()) {
+		t.Fatal("Verify returns different speaker principal from expected value.")
 	}
-	directive, err := CreateSecretDisclosureDirective(policyKey, &ProgramName, &ProtectedObjectId)
-	if err != nil {
-		t.Fatal("Error when creating directive.", err)
-	}
-	programName, protectedObjectId, err := VerifySecretDisclosureDirective(policyKey, directive)
-	if err != nil {
-		t.Fatal("Error when verifying directive", err)
-	}
-	if !ProgramName.Identical(programName) {
+	if !Delegate.Identical(programName) {
 		t.Fatal("Verify returns different programName from expected value.")
+	}
+	if *pred != ReadPredicate {
+		t.Fatal("Verify returns different predicate name from expected value.")
 	}
 	if *protectedObjectId.ObjName != *ProtectedObjectId.ObjName ||
 		*protectedObjectId.ObjEpoch != *ProtectedObjectId.ObjEpoch {
@@ -104,17 +151,48 @@ func TestCreateAndVerifyDirective(t *testing.T) {
 	}
 }
 
+func TestCreateAndVerifyDirectiveSignedByProgram(t *testing.T) {
+	policyKey, _, err := generatePolicyKeyAndSignedDirective(Params{})
+	programKey, err := tao.NewTemporaryKeys(tao.Signing)
+	failOnError(t, err)
+	info := x509Info
+	speakerStr := Delegator.String()
+	info.CommonName = &speakerStr
+	subject := tao.NewX509Name(&info)
+	programKey.Cert, err = policyKey.SigningKey.CreateSignedX509(
+		policyKey.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
+	failOnError(t, err)
+	directive, err := CreateSecretDisclosureDirective(programKey, &Delegator,
+		&Delegate, ReadPredicate, &ProtectedObjectId)
+	failOnError(t, err)
+	directive.Cert = programKey.Cert.Raw
+
+	speaker, prog, pred, pobj, err := VerifySecretDisclosureDirective(policyKey, directive)
+	failOnError(t, err)
+	if !speaker.Identical(Delegator) {
+		t.Fatal(fmt.Sprintf("verify returns Speaker %v different from expected value %v",
+			speaker, Delegator))
+	}
+	if !prog.Identical(Delegate) {
+		t.Fatal(fmt.Sprintf("verify returns program  %v different from expected value %v",
+			prog, Delegate))
+	}
+	if *pred != ReadPredicate {
+		t.Fatal(fmt.Sprintf("verify returns predicate  %v different from expected value %v",
+			pred, ReadPredicate))
+	}
+	if *pobj.ObjName != *ProtectedObjectId.ObjName ||
+		*pobj.ObjEpoch != *ProtectedObjectId.ObjEpoch {
+		t.Fatal("Verify returns different protectedObjectId from expected value.")
+	}
+}
+
 func TestVerifyDirectiveWithBadType(t *testing.T) {
 	policyKey, testDirective, err := generatePolicyKeyAndSignedDirective(Params{})
-	if err != nil {
-		t.Fatal("Error generating test directive and policy key.", err)
-	}
+	failOnError(t, err)
 	testDirective.Type = nil
-	programName, protectedObjectId, err := VerifySecretDisclosureDirective(
-		policyKey, testDirective)
-	if programName != nil ||
-		protectedObjectId != nil ||
-		err == nil {
+	_, _, _, _, err = VerifySecretDisclosureDirective(policyKey, testDirective)
+	if err == nil {
 		t.Fatal("Verify output is not an error")
 	}
 }
@@ -152,7 +230,7 @@ func TestVerifyDirectiveWithBadPredicate_badName(t *testing.T) {
 func TestVerifyDirectiveWithBadPredicate_badTerms(t *testing.T) {
 	params := Params{
 		CanRead: auth.Pred{
-			Name: CanReadPredicate,
+			Name: ReadPredicate,
 			Arg:  []auth.Term{auth.Int(0), auth.Str(""), auth.Str("a")},
 			// TODO: Note make([]auth.Term, 3) above causes NPE in auth.Marshal(thisPred)
 			// Is that a bug?
@@ -161,9 +239,9 @@ func TestVerifyDirectiveWithBadPredicate_badTerms(t *testing.T) {
 	expectError(&params, t)
 }
 
-func TestVerifyDirectiveWithBadProgramName(t *testing.T) {
+func TestVerifyDirectiveWithBadDelegate(t *testing.T) {
 	params := Params{
-		ProgramName: auth.Str(""),
+		Delegate: auth.Str(""),
 	}
 	expectError(&params, t)
 }
@@ -185,21 +263,22 @@ func TestVerifyDirectiveWithBadProtectedObjectId_invalidProtoBuf(t *testing.T) {
 
 func expectError(params *Params, t *testing.T) {
 	policyKey, testDirective, err := generatePolicyKeyAndSignedDirective(*params)
-	if err != nil {
-		t.Fatal("Error generating test directive and policy key.", err)
-	}
+	failOnError(t, err)
 	testDirective.Type = nil
-	programName, protectedObjectId, err := VerifySecretDisclosureDirective(
-		policyKey, testDirective)
-	if programName != nil ||
-		protectedObjectId != nil ||
-		err == nil {
+	_, _, _, _, err = VerifySecretDisclosureDirective(policyKey, testDirective)
+	if err == nil {
 		t.Fatal("Verify output is not an error")
 	}
 }
 
+func failOnError(t *testing.T, err error) {
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 type Params struct {
-	ProgramName        auth.Term
+	Delegate           auth.Term
 	SerializedObjectId auth.Term
 	Says               auth.Form
 	CanRead            auth.Form
@@ -211,10 +290,10 @@ type Params struct {
 
 func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMessage, error) {
 	var programName auth.Term
-	if params.ProgramName != nil {
-		programName = params.ProgramName
+	if params.Delegate != nil {
+		programName = params.Delegate
 	} else {
-		programName = ProgramName
+		programName = Delegate
 	}
 	var serializedObjectId auth.Term
 	if params.SerializedObjectId != nil {
@@ -235,11 +314,19 @@ func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMe
 		canRead = params.CanRead
 	} else {
 		canRead = auth.Pred{
-			Name: CanReadPredicate,
+			Name: ReadPredicate,
 			Arg:  terms,
 		}
 	}
 	policyKey, err := tao.NewTemporaryKeys(tao.Signing)
+	if err != nil {
+		return nil, nil, err
+	}
+	info := x509Info
+	name := policyKey.SigningKey.ToPrincipal().String()
+	info.CommonName = &name
+	subject := tao.NewX509Name(&info)
+	policyKey.Cert, err = policyKey.SigningKey.CreateSelfSignedX509(subject)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -283,4 +370,33 @@ func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMe
 		Signer:              signer,
 	}
 	return policyKey, directive, nil
+}
+
+func setUpDomain(t *testing.T) *tao.Domain {
+	var err error
+	if _, err = os.Stat("./tmpdir"); os.IsNotExist(err) {
+		err = os.Mkdir("./tmpdir", 0777)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	aclGuardType := "ACLs"
+	aclGuardPath := "acls"
+	cfg := tao.DomainConfig{
+		DomainInfo: &tao.DomainDetails{
+			GuardType: &aclGuardType},
+		AclGuardInfo: &tao.ACLGuardDetails{
+			SignedAclsPath: &aclGuardPath}}
+	domain, err := tao.CreateDomain(cfg, "./tmpdir/domain", []byte("xxx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return domain
+}
+
+func tearDown(t *testing.T) {
+	err := os.RemoveAll("./tmpdir")
+	if err != nil {
+		t.Fatal(err)
+	}
 }

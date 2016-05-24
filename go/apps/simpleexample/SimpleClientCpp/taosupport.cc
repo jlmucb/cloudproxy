@@ -94,7 +94,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
 
   // Open TLS channel with Program cert.
   string network("tcp");
-  if (!peer_channel_.InitSslChannel(network, serverAddress, port,
+  if (!peer_channel_.InitClientSslChannel(network, serverAddress, port,
                     client_program_data.policyCertificate_,
                     client_program_data.programCertificate_,
                     client_program_data.program_key_type_,
@@ -366,7 +366,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   SslChannel domainChannel;
   string keyType("RSA");
 
-  if (!domainChannel.InitSslChannel(network, address, port,
+  if (!domainChannel.InitClientSslChannel(network, address, port,
         policyCertificate_, tmpChannelCert, keyType, self, false)) {
     printf("Can't init ssl channel to domain server.\n");
     return false;

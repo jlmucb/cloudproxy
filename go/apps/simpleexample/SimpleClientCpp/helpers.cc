@@ -24,10 +24,13 @@
 #include <openssl/rand.h>
 
 #include <string>
+#include <thread>
+
 #include <taosupport.pb.h>
 
 using std::string;
 using std::unique_ptr;
+using std::thread;
 
 //
 // Copyright 2015 Google Corporation, All Rights Reserved.
@@ -116,7 +119,7 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
   taosupport::PrivateKeyMessage msg;
 
   if (!msg.ParseFromString(in_buf)) {
-    return nullptr;
+    return false;
   }
   if (msg.key_type() == "RSA") {
     if (!msg.has_rsa_key()) {
@@ -551,7 +554,30 @@ SslChannel::~SslChannel() {
   store_ = nullptr;
 }
 
-int SslChannel::CreateSocket(string& addr, string& port) {
+int SslChannel::CreateServerSocket(string& addr, string& port) {
+  int sockfd;
+  struct sockaddr_in dest_addr;
+
+  uint16_t s_port = stoi(port);
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  dest_addr.sin_family=AF_INET;
+  dest_addr.sin_port = htons(s_port);
+  inet_aton(addr.c_str(), &dest_addr.sin_addr);
+
+  if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    printf("Unable to bind\n");
+    return -1;
+  }
+
+  if (listen(sockfd, 1) < 0) {
+    printf("Unable to listen\n");
+    return -1;
+  }
+  return sockfd;
+}
+
+
+int SslChannel::CreateClientSocket(string& addr, string& port) {
   int sockfd;
   struct sockaddr_in dest_addr;
 
@@ -568,11 +594,86 @@ int SslChannel::CreateSocket(string& addr, string& port) {
   return sockfd;
 }
 
-bool SslChannel::InitSslChannel(string& network, string& address, string& port,
+bool SslChannel::InitServerSslChannel(string& network, string& address, string& port,
                 X509* policyCert, X509* programCert, string& keyType,
                 EVP_PKEY* privateKey, bool verify) {
+  // I'm a server.
+  server_role_ = true;
+
   // Create socket and contexts.
-  fd_ = CreateSocket(address, port);
+  fd_ = CreateClientSocket(address, port);
+  if(fd_ <= 0) {
+    printf("CreateSocket failed.\n");
+    return false;
+  }
+  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
+  if (ssl_ctx_ == nullptr) {
+    printf("SSL_CTX_new failed.\n");
+    return false;
+  }
+  ssl_ = SSL_new(ssl_ctx_);
+  if (ssl_ == nullptr) {
+    printf("SSL_new failed.\n");
+    return false;
+  }
+
+  // Set my cert chain and private key.
+  SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
+  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+  // Create socket and contexts.
+  fd_ = CreateClientSocket(address, port);
+  if(fd_ <= 0) {
+    printf("CreateSocket failed.\n");
+    return false;
+  }
+  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
+  if (ssl_ctx_ == nullptr) {
+    printf("SSL_CTX_new failed.\n");
+    return false;
+  }
+  ssl_ = SSL_new(ssl_ctx_);
+  if (ssl_ == nullptr) {
+    printf("SSL_new failed.\n");
+    return false;
+  }
+
+  // Set my cert chain and private key.
+  SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
+  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+  SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
+  if (SSL_use_PrivateKey(ssl_, privateKey) <= 0) {
+    printf("SSL_CTX_use_PrivateKey failed.\n");
+    return false;
+  }
+  // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
+
+  // Set root store and certificate.
+  store_ = X509_STORE_new();
+  if (store_ == nullptr) {
+    printf("X509_STORE_new failed.\n");
+    return false;
+  }
+  X509_STORE_add_cert(store_, policyCert);
+  SSL_CTX_set_cert_store(ssl_ctx_, store_);
+
+  // Setup verification stuff.
+  if (verify) {
+    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+  }
+
+  peer_cert_ = SSL_get_peer_certificate(ssl_);
+  return true;
+}
+
+bool SslChannel::InitClientSslChannel(string& network, string& address, string& port,
+                X509* policyCert, X509* programCert, string& keyType,
+                EVP_PKEY* privateKey, bool verify) {
+  // I'm a client.
+  server_role_ = false;
+
+  // Create socket and contexts.
+  fd_ = CreateClientSocket(address, port);
   if(fd_ <= 0) {
     printf("CreateSocket failed.\n");
     return false;
@@ -620,8 +721,64 @@ bool SslChannel::InitSslChannel(string& network, string& address, string& port,
     return false;
   }
   // check connection?
-  
+
   peer_cert_ = SSL_get_peer_certificate(ssl_);
+  return true;
+}
+
+bool ProcessRequest (int request_number, int request_size, byte* request,
+                     int* reply_size, byte* reply) {
+  const char* r = "This is a stupid reply";
+  printf("\nProcessRequest: "); PrintBytes(request_size, request); printf("\n");
+  *reply_size = strlen(r) + 1;
+  memcpy(reply, r, *reply_size);
+  if (request_number > 2)
+    return false;
+  return true;
+}
+
+void HandleConnection(SslChannel* channel,  SSL* ssl, int client) {
+  byte request[4096];
+  int request_size;
+  byte reply[4096];
+  int reply_size;
+  bool fContinue;
+  int request_number = 0;
+
+  for (;;) {
+    request_size = SSL_read(ssl, request, 4096);
+    reply_size = 4096;
+    fContinue = ProcessRequest(request_number++, request_size, request,
+                     &reply_size, reply);
+    SSL_write(ssl, reply, reply_size);
+    if (!fContinue)
+      break;
+  }
+  SSL_free(ssl);
+  close(client);
+}
+
+bool SslChannel::ServerLoop() {
+  bool fContinue = true;
+
+  while(fContinue) {
+    struct sockaddr_in addr;
+    uint len = sizeof(addr);
+
+    int client = accept(fd_, (struct sockaddr*)&addr, &len);
+    if (client < 0) {
+      printf("Unable to accept\n");
+      continue;
+    }
+
+    SSL* ssl = SSL_new(ssl_ctx_);
+    SSL_set_fd(ssl, client);
+    if (SSL_accept(ssl) <= 0) {
+            printf("Unable to ssl_accept\n");
+            continue;
+    } 
+    thread t(&HandleConnection, this, ssl, client);
+  }
   return true;
 }
 

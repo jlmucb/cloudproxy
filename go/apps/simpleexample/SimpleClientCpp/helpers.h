@@ -76,6 +76,7 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
 
 class SslChannel {
 private:
+  bool server_role_;
   int fd_;
   SSL_CTX *ssl_ctx_;
   SSL* ssl_;
@@ -85,11 +86,17 @@ public:
   SslChannel();
   ~SslChannel();
 
-  int CreateSocket(string& addr, string& port);
-  bool InitSslChannel(string& network, string& address, string& port,
+  int CreateClientSocket(string& addr, string& port);
+  int CreateServerSocket(string& addr, string& port);
+  bool InitClientSslChannel(string& network, string& address, string& port,
                                 X509* caCert, X509* programCert,
                                 string& keyType, EVP_PKEY* key,
                                 bool verify = true);
+  bool InitServerSslChannel(string& network, string& address, string& port,
+                                X509* caCert, X509* programCert,
+                                string& keyType, EVP_PKEY* key,
+                                bool verify = true);
+  bool ServerLoop();
   int Read(int size, byte* buf);
   int Write(int size, byte* buf);
   void Close();

@@ -345,15 +345,8 @@ bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
 
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
             EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req) {
-#if 0
-  RSA*  rsa = RSA_new();
   X509_NAME* subject = X509_NAME_new();
-
   X509_REQ_set_version(req, 2L);
-  if (key_type != "RSA") {
-    printf("Only rsa keys supported\n");
-    return false;
-  }
   if (subject == nullptr) {
     printf("Can't alloc x509 name\n");
     return false;
@@ -385,18 +378,15 @@ bool GenerateX509CertificateRequest(string& key_type, string& common_name,
       printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
     }
   }
-  pKey->type = EVP_PKEY_RSA;
-  if (X509_REQ_set_pubkey(req, pKey) ==0) {
+  if (X509_REQ_set_pubkey(req, subjectKey) ==0) {
       printf("X509_REQ_set_pubkey failed\n");
   }
-#endif
   return true;
 }
 
 bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, string& signing_issuer,
                          string& purpose, int64 duration, EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
-#if 0
   if (signedKey == nullptr)
     signedKey = X509_REQ_get_pubkey(req);
   if (signedKey == nullptr) {
@@ -412,11 +402,8 @@ bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, stri
   }
   
   uint64_t serial = 1;
-  EVP_PKEY* pSigningKey= EVP_PKEY_new();
   const EVP_MD* digest = EVP_sha256();
   X509_NAME* name;
-  EVP_PKEY_set1_RSA(pSigningKey, signing_key);
-  pSigningKey->type = EVP_PKEY_RSA;
   X509_set_version(cert, 2L);
   ASN1_INTEGER_set(X509_get_serialNumber(cert), serial++);
 
@@ -464,7 +451,7 @@ bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, stri
     return false;
   }
 
-  if (!X509_sign(cert, pSigningKey, digest)) {
+  if (!X509_sign(cert, signingKey, digest)) {
     printf("Bad PKEY type\n");
     return false;
   }
@@ -472,7 +459,6 @@ bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, stri
   printf("digest->size: %d\n", digest->md_size);
   PrintBytes(digest->md_size, (byte*)digest->final);
   printf("\n");
-#endif
   return true;
 }
 

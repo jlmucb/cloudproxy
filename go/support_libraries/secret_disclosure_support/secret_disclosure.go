@@ -14,12 +14,13 @@
 
 // Package secret_disclosure contains functions which create, interpret and verify
 // secret disclosure directives of the following form:
-// 'policyKey says programName can read protectedObjectId'
+// 'PolicyKey/DelegatorProgram says DelegateProgram can Read/Write/Create/Delete/Own ProtectedObjectId'
 
 package secret_disclosure
 
 import (
 	"bytes"
+	"crypto/x509"
 	"errors"
 
 	"github.com/golang/protobuf/proto"
@@ -29,31 +30,50 @@ import (
 )
 
 const (
-	SigningContext   = "Policy Secret Disclosure Directive Signature"
-	CanReadPredicate = "CanRead"
+	SigningContext  = "Policy Secret Disclosure Directive Signature"
+	ReadPredicate   = "Read"
+	WritePredicate  = "Write"
+	CreatePredicate = "Create"
+	DeletePredicate = "Delete"
+	OwnPredicate    = "Own"
 )
 
-// This function returns a secret disclosure directive signed by policyKey with the statement:
-//     'policyKey says programName can read protectedObjectId'.
-func CreateSecretDisclosureDirective(policyKey *tao.Keys, programName *auth.Prin,
-	protectedObjId *po.ObjectIdMessage) (*DirectiveMessage, error) {
+func ProcessDirectiveAndUpdateGuard(domain *tao.Domain, directive *DirectiveMessage) error {
+	delegator, delegate, pred, pObj, err := VerifySecretDisclosureDirective(domain.Keys, directive)
+	if err != nil {
+		return err
+	}
+	if domain.Guard.IsAuthorized(*delegate, *pred, []string{pObj.String()}) {
+		return nil
+	}
+	if !domain.Guard.IsAuthorized(*delegator, OwnPredicate, []string{pObj.String()}) {
+		return errors.New("speaker of directive is not owner of object")
+	}
+	return domain.Guard.Authorize(*delegate, *pred, []string{pObj.String()})
+
+}
+
+// This function returns a secret disclosure directive signed by key with the statement:
+// 'delegator says delegate predicate protectedObjectId'.
+func CreateSecretDisclosureDirective(key *tao.Keys, delegator, delegate *auth.Prin,
+	predicate string, protectedObjId *po.ObjectIdMessage) (*DirectiveMessage, error) {
 
 	// Construct serialized 'says' statement.
 	serializedObjId, err := proto.Marshal(protectedObjId)
 	if err != nil {
 		return nil, err
 	}
-	canRead := auth.MakePredicate(CanReadPredicate, *programName, serializedObjId)
+	pred := auth.MakePredicate(predicate, *delegate, serializedObjId)
 	statement := auth.Says{
-		Speaker:    policyKey.SigningKey.ToPrincipal(),
+		Speaker:    *delegator,
 		Time:       nil, // TODO: For now, time and exp not implemented.
 		Expiration: nil,
-		Message:    canRead,
+		Message:    pred,
 	}
 	serializedStatement := auth.Marshal(statement)
 
 	// Sign serialized statement.
-	signature, err := policyKey.SigningKey.Sign(serializedStatement, SigningContext)
+	signature, err := key.SigningKey.Sign(serializedStatement, SigningContext)
 	if err != nil {
 		return nil, err
 	}
@@ -63,48 +83,82 @@ func CreateSecretDisclosureDirective(policyKey *tao.Keys, programName *auth.Prin
 		Type:                DirectiveMessage_SECRET_DISCLOSURE.Enum(),
 		SerializedStatement: serializedStatement,
 		Signature:           signature,
-		Signer:              auth.Marshal(policyKey.SigningKey.ToPrincipal()),
+		Signer:              auth.Marshal(key.SigningKey.ToPrincipal()),
+		Cert:                key.Cert.Raw,
 	}
 	return directive, nil
 }
 
 // This function performs the following checks on a secret disclosure directive.
-// (1) policyKey matches the signer of the directive (delegation not supported as of now).
-// (2) the directive signature is valid with respect to policyKey
+// (1) the directive signature is valid with respect to signerKey of directive
+// (2) Either
+//       - policyKey matches the signerKey of directive
+//       - directive cert is a valid program cert (signed by policyKey) certifying the signerKey
+//         of directive as belonging to 'delegator'
 // (3) the directive message is a statement of the form:
-//         'policyKey says programName can read protectedObjectId'.
-//     where programName is a Tao Principal and protectedObjectId is a (serialized) protected
+//         'policyKey/'delegator' says delegate can read protectedObjectId'
+//     where delegate is a Tao Principal and protectedObjectId is a (serialized) protected
 //     object message id.
-func VerifySecretDisclosureDirective(policyKey *tao.Keys,
-	directive *DirectiveMessage) (*auth.Prin, *po.ObjectIdMessage, error) {
+func VerifySecretDisclosureDirective(policyKey *tao.Keys, directive *DirectiveMessage) (*auth.Prin,
+	*auth.Prin, *string, *po.ObjectIdMessage, error) {
 
 	// Check type of directive
 	if directive.Type == nil || *(directive.Type) != DirectiveMessage_SECRET_DISCLOSURE {
-		return nil, nil, errors.New(
+		return nil, nil, nil, nil, errors.New(
 			"secret_disclosure: directive not of secret disclosure type.")
 	}
 
+	var verifier *tao.Verifier
+	var delegatorStr string
 	// Check directive signer matches policy key.
 	if bytes.Compare(
-		auth.Marshal(policyKey.SigningKey.ToPrincipal()), directive.GetSigner()) != 0 {
-		return nil, nil, errors.New(
-			"secret_disclosure: directive signer doesn't match policy key.")
+		auth.Marshal(policyKey.SigningKey.ToPrincipal()), directive.GetSigner()) == 0 {
+		verifier = policyKey.SigningKey.GetVerifier()
+		delegatorStr = verifier.ToPrincipal().String()
+
+	} else {
+		// Check if program cert is valid, signed by policy key,
+		// cert public key matches signer and cert name matches speaker
+		// of says statement.
+		cert, err := x509.ParseCertificate(directive.Cert)
+		if err != nil {
+			return nil, nil, nil, nil, errors.New(
+				"error parsing directive program cert")
+		}
+		rootCert := x509.NewCertPool()
+		rootCert.AddCert(policyKey.Cert)
+		verifyOptions := x509.VerifyOptions{Roots: rootCert}
+		_, err = cert.Verify(verifyOptions)
+		if err != nil {
+			return nil, nil, nil, nil, errors.New(
+				"program cert not valid")
+		}
+		verifier, err = tao.FromX509(cert)
+		delegatorStr = cert.Subject.CommonName
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		if bytes.Compare(auth.Marshal(verifier.ToPrincipal()), directive.GetSigner()) != 0 {
+			return nil, nil, nil, nil, errors.New(
+				"secret_disclosure: directive signer doesn't match program key.")
+		}
 	}
 
 	// Verify signature.
-	ok, err := policyKey.SigningKey.GetVerifier().Verify(
-		directive.GetSerializedStatement(), SigningContext, directive.GetSignature())
+	ok, err := verifier.Verify(directive.GetSerializedStatement(), SigningContext,
+		directive.GetSignature())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	if !ok {
-		return nil, nil, errors.New("secret_disclosure: directive signature check failed.")
+		return nil, nil, nil, nil,
+			errors.New("secret_disclosure: directive signature check failed.")
 	}
 
 	// Validate and return statement.
 	statement, err := auth.UnmarshalForm(directive.GetSerializedStatement())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	var saysStatement *auth.Says
 	if ptr, ok := statement.(*auth.Says); ok {
@@ -112,34 +166,47 @@ func VerifySecretDisclosureDirective(policyKey *tao.Keys,
 	} else if val, ok := statement.(auth.Says); ok {
 		saysStatement = &val
 	} else {
-		return nil, nil, errors.New("secret_disclosure: directive statement not a 'Says'.")
+		return nil, nil, nil, nil,
+			errors.New("secret_disclosure: directive statement not a 'Says'")
+	}
+	stmtSpeaker, ok := saysStatement.Speaker.(auth.Prin)
+	if !ok {
+		return nil, nil, nil, nil,
+			errors.New("secret_disclosure: directive speaker not a 'Prin'")
+	}
+	if stmtSpeaker.String() != delegatorStr {
+		return nil, nil, nil, nil, errors.New(
+			"secret_disclosure: directive statement speaker does not match signer")
 	}
 	pred, ok := saysStatement.Message.(auth.Pred)
 	if !ok {
-		return nil, nil, errors.New("secret_disclosure: directive message not a 'Pred'.")
+		return nil, nil, nil, nil,
+			errors.New("secret_disclosure: directive message not a 'Pred'")
 	}
-	if pred.Name != CanReadPredicate {
-		return nil, nil, errors.New("secret_disclosure: directive predicate not a 'CanRead'.")
+	predName := pred.Name
+	if predName == "" {
+		return nil, nil, nil, nil,
+			errors.New("secret_disclosure: directive predicate name is empty")
 	}
 	if len(pred.Arg) != 2 {
-		return nil, nil, errors.New(
-			"secret_disclosure: directive 'CanRead' doesn't have 2 terms.")
+		return nil, nil, nil, nil,
+			errors.New("secret_disclosure: directive predicate doesn't have 2 terms")
 	}
-	programName, ok := pred.Arg[0].(auth.Prin)
+	delegateName, ok := pred.Arg[0].(auth.Prin)
 	if !ok {
-		return nil, nil, errors.New(
-			"secret_disclosure: directive programName Term not of type auth.Prin.")
+		return nil, nil, nil, nil, errors.New(
+			"secret_disclosure: directive delegateName Term not of type auth.Prin.")
 	}
 	serializedObjId, ok := pred.Arg[1].(auth.Bytes)
 	if !ok {
-		return nil, nil, errors.New(
+		return nil, nil, nil, nil, errors.New(
 			"secret_disclosure: directive ObjId Term not of type []byte.")
 	}
 	protectedObjId := po.ObjectIdMessage{}
 	err = proto.Unmarshal(serializedObjId, &protectedObjId)
 	if err != nil {
-		return nil, nil, errors.New(
+		return nil, nil, nil, nil, errors.New(
 			"secret_disclosure: error deserializing protected ObjId.")
 	}
-	return &programName, &protectedObjId, nil
+	return &stmtSpeaker, &delegateName, &predName, &protectedObjId, nil
 }

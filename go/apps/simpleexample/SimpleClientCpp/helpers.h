@@ -55,11 +55,12 @@ bool WriteFile(string& file_name, string& in);
 bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf);
 bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key);
 
+EVP_PKEY* GenerateKey(string& keyType, int keySize);
+string* GetKeyBytes(EVP_PKEY* pKey);
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
-            string& exponent, string& modulus, bool sign_request, X509_REQ* req);
-bool SignX509Certificate(RSA* signing_key, bool f_isCa, bool f_canSign,
-                         string& issuer, string& purpose, int64 duration,
-                         EVP_PKEY* signedKey,
+            EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req);
+bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, string& signing_issuer,
+                         string& purpose, int64 duration, EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert);
 bool VerifyX509CertificateChain(X509* cacert, X509* cert);
 

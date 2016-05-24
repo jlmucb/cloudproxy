@@ -216,10 +216,75 @@ string* BN_to_bin(BIGNUM& n) {
   return new string((const char*)buf, len);
 }
 
-bool MakePublicRsaKey(string& exponent, string& modulus, RSA* rsa) {
-  rsa->e = bin_to_BN(exponent.size(), (byte*)exponent.data());
-  rsa->n = bin_to_BN(modulus.size(), (byte*)modulus.data());
-  return rsa->e != nullptr && rsa->n != nullptr;
+string* GetKeyBytes(EVP_PKEY* pKey) {
+  string* key_bytes;
+  byte out[4096];
+  byte* ptr = out;
+  int n;
+
+  if (pKey->type == EVP_PKEY_RSA) {
+    RSA* rsa_key = EVP_PKEY_get1_RSA(pKey);
+    n = i2d_RSA_PUBKEY(rsa_key, &ptr);
+    if (n <= 0) {
+      printf("GetKeyBytes: Can't i2d RSA public key\n");
+      return nullptr;
+    }
+    byte rsa_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(rsa_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
+  } else if (pKey->type == EVP_PKEY_EC) {
+    EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(pKey);
+    n = i2d_EC_PUBKEY(ec_key, &ptr);
+    if (n <= 0) {
+      printf("GetKeyBytes: Can't i2d ECC public key\n");
+      return nullptr;
+    }
+    byte ec_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(ec_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
+  } else {
+    printf("GetKeyBytes: unsupported key type.\n");
+    return nullptr;
+  }
+  return key_bytes;
+}
+
+EVP_PKEY* GenerateKey(string& keyType, int keySize) {
+  EVP_PKEY* pKey = EVP_PKEY_new();
+  if (pKey == nullptr) {
+    return nullptr;
+  }
+  if (keyType == "RSA") {
+    RSA* rsa_key = RSA_generate_key(keySize, 0x010001ULL, nullptr, nullptr);
+    if (rsa_key == nullptr) {
+      printf("GenerateKey: couldn't generate RSA key.\n");
+      return nullptr;
+    }
+    EVP_PKEY_assign_RSA(pKey, rsa_key);
+    pKey->type = EVP_PKEY_RSA;
+  } else if (keyType == "ECC") {
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if (ec_key == nullptr) {
+      printf("GenerateKey: couldn't generate ECC program key (1).\n");
+      return nullptr;
+    }
+    if (1 != EC_KEY_generate_key(ec_key)) {
+      printf("GenerateKey: couldn't generate ECC program key(2).\n");
+      return nullptr;
+    }
+    EVP_PKEY_assign_EC_KEY(pKey, ec_key);
+    pKey->type = EVP_PKEY_EC;
+  } else {
+    printf("GenerateKey: unsupported key type.\n");
+    return nullptr;
+  }
+  return pKey;
 }
 
 class extEntry {
@@ -279,10 +344,10 @@ bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
 }
 
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
-            string& exponent, string& modulus, bool sign_request, X509_REQ* req) {
+            EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req) {
+#if 0
   RSA*  rsa = RSA_new();
   X509_NAME* subject = X509_NAME_new();
-  EVP_PKEY* pKey = new EVP_PKEY();
 
   X509_REQ_set_version(req, 2L);
   if (key_type != "RSA") {
@@ -312,17 +377,10 @@ bool GenerateX509CertificateRequest(string& key_type, string& common_name,
     return false;
   }
 
-  if (!MakePublicRsaKey(exponent, modulus, rsa)) {
-    printf("Can't make rsa key\n");
-    return false;
-  }
-
-  EVP_PKEY_assign_RSA(pKey, rsa);
-
   // fill key parameters in request
   if (sign_request) {
     const EVP_MD* digest = EVP_sha256();
-    if (!X509_REQ_sign(req, pKey, digest)) {
+    if (!X509_REQ_sign(req, subjectKey, digest)) {
       printf("Sign request fails\n");
       printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
     }
@@ -331,14 +389,14 @@ bool GenerateX509CertificateRequest(string& key_type, string& common_name,
   if (X509_REQ_set_pubkey(req, pKey) ==0) {
       printf("X509_REQ_set_pubkey failed\n");
   }
-
+#endif
   return true;
 }
 
-bool SignX509Certificate(RSA* signing_key, bool f_isCa, bool f_canSign,
-                         string& signing_issuer, string& purpose, int64 duration,
-                         EVP_PKEY* signedKey,
+bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, string& signing_issuer,
+                         string& purpose, int64 duration, EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
+#if 0
   if (signedKey == nullptr)
     signedKey = X509_REQ_get_pubkey(req);
   if (signedKey == nullptr) {
@@ -414,6 +472,7 @@ bool SignX509Certificate(RSA* signing_key, bool f_isCa, bool f_canSign,
   printf("digest->size: %d\n", digest->md_size);
   PrintBytes(digest->md_size, (byte*)digest->final);
   printf("\n");
+#endif
   return true;
 }
 

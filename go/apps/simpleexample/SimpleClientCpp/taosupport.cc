@@ -327,38 +327,26 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
     return false;
   }
 
-  // Construct temporary channel key.
-  RSA* tmpChannelKey = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
-  if (tmpChannelKey == nullptr) {
-    printf("Can't Generate temporary channel key.\n");
-    return false;
-  }
-
-  // Self signed cert.
-  X509* tmpChannelCert = nullptr;
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-  string key_type("RSA");
+  string key_type("ECC");
   string common_name("Fred");
   string issuer("Self");
   string purpose("signing");
 
-  string* modulus = BN_to_bin(*tmpChannelKey->n);
-  byte big_endian_exp[]= {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01
-    };
-  string exponent;
-  exponent.assign((const char*)big_endian_exp, 8);
-  EVP_PKEY* self = new EVP_PKEY();
-  EVP_PKEY_assign_RSA(self, tmpChannelKey);
-  if (!GenerateX509CertificateRequest(key_type, common_name, exponent,
-      *modulus, false, req)) {
+  EVP_PKEY* self = GenerateKey(key_type, 256);
+  if (self == nullptr) {
+    printf("Can't Generate temporary channel key.\n");
+    return false;
+  }
+  if (!GenerateX509CertificateRequest(key_type, common_name, 
+          self, false, req)) {
     printf("Can't generate x509 request\n");
     return false;
   }
-  if (!SignX509Certificate(tmpChannelKey, true, true,
-                         issuer, purpose, 86400,
-                         self, req, false, cert)) {
+
+  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
+                           self, req, false, cert)) {
     printf("Can't sign x509 request\n");
     return false;
   }
@@ -367,7 +355,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   string keyType("RSA");
 
   if (!domainChannel.InitClientSslChannel(network, address, port,
-        policyCertificate_, tmpChannelCert, keyType, self, false)) {
+        policyCertificate_, cert, keyType, self, false)) {
     printf("Can't init ssl channel to domain server.\n");
     return false;
   }
@@ -491,61 +479,12 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   }
 
   // Generate the key and specify key bytes.
-  string* key_bytes;
   EVP_PKEY* program_key_ = EVP_PKEY_new();
   if (program_key_ == nullptr) {
     return false;
   }
-  if (key_type == "RSA") {
-    RSA* rsa_program_key = RSA_generate_key(2048, 0x010001ULL, nullptr, nullptr);
-    if (rsa_program_key == nullptr) {
-      printf("InitializeProgramKey: couldn't generate RSA program key.\n");
-      return false;
-    }
-    program_key_type_ = "RSA";
-    EVP_PKEY_assign_RSA(program_key_, rsa_program_key);
-    // Bytes for public key are the hash of the der encoding of it.
-    byte out[4096];
-    byte* ptr = out;
-    int n = i2d_RSA_PUBKEY(rsa_program_key, &ptr);
-    if (n <= 0) {
-      printf("Can't i2d RSA public key\n");
-      return false;
-    }
-    byte rsa_key_hash[32];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, out, n);
-    SHA256_Final(rsa_key_hash, &sha256);
-    key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
-  } else if (key_type == "ECC") {
-    EC_KEY* ec_program_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    if (ec_program_key == nullptr) {
-      printf("InitializeProgramKey: couldn't generate ECC program key.\n");
-      return false;
-    }
-    if (1 != EC_KEY_generate_key(ec_program_key)) {
-      printf("InitializeProgramKey: couldn't generate ECC program key(2).\n");
-      return false;
-    }
-    program_key_type_ = "ECC";
-    EVP_PKEY_assign_EC_KEY(program_key_, ec_program_key);
-    // Bytes for public key are the hash of the der encoding of it.
-    byte out[4096];
-    byte* ptr = out;
-    int n = i2d_EC_PUBKEY(ec_program_key, &ptr);
-    if (n <= 0) {
-      printf("Can't i2d ECC public key\n");
-      return false;
-    }
-    byte ec_key_hash[32];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, out, n);
-    SHA256_Final(ec_key_hash, &sha256);
-    key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
-  } else {
-    printf("InitializeProgramKey: unsupported key type.\n");
+  string* key_bytes = GetKeyBytes(program_key_);;
+  if (key_bytes == nullptr) {
     return false;
   }
 

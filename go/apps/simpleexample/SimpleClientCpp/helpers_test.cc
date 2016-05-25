@@ -214,6 +214,24 @@ bool serialize_test() {
   if (ec_key == nullptr || new_ec_key == nullptr) {
     return false;
   }
+  const EC_GROUP* group = EC_KEY_get0_group(ec_key);
+  const EC_GROUP* new_group = EC_KEY_get0_group(new_ec_key);
+  if (group == nullptr || new_group == nullptr) {
+    return false;
+  }
+
+#if 0
+  if (EC_GROUP_get_curve_name(group) != EC_GROUP_get_curve_name(new_group)) {
+    return false;
+  }
+  BIGNUM order;
+  BIGNUM cofactor;
+  BN_CTX* bn_ctx = BN_CTX_new();
+  const EC_POINT* generator = EC_GROUP_get0_generator(group);
+  int o1 = EC_GROUP_get_order(group, &order, bn_ctx);
+  int o2 = EC_GROUP_get_cofactor(group, &cofactor, bn_ctx);
+  BN_CTX_free(bn_ctx);
+#endif
 
   EVP_PKEY_free(key);
   EVP_PKEY_free(new_key);

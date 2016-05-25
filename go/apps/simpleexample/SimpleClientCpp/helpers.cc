@@ -84,7 +84,7 @@ bool WriteFile(string& file_name, string& in) {
 bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
   taosupport::PrivateKeyMessage msg;
 
-  if (msg.key_type() == "RSA") {
+  if (key_type == "RSA") {
     RSA* rsa_key = EVP_PKEY_get1_RSA(key);
     msg.set_allocated_rsa_key(new taosupport::RsaPrivateKeyMessage());
     string* m_str = BN_to_bin(*rsa_key->n);
@@ -93,7 +93,8 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
     msg.mutable_rsa_key()->set_e(*e_str);
     string* d_str = BN_to_bin(*rsa_key->d);
     msg.mutable_rsa_key()->set_d(*d_str);
-  } else if (msg.key_type() == "ECC") {
+    msg.set_key_type("RSA");
+  } else if (key_type == "ECC") {
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(key);
     msg.set_allocated_ec_key(new taosupport::EcPrivateKeyMessage());
     byte out[4096];
@@ -104,6 +105,7 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
       return false;
     }
     msg.mutable_ec_key()->set_der_blob((void*)out, (size_t)n);
+    msg.set_key_type("ECC");
   } else {
     printf("SerializePrivateKey: Unknown key type\n");
     return false;
@@ -136,7 +138,7 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
       EVP_PKEY_assign_RSA(pKey, rsa_key);
       *key = pKey;
   } else if (msg.key_type() == "ECC") {
-    if (!msg.has_rsa_key()) {
+    if (!msg.has_ec_key()) {
       return false;
     }
     const byte* ptr = (byte*)msg.ec_key().der_blob().data();
@@ -317,7 +319,7 @@ char* extEntry::getValue() {
 }
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
-#if 1
+#if 0
   // Temporary because of go verification
   return true;
 #endif

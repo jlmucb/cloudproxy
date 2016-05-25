@@ -68,21 +68,11 @@ bool cert_test() {
     return false;
   }
 
-#if 0
-  int cert_OK = X509_verify(cert, self);
-  printf("cert_OK: %d\n", cert_OK);
-#endif
-
   if(!VerifyX509CertificateChain(cert, cert)) {
     printf("cert DOES NOT verifies\n");
     return false;
   }
-    printf("cert verifies\n");
-  return true;
-}
-
-// Signed cert test
-bool sign_cert_test() {
+  printf("cert verifies\n");
   return true;
 }
 
@@ -93,11 +83,97 @@ bool verify_chains_test() {
 
 // Key bytes test
 bool key_bytes_test() {
+  string key_type("RSA");
+  int key_size = 2048;
+  EVP_PKEY* key = GenerateKey(key_type, key_size);
+  if (key == nullptr) {
+    printf("GenerateKey fails\n");
+    return false;
+  }
+  string* out =  GetKeyBytes(key);
+  if (out == nullptr) {
+    printf("GetBytes fails\n");
+    return false;
+  }
+  printf("Rsa bytes: ");
+  PrintBytes(out->size(), (byte*)out->data());
+  printf("\n");
+
+  out->clear();
+  EVP_PKEY_free(key);
+  key = nullptr;
+
+  key_type = "ECC";
+  key_size = 256;
+  key = GenerateKey(key_type, key_size);
+  if (key == nullptr) {
+    printf("GenerateKey fails\n");
+    return false;
+  }
+  out =  GetKeyBytes(key);
+  if (out == nullptr) {
+    printf("GetBytes fails\n");
+    return false;
+  }
+  printf("Ecc bytes: ");
+  PrintBytes(out->size(), (byte*)out->data());
+  printf("\n");
+  EVP_PKEY_free(key);
+  key = nullptr;
   return true;
 }
 
 // Serialize/Deserialize tests
 bool serialize_test() {
+  string key_type("RSA");
+  int key_size = 2048;
+  string out_buf;
+
+  EVP_PKEY* key = GenerateKey(key_type, key_size);
+  if (key == nullptr) {
+    printf("GenerateKey fails\n");
+    return false;
+  }
+  if (!SerializePrivateKey(key_type, key, &out_buf)) {
+    printf("SerializePrivateKey fails\n");
+    return false;
+  }
+  string new_key_type; 
+  EVP_PKEY* new_key = nullptr;
+  if (!DeserializePrivateKey(out_buf, &new_key_type, &new_key)) {
+    printf("DeserializePrivateKey fails\n");
+    return false;
+  }
+  EVP_PKEY_free(key);
+  EVP_PKEY_free(new_key);
+  key = nullptr;
+  new_key = nullptr;
+  printf("RSA done\n");
+
+  key_type = "ECC";
+  key_size = 256;
+  out_buf.clear();
+  new_key_type.clear();
+
+  key = GenerateKey(key_type, key_size);
+  if (key == nullptr) {
+    printf("GenerateKey fails\n");
+    return false;
+  }
+  if (!SerializePrivateKey(key_type, key, &out_buf)) {
+    printf("SerializePrivateKey fails\n");
+    return false;
+  }
+  new_key = nullptr;
+  if (!DeserializePrivateKey(out_buf, &new_key_type, &new_key)) {
+    printf("DeserializePrivateKey fails\n");
+    return false;
+  }
+  EVP_PKEY_free(key);
+  EVP_PKEY_free(new_key);
+  key = nullptr;
+  new_key = nullptr;
+  printf("ECC done\n");
   return true;
 }
 
@@ -148,7 +224,6 @@ bool crypt_test() {
   if (n <= 0) {
     return false;
   }
-  printf("Len: %d\n", len);
 
   m = ECDSA_verify(0, in, 20, sig, len, ec_key);
   if (m <= 0) {
@@ -161,7 +236,6 @@ bool crypt_test() {
 TEST(cert_test, cert_test) { EXPECT_TRUE(cert_test()); }
 TEST(ReadWriteTest, ReadWriteTest) { EXPECT_TRUE(readwritetest()); }
 TEST(crypt_test, crypt_test) { EXPECT_TRUE(crypt_test()); }
-TEST(sign_cert_test, sign_cert_test) { EXPECT_TRUE(sign_cert_test()); }
 TEST(verify_chains_test, verify_chains_test) { EXPECT_TRUE(verify_chains_test()); }
 TEST(key_bytes_test, key_bytes_test) { EXPECT_TRUE(key_bytes_test()); }
 TEST(serialize_test, serialize_test) { EXPECT_TRUE(serialize_test()); }

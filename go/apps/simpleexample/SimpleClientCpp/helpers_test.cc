@@ -144,6 +144,42 @@ bool serialize_test() {
     printf("DeserializePrivateKey fails\n");
     return false;
   }
+  if  (key->type != new_key->type) {
+    printf("Key type mismatch\n");
+    return false;
+  }
+  RSA* rsa_key = EVP_PKEY_get1_RSA(key);
+  RSA* new_rsa_key = EVP_PKEY_get1_RSA(new_key);
+  if (rsa_key == nullptr || new_rsa_key == nullptr) {
+    return false;
+  }
+  if (rsa_key->n == nullptr || new_rsa_key->n == nullptr) {
+    return false;
+  }
+  if (BN_cmp(rsa_key->n, new_rsa_key->n) != 0) {
+    return false;
+  }
+  if (rsa_key->e == nullptr || new_rsa_key->e == nullptr) {
+    return false;
+  }
+  if (BN_cmp(rsa_key->e, new_rsa_key->e) != 0) {
+    return false;
+  }
+  if (rsa_key->d != nullptr && new_rsa_key->d != nullptr) {
+    if (BN_cmp(rsa_key->d, new_rsa_key->d) != 0) {
+      return false;
+    }
+  }
+  if (rsa_key->p != nullptr && new_rsa_key->p != nullptr) {
+    if (BN_cmp(rsa_key->p, new_rsa_key->p) != 0) {
+      return false;
+    }
+  }
+  if (rsa_key->q != nullptr && new_rsa_key->q != nullptr) {
+    if (BN_cmp(rsa_key->q, new_rsa_key->q) != 0) {
+      return false;
+    }
+  }
   EVP_PKEY_free(key);
   EVP_PKEY_free(new_key);
   key = nullptr;
@@ -169,6 +205,16 @@ bool serialize_test() {
     printf("DeserializePrivateKey fails\n");
     return false;
   }
+  EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(key);
+  EC_KEY* new_ec_key = EVP_PKEY_get1_EC_KEY(new_key);
+  if  (key->type != new_key->type) {
+    printf("Key type mismatch\n");
+    return false;
+  }
+  if (ec_key == nullptr || new_ec_key == nullptr) {
+    return false;
+  }
+
   EVP_PKEY_free(key);
   EVP_PKEY_free(new_key);
   key = nullptr;

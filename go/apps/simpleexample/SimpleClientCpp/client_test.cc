@@ -23,8 +23,56 @@
 
 #include "helpers.h"
 
-
 int main(int an, char** av) {
+  SslChannel channel;
+  string path;
+  string policy_cert_file_name;
+  string policy_cert;
+  string network;
+  string address;
+  string port;
+
+  // Read and parse policy cert.
+  if (!ReadFile(policy_cert, &policy_cert)) {
+    printf("Can't read policy cert.\n");
+    return 1;
+  }
+  byte* pc = (byte*)policy_cert.data();
+  X509* policyCertificate = d2i_X509(nullptr, (const byte**)&pc,
+        policy_cert.size());
+  if (policyCertificate == nullptr) {
+    printf("Policy certificate is null.\n");
+    return 1;
+  }
+
+  // Self signed cert.
+  X509_REQ* req = X509_REQ_new();;
+  X509* cert = X509_new();
+  string key_type("ECC");
+  int key_size = 256;
+  string common_name("Fred");
+  string issuer("Fred");
+  string purpose("signing");
+
+  EVP_PKEY* self = GenerateKey(key_type, key_size);
+  if (!GenerateX509CertificateRequest(key_type, common_name, self, false, req)) {
+    printf("Can't generate x509 request\n");
+    return 1;
+  }
+  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
+                         self, req, false, cert)) {
+    printf("Can't sign x509 request\n");
+    return 1;
+  }
+
+  if (!channel.InitClientSslChannel(network, address, port, policyCertificate,
+                                    cert, key_type, self, false)) {
+    printf("Can't InitServerSslChannel\n");
+    return 1;
+  }
+
+  // write/read
+
   return 0;
 }
 

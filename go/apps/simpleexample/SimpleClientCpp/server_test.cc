@@ -24,7 +24,6 @@
 
 
 int main(int an, char** av) {
-#if 0
   SslChannel channel;
   string path;
   string policy_cert_file_name;
@@ -47,35 +46,31 @@ int main(int an, char** av) {
   }
 
   // Self signed cert.
-  X509* tmpChannelCert = nullptr;
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-  EVP_PKEY* self = new EVP_PKEY();
   string key_type("ECC");
+  int key_size = 256;
   string common_name("Fred");
-  string issuer("Self");
+  string issuer("Fred");
   string purpose("signing");
 
-#if 0
-  EVP_PKEY* self = GenerateKey(string& keyType, int keySize)
+  EVP_PKEY* self = GenerateKey(key_type, key_size);
   if (!GenerateX509CertificateRequest(key_type, common_name, self, false, req)) {
     printf("Can't generate x509 request\n");
     return 1;
   }
-  if (!SignX509Certificate(tmpChannelKey, true, true, issuer, purpose, 86400,
+  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
                          self, req, false, cert)) {
     printf("Can't sign x509 request\n");
     return 1;
   }
-#endif
 
   if (!channel.InitServerSslChannel(network, address, port, policyCertificate,
-                                    cert, keyType, key, false)) {
+                                    cert, key_type, self, false)) {
     printf("Can't InitServerSslChannel\n");
     return 1;
   }
   channel.ServerLoop();
-#endif
   return 0;
 }
 

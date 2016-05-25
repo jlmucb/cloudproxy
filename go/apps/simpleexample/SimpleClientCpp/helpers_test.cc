@@ -220,10 +220,28 @@ bool serialize_test() {
     return false;
   }
 
-#if 0
-  if (EC_GROUP_get_curve_name(group) != EC_GROUP_get_curve_name(new_group)) {
+  byte out[4096];
+  byte* ptr = out;
+  int n = i2d_ECPrivateKey(ec_key, &ptr);
+  if (n <= 0) {
+    printf("Can't i2d ECC private key\n");
     return false;
   }
+  byte new_out[4096];
+  byte* new_ptr = new_out;
+  int new_n = i2d_ECPrivateKey(new_ec_key, &new_ptr);
+  if (new_n <= 0) {
+    printf("Can't i2d ECC private key\n");
+    return false;
+  }
+  if (n != new_n) {
+    return false;
+  }
+  if (memcmp(out, new_out, n) != 0) {
+    return false;
+  }
+
+#if 0
   BIGNUM order;
   BIGNUM cofactor;
   BN_CTX* bn_ctx = BN_CTX_new();

@@ -40,139 +40,72 @@ bool readwritetest() {
   return true;
 }
 
+// Cert request test
 bool cert_test() {
-  string policy_cert;
-  string policy_cert_file = "/Domains/domain.simpleexample/SimpleClientCpp/policy_keys/cert";
+  X509_REQ* req = X509_REQ_new();;
+  X509* cert = X509_new();
 
-  if (!ReadFile(policy_cert_file, &policy_cert)) {
-    printf("Can't read policy cert.\n");
-    return false;
-  }
-  PrintBytes((int)policy_cert.size(), (byte*)policy_cert.data()); printf("\n");
+  int size = 256;
+  string key_type("ECC");
+  string common_name("Fred");
+  string issuer("Fred");
+  string purpose("signing");
 
-  // Parse policy cert.
-  byte* pc = (byte*)policy_cert.data();
-  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc,
-          policy_cert.size());
-  if (parsed_policy_cert == nullptr) {
-    printf("Can't DER parse policy cert.\n");
+  EVP_PKEY* self = GenerateKey(key_type, size);
+  if (self == nullptr) {
+    printf("Can't generate key.\n");
     return false;
   }
-  EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
-  if (evp_policy_key == nullptr) {
-    printf("Can't get policy public key from cert.\n");
+  if (!GenerateX509CertificateRequest(key_type, common_name,
+          self, false, req)) {
+    printf("Can't generate x509 request\n");
     return false;
   }
-  int key_type = EVP_PKEY_id(evp_policy_key);
-  if (EVP_PKEY_EC == key_type) {
-    printf("EC key type\n");
-  } else if (EVP_PKEY_RSA == key_type) {
-    printf("RSA key type\n");
-  } else {
-    printf("Unknown key type\n");
-  }
-  EC_KEY* policy_key = EVP_PKEY_get1_EC_KEY(evp_policy_key);
-  if (policy_key == nullptr) {
-    printf("Can't set policy public key.\n");
+
+  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
+                           self, req, false, cert)) {
+    printf("Can't sign x509 request\n");
     return false;
   }
-  EVP_PKEY* pubkey = X509_get_pubkey(parsed_policy_cert);
-  if (pubkey == nullptr) {
-    return false;
-  }
+
 #if 0
-  int cert_OK = X509_verify(parsed_policy_cert,
-           pubkey);
-  if (cert_OK <= 0) {
-    printf("Can't verify policy cert %d.\n", cert_OK);
+  int cert_OK = X509_verify(cert, self);
+  printf("cert_OK: %d\n", cert_OK);
+#endif
+
+  if(!VerifyX509CertificateChain(cert, cert)) {
+    printf("cert DOES NOT verifies\n");
     return false;
   }
-#endif
+    printf("cert verifies\n");
   return true;
 }
 
-// Key generation test
-
-// Cert request test
-
 // Signed cert test
-
-// Verify chains test
-
-// Key bytes test
-
-// Serialize/Deserialise tests
-
-EVP_PKEY* key_choice(string& key_type, int key_size) {
-  EVP_PKEY* key = nullptr;
-  string* key_bytes;
-  key = EVP_PKEY_new();
-  if (key == nullptr)
-    return nullptr;
-
-  if (key_type == "RSA") {
-    RSA* rsa_program_key = RSA_generate_key(key_size, 0x010001ULL, nullptr, nullptr);
-    if (rsa_program_key == nullptr) {
-      printf("key_choice: couldn't generate RSA program key.\n");
-      return nullptr;
-    }
-    EVP_PKEY_assign_RSA(key, rsa_program_key);
-    // Bytes for public key are the hash of the der encoding of it.
-    byte out[4096];
-    byte* ptr = out;
-    int n = i2d_RSA_PUBKEY(rsa_program_key, &ptr);
-    if (n <= 0) {
-      printf("key_choice: Can't i2d RSA public key\n");
-      return nullptr;
-    }
-    byte rsa_key_hash[32];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, out, n);
-    SHA256_Final(rsa_key_hash, &sha256);
-    key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
-  } else if (key_type == "ECC") {
-    EC_KEY* ec_program_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    if (ec_program_key == nullptr) {
-      printf("key_choice: couldn't generate ECC program key.\n");
-      return nullptr;
-    }
-    if (1 != EC_KEY_generate_key(ec_program_key)) {
-      printf("key_choice: couldn't generate ECC program key(2).\n");
-      return nullptr;
-    }
-    EVP_PKEY_assign_EC_KEY(key, ec_program_key);
-    // Bytes for public key are the hash of the der encoding of it.
-    byte out[4096];
-    byte* ptr = out;
-    int n = i2d_EC_PUBKEY(ec_program_key, &ptr);
-    if (n <= 0) {
-      printf("key_choice: Can't i2d ECC public key\n");
-      return nullptr;
-    }
-    byte ec_key_hash[32];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, out, n);
-    SHA256_Final(ec_key_hash, &sha256);
-    key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
-  } else {
-    printf("unsupported key type.\n");
-    return nullptr;
-  }
-  // Print key bytes
-  printf("Bytes: ");
-  PrintBytes((int)key_bytes->size(), (byte*)key_bytes->data());
-  printf("\n");
-  return key;
+bool sign_cert_test() {
+  return true;
 }
 
+// Verify chains test
+bool verify_chains_test() {
+  return true;
+}
+
+// Key bytes test
+bool key_bytes_test() {
+  return true;
+}
+
+// Serialize/Deserialize tests
+bool serialize_test() {
+  return true;
+}
 
 bool crypt_test() {
   int n;
   string key_type("RSA");
   int key_size = 2048;
-  EVP_PKEY* key = key_choice(key_type, key_size);
+  EVP_PKEY* key = GenerateKey(key_type, key_size);
   if (key == nullptr) {
     return false;
   }
@@ -200,7 +133,7 @@ bool crypt_test() {
 
   key_type = "ECC";
   key_size = 256;
-  key = key_choice(key_type, key_size);
+  key = GenerateKey(key_type, key_size);
   if (key == nullptr) {
     return false;
   }
@@ -225,9 +158,13 @@ bool crypt_test() {
 }
 
 
-TEST(ReadWriteTest, ReadWriteTest) { EXPECT_TRUE(readwritetest()); }
 TEST(cert_test, cert_test) { EXPECT_TRUE(cert_test()); }
+TEST(ReadWriteTest, ReadWriteTest) { EXPECT_TRUE(readwritetest()); }
 TEST(crypt_test, crypt_test) { EXPECT_TRUE(crypt_test()); }
+TEST(sign_cert_test, sign_cert_test) { EXPECT_TRUE(sign_cert_test()); }
+TEST(verify_chains_test, verify_chains_test) { EXPECT_TRUE(verify_chains_test()); }
+TEST(key_bytes_test, key_bytes_test) { EXPECT_TRUE(key_bytes_test()); }
+TEST(serialize_test, serialize_test) { EXPECT_TRUE(serialize_test()); }
 
 int main(int an, char** av) {
   ::testing::InitGoogleTest(&an, av);

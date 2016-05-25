@@ -455,10 +455,6 @@ bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, stri
     printf("Bad PKEY type\n");
     return false;
   }
-
-  printf("digest->size: %d\n", digest->md_size);
-  PrintBytes(digest->md_size, (byte*)digest->final);
-  printf("\n");
   return true;
 }
 
@@ -560,12 +556,16 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
 }
 
 bool VerifyX509CertificateChain(X509* cacert, X509* cert) {
-  X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+  X509_STORE_CTX *store_ctx = X509_STORE_CTX_new();
   X509_STORE *store = X509_STORE_new();
-
   X509_STORE_add_cert(store, cacert);
-  X509_STORE_CTX_init(ctx, store, cert, NULL);
-  return X509_verify_cert(ctx) == 1;
+  // int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
+  //                      X509 *x509, STACK_OF(X509) *chain);
+  X509_STORE_CTX_init(store_ctx, store, cacert, nullptr);
+  int ret = X509_verify_cert(store_ctx);
+  if (ret <= 0)
+    printf("Error: %s\n", X509_verify_cert_error_string(store_ctx->error));
+  return ret;
 }
 
 SslChannel::SslChannel() {

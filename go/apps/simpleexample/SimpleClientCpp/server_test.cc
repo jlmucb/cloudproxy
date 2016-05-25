@@ -24,6 +24,7 @@
 
 
 int main(int an, char** av) {
+#if 0
   SslChannel channel;
   string path;
   string policy_cert_file_name;
@@ -74,6 +75,7 @@ int main(int an, char** av) {
     return 1;
   }
   channel.ServerLoop();
+#endif
   return 0;
 }
 

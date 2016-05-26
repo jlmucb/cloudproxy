@@ -45,15 +45,19 @@ LINK=g++
 PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
-LDFLAGS=-lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
+LDFLAGS_SHORT=-lprotobuf -lgtest -lgflags -lpthread -lssl -lglog -lcrypto
+LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
 
-dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o \
-	$(O)/ca.pb.o $(O)/attestation.pb.o $(O)/datalog_guard.pb.o \
-	$(O)/acl_guard.pb.o $(O)/taosupport.pb.o $(O)/simpleclient_cc.o
+dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o $(O)/ca.pb.o $(O)/attestation.pb.o \
+	$(O)/datalog_guard.pb.o $(O)/acl_guard.pb.o $(O)/taosupport.pb.o $(O)/simpleclient_cc.o
 
-dobj_test=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/support_test.o
+dobj_test=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/helpers_test.o
+dobj_server=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/server_test.o
+dobj_client=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/client_test.o
 
-all:	$(EXE_DIR)/simpleclient_cc.exe $(EXE_DIR)/support_test.exe
+all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/server_test.exe $(EXE_DIR)/client_test.exe $(EXE_DIR)/simpleclient_cc.exe
+#For Macs
+#all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/server_test.exe $(EXE_DIR)/client_test.exe#$(EXE_DIR)/simpleclient_cc.exe
 
 clean:
 	@echo "removing object files"
@@ -66,9 +70,21 @@ $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	$(LINK) -o $(EXE_DIR)/simpleclient_cc.exe $(dobj_simpleclient) \
 	-L/Domains -lauth -ltao $(LDFLAGS)
 
-$(EXE_DIR)/support_test.exe: $(dobj_test)
-	@echo "linking support_test"
-	$(LINK) -o $(EXE_DIR)/support_test.exe $(dobj_test) -L/Domains $(LDFLAGS)
+$(EXE_DIR)/helpers_test.exe: $(dobj_test)
+	@echo "linking helpers_test"
+	$(LINK) -o $(EXE_DIR)/helpers_test.exe $(dobj_test) -L/Domains $(LDFLAGS_SHORT)
+#For Macs
+#	$(LINK) -o $(EXE_DIR)/helpers_test.exe $(dobj_test) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+
+$(EXE_DIR)/client_test.exe: $(dobj_client)
+	@echo "linking client_test"
+	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) -L/Domains $(LDFLAGS_SHORT)
+#For Macs
+#	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+
+$(EXE_DIR)/server_test.exe: $(dobj_server)
+	@echo "linking server_test"
+	$(LINK) -o $(EXE_DIR)/server_test.exe $(dobj_server) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
 
 $(O)/helpers.o: $(S)/helpers.cc
 	@echo "compiling helpers.cc"
@@ -102,7 +118,15 @@ $(O)/simpleclient_cc.o: $(S)/simpleclient_cc.cc
 	@echo "compiling simpleclient_cc.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/simpleclient_cc.o $(S)/simpleclient_cc.cc
 
-$(O)/support_test.o: $(S)/support_test.cc
-	@echo "compiling support_test.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/support_test.o $(S)/support_test.cc
+$(O)/helpers_test.o: $(S)/helpers_test.cc
+	@echo "compiling helpers_test.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/helpers_test.o $(S)/helpers_test.cc
+
+$(O)/server_test.o: $(S)/server_test.cc
+	@echo "compiling server_test.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/server_test.o $(S)/server_test.cc
+
+$(O)/client_test.o: $(S)/client_test.cc
+	@echo "compiling client_test.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/client_test.o $(S)/client_test.cc
 

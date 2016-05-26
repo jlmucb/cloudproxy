@@ -98,7 +98,7 @@ public:
                                 X509* caCert, X509* programCert,
                                 string& keyType, EVP_PKEY* key,
                                 bool verify = true);
-  bool ServerLoop();
+  bool ServerLoop(void(*Handle)(SslChannel*,  SSL*, int));
   int Read(int size, byte* buf);
   int Write(int size, byte* buf);
   void Close();

@@ -601,17 +601,15 @@ SslChannel::~SslChannel() {
   store_ = nullptr;
 }
 
-int SslChannel::CreateServerSocket(string& addr, string& port) {
-  int sockfd;
+int SslChannel::CreateServerSocket(string& address, string& port) {
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   struct sockaddr_in dest_addr;
-
-  uint16_t s_port = stoi(port);
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  dest_addr.sin_family=AF_INET;
+  uint16_t s_port = atoi(port.c_str());
+  dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(s_port);
-  inet_aton(addr.c_str(), &dest_addr.sin_addr);
+  inet_aton(address.c_str(), &dest_addr.sin_addr);
 
-  if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+  if (bind(sockfd, (struct sockaddr*)&dest_addr, sizeof(dest_addr)) < 0) {
     printf("Unable to bind\n");
     return -1;
   }
@@ -625,14 +623,13 @@ int SslChannel::CreateServerSocket(string& addr, string& port) {
 
 
 int SslChannel::CreateClientSocket(string& addr, string& port) {
-  int sockfd;
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   struct sockaddr_in dest_addr;
-
-  uint16_t s_port = stoi(port);
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  dest_addr.sin_family=AF_INET;
+  uint16_t s_port = atoi(port.c_str());
+  dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(s_port);
   inet_aton(addr.c_str(), &dest_addr.sin_addr);
+
   if (connect(sockfd, (struct sockaddr *) &dest_addr,
               sizeof(struct sockaddr)) == -1) {
     printf("Error: Cannot connect to host\n");
@@ -648,42 +645,29 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
   server_role_ = true;
 
   // Create socket and contexts.
-  fd_ = CreateClientSocket(address, port);
+  fd_ = CreateServerSocket(address, port);
   if(fd_ <= 0) {
-    printf("CreateSocket failed.\n");
-    return false;
-  }
-  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
-  if (ssl_ctx_ == nullptr) {
-    printf("SSL_CTX_new failed.\n");
-    return false;
-  }
-  ssl_ = SSL_new(ssl_ctx_);
-  if (ssl_ == nullptr) {
-    printf("SSL_new failed.\n");
+    printf("CreateServerSocket failed.\n");
     return false;
   }
 
-  // Set my cert chain and private key.
-  SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
-  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
-  // Create socket and contexts.
-  fd_ = CreateClientSocket(address, port);
-  if(fd_ <= 0) {
-    printf("CreateSocket failed.\n");
-    return false;
-  }
-  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
+printf("XXX 0.1\n");
+  ssl_ctx_ = SSL_CTX_new(TLSv1_server_method());
   if (ssl_ctx_ == nullptr) {
-    printf("SSL_CTX_new failed.\n");
-    return false;
-  }
-  ssl_ = SSL_new(ssl_ctx_);
-  if (ssl_ == nullptr) {
-    printf("SSL_new failed.\n");
+    printf("SSL_CTX_new failed(server).\n");
+    ERR_print_errors_fp(stderr);
     return false;
   }
 
+printf("XXX 0.2\n");
+  ssl_ = SSL_new(ssl_ctx_);
+  if (ssl_ == nullptr) {
+    printf("SSL_new failed (server).\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+printf("XXX 1\n");
   // Set my cert chain and private key.
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
@@ -694,6 +678,7 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
   }
   // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
 
+printf("XXX 2\n");
   // Set root store and certificate.
   store_ = X509_STORE_new();
   if (store_ == nullptr) {
@@ -703,13 +688,16 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
   X509_STORE_add_cert(store_, policyCert);
   SSL_CTX_set_cert_store(ssl_ctx_, store_);
 
+printf("XXX 3\n");
   // Setup verification stuff.
   if (verify) {
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
 
+printf("XXX 4\n");
   peer_cert_ = SSL_get_peer_certificate(ssl_);
+printf("XXX 5\n");
   return true;
 }
 
@@ -722,20 +710,23 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
   // Create socket and contexts.
   fd_ = CreateClientSocket(address, port);
   if(fd_ <= 0) {
-    printf("CreateSocket failed.\n");
+    printf("CreateServerSocket failed.\n");
     return false;
   }
+
+printf("TTT 0.2\n");
   ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
   if (ssl_ctx_ == nullptr) {
-    printf("SSL_CTX_new failed.\n");
+    printf("SSL_CTX_new failed(client).\n");
     return false;
   }
   ssl_ = SSL_new(ssl_ctx_);
   if (ssl_ == nullptr) {
-    printf("SSL_new failed.\n");
+    printf("SSL_new failed(client).\n");
     return false;
   }
 
+printf("TTT 0.3\n");
   // Set my cert chain and private key.
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
@@ -746,6 +737,7 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
   }
   // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
 
+printf("TTT 0.4\n");
   // Set root store and certificate.
   store_ = X509_STORE_new();
   if (store_ == nullptr) {
@@ -755,8 +747,10 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
   X509_STORE_add_cert(store_, policyCert);
   SSL_CTX_set_cert_store(ssl_ctx_, store_);
 
+printf("TTT 0.5\n");
   // Setup verification stuff.
   if (verify) {
+printf("TTT 0.6\n");
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
@@ -767,45 +761,15 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     printf("SSL_connect failed.\n");
     return false;
   }
+printf("TTT 0.7\n");
+
   // check connection?
 
   peer_cert_ = SSL_get_peer_certificate(ssl_);
   return true;
 }
 
-bool ProcessRequest (int request_number, int request_size, byte* request,
-                     int* reply_size, byte* reply) {
-  const char* r = "This is a stupid reply";
-  printf("\nProcessRequest: "); PrintBytes(request_size, request); printf("\n");
-  *reply_size = strlen(r) + 1;
-  memcpy(reply, r, *reply_size);
-  if (request_number > 2)
-    return false;
-  return true;
-}
-
-void HandleConnection(SslChannel* channel,  SSL* ssl, int client) {
-  byte request[4096];
-  int request_size;
-  byte reply[4096];
-  int reply_size;
-  bool fContinue;
-  int request_number = 0;
-
-  for (;;) {
-    request_size = SSL_read(ssl, request, 4096);
-    reply_size = 4096;
-    fContinue = ProcessRequest(request_number++, request_size, request,
-                     &reply_size, reply);
-    SSL_write(ssl, reply, reply_size);
-    if (!fContinue)
-      break;
-  }
-  SSL_free(ssl);
-  close(client);
-}
-
-bool SslChannel::ServerLoop() {
+bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
   bool fContinue = true;
 
   while(fContinue) {
@@ -824,7 +788,7 @@ bool SslChannel::ServerLoop() {
             printf("Unable to ssl_accept\n");
             continue;
     } 
-    thread t(&HandleConnection, this, ssl, client);
+    thread t(server_loop, this, ssl, client);
   }
   return true;
 }

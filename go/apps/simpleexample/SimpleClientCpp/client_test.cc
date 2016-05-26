@@ -23,15 +23,53 @@
 
 #include "helpers.h"
 
+
+#if 0
+// for testing
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+void FakeClient(string& network, string& address, string& port) {
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  struct sockaddr_in dest_addr;
+  uint16_t s_port = atoi(port.c_str());
+  dest_addr.sin_family = AF_INET;
+  dest_addr.sin_port = htons(s_port);
+  inet_aton(address.c_str(), &dest_addr.sin_addr);
+
+  if (connect(sockfd, (struct sockaddr *) &dest_addr,
+              sizeof(struct sockaddr)) == -1) {
+    printf("Error: Cannot connect to host\n");
+    return;
+  }
+
+  byte request[4096];
+  byte reply[4096];
+  const char* r = "this is a request\n";
+  memcpy(request, (byte*)r, strlen(r) + 1);
+
+  printf("Client sending %s\n", (const char*)request);
+  if (write(sockfd, request, strlen(r) + 1) <= 0) {
+    printf("client write failed\n");
+  }
+  if (read(sockfd, reply, 4096) <= 0) {
+    printf("client read failed\n");
+  }
+  printf("client received: %s\n", (const char*)reply);
+}
+#endif
+
+
 int main(int an, char** av) {
   SslChannel channel;
   string path;
   string policy_cert_file_name;
   string policy_cert;
-  string network;
-  string address;
-  string port;
+  string network("tcp");
+  string address("127.0.0.1");
+  string port("2015");
 
+#if 0
   // Read and parse policy cert.
   if (!ReadFile(policy_cert, &policy_cert)) {
     printf("Can't read policy cert.\n");
@@ -44,6 +82,7 @@ int main(int an, char** av) {
     printf("Policy certificate is null.\n");
     return 1;
   }
+#endif
 
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
@@ -65,13 +104,32 @@ int main(int an, char** av) {
     return 1;
   }
 
+#if 0
   if (!channel.InitClientSslChannel(network, address, port, policyCertificate,
                                     cert, key_type, self, false)) {
-    printf("Can't InitServerSslChannel\n");
+#else
+  printf("Calling InitClientSslChannel\n");
+  if (!channel.InitClientSslChannel(network, address, port, cert,
+                                    cert, key_type, self, false)) {
+#endif
+    printf("Can't InitClientSslChannel\n");
     return 1;
   }
 
+  int size_send_buf = 4096;
+  byte send_buf[4096];
+  int size_get_buf = 4096;
+  byte get_buf[4096];
+  int msg_num = 1;
+
   // write/read
+  printf("Client read/write\n");
+  sprintf((char*)send_buf, "Client message %d\n", msg_num++);
+  size_send_buf = channel.Write(strlen((const char*)send_buf) + 1, send_buf);
+  size_get_buf = channel.Read(4096, get_buf);
+  sprintf((char*)send_buf, "Client message %d\n", msg_num++);
+  size_send_buf = channel.Write(strlen((const char*)send_buf) + 1, send_buf);
+  size_get_buf = channel.Read(4096, get_buf);
 
   return 0;
 }

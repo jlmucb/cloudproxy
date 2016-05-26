@@ -123,6 +123,7 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
   if (!msg.ParseFromString(in_buf)) {
     return false;
   }
+  key_type->assign(msg.key_type());
   if (msg.key_type() == "RSA") {
     if (!msg.has_rsa_key()) {
       return false;
@@ -672,7 +673,6 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
     ERR_print_errors_fp(stderr);
     return false;
   }
-  // SSL_CTX_set_options(ssl_ctx_, SSL_OP_ALL);
 
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   private_key_ = privateKey;
@@ -708,6 +708,7 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
                 EVP_PKEY* privateKey, bool verify) {
    SSL_library_init();
    OpenSSL_add_all_algorithms();
+   ERR_load_crypto_strings();
 
   // I'm a client.
   server_role_ = false;

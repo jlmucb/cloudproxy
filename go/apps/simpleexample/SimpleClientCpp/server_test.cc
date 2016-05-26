@@ -118,10 +118,9 @@ int main(int an, char** av) {
   string address("127.0.0.1");
   string port("2015");
 
-  string key_type;
-  printf("Calling InitServerSslChannel\n");
-  if (!channel.InitServerSslChannel(network, address, port, server_cert,
-                                    ca_cert, key_type, server_key, false)) {
+  printf("Calling InitServerSslChannel %s key\n", server_key_type.c_str());
+  if (!channel.InitServerSslChannel(network, address, port, ca_cert,
+                                    server_cert, server_key_type, server_key, false)) {
     printf("Can't InitServerSslChannel\n");
     return 1;
   }

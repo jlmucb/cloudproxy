@@ -56,8 +56,10 @@ dobj_simple_server=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/simple_server_test.o
 dobj_simple_client=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/simple_client_test.o
 dobj_gen_keys=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/gen_keys.o
 dobj_gen_keys_test=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/gen_keys_test.o
+dobj_server=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/server_test.o
+dobj_client=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/client_test.o
 
-all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/simple_server_test.exe $(EXE_DIR)/simple_client_test.exe $(EXE_DIR)/simpleclient_cc.exe $(EXE_DIR)/gen_keys.exe $(EXE_DIR)/gen_keys_test.exe
+all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/simple_server_test.exe $(EXE_DIR)/simple_client_test.exe $(EXE_DIR)/simpleclient_cc.exe $(EXE_DIR)/gen_keys.exe $(EXE_DIR)/gen_keys_test.exe $(EXE_DIR)/server_test.exe $(EXE_DIR)/client_test.exe
 #For Macs
 #all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/simple_server_test.exe $(EXE_DIR)/simple_client_test.exe#$(EXE_DIR)/simpleclient_cc.exe
 
@@ -87,6 +89,16 @@ $(EXE_DIR)/simple_client_test.exe: $(dobj_simple_client)
 $(EXE_DIR)/simple_server_test.exe: $(dobj_simple_server)
 	@echo "linking simple_server_test"
 	$(LINK) -o $(EXE_DIR)/simple_server_test.exe $(dobj_simple_server) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+
+$(EXE_DIR)/client_test.exe: $(dobj_client)
+	@echo "linking client_test"
+	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) -L/Domains $(LDFLAGS_SHORT)
+#For Macs
+#	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+
+$(EXE_DIR)/server_test.exe: $(dobj_server)
+	@echo "linking server_test"
+	$(LINK) -o $(EXE_DIR)/server_test.exe $(dobj_server) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
 
 $(EXE_DIR)/gen_keys_test.exe: $(dobj_gen_keys_test)
 	@echo "linking gen_keys_test"
@@ -139,6 +151,14 @@ $(O)/simple_server_test.o: $(S)/simple_server_test.cc
 $(O)/simple_client_test.o: $(S)/simple_client_test.cc
 	@echo "compiling simple_client_test.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/simple_client_test.o $(S)/simple_client_test.cc
+
+$(O)/server_test.o: $(S)/server_test.cc
+	@echo "compiling server_test.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/server_test.o $(S)/server_test.cc
+
+$(O)/client_test.o: $(S)/client_test.cc
+	@echo "compiling client_test.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/client_test.o $(S)/client_test.cc
 
 $(O)/gen_keys.o: $(S)/gen_keys.cc
 	@echo "compiling gen_keys.cc"

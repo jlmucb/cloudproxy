@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 // Project: New Cloudproxy Crypto
-// File: support_test.cc
+// File: clientt_test.cc
 
 #include "gtest/gtest.h"
 

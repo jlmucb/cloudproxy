@@ -653,7 +653,6 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
     return false;
   }
 
-printf("XXX 0.1\n");
   ssl_ctx_ = SSL_CTX_new(TLSv1_server_method());
   if (ssl_ctx_ == nullptr) {
     printf("SSL_CTX_new failed(server).\n");
@@ -661,7 +660,6 @@ printf("XXX 0.1\n");
     return false;
   }
 
-printf("XXX 0.2\n");
   ssl_ = SSL_new(ssl_ctx_);
   if (ssl_ == nullptr) {
     printf("SSL_new failed (server).\n");
@@ -669,7 +667,6 @@ printf("XXX 0.2\n");
     return false;
   }
 
-printf("XXX 1\n");
   // Set my cert chain and private key.
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
@@ -680,7 +677,6 @@ printf("XXX 1\n");
   }
   // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
 
-printf("XXX 2\n");
   // Set root store and certificate.
   store_ = X509_STORE_new();
   if (store_ == nullptr) {
@@ -690,16 +686,13 @@ printf("XXX 2\n");
   X509_STORE_add_cert(store_, policyCert);
   SSL_CTX_set_cert_store(ssl_ctx_, store_);
 
-printf("XXX 3\n");
   // Setup verification stuff.
   if (verify) {
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
 
-printf("XXX 4\n");
   peer_cert_ = SSL_get_peer_certificate(ssl_);
-printf("XXX 5\n");
   return true;
 }
 
@@ -716,7 +709,6 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     return false;
   }
 
-printf("TTT 0.2\n");
   ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
   if (ssl_ctx_ == nullptr) {
     printf("SSL_CTX_new failed(client).\n");
@@ -728,7 +720,6 @@ printf("TTT 0.2\n");
     return false;
   }
 
-printf("TTT 0.3\n");
   // Set my cert chain and private key.
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
@@ -739,7 +730,6 @@ printf("TTT 0.3\n");
   }
   // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
 
-printf("TTT 0.4\n");
   // Set root store and certificate.
   store_ = X509_STORE_new();
   if (store_ == nullptr) {
@@ -749,10 +739,8 @@ printf("TTT 0.4\n");
   X509_STORE_add_cert(store_, policyCert);
   SSL_CTX_set_cert_store(ssl_ctx_, store_);
 
-printf("TTT 0.5\n");
   // Setup verification stuff.
   if (verify) {
-printf("TTT 0.6\n");
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
@@ -763,10 +751,8 @@ printf("TTT 0.6\n");
     printf("SSL_connect failed.\n");
     return false;
   }
-printf("TTT 0.7\n");
 
   // check connection?
-
   peer_cert_ = SSL_get_peer_certificate(ssl_);
   return true;
 }

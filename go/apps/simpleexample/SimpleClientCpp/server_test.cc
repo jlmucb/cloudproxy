@@ -153,12 +153,13 @@ int main(int an, char** av) {
     return 1;
   }
 
+  printf("Calling InitServerSslChannel\n");
   if (!channel.InitServerSslChannel(network, address, port, policyCertificate,
                                     cert, key_type, self, false)) {
     printf("Can't InitServerSslChannel\n");
     return 1;
   }
-  printf("Calling ServerLoop\n");
+  printf("Calling ServerLoop\n\n");
   channel.ServerLoop(&HandleConnection);
   return 0;
 }

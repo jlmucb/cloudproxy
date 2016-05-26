@@ -120,7 +120,7 @@ int main(int an, char** av) {
   int msg_num = 1;
 
   // write/read
-  printf("Client read/write\n");
+  printf("Client transcript\n\n");
   sprintf((char*)send_buf, "Client message %d\n", msg_num++);
   size_send_buf = channel.Write(strlen((const char*)send_buf) + 1, send_buf);
   size_get_buf = channel.Read(4096, get_buf);

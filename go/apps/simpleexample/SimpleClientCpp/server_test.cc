@@ -74,8 +74,9 @@ void FakeServer(string& network, string& address, string& port) {
 
 bool ProcessRequest (int request_number, int request_size, byte* request,
                      int* reply_size, byte* reply) {
+  printf("\nProcessRequest %s\n", (const char*)request);
+  memset(reply, 0, *reply_size);
   const char* r = "This is a stupid reply";
-  printf("\nProcessRequest: "); PrintBytes(request_size, request); printf("\n");
   *reply_size = strlen(r) + 1;
   memcpy(reply, r, *reply_size);
   if (request_number > 2)
@@ -91,12 +92,11 @@ void HandleConnection(SslChannel* channel,  SSL* ssl, int client) {
   bool fContinue;
   int request_number = 0;
 
-  printf("\nHandleConnection\n"); PrintBytes(request_size, request); printf("\n");
+  printf("\nHandleConnection\n");
   for (;;) {
+    memset(request, 0, 4096);
     request_size = SSL_read(ssl, request, 4096);
-    if (request_size < 0) {
-      printf("return from SSL_read: %d\n", request_size);
-    }
+    printf("request %d: %s\n", request_size, (const char*)request);
 
     reply_size = 4096;
     fContinue = ProcessRequest(request_number++, request_size, request,
@@ -105,8 +105,8 @@ void HandleConnection(SslChannel* channel,  SSL* ssl, int client) {
     if (!fContinue)
       break;
   }
-  SSL_free(ssl);
-  close(client);
+  // SSL_free(ssl);
+  // close(client);
 }
 
 int main(int an, char** av) {
@@ -135,8 +135,10 @@ int main(int an, char** av) {
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-  string key_type("ECC");
-  int key_size = 256;
+  // string key_type("ECC");
+  // int key_size = 256;
+  string key_type("RSA");
+  int key_size = 2048;
   string common_name("Fred");
   string issuer("Fred");
   string purpose("signing");

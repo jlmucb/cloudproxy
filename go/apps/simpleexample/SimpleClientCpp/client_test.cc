@@ -86,8 +86,10 @@ int main(int an, char** av) {
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-  string key_type("ECC");
-  int key_size = 256;
+  // string key_type("ECC");
+  // int key_size = 256;
+  string key_type("RSA");
+  int key_size = 2048;
   string common_name("Fred");
   string issuer("Fred");
   string purpose("signing");

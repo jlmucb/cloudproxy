@@ -610,6 +610,8 @@ int SslChannel::CreateServerSocket(string& address, string& port) {
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   struct sockaddr_in dest_addr;
   uint16_t s_port = atoi(port.c_str());
+  memset((byte*)&dest_addr, 0, sizeof(dest_addr));
+
   dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(s_port);
   dest_addr.sin_addr.s_addr = INADDR_ANY;
@@ -632,6 +634,8 @@ int SslChannel::CreateClientSocket(string& addr, string& port) {
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   struct sockaddr_in dest_addr;
   uint16_t s_port = atoi(port.c_str());
+  memset((byte*)&dest_addr, 0, sizeof(dest_addr));
+
   dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(s_port);
   dest_addr.sin_addr.s_addr = INADDR_ANY;
@@ -649,6 +653,7 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
                 X509* policyCert, X509* programCert, string& keyType,
                 EVP_PKEY* privateKey, bool verify) {
    SSL_library_init();
+   OpenSSL_add_all_algorithms();
 
   // I'm a server.
   server_role_ = true;
@@ -670,6 +675,12 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
 
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   private_key_ = privateKey;
+  SSL_CTX_use_certificate(ssl_ctx_, programCert);
+  if(SSL_CTX_use_PrivateKey(ssl_ctx_, private_key_) <= 0) {
+    printf("SSL_CTX_use_PrivateKey failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
 
   // Setup verification stuff.
   if (verify) {
@@ -695,6 +706,7 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
                 X509* policyCert, X509* programCert, string& keyType,
                 EVP_PKEY* privateKey, bool verify) {
    SSL_library_init();
+   OpenSSL_add_all_algorithms();
 
   // I'm a client.
   server_role_ = false;
@@ -721,12 +733,24 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
   SSL_set_fd(ssl_, fd_);
   SSL_set_connect_state(ssl_);
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
+  if (privateKey == nullptr) {
+    printf("Private key is null\n");
+    return false;
+  }
   private_key_ = privateKey;
-
-  // SSL_CTX_use_certificate(ssl_ctx_, myCert)?
 
   // Setup verification stuff.
   if (verify) {
+    if (privateKey == nullptr) {
+      printf("Private key is null\n");
+      return false;
+    }
+    if(SSL_CTX_use_PrivateKey(ssl_ctx_, private_key_) <= 0) {
+      printf("SSL_CTX_use_PrivateKey failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    SSL_CTX_use_certificate(ssl_ctx_, programCert);
     SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
     SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
     if (SSL_use_PrivateKey(ssl_, privateKey) <= 0) {
@@ -764,6 +788,7 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
   while(fContinue) {
     struct sockaddr_in addr;
     uint len = sizeof(addr);
+    memset((byte*)&addr, 0, len);
 
     int client = accept(fd_, (struct sockaddr*)&addr, &len);
     if (client < 0) {
@@ -773,8 +798,11 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
     }
 
     SSL* ssl = SSL_new(ssl_ctx_);
-    if (private_key_ == nullptr ||
-        SSL_use_PrivateKey(ssl, private_key_) <= 0) {
+    if (private_key_ == nullptr) {
+      printf("private_key_ is null.\n");
+      return false;
+    }
+    if(SSL_use_PrivateKey(ssl, private_key_) <= 0) {
       printf("SSL_CTX_use_PrivateKey failed.\n");
       return false;
     }
@@ -785,7 +813,8 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
       ERR_print_errors_fp(stderr);
       continue;
     } 
-    thread t(server_loop, this, ssl, client);
+    server_loop(this, ssl, client);
+    // thread t(server_loop, this, ssl, client);
   }
   return true;
 }

@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License
-// File: server_test.cc
+// Project: New Cloudproxy Crypto
+// File: simple_client_test.cc
 
 #include "gtest/gtest.h"
 
@@ -22,13 +23,13 @@
 
 #include "helpers.h"
 
-#if 0
-// For testing.
 
+#if 0
+// for testing
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-void FakeServer(string& network, string& address, string& port) {
+void FakeClient(string& network, string& address, string& port) {
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   struct sockaddr_in dest_addr;
   uint16_t s_port = atoi(port.c_str());
@@ -36,77 +37,28 @@ void FakeServer(string& network, string& address, string& port) {
   dest_addr.sin_port = htons(s_port);
   inet_aton(address.c_str(), &dest_addr.sin_addr);
 
-  if (bind(sockfd, (struct sockaddr*)&dest_addr, sizeof(dest_addr)) < 0) {
-    printf("Unable to bind\n");
-    return;
-  }
-
-  if (listen(sockfd, 1) < 0) {
-    printf("Unable to listen\n");
+  if (connect(sockfd, (struct sockaddr *) &dest_addr,
+              sizeof(struct sockaddr)) == -1) {
+    printf("Error: Cannot connect to host\n");
     return;
   }
 
   byte request[4096];
   byte reply[4096];
+  const char* r = "this is a request\n";
+  memcpy(request, (byte*)r, strlen(r) + 1);
 
-  struct sockaddr_in addr;
-  uint len = sizeof(addr);
-
-  int client = accept(sockfd, (struct sockaddr*)&addr, &len);
-  if (client < 0) {
-    printf("Unable to accept\n");
+  printf("Client sending %s\n", (const char*)request);
+  if (write(sockfd, request, strlen(r) + 1) <= 0) {
+    printf("client write failed\n");
   }
-  for(;;) {
-    int in_size = read(client, request, 4096);
-    if (in_size <= 0) {
-      printf("server read failed\n");
-      return;
-    }
-    printf("Server received: %s\n", (const char*)request);
-    const char* r = "This is a stupid reply";
-    memcpy(reply, r, strlen(r) + 1);
-    printf("Server sending: %s\n", (const char*)reply);
-    write(client, reply, strlen(r) + 1);
-    break;
+  if (read(sockfd, reply, 4096) <= 0) {
+    printf("client read failed\n");
   }
+  printf("client received: %s\n", (const char*)reply);
 }
 #endif
 
-bool ProcessRequest (int request_number, int request_size, byte* request,
-                     int* reply_size, byte* reply) {
-  printf("\nProcessRequest %s\n", (const char*)request);
-  memset(reply, 0, *reply_size);
-  sprintf((char*)reply, "This is a stupid reply %d\n", request_number);
-  *reply_size = strlen((const char*)reply) + 1;
-  if (request_number > 2)
-    return false;
-  return true;
-}
-
-void HandleConnection(SslChannel* channel,  SSL* ssl, int client) {
-  byte request[4096];
-  int request_size = 0;
-  byte reply[4096];
-  int reply_size;
-  bool fContinue;
-  int request_number = 0;
-
-  printf("\nHandleConnection\n");
-  for (;;) {
-    memset(request, 0, 4096);
-    request_size = SSL_read(ssl, request, 4096);
-    printf("request %d: %s\n", request_size, (const char*)request);
-
-    reply_size = 4096;
-    fContinue = ProcessRequest(request_number++, request_size, request,
-                     &reply_size, reply);
-    SSL_write(ssl, reply, reply_size);
-    if (!fContinue)
-      break;
-  }
-  // SSL_free(ssl);
-  // close(client);
-}
 
 int main(int an, char** av) {
   SslChannel channel;
@@ -134,16 +86,20 @@ int main(int an, char** av) {
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-  // string key_type("ECC");
-  // int key_size = 256;
+#if 0
+  string key_type("ECC");
+  int key_size = 256;
+#else
   string key_type("RSA");
   int key_size = 2048;
+#endif
   string common_name("Fred");
   string issuer("Fred");
   string purpose("signing");
 
   EVP_PKEY* self = GenerateKey(key_type, key_size);
-  if (!GenerateX509CertificateRequest(key_type, common_name, self, false, req)) {
+  if (!GenerateX509CertificateRequest(key_type, common_name,
+            self, false, req)) {
     printf("Can't generate x509 request\n");
     return 1;
   }
@@ -153,14 +109,30 @@ int main(int an, char** av) {
     return 1;
   }
 
-  printf("Calling InitServerSslChannel\n");
-  if (!channel.InitServerSslChannel(network, address, port, policyCertificate,
+  printf("Calling InitClientSslChannel\n");
+  if (!channel.InitClientSslChannel(network, address, port, cert,
                                     cert, key_type, self, false)) {
-    printf("Can't InitServerSslChannel\n");
+    printf("Can't InitClientSslChannel\n");
     return 1;
   }
-  printf("Calling ServerLoop\n\n");
-  channel.ServerLoop(&HandleConnection);
+
+  int size_send_buf = 4096;
+  byte send_buf[4096];
+  int size_get_buf = 4096;
+  byte get_buf[4096];
+  int msg_num = 1;
+
+  // write/read
+  printf("Client transcript\n\n");
+  sprintf((char*)send_buf, "Client message %d\n", msg_num++);
+  size_send_buf = channel.Write(strlen((const char*)send_buf) + 1, send_buf);
+  size_get_buf = channel.Read(4096, get_buf);
+  printf("server reply %d, %s\n", size_get_buf, (const char*)get_buf);
+  sprintf((char*)send_buf, "Client message %d\n", msg_num++);
+  size_send_buf = channel.Write(strlen((const char*)send_buf) + 1, send_buf);
+  size_get_buf = channel.Read(4096, get_buf);
+  printf("server reply %d, %s\n", size_get_buf, (const char*)get_buf);
+
   return 0;
 }
 

@@ -319,7 +319,7 @@ char* extEntry::getValue() {
 }
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
-#if 1
+#if 0
   // Temporary because of go verification
   return true;
 #endif
@@ -654,6 +654,7 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
                 EVP_PKEY* privateKey, bool verify) {
    SSL_library_init();
    OpenSSL_add_all_algorithms();
+   ERR_load_crypto_strings();
 
   // I'm a server.
   server_role_ = true;

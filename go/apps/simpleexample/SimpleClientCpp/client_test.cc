@@ -84,6 +84,7 @@ int main(int an, char** av) {
   }
 #endif
 
+  SSL_library_init();
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();

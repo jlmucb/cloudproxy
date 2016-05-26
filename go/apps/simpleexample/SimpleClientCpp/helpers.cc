@@ -607,6 +607,7 @@ int SslChannel::CreateServerSocket(string& address, string& port) {
   uint16_t s_port = atoi(port.c_str());
   dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(s_port);
+  dest_addr.sin_addr.s_addr = INADDR_ANY;
   inet_aton(address.c_str(), &dest_addr.sin_addr);
 
   if (bind(sockfd, (struct sockaddr*)&dest_addr, sizeof(dest_addr)) < 0) {
@@ -628,6 +629,7 @@ int SslChannel::CreateClientSocket(string& addr, string& port) {
   uint16_t s_port = atoi(port.c_str());
   dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(s_port);
+  dest_addr.sin_addr.s_addr = INADDR_ANY;
   inet_aton(addr.c_str(), &dest_addr.sin_addr);
 
   if (connect(sockfd, (struct sockaddr *) &dest_addr,

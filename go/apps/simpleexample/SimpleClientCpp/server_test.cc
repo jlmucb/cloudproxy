@@ -132,6 +132,7 @@ int main(int an, char** av) {
     return 1;
   }
 #endif
+  SSL_library_init();
 
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;

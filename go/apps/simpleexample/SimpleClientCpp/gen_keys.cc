@@ -31,9 +31,6 @@ int main(int an, char** av) {
   string ca_key_string;
   string client_key_string;
   string server_key_string;
-  string network("tcp");
-  string address("127.0.0.1");
-  string port("2015");
 
 #if 0
   string key_type("ECC");

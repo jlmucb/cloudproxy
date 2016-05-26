@@ -63,15 +63,15 @@ void FakeClient(string& network, string& address, string& port) {
 int main(int an, char** av) {
   SslChannel channel;
   string path;
-  string policy_cert_file_name;
+  string policy_cert_file_name(
+      "/Domains/domain.simpleexample/policy_keys/cert");
   string policy_cert;
   string network("tcp");
   string address("127.0.0.1");
   string port("2015");
 
-#if 0
   // Read and parse policy cert.
-  if (!ReadFile(policy_cert, &policy_cert)) {
+  if (!ReadFile(policy_cert_file_name, &policy_cert)) {
     printf("Can't read policy cert.\n");
     return 1;
   }
@@ -82,9 +82,7 @@ int main(int an, char** av) {
     printf("Policy certificate is null.\n");
     return 1;
   }
-#endif
 
-  SSL_library_init();
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
@@ -95,7 +93,8 @@ int main(int an, char** av) {
   string purpose("signing");
 
   EVP_PKEY* self = GenerateKey(key_type, key_size);
-  if (!GenerateX509CertificateRequest(key_type, common_name, self, false, req)) {
+  if (!GenerateX509CertificateRequest(key_type, common_name,
+            self, false, req)) {
     printf("Can't generate x509 request\n");
     return 1;
   }
@@ -105,14 +104,9 @@ int main(int an, char** av) {
     return 1;
   }
 
-#if 0
-  if (!channel.InitClientSslChannel(network, address, port, policyCertificate,
-                                    cert, key_type, self, false)) {
-#else
   printf("Calling InitClientSslChannel\n");
   if (!channel.InitClientSslChannel(network, address, port, cert,
                                     cert, key_type, self, false)) {
-#endif
     printf("Can't InitClientSslChannel\n");
     return 1;
   }

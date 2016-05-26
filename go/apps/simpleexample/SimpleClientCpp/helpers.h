@@ -84,6 +84,7 @@ private:
   SSL* ssl_;
   X509* peer_cert_;
   X509_STORE *store_;
+  EVP_PKEY* private_key_;
 public:
   SslChannel();
   ~SslChannel();

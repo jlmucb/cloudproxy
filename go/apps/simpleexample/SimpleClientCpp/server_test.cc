@@ -112,15 +112,15 @@ void HandleConnection(SslChannel* channel,  SSL* ssl, int client) {
 int main(int an, char** av) {
   SslChannel channel;
   string path;
-  string policy_cert_file_name;
+  string policy_cert_file_name(
+      "/Domains/domain.simpleexample/policy_keys/cert");
   string policy_cert;
   string network("tcp");
   string address("127.0.0.1");
   string port("2015");
 
-#if 0
   // Read and parse policy cert.
-  if (!ReadFile(policy_cert, &policy_cert)) {
+  if (!ReadFile(policy_cert_file_name, &policy_cert)) {
     printf("Can't read policy cert.\n");
     return 1;
   }
@@ -131,8 +131,6 @@ int main(int an, char** av) {
     printf("Policy certificate is null.\n");
     return 1;
   }
-#endif
-  SSL_library_init();
 
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
@@ -154,14 +152,8 @@ int main(int an, char** av) {
     return 1;
   }
 
-#if 0
   if (!channel.InitServerSslChannel(network, address, port, policyCertificate,
                                     cert, key_type, self, false)) {
-#else
-  printf("Calling channel.InitServerSslChannel\n");
-  if (!channel.InitServerSslChannel(network, address, port, cert,
-                                    cert, key_type, self, false)) {
-#endif
     printf("Can't InitServerSslChannel\n");
     return 1;
   }

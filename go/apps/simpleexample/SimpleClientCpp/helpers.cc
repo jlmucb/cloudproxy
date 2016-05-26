@@ -319,7 +319,7 @@ char* extEntry::getValue() {
 }
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
-#if 0
+#if 1
   // Temporary because of go verification
   return true;
 #endif
@@ -386,7 +386,8 @@ bool GenerateX509CertificateRequest(string& key_type, string& common_name,
   return true;
 }
 
-bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, string& signing_issuer,
+bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa,
+                         bool f_canSign, string& signing_issuer,
                          string& purpose, int64 duration, EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
   if (signedKey == nullptr)
@@ -399,7 +400,7 @@ bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, stri
   if (verify_req_sig) {
     if (X509_REQ_verify(req, signedKey) != 1) {
       printf("Req does not verify\n");
-      // return false;
+      return false;
     }
   }
   
@@ -576,6 +577,7 @@ SslChannel::SslChannel() {
   ssl_ = nullptr;
   peer_cert_ = nullptr;
   store_ = nullptr;
+  private_key_ = nullptr;
 }
 
 SslChannel::~SslChannel() {
@@ -583,10 +585,13 @@ SslChannel::~SslChannel() {
     close(fd_);
   }
   fd_ = -1;
+  // clear private_key_;
+#if 0
   if (ssl_ != nullptr) {
     SSL_free(ssl_);
   }
   ssl_ = nullptr;
+#endif
   if (peer_cert_ != nullptr) {
     X509_free(peer_cert_);
   }
@@ -643,6 +648,8 @@ int SslChannel::CreateClientSocket(string& addr, string& port) {
 bool SslChannel::InitServerSslChannel(string& network, string& address, string& port,
                 X509* policyCert, X509* programCert, string& keyType,
                 EVP_PKEY* privateKey, bool verify) {
+   SSL_library_init();
+
   // I'm a server.
   server_role_ = true;
 
@@ -659,53 +666,43 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
     ERR_print_errors_fp(stderr);
     return false;
   }
+  // SSL_CTX_set_options(ssl_ctx_, SSL_OP_ALL);
 
-  ssl_ = SSL_new(ssl_ctx_);
-  if (ssl_ == nullptr) {
-    printf("SSL_new failed (server).\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  // Set my cert chain and private key.
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
-  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
-  SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
-  if (SSL_use_PrivateKey(ssl_, privateKey) <= 0) {
-    printf("SSL_CTX_use_PrivateKey failed.\n");
-    return false;
-  }
-  // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
-
-  // Set root store and certificate.
-  store_ = X509_STORE_new();
-  if (store_ == nullptr) {
-    printf("X509_STORE_new failed.\n");
-    return false;
-  }
-  X509_STORE_add_cert(store_, policyCert);
-  SSL_CTX_set_cert_store(ssl_ctx_, store_);
+  private_key_ = privateKey;
 
   // Setup verification stuff.
   if (verify) {
+    SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+    SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
+    store_ = X509_STORE_new();
+    if (store_ == nullptr) {
+      printf("X509_STORE_new failed.\n");
+      return false;
+    }
+    X509_STORE_add_cert(store_, policyCert);
+    SSL_CTX_set_cert_store(ssl_ctx_, store_);
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+  } else {
+    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
+    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
-
-  peer_cert_ = SSL_get_peer_certificate(ssl_);
   return true;
 }
 
 bool SslChannel::InitClientSslChannel(string& network, string& address, string& port,
                 X509* policyCert, X509* programCert, string& keyType,
                 EVP_PKEY* privateKey, bool verify) {
+   SSL_library_init();
+
   // I'm a client.
   server_role_ = false;
 
   // Create socket and contexts.
   fd_ = CreateClientSocket(address, port);
   if(fd_ <= 0) {
-    printf("CreateServerSocket failed.\n");
+    printf("CreateClientSocket failed.\n");
     return false;
   }
 
@@ -714,51 +711,55 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     printf("SSL_CTX_new failed(client).\n");
     return false;
   }
+
   ssl_ = SSL_new(ssl_ctx_);
   if (ssl_ == nullptr) {
     printf("SSL_new failed(client).\n");
     return false;
   }
 
-  // Set my cert chain and private key.
+  SSL_set_fd(ssl_, fd_);
+  SSL_set_connect_state(ssl_);
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
-  SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
-  SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
-  if (SSL_use_PrivateKey(ssl_, privateKey) <= 0) {
-    printf("SSL_CTX_use_PrivateKey failed.\n");
-    return false;
-  }
-  // int use_cert = SSL_CTX_use_certificate(ssl_ctx_, myCert);
+  private_key_ = privateKey;
 
-  // Set root store and certificate.
-  store_ = X509_STORE_new();
-  if (store_ == nullptr) {
-    printf("X509_STORE_new failed.\n");
-    return false;
-  }
-  X509_STORE_add_cert(store_, policyCert);
-  SSL_CTX_set_cert_store(ssl_ctx_, store_);
+  // SSL_CTX_use_certificate(ssl_ctx_, myCert)?
 
   // Setup verification stuff.
   if (verify) {
+    SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+    SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
+    if (SSL_use_PrivateKey(ssl_, privateKey) <= 0) {
+      printf("SSL_CTX_use_PrivateKey failed.\n");
+      return false;
+    }
+    store_ = X509_STORE_new();
+    if (store_ == nullptr) {
+      printf("X509_STORE_new failed.\n");
+      return false;
+    }
+    X509_STORE_add_cert(store_, policyCert);
+    SSL_CTX_set_cert_store(ssl_ctx_, store_);
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+  } else {
+    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
 
-  // Set fd.
-  SSL_set_fd(ssl_, fd_);
+  // Connect.
   if (SSL_connect(ssl_) != 1) {
     printf("SSL_connect failed.\n");
+    ERR_print_errors_fp(stderr);
     return false;
   }
-
-  // check connection?
   peer_cert_ = SSL_get_peer_certificate(ssl_);
   return true;
 }
 
 bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
   bool fContinue = true;
+  printf("ServerLoop\n");
 
   while(fContinue) {
     struct sockaddr_in addr;
@@ -767,14 +768,22 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
     int client = accept(fd_, (struct sockaddr*)&addr, &len);
     if (client < 0) {
       printf("Unable to accept\n");
+      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
       continue;
     }
 
     SSL* ssl = SSL_new(ssl_ctx_);
+    if (private_key_ == nullptr ||
+        SSL_use_PrivateKey(ssl, private_key_) <= 0) {
+      printf("SSL_CTX_use_PrivateKey failed.\n");
+      return false;
+    }
     SSL_set_fd(ssl, client);
+    SSL_set_accept_state(ssl);
     if (SSL_accept(ssl) <= 0) {
-            printf("Unable to ssl_accept\n");
-            continue;
+      printf("Unable to ssl_accept\n");
+      ERR_print_errors_fp(stderr);
+      continue;
     } 
     thread t(server_loop, this, ssl, client);
   }

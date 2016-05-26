@@ -76,9 +76,8 @@ bool ProcessRequest (int request_number, int request_size, byte* request,
                      int* reply_size, byte* reply) {
   printf("\nProcessRequest %s\n", (const char*)request);
   memset(reply, 0, *reply_size);
-  const char* r = "This is a stupid reply";
-  *reply_size = strlen(r) + 1;
-  memcpy(reply, r, *reply_size);
+  sprintf((char*)reply, "This is a stupid reply %d\n", request_number);
+  *reply_size = strlen((const char*)reply) + 1;
   if (request_number > 2)
     return false;
   return true;

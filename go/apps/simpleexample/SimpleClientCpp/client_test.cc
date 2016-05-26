@@ -124,9 +124,11 @@ int main(int an, char** av) {
   sprintf((char*)send_buf, "Client message %d\n", msg_num++);
   size_send_buf = channel.Write(strlen((const char*)send_buf) + 1, send_buf);
   size_get_buf = channel.Read(4096, get_buf);
+  printf("server reply %d, %s\n", size_get_buf, (const char*)get_buf);
   sprintf((char*)send_buf, "Client message %d\n", msg_num++);
   size_send_buf = channel.Write(strlen((const char*)send_buf) + 1, send_buf);
   size_get_buf = channel.Read(4096, get_buf);
+  printf("server reply %d, %s\n", size_get_buf, (const char*)get_buf);
 
   return 0;
 }

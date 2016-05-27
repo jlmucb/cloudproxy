@@ -725,15 +725,6 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     printf("SSL_CTX_new failed(client).\n");
     return false;
   }
-
-  ssl_ = SSL_new(ssl_ctx_);
-  if (ssl_ == nullptr) {
-    printf("SSL_new failed(client).\n");
-    return false;
-  }
-
-  SSL_set_fd(ssl_, fd_);
-  SSL_set_connect_state(ssl_);
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   if (privateKey == nullptr) {
     printf("Private key is null\n");
@@ -755,12 +746,6 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     SSL_CTX_use_certificate(ssl_ctx_, programCert);
     SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
     SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
-#if 0
-    if (SSL_use_PrivateKey(ssl_, privateKey) <= 0) {
-      printf("SSL_CTX_use_PrivateKey failed.\n");
-      return false;
-    }
-#endif
     store_ = X509_STORE_new();
     if (store_ == nullptr) {
       printf("X509_STORE_new failed.\n");
@@ -774,6 +759,15 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
+
+  ssl_ = SSL_new(ssl_ctx_);
+  if (ssl_ == nullptr) {
+    printf("SSL_new failed(client).\n");
+    return false;
+  }
+
+  SSL_set_fd(ssl_, fd_);
+  SSL_set_connect_state(ssl_);
 
   // Connect.
   if (SSL_connect(ssl_) != 1) {
@@ -806,12 +800,6 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
       printf("private_key_ is null.\n");
       return false;
     }
-#if 0
-    if(SSL_use_PrivateKey(ssl, private_key_) <= 0) {
-      printf("SSL_CTX_use_PrivateKey failed.\n");
-      return false;
-    }
-#endif
     SSL_set_fd(ssl, client);
     SSL_set_accept_state(ssl);
     if (SSL_accept(ssl) <= 0) {

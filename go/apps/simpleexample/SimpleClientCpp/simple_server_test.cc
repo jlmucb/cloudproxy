@@ -118,23 +118,10 @@ int main(int an, char** av) {
   string address("127.0.0.1");
   string port("2015");
 
-  // Read and parse policy cert.
-  if (!ReadFile(policy_cert_file_name, &policy_cert)) {
-    printf("Can't read policy cert.\n");
-    return 1;
-  }
-  byte* pc = (byte*)policy_cert.data();
-  X509* policyCertificate = d2i_X509(nullptr, (const byte**)&pc,
-        policy_cert.size());
-  if (policyCertificate == nullptr) {
-    printf("Policy certificate is null.\n");
-    return 1;
-  }
-
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-#if 0
+#if 1
   string key_type("ECC");
   int key_size = 256;
 #else
@@ -157,7 +144,7 @@ int main(int an, char** av) {
   }
 
   printf("Calling InitServerSslChannel\n");
-  if (!channel.InitServerSslChannel(network, address, port, policyCertificate,
+  if (!channel.InitServerSslChannel(network, address, port, cert,
                                     cert, key_type, self, false)) {
     printf("Can't InitServerSslChannel\n");
     return 1;

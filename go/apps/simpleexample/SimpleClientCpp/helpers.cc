@@ -677,7 +677,6 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
   SSL_CTX_clear_extra_chain_certs(ssl_ctx_);
   private_key_ = privateKey;
   SSL_CTX_use_certificate(ssl_ctx_, programCert);
-#if 1
   if (EVP_PKEY_id(private_key_) == EVP_PKEY_EC) {
     if (!SSL_CTX_set_tmp_ecdh(ssl_ctx_, EVP_PKEY_get1_EC_KEY(private_key_))) {
        printf("SSL_CTX_set_tmp_ecdh failed.\n");
@@ -685,7 +684,6 @@ bool SslChannel::InitServerSslChannel(string& network, string& address, string& 
     }
     SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_ECDH_USE);
   }
-#endif
   if(SSL_CTX_use_PrivateKey(ssl_ctx_, private_key_) <= 0) {
     printf("SSL_CTX_use_PrivateKey failed.\n");
     ERR_print_errors_fp(stderr);
@@ -747,7 +745,6 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
       printf("Private key is null\n");
       return false;
     }
-#if 1
     if (EVP_PKEY_id(private_key_) == EVP_PKEY_EC) {
       if (!SSL_CTX_set_tmp_ecdh(ssl_ctx_, EVP_PKEY_get1_EC_KEY(private_key_))) {
         printf("SSL_CTX_set_tmp_ecdh failed.\n");
@@ -755,7 +752,6 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
       }
       SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_ECDH_USE);
     }
-#endif
     if(SSL_CTX_use_PrivateKey(ssl_ctx_, private_key_) <= 0) {
       printf("SSL_CTX_use_PrivateKey failed.\n");
       ERR_print_errors_fp(stderr);

@@ -22,7 +22,8 @@ import (
 	//"os"
 	//"path"
 
-	//taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
+	// "github.com/golang/protobuf/proto"
+	// "github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 var fileName = flag.String("/Domains/xx", "/Domains/xx", "file name")
@@ -34,5 +35,6 @@ func main() {
 		fmt.Printf("can't read: %s\n", fileName)
 	}
         fmt.Printf("Statement: %x\n", statement);
-
+	// g, err := UnmarshalForm(statement)
+        // fmt.Printf("String: %s\n", g.String())
 }

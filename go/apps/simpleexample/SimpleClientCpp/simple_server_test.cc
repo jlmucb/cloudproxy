@@ -108,6 +108,8 @@ void HandleConnection(SslChannel* channel,  SSL* ssl, int client) {
   // close(client);
 }
 
+DEFINE_string(key_type, "ECC", "key type for generated keys");
+
 int main(int an, char** av) {
   SslChannel channel;
   string path;
@@ -118,16 +120,29 @@ int main(int an, char** av) {
   string address("127.0.0.1");
   string port("2015");
 
+#ifdef __linux__
+  gflags::ParseCommandLineFlags(&an, &av, true);
+#else
+  google::ParseCommandLineFlags(&an, &av, true);
+#endif
+
+  // key type
+  string key_type;
+  int key_size;
+  if(FLAGS_key_type == "ECC") {
+    key_type = "ECC";
+    key_size = 256;
+  } else if (FLAGS_key_type == "RSA") {
+    key_type = "RSA";
+    key_size = 2048;
+  } else {
+    printf("Invalid key type\n");
+    return 1;
+  }
+
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-#if 1
-  string key_type("ECC");
-  int key_size = 256;
-#else
-  string key_type("RSA");
-  int key_size = 2048;
-#endif
   string common_name("Fred");
   string issuer("Fred");
   string purpose("signing");

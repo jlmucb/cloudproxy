@@ -22,6 +22,7 @@
 
 #include "helpers.h"
 
+DEFINE_string(key_type, "ECC", "key type for generated keys");
 
 int main(int an, char** av) {
   string path("/Domains/test_keys");
@@ -32,13 +33,24 @@ int main(int an, char** av) {
   string client_key_string;
   string server_key_string;
 
-#if 0
-  string key_type("ECC");
-  int key_size = 256;
+#ifdef __linux__
+  gflags::ParseCommandLineFlags(&an, &av, true);
 #else
-  string key_type("RSA");
-  int key_size = 2048;
+  google::ParseCommandLineFlags(&an, &av, true);
 #endif
+
+  string key_type;
+  int key_size;
+  if(FLAGS_key_type == "ECC") {
+    key_type = "ECC";
+    key_size = 256;
+  } else if (FLAGS_key_type == "RSA") {
+    key_type = "RSA";
+    key_size = 2048;
+  } else {
+    printf("Invalid key type\n");
+    return 1;
+  }
 
   string ca_common_name("test_ca");
   string client_common_name("test_client");

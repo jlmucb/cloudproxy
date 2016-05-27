@@ -320,7 +320,7 @@ char* extEntry::getValue() {
 }
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
-#if 0
+#if 1
   // Temporary because of go verification
   return true;
 #endif

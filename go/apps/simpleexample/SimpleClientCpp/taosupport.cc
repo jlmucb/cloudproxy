@@ -259,6 +259,12 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     CodedOutputStream output_stream(&raw_output_stream);
     p.Marshal(&output_stream);
   }
+
+printf("Size of subprin: %d\n", subprin.size());
+string debugFileName("/Domains/extendtest");
+if (!WriteFile(debugFileName, subprin)) {
+    printf("Can't write %s.\n", debugFileName.c_str());
+}
   if (!tao_->ExtendTaoName(subprin)) {
     printf("Can't extend name.\n");
     return false;

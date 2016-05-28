@@ -23,18 +23,24 @@ import (
 	//"path"
 
 	// "github.com/golang/protobuf/proto"
-	// "github.com/jlmucb/cloudproxy/go/tao/auth"
+	// "github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	// "github.com/jlmucb/cloudproxy/go/util"
 )
 
-var fileName = flag.String("/Domains/xx", "/Domains/xx", "file name")
+var fileName = flag.String("/Domains/extendtest", "/Domains/extendtest", "file name")
 
 func main() {
-	fmt.Printf("File: %s\n", fileName)
+	fmt.Printf("File: %s\n", *fileName)
 	statement, err := ioutil.ReadFile(*fileName)
 	if err != nil {
-		fmt.Printf("can't read: %s\n", fileName)
+		fmt.Printf("can't read: %s\n", *fileName)
 	}
         fmt.Printf("Statement: %x\n", statement);
-	// g, err := UnmarshalForm(statement)
-        // fmt.Printf("String: %s\n", g.String())
+	g, err := auth.UnmarshalForm(statement)
+	if err != nil {
+		fmt.Printf("UnmarshalForm fails\n");
+	} else {
+        	fmt.Printf("String: %s\n", g.String())
+	}
 }

@@ -261,11 +261,13 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     p.Marshal(&output_stream);
   }
 
-printf("Size of subprin: %d\n", (int)subprin.size());
+#if 0
+// for debug
 string debugFileName("/Domains/extendtest");
 if (!WriteFile(debugFileName, subprin)) {
     printf("Can't write %s.\n", debugFileName.c_str());
 }
+#endif
   if (!tao_->ExtendTaoName(subprin)) {
     printf("Can't extend name.\n");
     return false;
@@ -408,10 +410,13 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   string unsealed;
   string file_name = path + "sealedsymmetricKey";
 
+#if 1
+printf("symmetric keys are in %s\n", file_name.c_str());
+#endif
   // Read key file.
-  if (!ReadFile(file_name, &sealed)) {
+  if (ReadFile(file_name, &sealed)) {
     if (!Unseal(sealed, &unsealed)) {
-      printf("Can't open InitializeSymmetricKeys\n");
+      printf("Can't open InitializeSymmetricKeys %s\n", file_name.c_str());
       return false;
     }
     size_program_sym_key_ = unsealed.size();
@@ -422,12 +427,15 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   }
 
   // Create keys, should really be a call to GetRandom.
+  // TODO: free this
   program_sym_key_ = (byte*)malloc(keysize);
-  if (program_sym_key_ != nullptr) {
+  if (program_sym_key_ == nullptr) {
+    printf("InitializeSymmetricKeys: Can't malloc symmetric key.\n");
     return false;
   }
   size_program_sym_key_ = keysize;
   if (keysize != RAND_bytes(program_sym_key_, keysize)) {
+    printf("InitializeSymmetricKeys: Can't generate symmetric key.\n");
     return false;
   }
 
@@ -449,15 +457,18 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
 
 bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
         int key_size, string& network, string& address, string& port) {
-
-  string sealed_key_file_name = path + "sealedsigningKey";
-  string signer_cert_file_name = path + "signerCert";
-  string policy_cert_file_name = path + "policyCert";
+  string sealed_key_file_name = path + "/sealedsigningKey";
+  string signer_cert_file_name = path + "/signerCert";
+  string policy_cert_file_name = path + "/policyCert";
   string sealed_key;
   string unsealed_key;
   string program_cert;
 
-
+#if 1
+printf("Policy cert is in %s\n", policy_cert_file_name.c_str());
+printf("Program cert is in %s\n", signer_cert_file_name.c_str());
+printf("Program key is in %s\n", sealed_key_file_name.c_str());
+#endif
   // Read and parse policy cert.
   if (!ReadFile(policy_cert_file_name, &policy_cert_)) {
     printf("InitializeProgramKey: Can't read policy cert.\n");
@@ -474,24 +485,26 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   if (ReadFile(sealed_key_file_name, &sealed_key) &&
       ReadFile(signer_cert_file_name, &program_cert)) {
     if (!Unseal(sealed_key, &unsealed_key)) {
-      printf("Can't open InitializeProgramKey\n");
+      printf("InitializeProgramKey: Can't open InitializeProgramKey\n");
       return false;
     }
     // Deserialize the key.
     if (!DeserializePrivateKey(unsealed_key, &program_key_type_, &program_key_)) {
-      printf("Can't DeserializePrivateKey\n");
+      printf("InitializeProgramKey: Can't DeserializePrivateKey\n");
       return false;
     }
     return true;
   }
 
   // Generate the key and specify key bytes.
-  EVP_PKEY* program_key_ = EVP_PKEY_new();
+  EVP_PKEY* program_key_ = GenerateKey(key_type, key_size);
   if (program_key_ == nullptr) {
+    printf("InitializeProgramKey: couldn't generate program key.\n");
     return false;
   }
-  string* key_bytes = GetKeyBytes(program_key_);;
+  string* key_bytes = GetKeyBytes(program_key_);
   if (key_bytes == nullptr) {
+    printf("InitializeProgramKey: couldn't get key bytes.\n");
     return false;
   }
 
@@ -502,8 +515,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   if (!ReadFile(endorsement_cert_file_name, &endorse_cert)) {
     printf("InitializeProgramKey: couldn't read endorsement cert.\n");
     return false;
-  }
-
+  } 
   // Construct a delegation statement.
   string serialized_key;
 
@@ -532,8 +544,8 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   }
 
   // Get Program Cert.
-  if (!RequestDomainServiceCert(network, address, port, attestation_string, endorse_cert,
-          &program_cert_)) {
+  if (!RequestDomainServiceCert(network, address, port, attestation_string,
+          endorse_cert, &program_cert_)) {
     printf("InitializeProgramKey: couldn't RequestDomainServiceCert.\n");
     return false;
   }

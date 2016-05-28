@@ -139,6 +139,7 @@ int main(int an, char** av) {
     printf("Invalid key type\n");
     return 1;
   }
+  printf("Key type is %s\n", key_type.c_str()); 
 
   // Self signed cert.
   X509_REQ* req = X509_REQ_new();;

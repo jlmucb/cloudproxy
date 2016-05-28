@@ -273,6 +273,7 @@ EVP_PKEY* GenerateKey(string& keyType, int keySize) {
     pKey->type = EVP_PKEY_RSA;
   } else if (keyType == "ECC") {
     EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
     if (ec_key == nullptr) {
       printf("GenerateKey: couldn't generate ECC program key (1).\n");
       return nullptr;

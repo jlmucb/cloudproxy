@@ -51,6 +51,7 @@ int main(int an, char** av) {
     printf("Invalid key type\n");
     return 1;
   }
+  printf("Key type is %s\n", key_type.c_str()); 
 
   string ca_common_name("test_ca");
   string client_common_name("test_client");

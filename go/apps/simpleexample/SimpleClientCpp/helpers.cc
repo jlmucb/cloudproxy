@@ -672,7 +672,7 @@ bool SslChannel::InitServerSslChannel(string& network, string& address,
     return false;
   }
 
-  ssl_ctx_ = SSL_CTX_new(TLSv1_server_method());
+  ssl_ctx_ = SSL_CTX_new(TLSv1_2_server_method());
   if (ssl_ctx_ == nullptr) {
     printf("SSL_CTX_new failed(server).\n");
     ERR_print_errors_fp(stderr);
@@ -732,7 +732,7 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     return false;
   }
 
-  ssl_ctx_ = SSL_CTX_new(TLSv1_client_method());
+  ssl_ctx_ = SSL_CTX_new(TLSv1_2_client_method());
   if (ssl_ctx_ == nullptr) {
     printf("SSL_CTX_new failed(client).\n");
     return false;

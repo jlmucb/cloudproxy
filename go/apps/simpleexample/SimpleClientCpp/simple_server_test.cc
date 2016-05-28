@@ -153,6 +153,9 @@ int main(int an, char** av) {
     printf("Can't generate x509 request\n");
     return 1;
   }
+
+  // EC_KEY_METHOD* meth = EC_KEY_get_method(EVP_PKEY_get1_EC_KEY(self));
+
   if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
                          self, req, false, cert)) {
     printf("Can't sign x509 request\n");

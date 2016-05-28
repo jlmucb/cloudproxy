@@ -250,16 +250,10 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   std::vector<std::unique_ptr<tao::PrinExt>> v;
 
   // Should it be "PolicyCertHash" rather than "key"?
-#if 0
-  v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
-  tao::Prin p("key", tao::make_unique<tao::Bytes>(hexPolicyHash->c_str()),
-         tao::make_unique<tao::SubPrin>(std::move(v)));
-#else
   std::vector<std::unique_ptr<tao::Term>> w;
   w.push_back(tao::make_unique<tao::Bytes>(hexPolicyHash->c_str()));
   v.push_back(tao::make_unique<tao::PrinExt> ("key", std::move(w)));
   tao::SubPrin p(std::move(v));
-#endif
   string subprin;
   {
     StringOutputStream raw_output_stream(&subprin);

@@ -148,7 +148,8 @@ int main(int an, char** av) {
   string purpose("signing");
 
   EVP_PKEY* self = GenerateKey(key_type, key_size);
-  if (!GenerateX509CertificateRequest(key_type, common_name, self, false, req)) {
+  if (!GenerateX509CertificateRequest(key_type, common_name, self,
+          false, req)) {
     printf("Can't generate x509 request\n");
     return 1;
   }

@@ -650,15 +650,20 @@ int SslChannel::CreateClientSocket(string& addr, string& port) {
   return sockfd;
 }
 
-bool SslChannel::InitServerSslChannel(string& network, string& address, string& port,
-                X509* policyCert, X509* programCert, string& keyType,
-                EVP_PKEY* privateKey, bool verify) {
+bool SslChannel::InitServerSslChannel(string& network, string& address,
+                string& port, X509* policyCert, X509* programCert,
+                string& keyType, EVP_PKEY* privateKey, bool verify) {
    SSL_library_init();
    OpenSSL_add_all_algorithms();
    ERR_load_crypto_strings();
 
   // I'm a server.
   server_role_ = true;
+
+  if (privateKey == nullptr) {
+    printf("Private key is null.\n");
+    return false;
+  }
 
   // Create socket and contexts.
   fd_ = CreateServerSocket(address, port);

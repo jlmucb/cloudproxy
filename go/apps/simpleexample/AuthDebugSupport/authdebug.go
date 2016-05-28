@@ -37,10 +37,10 @@ func main() {
 		fmt.Printf("can't read: %s\n", *fileName)
 	}
         fmt.Printf("Statement: %x\n", statement);
-	g, err := auth.UnmarshalForm(statement)
+	g, err := auth.UnmarshalPrin(statement)
 	if err != nil {
-		fmt.Printf("UnmarshalForm fails\n");
+		fmt.Printf("Unmarshal fails\n");
 	} else {
-        	fmt.Printf("String: %s\n", g.String())
+		fmt.Printf("String: %s\n", g.String())
 	}
 }

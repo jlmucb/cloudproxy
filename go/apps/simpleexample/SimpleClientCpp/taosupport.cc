@@ -248,11 +248,20 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   string* hexPolicyHash = ByteToHexLeftToRight(32, policy_hash);
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
-  v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
 
   // Should it be "PolicyCertHash" rather than "key"?
+#if 1
+  v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
   tao::Prin p("key", tao::make_unique<tao::Bytes>(hexPolicyHash->c_str()),
          tao::make_unique<tao::SubPrin>(std::move(v)));
+#else
+  // tao::Bytes t(hexPolicyHash->c_str());
+  std::vector<std::unique_ptr<tao::Term>> w;
+  w.push_back(tao::make_unique<tao::Bytes>(hexPolicyHash->c_str()));
+  // v.push_back(tao::make_unique<tao::PrinExt>("key", w));
+  // tao::PrinExt e(tao::PrinExt("key", w));
+  tao::SubPrin p(std::move(v));
+#endif
   string subprin;
   {
     StringOutputStream raw_output_stream(&subprin);
@@ -260,7 +269,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     p.Marshal(&output_stream);
   }
 
-printf("Size of subprin: %d\n", subprin.size());
+printf("Size of subprin: %d\n", (int)subprin.size());
 string debugFileName("/Domains/extendtest");
 if (!WriteFile(debugFileName, subprin)) {
     printf("Can't write %s.\n", debugFileName.c_str());

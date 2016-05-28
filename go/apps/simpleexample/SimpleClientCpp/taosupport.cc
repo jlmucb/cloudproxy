@@ -297,7 +297,21 @@ printf("\n");
 #endif
 
   // Get (or initialize) my program key.
-  if (!InitializeProgramKey(path, keyType, key_size, network, address, port)) {
+  // First, we need the host cert and cert type.
+  // TODO: get it from host?
+  // If host_type is "tpm" or "tpm2", read the endosement cert as
+  // the host cert.
+  string host_type("fake");
+  string host_cert;
+#if 0
+  string host_cert_file_name = path + "/endorsementCert";
+  if (!ReadFile(host_cert_file_name, &endorse_cert)) {
+    printf("InitializeProgramKey: couldn't read host cert.\n");
+    return false;
+  }
+#endif 
+  if (!InitializeProgramKey(path, keyType, key_size, network, address,
+          port, host_type, host_cert)) {
     printf("Can't init program keys.\n");
     return false;
   }
@@ -468,7 +482,8 @@ printf("symmetric keys are in %s\n", file_name.c_str());
 }
 
 bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
-        int key_size, string& network, string& address, string& port) {
+        int key_size, string& network, string& address, string& port,
+        string& host_type, string& host_cert) {
   string sealed_key_file_name = path + "/sealedsigningKey";
   string signer_cert_file_name = path + "/signerCert";
   string policy_cert_file_name = path + "/policy_keys/cert";
@@ -521,13 +536,15 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 
   // Get the program cert from the domain service.
+#if 0
   // First, we need the endorsement cert.
   string endorsement_cert_file_name = path + "/endorsementCert";
   string endorse_cert;
   if (!ReadFile(endorsement_cert_file_name, &endorse_cert)) {
     printf("InitializeProgramKey: couldn't read endorsement cert.\n");
     return false;
-  } 
+  }
+#endif 
   // Construct a delegation statement.
   string serialized_key;
 
@@ -557,7 +574,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
 
   // Get Program Cert.
   if (!RequestDomainServiceCert(network, address, port, attestation_string,
-          endorse_cert, &program_cert_)) {
+          host_cert, &program_cert_)) {
     printf("InitializeProgramKey: couldn't RequestDomainServiceCert.\n");
     return false;
   }

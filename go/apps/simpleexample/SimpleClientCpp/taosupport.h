@@ -64,7 +64,8 @@ public:
   void Print();
 
   bool InitializeProgramKey(string& path, string& key_type, int key_size,
-                            string& network, string& address, string& port);
+                            string& network, string& address, string& port,
+                            string& hostType, string& hostCert);
   bool InitializeSymmetricKeys(string& path, int keysize);
   bool ExtendName(string& subprin);
 

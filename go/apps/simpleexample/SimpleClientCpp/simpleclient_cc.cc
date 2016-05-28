@@ -71,7 +71,8 @@ int main(int argc, char **argv) {
   // Open the Tao Channel using the Program key.  This program does all the
   // standard channel negotiation and presents the secure server name after
   // negotiation is complete.
-  if (!client_channel.OpenTaoChannel(client_program_data, FLAGS_server_host, FLAGS_server_port)) {
+  if (!client_channel.OpenTaoChannel(client_program_data, FLAGS_server_host,
+         FLAGS_server_port)) {
     printf("client_channel.OpenTaoChannel failed\n");
     return 1;
   }

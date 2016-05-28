@@ -274,16 +274,27 @@ if (!WriteFile(debugFileName, subprin)) {
   }
 
   // Retrieve extended name.
-  if (!tao->GetTaoName(&tao_name_)) {
+  string tao_name;
+  if (!tao->GetTaoName(&tao_name)) {
     printf("Can't get tao name.\n");
     return false;
   }
+  tao_name_ = tao_name;
+#if 1
+printf("Taoname: %s\n", tao_name_.c_str());
+PrintBytes(tao_name.size(), (byte*)tao_name.data());printf("\n");
+#endif
 
   // Get (or initialize) my symmetric keys.
   if (!InitializeSymmetricKeys(path, 32)) {
     printf("Can't init symmetric keys.\n");
     return false;
   }
+#if 1
+printf("InitializeSymmetricKeys succeeded\n");
+PrintBytes(size_program_sym_key_, program_sym_key_);
+printf("\n");
+#endif
 
   // Get (or initialize) my program key.
   if (!InitializeProgramKey(path, keyType, key_size, network, address, port)) {
@@ -408,7 +419,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
 bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   string sealed;
   string unsealed;
-  string file_name = path + "sealedsymmetricKey";
+  string file_name = path + "/sealedsymmetricKey";
 
 #if 1
 printf("symmetric keys are in %s\n", file_name.c_str());
@@ -434,8 +445,9 @@ printf("symmetric keys are in %s\n", file_name.c_str());
     return false;
   }
   size_program_sym_key_ = keysize;
-  if (keysize != RAND_bytes(program_sym_key_, keysize)) {
-    printf("InitializeSymmetricKeys: Can't generate symmetric key.\n");
+  if (1 != RAND_bytes(program_sym_key_, keysize)) {
+    printf("InitializeSymmetricKeys: Can't generate symmetric key %d.\n",
+           keysize);
     return false;
   }
 
@@ -459,7 +471,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
         int key_size, string& network, string& address, string& port) {
   string sealed_key_file_name = path + "/sealedsigningKey";
   string signer_cert_file_name = path + "/signerCert";
-  string policy_cert_file_name = path + "/policyCert";
+  string policy_cert_file_name = path + "/policy_keys/cert";
   string sealed_key;
   string unsealed_key;
   string program_cert;
@@ -510,7 +522,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
 
   // Get the program cert from the domain service.
   // First, we need the endorsement cert.
-  string endorsement_cert_file_name = path + "endorsementCert";
+  string endorsement_cert_file_name = path + "/endorsementCert";
   string endorse_cert;
   if (!ReadFile(endorsement_cert_file_name, &endorse_cert)) {
     printf("InitializeProgramKey: couldn't read endorsement cert.\n");

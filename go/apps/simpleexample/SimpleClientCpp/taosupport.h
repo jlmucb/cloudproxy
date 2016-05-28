@@ -51,6 +51,7 @@ public:
 
   string program_cert_;
   X509* programCertificate_;
+
   int size_program_sym_key_;
   byte* program_sym_key_;
   string program_file_path_;

@@ -60,8 +60,10 @@ EVP_PKEY* GenerateKey(string& keyType, int keySize);
 string* GetKeyBytes(EVP_PKEY* pKey);
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
             EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req);
-bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign, string& signing_issuer,
-                         string& purpose, int64 duration, EVP_PKEY* signedKey,
+bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign,
+                         string& signing_issuer,string& keyUsage,
+                         string& extendedKeyUsage,
+                         int64 duration, EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert);
 bool VerifyX509CertificateChain(X509* cacert, X509* cert);
 

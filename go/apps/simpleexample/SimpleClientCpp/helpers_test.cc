@@ -49,7 +49,8 @@ bool cert_test() {
   string key_type("ECC");
   string common_name("Fred");
   string issuer("Fred");
-  string purpose("signing");
+  string keyUsage("critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
+  string extendedKeyUsage("serverAuth,clientAuth");
 
   EVP_PKEY* self = GenerateKey(key_type, size);
   if (self == nullptr) {
@@ -62,7 +63,8 @@ bool cert_test() {
     return false;
   }
 
-  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
+  if (!SignX509Certificate(self, true, true, issuer, keyUsage,
+                           extendedKeyUsage, 86400,
                            self, req, false, cert)) {
     printf("Can't sign x509 request\n");
     return false;

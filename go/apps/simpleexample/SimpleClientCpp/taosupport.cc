@@ -366,20 +366,22 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   string key_type("ECC");
   string common_name("Fred");
   string issuer("Self");
-  string purpose("signing");
+  string keyUsage("critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
+  string extendedKeyUsage("serverAuth,clientAuth");
 
   EVP_PKEY* self = GenerateKey(key_type, 256);
   if (self == nullptr) {
     printf("Can't Generate temporary channel key.\n");
     return false;
   }
-  if (!GenerateX509CertificateRequest(key_type, common_name, 
-          self, false, req)) {
+  if (!GenerateX509CertificateRequest(key_type, common_name, self,
+         false, req)) {
     printf("Can't generate x509 request\n");
     return false;
   }
 
-  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
+  if (!SignX509Certificate(self, true, true, issuer, 
+                           keyUsage, extendedKeyUsage, 86400,
                            self, req, false, cert)) {
     printf("Can't sign x509 request\n");
     return false;

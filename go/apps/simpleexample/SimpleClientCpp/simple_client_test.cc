@@ -98,7 +98,8 @@ int main(int an, char** av) {
 
   string common_name("Fred");
   string issuer("Fred");
-  string purpose("signing");
+  string keyUsage("critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
+  string extendedKeyUsage("serverAuth,clientAuth");
 
   EVP_PKEY* self = GenerateKey(key_type, key_size);
   if (!GenerateX509CertificateRequest(key_type, common_name,
@@ -106,8 +107,9 @@ int main(int an, char** av) {
     printf("Can't generate x509 request\n");
     return 1;
   }
-  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
-                         self, req, false, cert)) {
+  if (!SignX509Certificate(self, true, true, issuer, keyUsage,
+                           extendedKeyUsage, 86400,
+                           self, req, false, cert)) {
     printf("Can't sign x509 request\n");
     return 1;
   }

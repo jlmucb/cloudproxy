@@ -31,6 +31,7 @@
 using std::string;
 using std::unique_ptr;
 using std::thread;
+using std::vector;
 
 //
 // Copyright 2015 Google Corporation, All Rights Reserved.
@@ -321,17 +322,17 @@ char* extEntry::getValue() {
 }
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
-#if 1
+#if 0
   // Temporary because of go verification
   return true;
 #endif
   // add extensions
+  X509V3_CTX ctx;
+  X509V3_set_ctx_nodb(&ctx);
+  X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);
   for (int i = 0; i < num_entry; i++) {
     int nid = OBJ_txt2nid(entries[i]->getKey());
-    ASN1_OCTET_STRING* val = ASN1_OCTET_STRING_new();
-    ASN1_STRING_set(val, (const void *)entries[i]->getValue(),
-                    strlen(entries[i]->getValue()));
-    X509_EXTENSION* ext = X509_EXTENSION_create_by_NID(NULL, nid, 0, val);
+    X509_EXTENSION* ext = X509V3_EXT_conf_nid(NULL, &ctx, nid, entries[i]->getValue());
     if (ext == 0) {
       printf("Bad ext_conf %d\n", i);
       printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
@@ -390,7 +391,8 @@ bool GenerateX509CertificateRequest(string& key_type, string& common_name,
 
 bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa,
                          bool f_canSign, string& signing_issuer,
-                         string& purpose, int64 duration, EVP_PKEY* signedKey,
+                         string& keyUsage, string& extendedKeyUsage,
+                         int64 duration, EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
   if (signedKey == nullptr)
     signedKey = X509_REQ_get_pubkey(req);
@@ -444,13 +446,36 @@ bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa,
     return false;
   }
 
-  // add extensions
-  extEntry* entries[4];
+  // Add extensions which should be
+  //    X509v3 extensions:
+  //        X509v3 Key Usage: critical
+  //            Key Agreement, Certificate Sign
+  //        X509v3 Extended Key Usage: 
+  //            TLS Web Server Authentication, TLS Web Client Authentication
+  //        X509v3 Basic Constraints: critical
+  //            CA:TRUE
+  // keyUsage, "critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
+  // extendedKeyUsage , "serverAuth,clientAuth"
+
+  extEntry* entries[128];
   int n = 0;
-  if (f_isCa)
+  if (f_isCa) {
     entries[n++] = new extEntry("basicConstraints", "critical,CA:TRUE");
-  // entries[n++] = new extEntry("subjectKeyIdentifier", "hash");
-  entries[n++] = new extEntry("keyUsage", purpose.c_str());
+  }
+#if 1
+  entries[n++] = new extEntry("keyUsage", keyUsage.c_str());
+  entries[n++] = new extEntry("extendedKeyUsage", extendedKeyUsage.c_str());
+#else
+  string delim(",");
+  vector<string> v = string_split(keyUsage, delim);
+  for (vector<string>::const_iterator i = v.begin(); i != v.end(); i++){
+    entries[n++] = new extEntry("keyUsage", i->c_str());
+  }
+  vector<string> w = string_split(extendedKeyUsage, delim);
+  for (vector<string>::const_iterator i = w.begin(); i != w.end(); i++){
+    entries[n++] = new extEntry("extendedKeyUsage", i->c_str());
+  }
+#endif
   if (!addExtensionsToCert(n, entries, cert)) {
     printf("Can't add extensions\n");
     return false;

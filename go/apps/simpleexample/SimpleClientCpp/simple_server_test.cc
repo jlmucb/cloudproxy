@@ -146,7 +146,8 @@ int main(int an, char** av) {
   X509* cert = X509_new();
   string common_name("Fred");
   string issuer("Fred");
-  string purpose("signing");
+  string keyUsage("critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
+  string extendedKeyUsage("serverAuth,clientAuth");
 
   EVP_PKEY* self = GenerateKey(key_type, key_size);
   if (!GenerateX509CertificateRequest(key_type, common_name, self,
@@ -157,8 +158,9 @@ int main(int an, char** av) {
 
   // EC_KEY_METHOD* meth = EC_KEY_get_method(EVP_PKEY_get1_EC_KEY(self));
 
-  if (!SignX509Certificate(self, true, true, issuer, purpose, 86400,
-                         self, req, false, cert)) {
+  if (!SignX509Certificate(self, true, true, issuer, keyUsage,
+                           extendedKeyUsage, 86400,
+                           self, req, false, cert)) {
     printf("Can't sign x509 request\n");
     return 1;
   }

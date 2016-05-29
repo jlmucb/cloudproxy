@@ -57,7 +57,8 @@ int main(int an, char** av) {
   string client_common_name("test_client");
   string server_common_name("test_server");
   string issuer("test_ca");
-  string purpose("signing");
+  string keyUsage("critical,keyAgreement,keyCertSign");
+  string extendedKeyUsage("serverAuth,clientAuth");
 
   // CA cert
   X509_REQ* ca_req = X509_REQ_new();
@@ -67,8 +68,9 @@ int main(int an, char** av) {
     printf("Can't generate x509 request\n");
     return 1;
   }
-  if (!SignX509Certificate(ca_key, true, true, issuer, purpose, 365*86400,
-                         ca_key, ca_req, false, ca_cert)) {
+  if (!SignX509Certificate(ca_key, true, true, issuer, keyUsage,
+                           extendedKeyUsage, 365*86400,
+                           ca_key, ca_req, false, ca_cert)) {
     printf("Can't sign x509 ca request\n");
     return 1;
   }
@@ -105,8 +107,9 @@ int main(int an, char** av) {
     printf("Can't generate x509 request\n");
     return 1;
   }
-  if (!SignX509Certificate(ca_key, true, true, issuer, purpose, 365*86400,
-                         server_key, server_req, false, server_cert)) {
+  if (!SignX509Certificate(ca_key, true, true, issuer, keyUsage,
+                           extendedKeyUsage, 365*86400, server_key,
+                           server_req, false, server_cert)) {
     printf("Can't sign x509 ca request\n");
     return 1;
   }
@@ -143,8 +146,9 @@ int main(int an, char** av) {
     printf("Can't generate x509 request\n");
     return 1;
   }
-  if (!SignX509Certificate(ca_key, true, true, issuer, purpose, 365*86400,
-                         client_key, client_req, false, client_cert)) {
+  if (!SignX509Certificate(ca_key, true, true, issuer, keyUsage,
+                           extendedKeyUsage, 365*86400,
+                           client_key, client_req, false, client_cert)) {
     printf("Can't sign x509 ca request\n");
     return 1;
   }

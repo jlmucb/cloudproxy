@@ -786,6 +786,7 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
     X509_STORE_add_cert(store_, policyCert);
     SSL_CTX_set_cert_store(ssl_ctx_, store_);
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);  //CHANGE
     SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   } else {
     SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
@@ -846,11 +847,18 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
 }
 
 int SslChannel::Read(int size, byte* buf) {
-  return SSL_read(ssl_, buf, size);
+  int real_size = __builtin_bswap32(*((int*)buf));
+  return SSL_read(ssl_, &buf[sizeof(int)], size - sizeof(int));
 }
 
 int SslChannel::Write(int size, byte* buf) {
-  return SSL_write(ssl_, buf, size);
+  // write 32 bit size and buffer
+  int big_endian_size = __builtin_bswap32(size);
+  byte new_buf[4096];
+  memcpy(new_buf, (byte*)&big_endian_size, sizeof(int));
+  memcpy(&new_buf[sizeof(int)], buf, size);
+
+  return SSL_write(ssl_, new_buf, size+sizeof(int));
 }
 
 void SslChannel::Close() {

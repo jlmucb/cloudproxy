@@ -388,14 +388,13 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   }
 
   SslChannel domainChannel;
-  string keyType("RSA");
 
   if (!domainChannel.InitClientSslChannel(network, address, port,
-        policyCertificate_, cert, keyType, self, false)) {
+        // CHANGE cert, cert, key_type, self, false)) {
+        cert, cert, key_type, self, true)) {
     printf("Can't init ssl channel to domain server.\n");
     return false;
   }
-
 
   // Format request and send it to Domain service and get response.
   tao::CARequest request;
@@ -406,7 +405,11 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   request.set_allocated_attestation(&attestation);
   string request_buf;
   request.SerializeToString(&request_buf);
-  int bytes_written = domainChannel.Write(request_buf.size(), (byte*)request_buf.data());
+  int to_write = (int)request_buf.size();
+printf("attest size: %d, request_buf size: %d, to_write: %d\n",
+       (int)attestation_string.size(), (int)request_buf.size(),
+       to_write);
+  int bytes_written = domainChannel.Write(to_write, (byte*)request_buf.data());
   if (bytes_written <= 0) {
     printf("Domain channel write failure.\n");
     return false;

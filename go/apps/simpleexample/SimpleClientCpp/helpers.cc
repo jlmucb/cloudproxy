@@ -331,6 +331,8 @@ bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
   X509V3_set_ctx_nodb(&ctx);
   X509V3_set_ctx(&ctx, cert, cert, NULL, NULL, 0);
   for (int i = 0; i < num_entry; i++) {
+    if (entries[i]->getValue() == nullptr || strlen(entries[i]->getValue()) ==0)
+      continue;
     int nid = OBJ_txt2nid(entries[i]->getKey());
     X509_EXTENSION* ext = X509V3_EXT_conf_nid(NULL, &ctx, nid, entries[i]->getValue());
     if (ext == 0) {
@@ -454,28 +456,13 @@ bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa,
   //            TLS Web Server Authentication, TLS Web Client Authentication
   //        X509v3 Basic Constraints: critical
   //            CA:TRUE
-  // keyUsage, "critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
-  // extendedKeyUsage , "serverAuth,clientAuth"
-
   extEntry* entries[128];
   int n = 0;
   if (f_isCa) {
     entries[n++] = new extEntry("basicConstraints", "critical,CA:TRUE");
   }
-#if 1
   entries[n++] = new extEntry("keyUsage", keyUsage.c_str());
   entries[n++] = new extEntry("extendedKeyUsage", extendedKeyUsage.c_str());
-#else
-  string delim(",");
-  vector<string> v = string_split(keyUsage, delim);
-  for (vector<string>::const_iterator i = v.begin(); i != v.end(); i++){
-    entries[n++] = new extEntry("keyUsage", i->c_str());
-  }
-  vector<string> w = string_split(extendedKeyUsage, delim);
-  for (vector<string>::const_iterator i = w.begin(); i != w.end(); i++){
-    entries[n++] = new extEntry("extendedKeyUsage", i->c_str());
-  }
-#endif
   if (!addExtensionsToCert(n, entries, cert)) {
     printf("Can't add extensions\n");
     return false;

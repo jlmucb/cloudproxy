@@ -57,7 +57,7 @@ int main(int an, char** av) {
   string client_common_name("test_client");
   string server_common_name("test_server");
   string issuer("test_ca");
-  string keyUsage("critical,keyAgreement,keyCertSign");
+  string keyUsage("critical,keyAgreement,keyCertSign,digitalSignature,keyEncipherment");
   string extendedKeyUsage("serverAuth,clientAuth");
 
   // CA cert

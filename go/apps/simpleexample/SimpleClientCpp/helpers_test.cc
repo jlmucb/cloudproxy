@@ -92,16 +92,6 @@ bool key_bytes_test() {
     printf("GenerateKey fails\n");
     return false;
   }
-  string* out =  GetKeyBytes(key);
-  if (out == nullptr) {
-    printf("GetBytes fails\n");
-    return false;
-  }
-  printf("Rsa bytes: ");
-  PrintBytes(out->size(), (byte*)out->data());
-  printf("\n");
-
-  out->clear();
   EVP_PKEY_free(key);
   key = nullptr;
 
@@ -112,14 +102,7 @@ bool key_bytes_test() {
     printf("GenerateKey fails\n");
     return false;
   }
-  out =  GetKeyBytes(key);
-  if (out == nullptr) {
-    printf("GetBytes fails\n");
-    return false;
-  }
-  printf("Ecc bytes: ");
-  PrintBytes(out->size(), (byte*)out->data());
-  printf("\n");
+
   EVP_PKEY_free(key);
   key = nullptr;
   return true;

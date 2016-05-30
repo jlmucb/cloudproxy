@@ -15,32 +15,58 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
 	//"log"
 	//"os"
 	//"path"
 
-	// "github.com/golang/protobuf/proto"
-	// "github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	// "github.com/jlmucb/cloudproxy/go/util"
+	//"github.com/jlmucb/cloudproxy/go/util"
 )
 
 var fileName = flag.String("/Domains/extendtest", "/Domains/extendtest", "file name")
 
+func marshalECDSASHAVerifyingKeyV1(k *ecdsa.PublicKey) *tao.ECDSA_SHA_VerifyingKeyV1 {
+	return &tao.ECDSA_SHA_VerifyingKeyV1{
+		Curve:    tao.NamedEllipticCurve_PRIME256_V1.Enum(),
+		EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
+	}
+}
+
+func marshalPublicKeyProto(k *ecdsa.PublicKey) *tao.CryptoKey {
+	m := marshalECDSASHAVerifyingKeyV1(k)
+	b, _ := proto.Marshal(m)
+	return &tao.CryptoKey{
+		Version:   tao.CryptoVersion_CRYPTO_VERSION_1.Enum(),
+		Purpose:   tao.CryptoKey_VERIFYING.Enum(),
+		Algorithm: tao.CryptoKey_ECDSA_SHA.Enum(),
+		Key:       b,
+	}
+}
+
 func main() {
-	fmt.Printf("File: %s\n", *fileName)
-	statement, err := ioutil.ReadFile(*fileName)
+	ecpK, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		fmt.Printf("can't read: %s\n", *fileName)
 	}
-        fmt.Printf("Statement: %x\n", statement);
-	g, err := auth.UnmarshalPrin(statement)
-	if err != nil {
-		fmt.Printf("Unmarshal fails\n");
-	} else {
-		fmt.Printf("String: %s\n", g.String())
+	ecPK := ecpK.Public()
+	if ecPK == nil {
 	}
+	eckp := ecPK.(*ecdsa.PublicKey)
+	fmt.Printf("Curve: %x, X: %x, Y: %x\n",
+		eckp.Curve, eckp.X, eckp.Y)
+	ck := marshalPublicKeyProto(eckp)
+	if ecPK == nil {
+	}
+	fmt.Printf("ck: %x\n", ck)
+	data, _ := proto.Marshal(ck)
+	fmt.Printf("data: %x\n", data)
+	kprin := auth.NewKeyPrin(data)
+	fmt.Printf("kprin: %x\n", kprin)
 }

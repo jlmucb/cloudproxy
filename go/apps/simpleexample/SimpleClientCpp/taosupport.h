@@ -92,6 +92,8 @@ public:
   bool GetRequest(taosupport::SimpleMessage* in);
   void Print();
 };
+
+string* GetKeyBytes(EVP_PKEY* pKey);
 #endif
 
 

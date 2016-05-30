@@ -592,3 +592,49 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   return true;
 }
 
+// For ec name, KeyBytes should be marshalled version of:
+//   enum NamedEllipticCurve { PRIME256_V1 = 1;}
+//   ECDSA_SHA_VerifyingKeyV1
+//     Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
+//     EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
+// Points marshalled as in section 4.3.6 of ANSI X9.62.
+
+string* GetKeyBytes(EVP_PKEY* pKey) {
+  string* key_bytes;
+  byte out[4096];
+  byte* ptr = out;
+  int n;
+
+  if (pKey->type == EVP_PKEY_RSA) {
+    RSA* rsa_key = EVP_PKEY_get1_RSA(pKey);
+    n = i2d_RSA_PUBKEY(rsa_key, &ptr);
+    if (n <= 0) {
+      printf("GetKeyBytes: Can't i2d RSA public key\n");
+      return nullptr;
+    }
+    byte rsa_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(rsa_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
+  } else if (pKey->type == EVP_PKEY_EC) {
+    EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(pKey);
+    n = i2d_EC_PUBKEY(ec_key, &ptr);
+    if (n <= 0) {
+      printf("GetKeyBytes: Can't i2d ECC public key\n");
+      return nullptr;
+    }
+    byte ec_key_hash[32];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, out, n);
+    SHA256_Final(ec_key_hash, &sha256);
+    key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
+  } else {
+    printf("GetKeyBytes: unsupported key type.\n");
+    return nullptr;
+  }
+  return key_bytes;
+}
+

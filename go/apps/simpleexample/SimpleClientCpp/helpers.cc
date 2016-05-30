@@ -220,6 +220,13 @@ string* BN_to_bin(BIGNUM& n) {
   return new string((const char*)buf, len);
 }
 
+// For ec name, KeyBytes should be marshalled version of:
+//   enum NamedEllipticCurve { PRIME256_V1 = 1;}
+//   ECDSA_SHA_VerifyingKeyV1
+//     Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
+//     EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
+// Points marshalled as in section 4.3.6 of ANSI X9.62.
+
 string* GetKeyBytes(EVP_PKEY* pKey) {
   string* key_bytes;
   byte out[4096];

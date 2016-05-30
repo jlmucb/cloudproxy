@@ -30,6 +30,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
 
+#include "keys.pb.h"
 #include "ca.pb.h"
 #include "auth.h"
 
@@ -52,7 +53,7 @@ using google::protobuf::io::CodedOutputStream;
 using google::protobuf::io::StringOutputStream;
 using google::protobuf::io::ArrayInputStream;
 
-#define BUFSIZE 4096
+#define BUFSIZE 8192
 
 TaoChannel::TaoChannel() {
   peerCertificate_ = nullptr;
@@ -273,6 +274,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     return false;
   }
   tao_name_ = tao_name;
+
 #if 1
 printf("Taoname: %s\n", tao_name_.c_str());
 PrintBytes(tao_name.size(), (byte*)tao_name.data());printf("\n");
@@ -285,8 +287,6 @@ PrintBytes(tao_name.size(), (byte*)tao_name.data());printf("\n");
   }
 #if 1
 printf("InitializeSymmetricKeys succeeded\n");
-PrintBytes(size_program_sym_key_, program_sym_key_);
-printf("\n");
 #endif
 
   // Get (or initialize) my program key.
@@ -302,7 +302,7 @@ printf("\n");
     printf("InitializeProgramKey: couldn't read host cert.\n");
     return false;
   }
-#endif 
+#endif
   if (!InitializeProgramKey(path, keyType, key_size, network, address,
           port, host_type, host_cert)) {
     printf("Can't init program keys.\n");
@@ -521,7 +521,9 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 
   // Get the program cert from the domain service.
+
 #if 0
+  // I guess we dont need this
   // First, we need the endorsement cert.
   string endorsement_cert_file_name = path + "/endorsementCert";
   string endorse_cert;
@@ -529,9 +531,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
     printf("InitializeProgramKey: couldn't read endorsement cert.\n");
     return false;
   }
-#endif 
-  // Construct a delegation statement.
-  string serialized_key;
+  string serialized_prin;
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
   v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
@@ -540,12 +540,22 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   tao::Prin p("key", tao::make_unique<tao::Bytes>(key_bytes->c_str()),
          tao::make_unique<tao::SubPrin>(std::move(v)));
   {
-    StringOutputStream raw_output_stream(&serialized_key);
+    StringOutputStream raw_output_stream(&serialized_prin);
     CodedOutputStream output_stream(&raw_output_stream);
     p.Marshal(&output_stream);
   }
+#endif
+
+#if 1
+  printf("\nAbout to marshal speaks for\n");
+  printf("key bytes: ");
+  PrintBytes((int)key_bytes->size(), (byte*)key_bytes->data());
+  printf("\n");
+#endif
+
+  // Construct a delegation statement.
   string msf;
-  if (!MarshalSpeaksfor(serialized_key, tao_name_, &msf)) {
+  if (!MarshalSpeaksfor(*key_bytes, tao_name_, &msf)) {
     printf("InitializeProgramKey: couldn't MarshalSpeaksfor.\n");
     return false;
   }
@@ -598,6 +608,16 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
 //     Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
 //     EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
 // Points marshalled as in section 4.3.6 of ANSI X9.62.
+// Recommend we remove ToPrincipal and FromPrincipal as key information
+// transmission vehicle.
+
+#pragma pack(push, 1)
+struct ecMarshal {
+  byte compress_;
+  byte X_[32];
+  byte Y_[32];
+};
+#pragma pack(pop)
 
 string* GetKeyBytes(EVP_PKEY* pKey) {
   string* key_bytes;
@@ -620,6 +640,7 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
   } else if (pKey->type == EVP_PKEY_EC) {
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(pKey);
+#if 0
     n = i2d_EC_PUBKEY(ec_key, &ptr);
     if (n <= 0) {
       printf("GetKeyBytes: Can't i2d ECC public key\n");
@@ -631,6 +652,41 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     SHA256_Update(&sha256, out, n);
     SHA256_Final(ec_key_hash, &sha256);
     key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
+#else
+    key_bytes = new string;
+    ecMarshal ec_params;
+    ec_params.compress_ = 4;
+    BN_CTX* bn_ctx = BN_CTX_new();
+    BIGNUM x;
+    BIGNUM y;
+    string vk_proto;
+    string ec_params_str;
+
+    // Get curve, X and Y
+    const EC_POINT* public_point = EC_KEY_get0_public_key(ec_key);
+    const EC_GROUP* group = EC_KEY_get0_group(ec_key);
+    EC_POINT_get_affine_coordinates_GFp(group, public_point, &x, &y, bn_ctx);
+    string* x_str = BN_to_bin(x);
+    string* y_str = BN_to_bin(y);
+    memcpy(ec_params.X_, (byte*)x_str->data(), x_str->size());
+    memcpy(ec_params.Y_, (byte*)y_str->data(), y_str->size());
+    // delete x_str; delete y_str; BN_CTX_free(bn_ctx);
+
+    // set and marshal verifying key
+    tao::ECDSA_SHA_VerifyingKey_v1 vk;
+    vk.set_curve(tao::NamedEllipticCurve::PRIME256_V1);
+    ec_params_str.assign((const char*) &ec_params, sizeof(ec_params));
+    vk.set_ec_public(ec_params_str);
+    vk.SerializeToString(&vk_proto);
+
+    // set and marshal cryptokey
+    tao::CryptoKey ck;
+    ck.set_version(ck.version());  // crypto version
+    ck.set_purpose(tao::CryptoKey_CryptoPurpose::CryptoKey_CryptoPurpose_VERIFYING);
+    ck.set_algorithm(tao::CryptoKey_CryptoAlgorithm::CryptoKey_CryptoAlgorithm_ECDSA_SHA);
+    ck.set_key(vk_proto);
+    ck.SerializeToString(key_bytes);
+#endif
   } else {
     printf("GetKeyBytes: unsupported key type.\n");
     return nullptr;

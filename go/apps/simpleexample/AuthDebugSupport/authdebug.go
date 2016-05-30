@@ -20,7 +20,7 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
-	// "io/ioutil"
+	"io/ioutil"
 	//"log"
 	//"os"
 	//"path"
@@ -59,6 +59,7 @@ func main() {
 	if ecPK == nil {
 	}
 	eckp := ecPK.(*ecdsa.PublicKey)
+	fmt.Printf("eckp: %x\n", eckp)
 	fmt.Printf("Curve: %x, X: %x, Y: %x\n",
 		eckp.Curve, eckp.X, eckp.Y)
 	ck := marshalPublicKeyProto(eckp)
@@ -69,4 +70,14 @@ func main() {
 	fmt.Printf("data: %x\n", data)
 	kprin := auth.NewKeyPrin(data)
 	fmt.Printf("kprin: %x\n", kprin)
+
+	kps, err :=  tao.FromPrincipal(kprin)
+	if err != nil {
+		fmt.Printf("Can't FromPrincipal\n")
+		return
+	}
+	fmt.Printf("kps: %x\n", kps)
+
+	c_gen_prin, err := ioutil.ReadFile("/Domains/keyprin")
+	fmt.Printf("From c: %x\n", c_gen_prin);
 }

@@ -206,7 +206,6 @@ fmt.Printf("DomainRequest: Couldn't attest to the new says statement:", err)
 	}
 	ea, err := tao.GenerateAttestation(policyKey.SigningKey, nil, endorsement)
 	if err != nil {
-fmt.Printf("DomainRequest: Couldn't generate an endorsement for this program: %s\n", err)
 		log.Printf("DomainRequest: Couldn't generate an endorsement for this program: %s\n", err)
 		return false, err
 	}
@@ -217,6 +216,7 @@ fmt.Printf("DomainRequest: Couldn't generate an endorsement for this program: %s
 	}
 	ra.SerializedEndorsements = [][]byte{eab}
 
+fmt.Printf("DomainRequest: Writing response\n");
 	if _, err := ms.WriteMessage(ra); err != nil {
 		log.Printf("DomainRequest: Couldn't return the attestation on the channel: ", err)
 		log.Printf("\n")

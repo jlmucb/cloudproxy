@@ -140,7 +140,7 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
 		// TODO(tmroeder): I'm not sure which of these I need to make
 		// OpenSSL happy.
-		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 }

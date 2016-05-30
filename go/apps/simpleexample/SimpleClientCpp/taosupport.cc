@@ -407,6 +407,7 @@ printf("attest size: %d, request_buf size: %d, to_write: %d\n",
     printf("Domain channel write failure.\n");
     return false;
   }
+printf("WRITTEN\n");
   byte read_buf[BUFSIZE];
   string response_buf;
   int bytes_read = domainChannel.Read(BUFSIZE, read_buf);

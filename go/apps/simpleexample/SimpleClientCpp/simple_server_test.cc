@@ -167,7 +167,8 @@ int main(int an, char** av) {
 
   printf("Calling InitServerSslChannel\n");
   if (!channel.InitServerSslChannel(network, address, port, cert,
-                                    cert, key_type, self, false)) {
+                                    cert, key_type, self,
+                                    SSL_NO_SERVER_VERIFY_NO_CLIENT_AUTH)) {
     printf("Can't InitServerSslChannel\n");
     return 1;
   }

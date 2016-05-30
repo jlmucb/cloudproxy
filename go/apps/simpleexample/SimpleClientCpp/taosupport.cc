@@ -99,7 +99,8 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     client_program_data.policyCertificate_,
                     client_program_data.programCertificate_,
                     client_program_data.program_key_type_,
-                    client_program_data.program_key_, true)) {
+                    client_program_data.program_key_,
+                    SSL_SERVER_VERIFY_CLIENT_VERIFY)) {
     printf("Can't Init SSl channel.\n");
     return false;
   }
@@ -383,8 +384,8 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   SslChannel domainChannel;
 
   if (!domainChannel.InitClientSslChannel(network, address, port,
-        // CHANGE cert, cert, key_type, self, false)) {
-        cert, cert, key_type, self, true)) {
+        cert, cert, key_type, self,
+        SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY)) {
     printf("Can't init ssl channel to domain server.\n");
     return false;
   }

@@ -626,7 +626,7 @@ int SslChannel::CreateClientSocket(string& addr, string& port) {
 
 bool SslChannel::InitServerSslChannel(string& network, string& address,
                 string& port, X509* policyCert, X509* programCert,
-                string& keyType, EVP_PKEY* privateKey, bool verify) {
+                string& keyType, EVP_PKEY* privateKey, int verify) {
    SSL_library_init();
    OpenSSL_add_all_algorithms();
    ERR_load_crypto_strings();
@@ -670,28 +670,37 @@ bool SslChannel::InitServerSslChannel(string& network, string& address,
   }
 
   // Setup verification stuff.
-  if (verify) {
-    SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
-    SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
-    store_ = X509_STORE_new();
-    if (store_ == nullptr) {
-      printf("X509_STORE_new failed.\n");
+  switch(verify) {
+    case SSL_NO_SERVER_VERIFY_NO_CLIENT_AUTH:
+    case SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY:
+    case SSL_SERVER_VERIFY_NO_CLIENT_VERIFY:
+      SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
+      SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+      break;
+    case SSL_SERVER_VERIFY_CLIENT_VERIFY:
+      SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+      SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
+      store_ = X509_STORE_new();
+      if (store_ == nullptr) {
+        printf("X509_STORE_new failed.\n");
+        return false;
+      }
+      X509_STORE_add_cert(store_, policyCert);
+      SSL_CTX_set_cert_store(ssl_ctx_, store_);
+      SSL_CTX_set_verify(ssl_ctx_,
+          SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+      SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+      break;
+    default:
+      printf("Unknown verification mode.\n");
       return false;
-    }
-    X509_STORE_add_cert(store_, policyCert);
-    SSL_CTX_set_cert_store(ssl_ctx_, store_);
-    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
-  } else {
-    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
-    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
   return true;
 }
 
-bool SslChannel::InitClientSslChannel(string& network, string& address, string& port,
-                X509* policyCert, X509* programCert, string& keyType,
-                EVP_PKEY* privateKey, bool verify) {
+bool SslChannel::InitClientSslChannel(string& network, string& address,
+                string& port, X509* policyCert, X509* programCert,
+                string& keyType, EVP_PKEY* privateKey, int verify) {
    SSL_library_init();
    OpenSSL_add_all_algorithms();
    ERR_load_crypto_strings();
@@ -719,39 +728,50 @@ bool SslChannel::InitClientSslChannel(string& network, string& address, string& 
   private_key_ = privateKey;
 
   // Setup verification stuff.
-  if (verify) {
-    if (privateKey == nullptr) {
-      printf("Private key is null\n");
-      return false;
-    }
-    if (EVP_PKEY_id(private_key_) == EVP_PKEY_EC) {
-      if (!SSL_CTX_set_tmp_ecdh(ssl_ctx_, EVP_PKEY_get1_EC_KEY(private_key_))) {
-        printf("SSL_CTX_set_tmp_ecdh failed.\n");
+  switch(verify) {
+    case SSL_NO_SERVER_VERIFY_NO_CLIENT_AUTH:
+      SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
+      SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+      break;
+    case SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY:
+    case SSL_SERVER_VERIFY_NO_CLIENT_VERIFY:
+    case SSL_SERVER_VERIFY_CLIENT_VERIFY:
+      if (privateKey == nullptr) {
+        printf("Private key is null\n");
         return false;
       }
-      SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_ECDH_USE);
-    }
-    if(SSL_CTX_use_PrivateKey(ssl_ctx_, private_key_) <= 0) {
-      printf("SSL_CTX_use_PrivateKey failed.\n");
-      ERR_print_errors_fp(stderr);
+      if (EVP_PKEY_id(private_key_) == EVP_PKEY_EC) {
+        if (!SSL_CTX_set_tmp_ecdh(ssl_ctx_,
+                EVP_PKEY_get1_EC_KEY(private_key_))) {
+          printf("SSL_CTX_set_tmp_ecdh failed.\n");
+          return false;
+        }
+        SSL_CTX_set_options(ssl_ctx_, SSL_OP_SINGLE_ECDH_USE);
+      }
+      if(SSL_CTX_use_PrivateKey(ssl_ctx_, private_key_) <= 0) {
+        printf("SSL_CTX_use_PrivateKey failed.\n");
+        ERR_print_errors_fp(stderr);
+        return false;
+      }
+      SSL_CTX_use_certificate(ssl_ctx_, programCert);
+      SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
+      SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
+      store_ = X509_STORE_new();
+      if (store_ == nullptr) {
+        printf("X509_STORE_new failed.\n");
+        return false;
+      }
+      X509_STORE_add_cert(store_, policyCert);
+      SSL_CTX_set_cert_store(ssl_ctx_, store_);
+      SSL_CTX_set_verify(ssl_ctx_,
+        SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+      SSL_CTX_set_verify_depth(ssl_ctx_, 3);
+      if (verify == SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY)
+        SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr); 
+      break;
+    default:
+      printf("Unknown verification mode.\n");
       return false;
-    }
-    SSL_CTX_use_certificate(ssl_ctx_, programCert);
-    SSL_CTX_add_extra_chain_cert(ssl_ctx_, programCert);
-    SSL_CTX_add_extra_chain_cert(ssl_ctx_, policyCert);
-    store_ = X509_STORE_new();
-    if (store_ == nullptr) {
-      printf("X509_STORE_new failed.\n");
-      return false;
-    }
-    X509_STORE_add_cert(store_, policyCert);
-    SSL_CTX_set_cert_store(ssl_ctx_, store_);
-    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);  //CHANGE
-    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
-  } else {
-    SSL_CTX_set_verify(ssl_ctx_, SSL_VERIFY_NONE, nullptr);
-    SSL_CTX_set_verify_depth(ssl_ctx_, 3);
   }
 
   ssl_ = SSL_new(ssl_ctx_);

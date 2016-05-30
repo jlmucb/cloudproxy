@@ -76,6 +76,10 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
 bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
                    int* out_size, byte* out);
 
+#define SSL_NO_SERVER_VERIFY_NO_CLIENT_AUTH 0
+#define SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY 1
+#define SSL_SERVER_VERIFY_NO_CLIENT_VERIFY 2
+#define SSL_SERVER_VERIFY_CLIENT_VERIFY 3
 
 class SslChannel {
 private:
@@ -95,11 +99,11 @@ public:
   bool InitClientSslChannel(string& network, string& address, string& port,
                                 X509* caCert, X509* programCert,
                                 string& keyType, EVP_PKEY* key,
-                                bool verify = true);
+                                int verify = SSL_SERVER_VERIFY_CLIENT_VERIFY);
   bool InitServerSslChannel(string& network, string& address, string& port,
                                 X509* caCert, X509* programCert,
                                 string& keyType, EVP_PKEY* key,
-                                bool verify = true);
+                                int verify = SSL_SERVER_VERIFY_CLIENT_VERIFY);
   bool ServerLoop(void(*Handle)(SslChannel*,  SSL*, int));
   int Read(int size, byte* buf);
   int Write(int size, byte* buf);

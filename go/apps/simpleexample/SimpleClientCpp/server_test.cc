@@ -120,7 +120,8 @@ int main(int an, char** av) {
 
   printf("Calling InitServerSslChannel %s key\n", server_key_type.c_str());
   if (!channel.InitServerSslChannel(network, address, port, ca_cert,
-                                    server_cert, server_key_type, server_key, true)) {
+                                    server_cert, server_key_type, server_key,
+                                    SSL_SERVER_VERIFY_CLIENT_VERIFY)) {
     printf("Can't InitServerSslChannel\n");
     return 1;
   }

@@ -81,6 +81,11 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
 #define SSL_SERVER_VERIFY_NO_CLIENT_VERIFY 2
 #define SSL_SERVER_VERIFY_CLIENT_VERIFY 3
 
+int SslMessageRead(SSL* ssl, int size, byte* buf);
+int SslMessageWrite(SSL* ssl, int size, byte* buf);
+int SslRead(SSL* ssl, int size, byte* buf);
+int SslWrite(SSL* ssl, int size, byte* buf);
+
 class SslChannel {
 private:
   bool server_role_;
@@ -105,9 +110,8 @@ public:
                                 string& keyType, EVP_PKEY* key,
                                 int verify = SSL_SERVER_VERIFY_CLIENT_VERIFY);
   bool ServerLoop(void(*Handle)(SslChannel*,  SSL*, int));
-  int Read(int size, byte* buf);
-  int Write(int size, byte* buf);
   void Close();
+  SSL* GetSslChannel() {return ssl_;};
 
   X509* GetPeerCert();
 };

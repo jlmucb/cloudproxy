@@ -130,14 +130,16 @@ bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
     printf("Can't serialize request.\n");
     return false;
   }
-  int k = peer_channel_.Write(msg_buf.size(), (byte*)msg_buf.data());
+  int k = SslMessageWrite(peer_channel_.GetSslChannel(),
+                          msg_buf.size(),
+                          (byte*)msg_buf.data());
   return k > 0;
 }
 
 bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
   byte buf[BUFSIZE];
 
-  int k = peer_channel_.Read(BUFSIZE, buf);
+  int k = SslMessageRead(peer_channel_.GetSslChannel(), BUFSIZE, buf);
   if (k <= 0) {
     printf("Can't read request channel.\n");
     return false;
@@ -391,15 +393,16 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   }
 
   // Format request and send it to Domain service and get response.
-  int bytes_written = domainChannel.Write((int)attestation_string.size(),
-                        (byte*)attestation_string.data());
+  int bytes_written = SslMessageWrite(domainChannel.GetSslChannel(),
+                          (int)attestation_string.size(),
+                          (byte*)attestation_string.data());
   if (bytes_written <= 0) {
     printf("Domain channel write failure.\n");
     return false;
   }
   byte read_buf[BUFSIZE];
   string response_buf;
-  int bytes_read = domainChannel.Read(BUFSIZE, read_buf);
+  int bytes_read = SslMessageRead(domainChannel.GetSslChannel(), BUFSIZE, read_buf);
   if (bytes_read <= 0) {
     printf("Domain channel read failure.\n");
     return false;

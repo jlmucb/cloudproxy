@@ -827,25 +827,6 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
   return true;
 }
 
-int SslChannel::Read(int size, byte* buf) {
-  int tmp_size = SSL_read(ssl_, buf, size);
-  if (tmp_size <= 0)
-    return tmp_size;
-  int real_size = __builtin_bswap32(*((int*)buf));
-  if (real_size != (int)(size - sizeof(int)));
-  return tmp_size - sizeof(int);
-}
-
-int SslChannel::Write(int size, byte* buf) {
-  // write 32 bit size and buffer
-  int big_endian_size = __builtin_bswap32(size);
-  byte new_buf[4096];
-  memcpy(new_buf, (byte*)&big_endian_size, sizeof(int));
-  memcpy(&new_buf[sizeof(int)], buf, size);
-
-  return SSL_write(ssl_, new_buf, size+sizeof(int));
-}
-
 void SslChannel::Close() {
   if (fd_ > 0) {
     close(fd_);
@@ -871,6 +852,32 @@ void SslChannel::Close() {
 
 X509* SslChannel::GetPeerCert() {
   return peer_cert_;
+}
+
+int SslMessageRead(SSL* ssl, int size, byte* buf) {
+  int tmp_size = SslRead(ssl, size, buf);
+  if (tmp_size <= 0)
+    return tmp_size;
+  int real_size = __builtin_bswap32(*((int*)buf));
+  if (real_size != (int)(size - sizeof(int)));
+  return tmp_size - sizeof(int);
+}
+
+int SslMessageWrite(SSL* ssl, int size, byte* buf) {
+  // write 32 bit size and buffer
+  int big_endian_size = __builtin_bswap32(size);
+  byte new_buf[4096];
+  memcpy(new_buf, (byte*)&big_endian_size, sizeof(int));
+  memcpy(&new_buf[sizeof(int)], buf, size);
+  return SslWrite(ssl, size + sizeof(int), new_buf) - sizeof(int);
+}
+
+int SslRead(SSL* ssl, int size, byte* buf) {
+  return SSL_read(ssl, buf, size);
+}
+
+int SslWrite(SSL* ssl, int size, byte* buf) {
+  return SSL_write(ssl, buf, size);
 }
 
 // TODO: consider using std::to_string

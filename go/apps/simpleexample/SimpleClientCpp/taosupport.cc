@@ -390,24 +390,12 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   }
 
   // Format request and send it to Domain service and get response.
-  tao::CARequest request;
-  tao::CAResponse response;
-  tao::Attestation* attestation = new tao::Attestation;
-  attestation->ParseFromString(attestation_string);
-  request.set_type(tao::CAType::ATTESTATION);
-  request.set_allocated_attestation(attestation);
-  string request_buf;
-  request.SerializeToString(&request_buf);
-  int to_write = (int)request_buf.size();
-printf("attest size: %d, request_buf size: %d, to_write: %d\n",
-       (int)attestation_string.size(), (int)request_buf.size(),
-       to_write);
-  int bytes_written = domainChannel.Write(to_write, (byte*)request_buf.data());
+  int bytes_written = domainChannel.Write((int)attestation_string.size(),
+                        (byte*)attestation_string.data());
   if (bytes_written <= 0) {
     printf("Domain channel write failure.\n");
     return false;
   }
-printf("WRITTEN\n");
   byte read_buf[BUFSIZE];
   string response_buf;
   int bytes_read = domainChannel.Read(BUFSIZE, read_buf);
@@ -416,18 +404,14 @@ printf("WRITTEN\n");
     return false;
   }
 printf("READING response.ParseFromString\n");
+  tao::Attestation response;
   if (!response.ParseFromString(response_buf)) {
     printf("Domain channel parse failure.\n");
     return false;
   }
 printf("GOT response.ParseFromString\n");
-  if (response.type() != tao::CAType::ATTESTATION) {
-    printf("Not attestation type.\n");
-    return false;
-  }
-
   // Fill in program cert.
-  program_cert_ = response.attestation().serialized_statement();
+  program_cert_ = response.serialized_statement();
   return true;
 }
 

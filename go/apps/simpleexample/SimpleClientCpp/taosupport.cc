@@ -261,13 +261,6 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     p.Marshal(&output_stream);
   }
 
-#if 0
-// for debug
-string debugFileName("/Domains/extendtest");
-if (!WriteFile(debugFileName, subprin)) {
-    printf("Can't write %s.\n", debugFileName.c_str());
-}
-#endif
   if (!tao_->ExtendTaoName(subprin)) {
     printf("Can't extend name.\n");
     return false;
@@ -399,10 +392,10 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   // Format request and send it to Domain service and get response.
   tao::CARequest request;
   tao::CAResponse response;
-  tao::Attestation attestation;
-  attestation.ParseFromString(attestation_string);
+  tao::Attestation* attestation = new tao::Attestation;
+  attestation->ParseFromString(attestation_string);
   request.set_type(tao::CAType::ATTESTATION);
-  request.set_allocated_attestation(&attestation);
+  request.set_allocated_attestation(attestation);
   string request_buf;
   request.SerializeToString(&request_buf);
   int to_write = (int)request_buf.size();
@@ -421,10 +414,12 @@ printf("attest size: %d, request_buf size: %d, to_write: %d\n",
     printf("Domain channel read failure.\n");
     return false;
   }
+printf("READING response.ParseFromString\n");
   if (!response.ParseFromString(response_buf)) {
     printf("Domain channel parse failure.\n");
     return false;
   }
+printf("GOT response.ParseFromString\n");
   if (response.type() != tao::CAType::ATTESTATION) {
     printf("Not attestation type.\n");
     return false;

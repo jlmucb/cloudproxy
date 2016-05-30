@@ -847,8 +847,12 @@ bool SslChannel::ServerLoop(void(*server_loop)(SslChannel*,  SSL*, int)) {
 }
 
 int SslChannel::Read(int size, byte* buf) {
+  int tmp_size = SSL_read(ssl_, buf, size);
+  if (tmp_size <= 0)
+    return tmp_size;
   int real_size = __builtin_bswap32(*((int*)buf));
-  return SSL_read(ssl_, &buf[sizeof(int)], size - sizeof(int));
+  if (real_size != (int)(size - sizeof(int)));
+  return tmp_size - sizeof(int);
 }
 
 int SslChannel::Write(int size, byte* buf) {

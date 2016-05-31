@@ -23,7 +23,7 @@ OBJ_DIR=/Domains
 EXE_DIR=/Domains
 #endif
 #ifndef GOOGLE_INCLUDE
-GOOGLE_INCLUDE=/usr/local/include/google
+GOOGLE_INCLUDE=$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/third_party/gflags/src
 #endif
 #ifndef LOCAL_LIB
 LOCAL_LIB=/usr/local/lib
@@ -40,13 +40,14 @@ INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(SL) -I/usr/local/ss
 CFLAGS=$(INCLUDE) -DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
 CFLAGS1=$(INCLUDE) -DOS_POSIX -O1 -g -Wall -std=c++11
 
+LIBS=-L$(SL)/out/third_party/googlemock/gtest -L$(SL)/out/third_party/google-glog
 CC=g++
 LINK=g++
 PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
-LDFLAGS_SHORT=-lprotobuf -lgtest -lgflags -lpthread -lssl -lglog -lcrypto
-LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
+LDFLAGS_SHORT=$(LIBS) -lprotobuf -lgtest -lgflags -lpthread -lssl -lglog -lcrypto
+LDFLAGS=$(LIBS) -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
 
 dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o $(O)/ca.pb.o $(O)/attestation.pb.o \
 	$(O)/datalog_guard.pb.o $(O)/acl_guard.pb.o $(O)/taosupport.pb.o \
@@ -66,9 +67,9 @@ all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/simple_server_test.exe $(EXE_DIR)/si
 
 clean:
 	@echo "removing object files"
-	rm $(O)/*.o
+	rm -f $(O)/*.o
 	@echo "removing executable file"
-	rm $(EXE_DIR)/simpleclient_cc.exe
+	rm -f $(EXE_DIR)/simpleclient_cc.exe
 
 $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	@echo "linking simpleclient"

@@ -279,7 +279,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   tao_name_ = tao_name;
 
 #if 1
-printf("Taoname: %s\n", tao_name_.c_str());
+printf("\n\nsimpleclient_cc, Taoname: %s\n", tao_name_.c_str());
 PrintBytes(tao_name.size(), (byte*)tao_name.data());printf("\n");
 #endif
 
@@ -402,12 +402,16 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   }
   byte read_buf[BUFSIZE];
   string response_buf;
-  int bytes_read = SslMessageRead(domainChannel.GetSslChannel(), BUFSIZE, read_buf);
+  int bytes_read = 0;
+  while ((bytes_read = SslMessageRead(domainChannel.GetSslChannel(), BUFSIZE, read_buf))
+           == 0);
   if (bytes_read <= 0) {
-    printf("Domain channel read failure.\n");
+    printf("Domain channel read failure (%d).\n", bytes_read);
     return false;
   }
-printf("READING response.ParseFromString\n");
+
+printf("READ %d\n", bytes_read);PrintBytes(bytes_read, read_buf); printf("\n");
+  response_buf.assign((const char*)read_buf, bytes_read);
   tao::Attestation response;
   if (!response.ParseFromString(response_buf)) {
     printf("Domain channel parse failure.\n");

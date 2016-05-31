@@ -60,7 +60,7 @@ fmt.Printf("DomainRequest\n")
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
 	if err := ms.ReadMessage(&a); err != nil {
-fmt.Printf("DomainRequest: Couldn't read attestation from channel: %s\n", err)
+fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read attestation from channel: %s\n", err)
 		log.Printf("DomainRequest: Couldn't read attestation from channel:", err)
 		log.Printf("\n")
 		return false, err
@@ -100,13 +100,13 @@ fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 		return false, err
 	}
 
-fmt.Print("simpledomainservice, speaksfor: ", sf, "\n")
+fmt.Print("\nSimpleDomainService: speaksfor: ", sf, "\n")
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if ok != true {
 		log.Printf("DomainRequest: speaksfor Delegate is not auth.Prin\n")
 		return false, err
 	}
-fmt.Printf("DomainRequest, kPrin: %x\n", kprin)
+fmt.Printf("\nSimpleDomainService: DomainRequest, delegate (kPrin): %x\n", kprin)
 	subjectPrin, ok := sf.Delegator.(auth.Prin)
 	if ok != true {
 		log.Printf("DomainRequest: Can't get subject principal\n")
@@ -118,7 +118,7 @@ fmt.Printf("DomainRequest, kPrin: %x\n", kprin)
 		log.Printf("DomainRequest: name verification failed\n")
 		return false, err
 	}
-fmt.Printf("DomainRequest, authenticated principal name: %s\n", subjectnamestr)
+fmt.Printf("\nSimpleDomainService: authenticated principal name: %s\n", subjectnamestr)
 
 	// Sign program certificate.
 	us := "US"
@@ -132,12 +132,12 @@ fmt.Printf("DomainRequest, authenticated principal name: %s\n", subjectnamestr)
 	}
 	subjectname := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
-fmt.Printf("DomainRequest, kprin: %x\n", kprin)
 	verifier, err := tao.FromPrincipal(kprin)
 	if err != nil {
-		fmt.Printf("DomainRequest: Can't get verifier from kprin")
+		fmt.Printf("DomainRequest: Can't get verifier from kprin\n")
 		return false, errors.New("Can't get verifier from kprin")
 	}
+fmt.Printf("\nSimpleDomainService, verifier : %x\n", verifier)
 	clientCert, err := policyKey.SigningKey.CreateSignedX509(policyKey.Cert,
               int(SerialNumber), verifier, subjectname)
 	if err != nil {
@@ -166,7 +166,7 @@ fmt.Printf("DomainRequest: delegator must be principal\n")
 		log.Printf("DomainRequest: delegator must be principal")
 		return false, err
 	}
-fmt.Printf("DomainRequest, delegator: %x\n", delegator)
+fmt.Printf("\nSimpleDomainService: DomainRequest, delegator: %x\n", delegator)
 	var prog auth.PrinExt
 	found := false
 	for _, sprin := range delegator.Ext {
@@ -178,15 +178,16 @@ fmt.Printf("DomainRequest, delegator: %x\n", delegator)
 			kprin.Ext = append(kprin.Ext, sprin)
 		}
 	}
-fmt.Printf("DomainRequest: calling GenerateAttestation(%x, nil, %x)\n",
+fmt.Printf("\nSimpleDomainService: calling GenerateAttestation(%x, nil, %x)\n",
   policyKey.SigningKey, *keynegoSays)
 	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *keynegoSays)
 	if err != nil {
-fmt.Printf("DomainRequest: Couldn't attest to the new says statement:", err)
+fmt.Printf("\nSimpleDomainService, DomainRequest: Couldn't attest to the new says statement:", err)
 		log.Printf("DomainRequest: Couldn't attest to the new says statement:", err)
 		return false, err
 	}
 
+fmt.Printf("\nSimpleDomainService, DomainRequest: adding endorsement\n")
 	// Add an endorsement to this PrinExt Program hash so the receiver can
 	//  check it successfully against policy.
 	endorsement := auth.Says{
@@ -216,7 +217,7 @@ fmt.Printf("DomainRequest: Couldn't attest to the new says statement:", err)
 	}
 	ra.SerializedEndorsements = [][]byte{eab}
 
-fmt.Printf("DomainRequest: Writing response\n");
+fmt.Printf("\nSimpleDomainService, DomainRequest: Writing response %d\n", len(eab))
 	if _, err := ms.WriteMessage(ra); err != nil {
 		log.Printf("DomainRequest: Couldn't return the attestation on the channel: ", err)
 		log.Printf("\n")
@@ -262,7 +263,7 @@ func main() {
 	}
 	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
 	policyKey := domain.Keys
-fmt.Printf("policyKey: %x\n", policyKey)
+fmt.Printf("\nSimpleDomainService: policyKey: %x\n", policyKey)
 /*
 	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing,
 		[]byte(*domainPass), "policy_keys", nil)
@@ -294,7 +295,7 @@ fmt.Printf("simpledomainservice: Couldn't get policy key %s\n", err)
 	defer sock.Close()
 
 	log.Printf("simpledomainservice: accepting connections\n")
-fmt.Printf("simpledomainservice: accepting connections\n")
+fmt.Printf("\n\nsimpledomainservice: accepting connections\n")
 	for {
 		conn, err := sock.Accept()
 		if conn == nil {

@@ -14,7 +14,7 @@ in `third_party`: google-glog, gflags, and several others. Additionally,
 OpenSSL, and Protobuf development libraries must be installed, along with the
 CMake build system. On Ubuntu, these can be installed with the command:
 
-    sudo apt-get install libssl-dev libprotoc-dev cmake ninja-build
+    sudo apt-get install libssl-dev libprotoc-dev cmake ninja-build libvirt-dev libtspi-dev
 
 Note: CloudProxy relies on newer versions of the protobuf 'protoc' compiler.
 Version of protoc prior to version 2.5.0 that are packaged for some Ubuntu

@@ -482,7 +482,6 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   string policy_cert_file_name = path + "/policy_keys/cert";
   string sealed_key;
   string unsealed_key;
-  string program_cert;
 
 #if 1
 printf("Policy cert is in %s\n", policy_cert_file_name.c_str());
@@ -503,7 +502,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 
   if (ReadFile(sealed_key_file_name, &sealed_key) &&
-      ReadFile(signer_cert_file_name, &program_cert)) {
+      ReadFile(signer_cert_file_name, &program_cert_)) {
     if (!Unseal(sealed_key, &unsealed_key)) {
       printf("InitializeProgramKey: Can't open InitializeProgramKey\n");
       return false;
@@ -583,8 +582,8 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 
   // Save the program cert.
-  if (!WriteFile(signer_cert_file_name, program_cert)) {
-    printf("InitializeProgramKey: couldn't writed signed program cert.\n");
+  if (!WriteFile(signer_cert_file_name, program_cert_)) {
+    printf("InitializeProgramKey: couldn't write signed program cert.\n");
     return false;
   }
 

@@ -217,7 +217,7 @@ fmt.Printf("\nSimpleDomainService, DomainRequest: adding endorsement\n")
 	}
 	ra.SerializedEndorsements = [][]byte{eab}
 
-fmt.Printf("\nSimpleDomainService, DomainRequest: Writing response %d\n", len(eab))
+fmt.Printf("\nSimpleDomainService, DomainRequest: eab: %d\n", len(eab))
 	if _, err := ms.WriteMessage(ra); err != nil {
 		log.Printf("DomainRequest: Couldn't return the attestation on the channel: ", err)
 		log.Printf("\n")

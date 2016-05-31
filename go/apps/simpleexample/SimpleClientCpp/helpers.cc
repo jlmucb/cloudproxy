@@ -855,12 +855,18 @@ X509* SslChannel::GetPeerCert() {
 }
 
 int SslMessageRead(SSL* ssl, int size, byte* buf) {
-  int tmp_size = SslRead(ssl, size, buf);
+  byte new_buf[8192];
+  int tmp_size = SslRead(ssl, size, new_buf);
   if (tmp_size <= 0)
     return tmp_size;
-  int real_size = __builtin_bswap32(*((int*)buf));
-  if (real_size != (int)(size - sizeof(int)));
-  return tmp_size - sizeof(int);
+  int real_size = __builtin_bswap32(*((int*)new_buf));
+printf("SslMessageRead: tmp_size: %d, real_size %d\n", tmp_size, real_size);
+  if (tmp_size == sizeof(int)) {
+    return SslRead(ssl, real_size, buf);
+  }
+printf("SslMessageRead: tmp_size: %d, real_size %d\n", tmp_size, real_size);
+  memcpy(buf, &new_buf[4], real_size);
+  return real_size;
 }
 
 int SslMessageWrite(SSL* ssl, int size, byte* buf) {

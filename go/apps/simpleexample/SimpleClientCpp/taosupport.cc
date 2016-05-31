@@ -84,7 +84,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
     return false;
   }
   if (client_program_data.programCertificate_ == nullptr) {
-    if (program_cert_.size() == 0) {
+    if (client_program_data.program_cert_.size() == 0) {
       printf("No program cert read in.\n");
       return false;
     }
@@ -422,7 +422,28 @@ printf("READ %d\n", bytes_read);PrintBytes(bytes_read, read_buf); printf("\n");
     return false;
   }
   // Fill in program cert.
-  program_cert_ = response.serialized_statement();
+  string serialized_statement;
+  serialized_statement = response.serialized_statement();
+  tao::Says says;
+  // serialized_statement is a says.
+  // Says has speaks for message.
+  // Delegate is in speaksfor is a Prin, it's bytes are the certificate.
+  {
+    ArrayInputStream raw_input_stream(serialized_statement.data(),
+                                      serialized_statement.size());
+    CodedInputStream input_stream(&raw_input_stream);
+    if (!says.Unmarshal(&input_stream)) {
+      printf("Domain channel parse failure.\n");
+      return false;
+    }
+  }
+  /*
+    Todo:  Tom?
+    tao::Speaksfor speaksfor = says.message_;
+    tao::Prin delegate = speaksfor.delegate_;
+    tao::TermVar cert_form = delegate.key_;
+    program_cert_ =  cert_form.value_;
+   */
   return true;
 }
 

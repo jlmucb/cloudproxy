@@ -84,8 +84,12 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
     return false;
   }
   if (client_program_data.programCertificate_ == nullptr) {
+    if (program_cert_.size() == 0) {
+      printf("No program cert read in.\n");
+      return false;
+    }
     byte* pc = (byte*)client_program_data.program_cert_.data();
-    client_program_data.policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
+    client_program_data.programCertificate_= d2i_X509(nullptr, (const byte**)&pc,
           client_program_data.program_cert_.size());
     if (client_program_data.programCertificate_ == nullptr) {
       printf("Can't translate program certificate.\n");

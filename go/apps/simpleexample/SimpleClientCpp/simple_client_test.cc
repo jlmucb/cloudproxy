@@ -71,11 +71,7 @@ int main(int an, char** av) {
   string address("127.0.0.1");
   string port("2015");
 
-#ifdef __linux__
-  gflags::ParseCommandLineFlags(&an, &av, true);
-#else
   google::ParseCommandLineFlags(&an, &av, true);
-#endif
 
   // key type
   string key_type;

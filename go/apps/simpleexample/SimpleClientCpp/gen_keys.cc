@@ -33,11 +33,7 @@ int main(int an, char** av) {
   string client_key_string;
   string server_key_string;
 
-#ifdef __linux__
-  gflags::ParseCommandLineFlags(&an, &av, true);
-#else
   google::ParseCommandLineFlags(&an, &av, true);
-#endif
 
   string key_type;
   int key_size;

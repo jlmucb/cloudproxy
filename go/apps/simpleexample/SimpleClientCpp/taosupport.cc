@@ -417,7 +417,6 @@ printf("READ %d\n", bytes_read);PrintBytes(bytes_read, read_buf); printf("\n");
     printf("Domain channel parse failure.\n");
     return false;
   }
-printf("GOT response.ParseFromString\n");
   // Fill in program cert.
   program_cert_ = response.serialized_statement();
   return true;
@@ -588,6 +587,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 
   // Serialize Key.
+  program_key_type_ = key_type;
   string out_buf;
   if (!SerializePrivateKey(program_key_type_, program_key_, &out_buf)) {
     printf("InitializeProgramKey: couldn't serialize private key.\n");

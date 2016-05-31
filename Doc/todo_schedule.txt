@@ -52,3 +52,4 @@ C++ library for domain support including key serialization stuff?
 Replace ToPrincipal and FromPrincipal
 Names of keys should be hashes and provided for verification, not for getting keys.
 
+Should the examples force SSL NOT to resume channels etc for better assurance?

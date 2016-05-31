@@ -38,14 +38,17 @@ Docker/Kubernetes in	Packaged support for Docker and Kubernetes deployment		John
 a box
 
 
-More:
+Todo:
 
 Check: key wiping everywhere especially with errors.
 
 Revise simple example to use acl guard. (july)
-Fix policy key generation.
+Fix policy key generation so it can be exported in a standatd format.
 Fix policy enforcement.  It should be loaded in and measured.  Default should be run everything. (july)
 
-Support RSA keys too? (august)
+Support RSA keys
 C++ library for domain support including key serialization stuff?
+
+Replace ToPrincipal and FromPrincipal
+Names of keys should be hashes and provided for verification, not for getting keys.
 

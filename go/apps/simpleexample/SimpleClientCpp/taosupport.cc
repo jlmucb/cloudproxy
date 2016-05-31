@@ -30,8 +30,8 @@
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
 
-#include "keys.pb.h"
-#include "ca.pb.h"
+#include "tao/keys.pb.h"
+#include "tao/ca.pb.h"
 #include "auth.h"
 
 using std::string;

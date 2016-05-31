@@ -28,6 +28,12 @@ GFLAGS_INCLUDE=$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/third_party/gflag
 #ifndef GLOG_INCLUDE
 GLOG_INCLUDE=$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/third_party/google-glog/src
 #endif
+#ifndef CHROMIUM_INCLUDE
+CHROMIUM_INCLUDE=$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/third_party/chromium/include
+#endif
+#ifndef TAO_INCLUDE
+TAO_INCLUDE=$(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/out
+#endif
 #ifndef LOCAL_LIB
 LOCAL_LIB=/usr/local/lib
 #endif
@@ -38,12 +44,12 @@ TARGET_MACHINE_TYPE= x64
 S= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleClientCpp
 SL= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src
 O= $(OBJ_DIR)/simpleclient_obj
-INCLUDE= -I$(S) -I/usr/local/include -I$(GFLAGS_INCLUDE) -I$(GLOG_INCLUDE) -I$(SL) -I/usr/local/ssl/include
+INCLUDE= -I$(S) -I/usr/local/include -I$(GFLAGS_INCLUDE) -I$(GLOG_INCLUDE) -I$(CHROMIUM_INCLUDE) -I$(TAO_INCLUDE) -I$(SL) -I/usr/local/ssl/include
 
 CFLAGS=$(INCLUDE) -DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
 CFLAGS1=$(INCLUDE) -DOS_POSIX -O1 -g -Wall -std=c++11
 
-LIBS=-L$(SL)/out/third_party/googlemock/gtest -L$(SL)/out/third_party/google-glog
+LIBS=-L$(SL)/out/third_party/googlemock/gtest -L$(SL)/out/third_party/google-glog 
 CC=g++
 LINK=g++
 PROTO=protoc

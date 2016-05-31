@@ -21,7 +21,7 @@
 #include "tao/tao_rpc.h"
 #include "tao/util.h"
 
-#include "attestation.pb.h"
+#include "tao/attestation.pb.h"
 
 #include <taosupport.pb.h>
 #include <openssl/rsa.h>

@@ -19,10 +19,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"testing"
-
-	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
-
 
 func TestProtect(t *testing.T) {
 	in := make([]byte, 40, 40)
@@ -32,8 +29,8 @@ func TestProtect(t *testing.T) {
 
 	keys := make([]byte, 32, 32)
 	rand.Read(keys[0:32])
-	out, err := taosupport.Protect(keys, in[0:40])
-	if  err != nil {
+	out, err := Protect(keys, in[0:40])
+	if err != nil {
 		t.Fatal("Protect fails\n")
 	}
 
@@ -41,8 +38,8 @@ func TestProtect(t *testing.T) {
 	fmt.Printf("keys      : %x\n", keys[0:32])
 	fmt.Printf("out       : %x\n", out)
 
-	out_decrypted, err := taosupport.Unprotect(keys, out)
-	if  err != nil {
+	out_decrypted, err := Unprotect(keys, out)
+	if err != nil {
 		t.Fatal("Unprotected fails\n")
 	}
 	fmt.Printf("decrypted : %x\n", out_decrypted)
@@ -51,4 +48,3 @@ func TestProtect(t *testing.T) {
 	}
 	fmt.Printf("TestProtect succeeds\n")
 }
-

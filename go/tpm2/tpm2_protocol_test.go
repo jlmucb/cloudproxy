@@ -16,118 +16,117 @@ package tpm2
 
 import (
 	"bytes"
-	"crypto/rsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"io/ioutil"
-        "testing"
+	"testing"
 	"time"
 
-	"github.com/jlmucb/cloudproxy/go/tpm2"
 	"github.com/golang/protobuf/proto"
 )
 
 func TestClearKeyHierarchy(t *testing.T) {
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	if (err != nil) {
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
-	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER),
-		tpm2.Handle(tpm2.RootKeyHandle),
-		tpm2.Handle(tpm2.RootKeyHandle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER),
+		Handle(RootKeyHandle),
+		Handle(RootKeyHandle))
 	if err != nil {
 		fmt.Printf("Evict existing permanent primary handle failed (OK)\n")
 	}
-	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER),
-		tpm2.Handle(tpm2.QuoteKeyHandle),
-		tpm2.Handle(tpm2.QuoteKeyHandle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER),
+		Handle(QuoteKeyHandle),
+		Handle(QuoteKeyHandle))
 	if err != nil {
 		fmt.Printf("Evict existing permanant primary quote failed (OK)\n")
 	}
 }
 
 func TestCreateKeyHierarchy(t *testing.T) {
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	if (err != nil) {
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
 	pcrs := []int{7}
-	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
-		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "01020304")
+	rootHandle, quoteHandle, storeHandle, err := CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(AlgTPM_ALG_SHA1), "01020304")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
-	tpm2.FlushContext(rw, rootHandle)
-	tpm2.FlushContext(rw, quoteHandle)
-	tpm2.FlushContext(rw, storeHandle)
-	tpm2.PersistTpm2KeyHierarchy(rw , pcrs, 2048, uint16(tpm2.AlgTPM_ALG_SHA1),
-		tpm2.RootKeyHandle, tpm2.QuoteKeyHandle, "")
+	FlushContext(rw, rootHandle)
+	FlushContext(rw, quoteHandle)
+	FlushContext(rw, storeHandle)
+	PersistTpm2KeyHierarchy(rw, pcrs, 2048, uint16(AlgTPM_ALG_SHA1),
+		RootKeyHandle, QuoteKeyHandle, "")
 }
 
 func TestCreateAndStoreKeyHierarchy(t *testing.T) {
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	if (err != nil) {
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
 	pcrs := []int{7}
 	keySize := uint16(2048)
-	hash_alg_id := tpm2.AlgTPM_ALG_SHA1
+	hash_alg_id := AlgTPM_ALG_SHA1
 	quotePassword := ""
 	rootFileName := "./tmptest/rootContext"
 	quoteFileName := "./tmptest/quoteContext"
 	storeFileName := "./tmptest/storeContext"
 
-	err = tpm2.InitTpm2Keys(rw, pcrs, keySize, hash_alg_id,
+	err = InitTpm2Keys(rw, pcrs, keySize, hash_alg_id,
 		quotePassword, rootFileName,
 		quoteFileName, storeFileName)
 	if err != nil {
 		t.Fatal("Can't InitTpm2Keys")
 	}
-	rootHandle, quoteHandle, storeHandle, err := tpm2.RestoreTpm2Keys(rw,
+	rootHandle, quoteHandle, storeHandle, err := RestoreTpm2Keys(rw,
 		quotePassword, rootFileName, quoteFileName, storeFileName)
 	if err != nil {
 		t.Fatal("Can't RestoreTpm2Keys")
 	}
-	defer tpm2.FlushContext(rw, rootHandle)
-	defer tpm2.FlushContext(rw, quoteHandle)
-	defer tpm2.FlushContext(rw, storeHandle)
+	defer FlushContext(rw, rootHandle)
+	defer FlushContext(rw, quoteHandle)
+	defer FlushContext(rw, storeHandle)
 }
 
 func TestMakeEndorsementCert(t *testing.T) {
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	rw, err := OpenTPM("/dev/tpm0")
 	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
 
 	var notBefore time.Time
-        notBefore = time.Now()
-        validFor := 365*24*time.Hour
-        notAfter := notBefore.Add(validFor)
+	notBefore = time.Now()
+	validFor := 365 * 24 * time.Hour
+	notAfter := notBefore.Add(validFor)
 
 	policyKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
-	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
+	derPolicyCert, err := GenerateSelfSignedCertFromKey(policyKey,
 		"Cloudproxy Authority", "Application Policy Key",
-		tpm2.GetSerialNumber(), notBefore, notAfter)
+		GetSerialNumber(), notBefore, notAfter)
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
 	fmt.Printf("policyKey: %x\n", policyKey)
 
-	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
+	ekHandle, _, err := CreateEndorsement(rw, 2048, []int{7})
 	if err != nil {
 		t.Fatal("Can't CreateEndorsement")
 	}
-	defer tpm2.FlushContext(rw, ekHandle)
-	endorsementCert, err := tpm2.GenerateHWCert(rw,
+	defer FlushContext(rw, ekHandle)
+	endorsementCert, err := GenerateHWCert(rw,
 		ekHandle, "JohnsHw", notBefore,
-		notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+		notAfter, GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}
@@ -136,40 +135,40 @@ func TestMakeEndorsementCert(t *testing.T) {
 }
 
 func TestSignAttest(t *testing.T) {
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	if (err != nil) {
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
 	pcrs := []int{7}
-	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
-		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+	rootHandle, quoteHandle, storeHandle, err := CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(AlgTPM_ALG_SHA1), "")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
-	defer tpm2.FlushContext(rw, rootHandle)
-	defer tpm2.FlushContext(rw, quoteHandle)
-	tpm2.FlushContext(rw, storeHandle)
+	defer FlushContext(rw, rootHandle)
+	defer FlushContext(rw, quoteHandle)
+	FlushContext(rw, storeHandle)
 
 	var notBefore time.Time
-        notBefore = time.Now()
-        validFor := 365*24*time.Hour
-        notAfter := notBefore.Add(validFor)
+	notBefore = time.Now()
+	validFor := 365 * 24 * time.Hour
+	notAfter := notBefore.Add(validFor)
 
 	policyKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
-	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
+	derPolicyCert, err := GenerateSelfSignedCertFromKey(policyKey,
 		"Cloudproxy Authority", "Application Policy Key",
-		tpm2.GetSerialNumber(), notBefore, notAfter)
+		GetSerialNumber(), notBefore, notAfter)
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
 	fmt.Printf("policyKey: %x\n", policyKey)
-	attestCert, err := tpm2.GenerateHWCert(rw, quoteHandle,
+	attestCert, err := GenerateHWCert(rw, quoteHandle,
 		"JohnsHw", notBefore, notAfter,
-		tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+		GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create attest cert")
 	}
@@ -180,52 +179,52 @@ func TestSignAttest(t *testing.T) {
 
 // Combined Activate test
 func TestMakeActivate(t *testing.T) {
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	if (err != nil) {
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
 
 	pcrs := []int{7}
-	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
-		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+	rootHandle, quoteHandle, storeHandle, err := CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(AlgTPM_ALG_SHA1), "")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
-	defer tpm2.FlushContext(rw, rootHandle)
-	defer tpm2.FlushContext(rw, quoteHandle)
-	tpm2.FlushContext(rw, storeHandle)
+	defer FlushContext(rw, rootHandle)
+	defer FlushContext(rw, quoteHandle)
+	FlushContext(rw, storeHandle)
 
 	// Generate Credential
-	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
+	credential := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
 	fmt.Printf("Credential: %x\n", credential)
 
 	// ReadPublic
-	_, name, _, err := tpm2.ReadPublic(rw, quoteHandle)
+	_, name, _, err := ReadPublic(rw, quoteHandle)
 	if err != nil {
 		t.Fatal("ReadPublic fails")
 	}
 
-	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, pcrs)
+	ekHandle, _, err := CreateEndorsement(rw, 2048, pcrs)
 	if err != nil {
 		t.Fatal("CreateEndorsement fails")
 	}
-	defer tpm2.FlushContext(rw, ekHandle)
+	defer FlushContext(rw, ekHandle)
 
-	protectorPublic, err := tpm2.GetRsaKeyFromHandle(rw, ekHandle)
+	protectorPublic, err := GetRsaKeyFromHandle(rw, ekHandle)
 	if err != nil {
 		t.Fatal("Can't get key from handle")
 	}
 
 	// MakeCredential
-	secret, encIdentity, integrityHmac, err := tpm2.MakeCredential(
-		protectorPublic, uint16(tpm2.AlgTPM_ALG_SHA1), credential, name)
+	secret, encIdentity, integrityHmac, err := MakeCredential(
+		protectorPublic, uint16(AlgTPM_ALG_SHA1), credential, name)
 	if err != nil {
 		t.Fatal("Can't MakeCredential\n")
 	}
 
 	// ActivateCredential
-	recovered, err := tpm2.ActivateCredential(rw,
+	recovered, err := ActivateCredential(rw,
 		quoteHandle, ekHandle, "", "",
 		append(integrityHmac, encIdentity...), secret)
 	if err != nil {
@@ -238,55 +237,55 @@ func TestMakeActivate(t *testing.T) {
 }
 
 func TestInternalSignProtocol(t *testing.T) {
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	if (err != nil) {
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
 
 	pcrs := []int{7}
-	rootHandle, quoteHandle, storeHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
-		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+	rootHandle, quoteHandle, storeHandle, err := CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(AlgTPM_ALG_SHA1), "")
 	if err != nil {
 		t.Fatal("Can't create keys")
 	}
-	tpm2.FlushContext(rw, rootHandle)
-	defer tpm2.FlushContext(rw, storeHandle)
+	FlushContext(rw, rootHandle)
+	defer FlushContext(rw, storeHandle)
 
 	var notBefore time.Time
 	notBefore = time.Now()
-	validFor := 365*24*time.Hour
+	validFor := 365 * 24 * time.Hour
 	notAfter := notBefore.Add(validFor)
 
 	policyKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
-	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
+	derPolicyCert, err := GenerateSelfSignedCertFromKey(policyKey,
 		"Cloudproxy Authority", "Application Policy Key",
-		tpm2.GetSerialNumber(), notBefore, notAfter)
+		GetSerialNumber(), notBefore, notAfter)
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
 
-	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
+	ekHandle, _, err := CreateEndorsement(rw, 2048, []int{7})
 	if err != nil {
 		t.Fatal("Can't CreateEndorsement")
 	}
 
-	derEndorsementCert, err := tpm2.GenerateHWCert(rw,
+	derEndorsementCert, err := GenerateHWCert(rw,
 		ekHandle, "JohnsHw", notBefore, notAfter,
-		tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+		GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}
 
 	// signing instructions
-	signing_instructions_message := new(tpm2.SigningInstructionsMessage)
+	signing_instructions_message := new(SigningInstructionsMessage)
 	issuer := "JLM CA"
 	signing_instructions_message.Issuer = &issuer
 	var duration int64
-	duration = 86500*365
+	duration = 86500 * 365
 	signing_instructions_message.Duration = &duration
 	purpose := "Signing"
 	signing_instructions_message.Purpose = &purpose
@@ -304,11 +303,11 @@ func TestInternalSignProtocol(t *testing.T) {
 	//
 
 	programName := "TestProgram"
-	fmt.Printf("Program name is %s\n",  programName)
+	fmt.Printf("Program name is %s\n", programName)
 	quotePassword := ""
 
 	// Client request.
-	protoClientPrivateKey, request, err := tpm2.ConstructClientRequest(rw,
+	protoClientPrivateKey, request, err := ConstructClientRequest(rw,
 		derEndorsementCert, quoteHandle, "",
 		quotePassword, programName)
 	if err != nil {
@@ -317,19 +316,19 @@ func TestInternalSignProtocol(t *testing.T) {
 	fmt.Printf("ConstructClientRequest succeeded\n")
 
 	// Create Session for seal/unseal
-	sessionHandle, policy_digest, err := tpm2.AssistCreateSession(rw,
-		tpm2.AlgTPM_ALG_SHA1, pcrs)
+	sessionHandle, policy_digest, err := AssistCreateSession(rw,
+		AlgTPM_ALG_SHA1, pcrs)
 	if err != nil {
 		t.Fatal("Can't start session for Seal")
 	}
 	fmt.Printf("Session handle: %x\n", sessionHandle)
 	fmt.Printf("policy_digest: %x\n\n", policy_digest)
-	defer tpm2.FlushContext(rw, sessionHandle)
+	defer FlushContext(rw, sessionHandle)
 
 	// Serialize the client private key proto, seal it and save it.
 	var unsealing_secret [32]byte
 	rand.Read(unsealing_secret[0:32])
-	sealed_priv, sealed_pub, err := tpm2.AssistSeal(rw,
+	sealed_priv, sealed_pub, err := AssistSeal(rw,
 		storeHandle, unsealing_secret[0:32],
 		"", "", pcrs, policy_digest)
 	if err != nil {
@@ -342,15 +341,15 @@ func TestInternalSignProtocol(t *testing.T) {
 
 	// Encrypt private key.
 	var inHmac []byte
-        calcHmac, encrypted_program_key, err := tpm2.EncryptDataWithCredential(
-		true, tpm2.AlgTPM_ALG_SHA1, unsealing_secret[0:32],
+	calcHmac, encrypted_program_key, err := EncryptDataWithCredential(
+		true, AlgTPM_ALG_SHA1, unsealing_secret[0:32],
 		serialized_program_key, inHmac)
 	if err != nil {
-		t.Fatal("Can't tpm2.EncryptDataWithCredential program key")
+		t.Fatal("Can't EncryptDataWithCredential program key")
 	}
 
 	// Server response.
-	response, err := tpm2.ConstructServerResponse(policyKey,
+	response, err := ConstructServerResponse(policyKey,
 		derPolicyCert, *signing_instructions_message, *request)
 	if err != nil {
 		t.Fatal("ConstructServerResponse failed")
@@ -361,8 +360,8 @@ func TestInternalSignProtocol(t *testing.T) {
 	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
 
 	// Client cert recovery.
-	cert, err := tpm2.ClientDecodeServerResponse(rw, ekHandle,
-                quoteHandle, quotePassword, *response)
+	cert, err := ClientDecodeServerResponse(rw, ekHandle,
+		quoteHandle, quotePassword, *response)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("ClientDecodeServerResponse failed")
@@ -370,8 +369,8 @@ func TestInternalSignProtocol(t *testing.T) {
 	fmt.Printf("Client cert: %x\n", cert)
 
 	// if we don;t do this we run out of tpm memory
-	tpm2.FlushContext(rw, ekHandle)
-	tpm2.FlushContext(rw, quoteHandle)
+	FlushContext(rw, ekHandle)
+	FlushContext(rw, quoteHandle)
 
 	// Example: recover program private key from buffer.
 	encryptedProgramKey := append(calcHmac, encrypted_program_key...)
@@ -386,14 +385,14 @@ func TestInternalSignProtocol(t *testing.T) {
 		programPublicBlob)
 
 	// Unseal secret and decrypt private policy key.
-	unsealed, _, err := tpm2.AssistUnseal(rw, sessionHandle,
+	unsealed, _, err := AssistUnseal(rw, sessionHandle,
 		storeHandle, sealed_pub, sealed_priv, "",
 		"", policy_digest)
-        if err != nil {
+	if err != nil {
 		t.Fatal("Can't Unseal")
-        }
-        _, decrypted_program_key, err := tpm2.EncryptDataWithCredential(false,
-		tpm2.AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
+	}
+	_, decrypted_program_key, err := EncryptDataWithCredential(false,
+		AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
 		t.Fatal("Can't EncryptDataWithCredential (decrypt) program key")
 	}
@@ -408,6 +407,3 @@ func RestSignProtocolChannel(t *testing.T) {
 
 func RestPCR1718(t *testing.T) {
 }
-
-
-

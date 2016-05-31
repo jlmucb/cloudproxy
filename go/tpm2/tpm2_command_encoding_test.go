@@ -19,10 +19,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
-
-	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
-
 
 // Test GetRandom
 
@@ -31,10 +28,10 @@ func TestConstructGetRandom(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	cmd_bytes, err := tpm2.ConstructGetRandom(16)
-        if err != nil {
-                t.Fatal("Can't construct Random command\n")
-        }
+	cmd_bytes, err := ConstructGetRandom(16)
+	if err != nil {
+		t.Fatal("Can't construct Random command\n")
+	}
 	fmt.Printf("Constructed command: %x\n", cmd_bytes)
 	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {
 		t.Fatal("TestConstructGetRandom: misgenerated command")
@@ -48,18 +45,18 @@ func TestDecodeGetRandom(t *testing.T) {
 	}
 
 	// Decode Response
-        _, _, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
-                t.Fatal("DecodeCommandResponse error\n")
-        }
-        if status != tpm2.ErrSuccess {
-                t.Fatal("error status\n")
-        }
-        rand, err :=  tpm2.DecodeGetRandom(test_resp_bytes[10:len(test_resp_bytes)])
-        if err != nil {
-                t.Fatal("DecodeGetRandom error\n")
-        }
-        fmt.Printf("rand: %x\n", rand)
+	_, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
+		t.Fatal("DecodeCommandResponse error\n")
+	}
+	if status != ErrSuccess {
+		t.Fatal("error status\n")
+	}
+	rand, err := DecodeGetRandom(test_resp_bytes[10:len(test_resp_bytes)])
+	if err != nil {
+		t.Fatal("DecodeGetRandom error\n")
+	}
+	fmt.Printf("rand: %x\n", rand)
 }
 
 // TestReadPcr tests a ReadPcr command.
@@ -73,7 +70,7 @@ func TestConstructReadPcrs(t *testing.T) {
 	pcrs := []byte{0x03, 0x80, 0x00, 0x00}
 	var num_pcr byte
 	num_pcr = 4
-	cmd_bytes, err := tpm2.ConstructReadPcrs(1, num_pcr, pcrs)
+	cmd_bytes, err := ConstructReadPcrs(1, num_pcr, pcrs)
 	if err != nil {
 		t.Fatal("Can't construct ReadPcrs\n")
 	}
@@ -88,14 +85,14 @@ func TestDecodeReadPcrs(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	 _, _, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
-                t.Fatal("DecodeCommandResponse error\n")
-        }
-	counter, pcr, alg, digest, err := tpm2.DecodeReadPcrs(test_resp_bytes[10:len(test_resp_bytes)])
-        if err != nil {
-                t.Fatal("DecodeReadPcrs error\n")
-        }
+	_, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
+		t.Fatal("DecodeCommandResponse error\n")
+	}
+	counter, pcr, alg, digest, err := DecodeReadPcrs(test_resp_bytes[10:len(test_resp_bytes)])
+	if err != nil {
+		t.Fatal("DecodeReadPcrs error\n")
+	}
 	fmt.Printf("Status: %x, Counter: %x, pcr: %x, alg: %x, digest: %x\n",
 		status, counter, pcr, alg, digest)
 }
@@ -108,7 +105,7 @@ func TestConstructReadClock(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
-	cmd_bytes, err := tpm2.ConstructReadClock()
+	cmd_bytes, err := ConstructReadClock()
 	if err != nil {
 		t.Fatal("Can't construct ReadClock\n")
 		return
@@ -126,16 +123,16 @@ func TestDecodeReadClock(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
-	current_time, curent_clock, err := tpm2.DecodeReadClock(test_resp_bytes[10:len(test_resp_bytes)])
+	}
+	current_time, curent_clock, err := DecodeReadClock(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal("DecodeReadClock fails\n")
 	}
-        fmt.Printf("current_time: %x, current_clock: %x\n", current_time, curent_clock)
+	fmt.Printf("current_time: %x, current_clock: %x\n", current_time, curent_clock)
 }
 
 // TestGetCapabilities tests a GetCapabilities command.
@@ -145,7 +142,7 @@ func TestConstructGetCapabilities(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := tpm2.ConstructGetCapabilities(tpm2.OrdTPM_CAP_HANDLES, 20, 0x80000000)
+	cmd_bytes, err := ConstructGetCapabilities(OrdTPM_CAP_HANDLES, 20, 0x80000000)
 	if err != nil {
 		t.Fatal("Can't construct GetCapabilities\n")
 	}
@@ -161,17 +158,17 @@ func TestDecodeGetCapabilities(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
 
-	cap_reported, handles, err := tpm2.DecodeGetCapabilities(test_resp_bytes[10:len(test_resp_bytes)])
+	cap_reported, handles, err := DecodeGetCapabilities(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal("DecodeGetCapabilities\n")
 	}
-	if cap_reported != tpm2.OrdTPM_CAP_HANDLES || len(handles) != 0 {
+	if cap_reported != OrdTPM_CAP_HANDLES || len(handles) != 0 {
 		t.Fatal("wrong property or number of handles\n")
 	}
 }
@@ -185,7 +182,7 @@ func TestConstructFlushContext(t *testing.T) {
 		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := tpm2.ConstructFlushContext(tpm2.Handle(0x80000001)) 
+	cmd_bytes, err := ConstructFlushContext(Handle(0x80000001))
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if err != nil || !bytes.Equal(test_cmd_bytes, cmd_bytes) {
 		t.Fatal("Bad GetCapabilities command\n")
@@ -198,11 +195,11 @@ func TestDecodeFlushContext(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
+	}
 }
 
 // TestLoad tests a Load command.
@@ -213,6 +210,7 @@ const strLoadTest = "8002000000b300000157800000000000000d40000009000001000401020
 	"b4ddae935ca627ce4c40af9f5244dafbc7f47ceb84de87e72a75c7f1032" +
 	"d3e7faddde0036000800040000001200140debb4cc9d2158cf7051a19ca" +
 	"24b31e35d53b64d001000140b0758c7e4ce32c9d249151e91b72e35a6372fed"
+
 func TestConstructLoad(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString(strLoadTest)
 	if err != nil {
@@ -221,11 +219,11 @@ func TestConstructLoad(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	private_blob := test_cmd_bytes[33:123]
 	public_blob := test_cmd_bytes[125:]
-	cmd_bytes, err := tpm2.ConstructLoad(tpm2.Handle(0x80000000), "", "01020304", public_blob, private_blob)
+	cmd_bytes, err := ConstructLoad(Handle(0x80000000), "", "01020304", public_blob, private_blob)
 	fmt.Printf("Command: %x\n", cmd_bytes)
-        if err != nil {
-                t.Fatal("MakeCommandHeader failed %s\n", err)
-        }
+	if err != nil {
+		t.Fatal("MakeCommandHeader failed %s\n", err)
+	}
 	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
 		t.Fatal("ConstructLoad incorrect command")
 	}
@@ -238,14 +236,14 @@ func TestDecodeLoad(t *testing.T) {
 	}
 
 	// Decode Response
-        _, _, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
-                t.Fatal("DecodeCommandResponse error\n")
-        }
-        if status != tpm2.ErrSuccess {
-                t.Fatal("error status\n")
-        }
-	handle, name, err := tpm2.DecodeLoad(test_resp_bytes[10:len(test_resp_bytes)])
+	_, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
+		t.Fatal("DecodeCommandResponse error\n")
+	}
+	if status != ErrSuccess {
+		t.Fatal("error status\n")
+	}
+	handle, name, err := DecodeLoad(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,12 +260,12 @@ func TestConstructCreatePrimary(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
-	parms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
+	parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
-	cmd_bytes, err := tpm2.ConstructCreatePrimary(uint32(tpm2.OrdTPM_RH_OWNER), []int{7},
-						 "", "01020304", parms)
+	cmd_bytes, err := ConstructCreatePrimary(uint32(OrdTPM_RH_OWNER), []int{7},
+		"", "01020304", parms)
 	if err != nil {
 		t.Fatal("ConstructCreatePrimary fails")
 	}
@@ -288,6 +286,7 @@ const strCreatePrimaryResp = "80020000013c000000008000000000000125009a00010" +
 	"00001000000141a1ea8de55d7410287405c3b54057d578d76444a8021400000010" +
 	"020e74aa1a8f272b604d6c0cf55b271211a130c011a12b0ba632cc1448c4de8371" +
 	"3001600043adbc7b1296c49aac7c154371fd99aeb6e58a9f50000010000"
+
 func TestDecodeCreatePrimary(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString(strCreatePrimaryResp)
 	if err != nil {
@@ -296,14 +295,14 @@ func TestDecodeCreatePrimary(t *testing.T) {
 	}
 
 	// Decode Response
-        _, _, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
-                t.Fatal("DecodeCommandResponse error\n")
-        }
-        if status != tpm2.ErrSuccess {
-                t.Fatal("error status\n")
-        }
-	handle, _, err := tpm2.DecodeCreatePrimary(test_resp_bytes[10:])
+	_, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
+		t.Fatal("DecodeCommandResponse error\n")
+	}
+	if status != ErrSuccess {
+		t.Fatal("error status\n")
+	}
+	handle, _, err := DecodeCreatePrimary(test_resp_bytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +320,7 @@ func TestConstructPolicyPcr(t *testing.T) {
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	var empty []byte
-	cmd_bytes, err := tpm2.ConstructPolicyPcr(tpm2.Handle(0x03000000), empty, []int{7})
+	cmd_bytes, err := ConstructPolicyPcr(Handle(0x03000000), empty, []int{7})
 	if err != nil {
 		t.Fatal("Can't construct policy pcr\n")
 	}
@@ -337,7 +336,7 @@ func TestConstructPolicyPassword(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := tpm2.ConstructPolicyPassword(tpm2.Handle(0x03000000))
+	cmd_bytes, err := ConstructPolicyPassword(Handle(0x03000000))
 	if err != nil {
 		t.Fatal("Can't construct policy pcr\n")
 	}
@@ -355,7 +354,7 @@ func TestConstructPolicyGetDigest(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := tpm2.ConstructPolicyGetDigest(tpm2.Handle(0x03000000))
+	cmd_bytes, err := ConstructPolicyGetDigest(Handle(0x03000000))
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
 		t.Fatal("Bad Get PolicyGetDigestcommand\n")
@@ -367,15 +366,15 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
-	digest, err := tpm2.DecodePolicyGetDigest(test_resp_bytes[10:len(test_resp_bytes)])
-        if err != nil || status != 0 {
+	}
+	digest, err := DecodePolicyGetDigest(test_resp_bytes[10:len(test_resp_bytes)])
+	if err != nil || status != 0 {
 		t.Fatal("DecodePolicyGetDigest fails\n")
-        }
+	}
 	fmt.Printf("digest: %x\n", digest)
 }
 
@@ -389,13 +388,13 @@ func TestConstructStartAuthSession(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	var nonceCaller []byte
 	var secret []byte
-	sym := uint16(tpm2.AlgTPM_ALG_NULL)
-	cmd_bytes, err := tpm2.ConstructStartAuthSession(tpm2.Handle(0x40000007),
-		tpm2.Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
+	sym := uint16(AlgTPM_ALG_NULL)
+	cmd_bytes, err := ConstructStartAuthSession(Handle(0x40000007),
+		Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
 	// TODO
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {
-		fmt.Printf("fix tpm2.ConstructStartAuthSession") //t.Fatal("TestPolicyPcr: misgenerated command")
+		fmt.Printf("fix ConstructStartAuthSession") //t.Fatal("TestPolicyPcr: misgenerated command")
 	}
 }
 
@@ -405,15 +404,15 @@ func TestDecodeStartAuthSession(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
-	handle, nonce, err := tpm2.DecodeStartAuthSession(test_resp_bytes[10:])
-        if err != nil || status != 0 {
+	}
+	handle, nonce, err := DecodeStartAuthSession(test_resp_bytes[10:])
+	if err != nil || status != 0 {
 		t.Fatal("DecodeStartAuthSession fails\n")
-        }
+	}
 	fmt.Printf("Handle: %x, nonce: %x\n", handle, nonce)
 }
 
@@ -429,21 +428,21 @@ func TestConstructCreateSealed(t *testing.T) {
 	var empty []byte
 	to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
 	digest := []byte{0x0d, 0xeb, 0xb4, 0xcc, 0x9d, 0x21, 0x58, 0xcf, 0x70, 0x51, 0xa1, 0x9c, 0xa2, 0x4b,
-			 0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
-        parms := tpm2.KeyedHashParams{uint16(tpm2.AlgTPM_ALG_KEYEDHASH),
-				 uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00000012), empty,
-				 uint16(tpm2.AlgTPM_ALG_AES), uint16(128), uint16(tpm2.AlgTPM_ALG_CFB),
-				 uint16(tpm2.AlgTPM_ALG_NULL), empty}
-	tpm2.PrintKeyedHashParams(&parms)
-        cmd_bytes, err := tpm2.ConstructCreateSealed(tpm2.Handle(0x80000000), digest, "01020304", "01020304",
+		0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
+	parms := KeyedHashParams{uint16(AlgTPM_ALG_KEYEDHASH),
+		uint16(AlgTPM_ALG_SHA1), uint32(0x00000012), empty,
+		uint16(AlgTPM_ALG_AES), uint16(128), uint16(AlgTPM_ALG_CFB),
+		uint16(AlgTPM_ALG_NULL), empty}
+	PrintKeyedHashParams(&parms)
+	cmd_bytes, err := ConstructCreateSealed(Handle(0x80000000), digest, "01020304", "01020304",
 		to_seal, []int{7}, parms)
-        if err != nil {
-                t.Fatal("ConstructCreateSealed fails")
-        }
-        fmt.Printf("CreateSealed: %x\n", cmd_bytes)
-        if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
-                t.Fatal("ConstructSealed incorrect command")
-        }
+	if err != nil {
+		t.Fatal("ConstructCreateSealed fails")
+	}
+	fmt.Printf("CreateSealed: %x\n", cmd_bytes)
+	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
+		t.Fatal("ConstructSealed incorrect command")
+	}
 }
 
 const strCreateSealedResp = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +
@@ -456,6 +455,7 @@ const strCreateSealedResp = "80020000013c0000000000000129005a0014450ecdce5f1ce20
 	"f91fb12789154c722d4dbb528420ca211a0000001409987adb82d9864dbbdf515545" +
 	"798e3fe3e55a418021400000010020b3b60fa880ac9256d10ee3abdc6b500dec1ba8" +
 	"85082b20c305eb1ff072bc13480000010000"
+
 func TestDecodeCreateSealed(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString(strCreateSealedResp)
 	if err != nil {
@@ -463,14 +463,14 @@ func TestDecodeCreateSealed(t *testing.T) {
 	}
 
 	// Decode Response
-        _, _, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
-                t.Fatal("DecodeCommandResponse error\n")
-        }
-        if status != tpm2.ErrSuccess {
-                t.Fatal("error status\n")
-        }
-	private_blob, public_blob, err := tpm2.DecodeCreateSealed(test_resp_bytes[10:len(test_resp_bytes)])
+	_, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
+		t.Fatal("DecodeCommandResponse error\n")
+	}
+	if status != ErrSuccess {
+		t.Fatal("error status\n")
+	}
+	private_blob, public_blob, err := DecodeCreateSealed(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -485,13 +485,13 @@ func TestConstructCreateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
- 	var empty []byte
+	var empty []byte
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	parms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-			uint32(0x00030072), empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-			uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
-			uint16(1024), uint32(0x00010001), empty}
-	cmd_bytes, err := tpm2.ConstructCreateKey(uint32(tpm2.OrdTPM_RH_OWNER), []int{7}, "", "01020304", parms)
+	parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
+		uint16(1024), uint32(0x00010001), empty}
+	cmd_bytes, err := ConstructCreateKey(uint32(OrdTPM_RH_OWNER), []int{7}, "", "01020304", parms)
 	if err != nil {
 		t.Fatal("ConstructCreateKey fails")
 	}
@@ -516,6 +516,7 @@ const strRespCreateKey = "8002000001ba00000000000001a70076001405f2c6b6035d4" +
 	"b68f91fb12789154c722d4dbb528420ca211a0000001409987adb82d9864dbbdf5" +
 	"15545798e3fe3e55a418021400000010020e504b9a055eb465316328cfa9d9cbb2" +
 	"0706db0160457fa3dfe7e7aca34a334370000010000"
+
 func TestDecodeCreateKey(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString(strRespCreateKey)
 	if err != nil {
@@ -523,14 +524,14 @@ func TestDecodeCreateKey(t *testing.T) {
 	}
 
 	// Decode Response
-        _, _, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
-                t.Fatal("DecodeCommandResponse error\n")
-        }
-        if status != tpm2.ErrSuccess {
-                t.Fatal("error status\n")
-        }
-	private_blob, public_blob, err := tpm2.DecodeCreateKey(test_resp_bytes[10:])
+	_, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
+		t.Fatal("DecodeCommandResponse error\n")
+	}
+	if status != ErrSuccess {
+		t.Fatal("error status\n")
+	}
+	private_blob, public_blob, err := DecodeCreateKey(test_resp_bytes[10:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -546,7 +547,7 @@ func TestConstructUnseal(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := tpm2.ConstructUnseal(tpm2.Handle(0x80000001), "01020304", tpm2.Handle(0x03000000))
+	cmd_bytes, err := ConstructUnseal(Handle(0x80000001), "01020304", Handle(0x03000000))
 	if err != nil {
 		t.Fatal("Can't construct unseal\n")
 	}
@@ -563,15 +564,15 @@ func TestDecodeUnseal(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
-	unsealed, digest, err := tpm2.DecodeUnseal(test_resp_bytes[10:len(test_resp_bytes)])
-        if err != nil {
+	}
+	unsealed, digest, err := DecodeUnseal(test_resp_bytes[10:len(test_resp_bytes)])
+	if err != nil {
 		t.Fatal("DecodeUnseal fails\n")
-        }
+	}
 	fmt.Printf("Unsealed: %x\n", unsealed)
 	fmt.Printf("Digest  : %x\n", digest)
 }
@@ -585,7 +586,7 @@ func TestConstructQuote(t *testing.T) {
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	to_quote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
-	cmd_bytes, err := tpm2.ConstructQuote(tpm2.Handle(0x80000001), "01020304", "", to_quote, []int{7}, 0x0010)
+	cmd_bytes, err := ConstructQuote(Handle(0x80000001), "01020304", "", to_quote, []int{7}, 0x0010)
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
 		fmt.Printf("Fix TestQuote") //t.Fatal("TestQuote: misgenerated command")
@@ -598,7 +599,7 @@ const strQuoteResp1 = "80020000010400000000000000f10069ff544347801800160004" +
 	"0c0d0e0f1000000000000fe8f99cf4968c1d6e516100eb40a3278641a1c6000000" +
 	"010004038000000014ae2edb7e23d7e8f58daa87af87775993a426722500140004"
 
-const strQuoteResp2= "00804e49bb73712bc6acca4778005741b586ee6da2c98fe4dd1a3" +
+const strQuoteResp2 = "00804e49bb73712bc6acca4778005741b586ee6da2c98fe4dd1a3" +
 	"babdd9dd58c2d" +
 	"6fed9441a5bfb3c07ae0c7a5f2aff3d46b97429cff515caa12726fec6021b439c9" +
 	"856ebdd2f006b9159b5bfcbb8ca16c6a8f4a5953669d6af769593c00249e240f50" +
@@ -616,12 +617,12 @@ func TestDecodeQuote(t *testing.T) {
 	}
 	test_resp_bytes := append(test_resp_bytes_first, test_resp_bytes_next...)
 
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
-	attest, _, _, sig, err := tpm2.DecodeQuote(test_resp_bytes[10:len(test_resp_bytes)])
+	}
+	attest, _, _, sig, err := DecodeQuote(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal("DecodeQuote fails\n")
 	}
@@ -642,6 +643,7 @@ const strActCmd = "80020000016800000147800000028000000000000016400000090000" +
 	"45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb" +
 	"377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e5" +
 	"04203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f"
+
 func TestConstructActivateCredential(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString(strActCmd)
 	if err != nil {
@@ -650,7 +652,7 @@ func TestConstructActivateCredential(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	var credBlob []byte
 	var secret []byte
-	cmd_bytes, err := tpm2.ConstructActivateCredential(tpm2.Handle(0x80000002), tpm2.Handle(0x80000000),
+	cmd_bytes, err := ConstructActivateCredential(Handle(0x80000002), Handle(0x80000000),
 		"", "", credBlob, secret)
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	// TODO
@@ -659,7 +661,6 @@ func TestConstructActivateCredential(t *testing.T) {
 	}
 }
 
-
 // Command: 80010000000e0000017380000000
 func TestConstructReadPublic(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80010000000e0000017380000000")
@@ -667,7 +668,7 @@ func TestConstructReadPublic(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := tpm2.ConstructReadPublic(tpm2.Handle(0x80000000))
+	cmd_bytes, err := ConstructReadPublic(Handle(0x80000000))
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
 		t.Fatal("TestReadPublic: misgenerated command")
@@ -685,6 +686,7 @@ const strReadPub = "80010000016e00000000011a0001000b000300720000000600800043" +
 	"c49bc58ac80d1bac7f19b410feee62a048ccbfafd006af04988901d0852a0f30022" +
 	"000bcc5923a0993903ea7754f3243ad11ab20c84e30c82a0bc0a443049e5f452782" +
 	"00022000bcc514224b2eda95f3ef72174e551ecb5f5370d1886b06a68e54581bef5592bbe"
+
 func TestDecodeReadPublic(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString(strReadPub)
 	if err != nil {
@@ -692,14 +694,14 @@ func TestDecodeReadPublic(t *testing.T) {
 	}
 
 	// Decode Response
-        _, _, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        if err != nil {
-                t.Fatal("DecodeCommandResponse error\n")
-        }
-        if status != tpm2.ErrSuccess {
-                t.Fatal("error status\n")
-        }
-	public_blob, name, qualified_name, err := tpm2.DecodeReadPublic(test_resp_bytes[10:len(test_resp_bytes)])
+	_, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	if err != nil {
+		t.Fatal("DecodeCommandResponse error\n")
+	}
+	if status != ErrSuccess {
+		t.Fatal("error status\n")
+	}
+	public_blob, name, qualified_name, err := DecodeReadPublic(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -716,7 +718,7 @@ func TestConstructEvictControl(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := tpm2.ConstructEvictControl(tpm2.Handle(0x40000001), tpm2.Handle(0x810003e8), tpm2.Handle(0x810003e8))
+	cmd_bytes, err := ConstructEvictControl(Handle(0x40000001), Handle(0x810003e8), Handle(0x810003e8))
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
 		t.Fatal("TestEvictControl: misgenerated command")
@@ -729,10 +731,9 @@ func TestDecodeEvictControl(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 
-        tag, size, status, err := tpm2.DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
+	tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
-        }
+	}
 }
-

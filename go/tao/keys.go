@@ -62,6 +62,15 @@ type Signer struct {
 	ec *ecdsa.PrivateKey
 }
 
+// Added JLM 5/31/2016
+func (s *Signer) GetSigner() *ecdsa.PrivateKey {
+	return s.ec
+}
+
+func (s *Verifier) GetVerifier() *ecdsa.PublicKey {
+	return s.ec
+}
+
 // A Verifier is used to verify signatures.
 type Verifier struct {
 	ec *ecdsa.PublicKey

@@ -32,6 +32,7 @@
 
 #include "keys.pb.h"
 #include "ca.pb.h"
+#include "domain_policy.pb.h"
 #include "auth.h"
 
 using std::string;
@@ -416,14 +417,17 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
 
 printf("READ %d\n", bytes_read);PrintBytes(bytes_read, read_buf); printf("\n");
   response_buf.assign((const char*)read_buf, bytes_read);
-  tao::Attestation response;
+  domain_policy::DomainProgramCerts response;
   if (!response.ParseFromString(response_buf)) {
     printf("Domain channel parse failure.\n");
     return false;
   }
   // Fill in program cert.
-  string serialized_statement;
-  serialized_statement = response.serialized_statement();
+  // program_cert = response.signed_cert();
+  program_cert->assign((const char*)response.signed_cert().data(),
+                       response.signed_cert().size());
+
+  /*
   tao::Says says;
   // serialized_statement is a says.
   // Says has speaks for message.
@@ -437,7 +441,6 @@ printf("READ %d\n", bytes_read);PrintBytes(bytes_read, read_buf); printf("\n");
       return false;
     }
   }
-  /*
     Todo:  Tom?
     tao::Speaksfor speaksfor = says.message_;
     tao::Prin delegate = speaksfor.delegate_;

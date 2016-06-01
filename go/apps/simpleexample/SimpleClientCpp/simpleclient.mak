@@ -50,7 +50,7 @@ LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog 
 
 dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o $(O)/ca.pb.o $(O)/attestation.pb.o \
 	$(O)/datalog_guard.pb.o $(O)/acl_guard.pb.o $(O)/taosupport.pb.o \
-	$(O)/keys.pb.o $(O)/simpleclient_cc.o
+	$(O)/domain_policy.pb.o $(O)/keys.pb.o $(O)/simpleclient_cc.o
 
 dobj_test=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/helpers_test.o
 dobj_simple_server=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/simple_server_test.o
@@ -112,6 +112,10 @@ $(EXE_DIR)/gen_keys.exe: $(dobj_gen_keys)
 $(O)/helpers.o: $(S)/helpers.cc
 	@echo "compiling helpers.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/helpers.o $(S)/helpers.cc
+
+$(O)/domain_policy.pb.o: $(S)/domain_policy.pb.cc
+	@echo "compiling domain_policy.pb.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/domain_policy.pb.o $(S)/domain_policy.pb.cc
 
 $(O)/keys.pb.o: $(S)/keys.pb.cc
 	@echo "compiling keys.pb.cc"

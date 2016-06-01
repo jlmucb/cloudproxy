@@ -68,16 +68,20 @@ fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read attestation from
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	err := tao.ValidatePeerAttestation(&a, peerCert, guard)
+/*
 	if err != nil {
+fmt.Printf("DomainRequest:Couldn't validate peer attestation:", err, "\n")
 		log.Printf("DomainRequestCouldn't validate peer attestation:", err)
 		return false, err
 	}
 fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
+*/
 
 	// Sign cert and put it in attestation statement
-	// which consists of serialized statement, sig and SignerInfo
+	// a consists of serialized statement, sig and SignerInfo
+	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
 
-	// Get Program name and key name
+	// Get underlying says
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
 		log.Printf("DomainRequest: Can't unmarshal a.SerializedStatement\n")
@@ -95,88 +99,131 @@ fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 		log.Printf("DomainRequest: says doesnt have speaksfor message\n")
 		return false, err
 	}
-	// this in the new key principal
-	clientKeyPrincipal, ok := sf.Delegate.(auth.Prin)
+
+fmt.Print("\nSimpleDomainService: speaksfor: ", sf, "\n")
+	kprin, ok := sf.Delegate.(auth.Prin)
 	if ok != true {
 		log.Printf("DomainRequest: speaksfor Delegate is not auth.Prin\n")
 		return false, err
 	}
-
-	programPrincipal, ok := sf.Delegator.(auth.Prin)
+fmt.Printf("\nSimpleDomainService: DomainRequest, delegate (kPrin): %x\n", kprin)
+	subjectPrin, ok := sf.Delegator.(auth.Prin)
 	if ok != true {
 		log.Printf("DomainRequest: Can't get subject principal\n")
 		return false, errors.New("Can't get principal name from verifier")
 	}
-	programPrincipalName:= programPrincipal.String()
-	verified := IsAuthenticationValid(&programPrincipalName)
+	subjectnamestr := subjectPrin.String()
+	verified := IsAuthenticationValid(&subjectnamestr)
 	if !verified {
 		log.Printf("DomainRequest: name verification failed\n")
 		return false, err
 	}
-fmt.Printf("\nSimpleDomainService: key principal: %s, peogram principal: %s\n", clientKeyPrincipal, programPrincipalName)
+fmt.Printf("\nSimpleDomainService: authenticated principal name: %s\n", subjectnamestr)
 
 	// Sign program certificate.
-	notBefore := time.Now().UnixNano()
-	notAfter := time.Now().AddDate(1, 0, 0).UnixNano()
 	us := "US"
 	google := "Google"
-	localhost := programPrincipalName
-	subjectName :=  pkix.Name {
+	localhost := "localhost"
+	details := tao.X509Details{
+		Country:            &us,
 		Organization:       &google,
-		OrganizationalUnit: &programPrincipalName,
+		OrganizationalUnit: &subjectnamestr,
 		CommonName:         &localhost,
-        	Country, Organization, OrganizationalUnit []string
-        	Locality, Province                        []string
-        	StreetAddress, PostalCode                 []string
-        	SerialNumber, CommonName                  string
-        }
-
-        Names      []AttributeTypeAndValue
-        ExtraNames []AttributeTypeAndValue
-}
-	subjectName := tao.NewX509Name(&details)
-
-	// issuerName := tao.NewX509Name(&details)
+	}
+	subjectname := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
-	clientPublicKey, err := tao.FromPrincipal(clientKeyPrincipal)
+	verifier, err := tao.FromPrincipal(kprin)
 	if err != nil {
-		fmt.Printf("DomainRequest: Can't get clientPublicKey from clientKeyPrincipal\n")
-		return false, errors.New("Can't get clientPublicKey from clientKeyPrincipal")
+		fmt.Printf("DomainRequest: Can't get verifier from kprin\n")
+		return false, errors.New("Can't get verifier from kprin")
 	}
-	certificateTemplate := X509.Certificate {
-		Version             int
-        	SerialNumber        *big.Int
-		Organization:       &google,
-		OrganizationalUnit: &programPrincipalName,
-		CommonName:         &localhost,
-        	Issuer:             &issuerName,
-        	Subject:            &subjectName,
-        	NotBefore:	    &notBefore,
-        	NotAfter:	    &notAfter,
-        	KeyUsage:           x509.KeyUsageCertificateSigning
-	}
-
-        // x509.CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv interface{})
+fmt.Printf("\nSimpleDomainService, verifier : %x\n", verifier)
 	clientCert, err := policyKey.SigningKey.CreateSignedX509(policyKey.Cert,
-              int(SerialNumber), clientPublicKey, subjectName)
+              int(SerialNumber), verifier, subjectname)
 	if err != nil {
 		log.Printf("DomainRequest: Can't create client certificate: %s\n", err)
 		return false, err
 	}
 	clientDerCert := clientCert.Raw
+	err = ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
 
-	var ra domain_policy.DomainProgramCerts;
-        ra.Error = 0
-        ra.signed_cert= clientDerCert
+	nowTime := time.Now().UnixNano()
+	expireTime := time.Now().AddDate(1, 0, 0).UnixNano()
 
-	// Add cert chain
+	// Replace self signed cert in attest request
+	newspeaksFor := &auth.Speaksfor{
+		Delegate:  auth.Bytes(clientDerCert),
+		Delegator: sf.Delegator}
+	keynegoSays := &auth.Says{
+		Speaker:    policyKey.SigningKey.ToPrincipal(),
+		Time:       &nowTime,
+		Expiration: &expireTime,
+		Message:    newspeaksFor}
 
-	_, err := ms.WriteMessage(ra)
+	delegator, ok := sf.Delegator.(auth.Prin)
+	if !ok {
+fmt.Printf("DomainRequest: delegator must be principal\n")
+		log.Printf("DomainRequest: delegator must be principal")
+		return false, err
+	}
+fmt.Printf("\nSimpleDomainService: DomainRequest, delegator: %x\n", delegator)
+	var prog auth.PrinExt
+	found := false
+	for _, sprin := range delegator.Ext {
+		if !found && (sprin.Name == "Program") {
+			found = true
+			prog = sprin
+		}
+		if found {
+			kprin.Ext = append(kprin.Ext, sprin)
+		}
+	}
+fmt.Printf("\nSimpleDomainService: calling GenerateAttestation(%x, nil, %x)\n",
+  policyKey.SigningKey, *keynegoSays)
+	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *keynegoSays)
 	if err != nil {
+fmt.Printf("\nSimpleDomainService, DomainRequest: Couldn't attest to the new says statement:", err)
+		log.Printf("DomainRequest: Couldn't attest to the new says statement:", err)
+		return false, err
+	}
+
+fmt.Printf("\nSimpleDomainService, DomainRequest: adding endorsement\n")
+	// Add an endorsement to this PrinExt Program hash so the receiver can
+	//  check it successfully against policy.
+	endorsement := auth.Says{
+		Speaker: policyKey.SigningKey.ToPrincipal(),
+		Message: auth.Pred{
+			Name: "TrustedProgramHash",
+			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{prog}}},
+		},
+	}
+	if keynegoSays.Time != nil {
+		i := *keynegoSays.Time
+		endorsement.Time = &i
+	}
+	if keynegoSays.Expiration != nil {
+		i := *keynegoSays.Expiration
+		endorsement.Expiration = &i
+	}
+	ea, err := tao.GenerateAttestation(policyKey.SigningKey, nil, endorsement)
+	if err != nil {
+		log.Printf("DomainRequest: Couldn't generate an endorsement for this program: %s\n", err)
+		return false, err
+	}
+	eab, err := proto.Marshal(ea)
+	if err != nil {
+		log.Printf("DomainRequest: Couldn't marshal an endorsement:", err)
+		return false, err
+	}
+	ra.SerializedEndorsements = [][]byte{eab}
+
+fmt.Printf("\nSimpleDomainService, DomainRequest: eab: %d\n", len(eab))
+	if _, err := ms.WriteMessage(ra); err != nil {
 		log.Printf("DomainRequest: Couldn't return the attestation on the channel: ", err)
 		log.Printf("\n")
 		return false, err
 	}
+
 	return false, nil
 }
 

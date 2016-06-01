@@ -16,8 +16,8 @@ syntax = "proto2";
 package domain_policy;
 
 message DomainProgramCerts {
-  required int error = 1;
-  optional string signed_cert = 2;
-  repeated string cert_chain = 3;
+  required int32 error = 1;
+  optional bytes signed_cert = 2;
+  repeated bytes cert_chain = 3;
 }
 

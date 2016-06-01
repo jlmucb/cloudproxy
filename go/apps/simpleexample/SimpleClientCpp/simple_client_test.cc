@@ -118,7 +118,7 @@ int main(int an, char** av) {
     return 1;
   }
 
-  int size_send_buf = 4096;
+  int size_send_buf;
   byte send_buf[4096];
   int size_get_buf = 4096;
   byte get_buf[4096];
@@ -131,12 +131,14 @@ int main(int an, char** av) {
                            strlen((const char*)send_buf) + 1,
                            send_buf);
   size_get_buf = SslRead(channel.GetSslChannel(), 4096, get_buf);
+  printf("client sent %d\n", size_send_buf);
   printf("server reply %d, %s\n", size_get_buf, (const char*)get_buf);
   sprintf((char*)send_buf, "Client message %d\n", msg_num++);
   size_send_buf = SslWrite(channel.GetSslChannel(),
                            strlen((const char*)send_buf) + 1,
                            send_buf);
   size_get_buf = SslWrite(channel.GetSslChannel(), 4096, get_buf);
+  printf("client sent %d\n", size_send_buf);
   printf("server reply %d, %s\n", size_get_buf, (const char*)get_buf);
 
   return 0;

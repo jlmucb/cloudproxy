@@ -94,7 +94,7 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 //     for ActivateCredential.
 //     For tpm1.2, we need the aikCert.
 func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
-		v *tao.Verifier) (*domain_policy::DomainProgramCerts, error) {
+		v *tao.Verifier) (*domain_policy.DomainProgramCerts, error) {
 // (*tao.Attestation, error) {
 	if keys.Cert == nil {
 		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
@@ -122,7 +122,7 @@ func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 	}
 
 	// Read the new cert
-	var dc domain_policy::DomainProgramCerts
+	var dc domain_policy.DomainProgramCerts
 	err = ms.ReadMessage(&dc)
 	if err != nil {
 		return nil, err
@@ -213,9 +213,9 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	// Get program cert.
 	dc, err := RequestDomainServiceCert("tcp", *caAddr, k,
 			domain.Keys.VerifyingKey)
-	if err != nil || na == nil {
+	if err != nil || dc == nil {
 		log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
-		return nil, err
+		return nil, nil, nil, err
 	}
 	programCert := dc.SignedCert
 	certChain := dc.CertChain
@@ -228,20 +228,20 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	// Serialize and save key blob
 	programKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
 	if err != nil {
-		return nil, errors.New("InitializeSealedProgramKey: Can't produce signing key blob")
+		return nil, nil, nil, errors.New("InitializeSealedProgramKey: Can't produce signing key blob")
 	}
 
 	sealedProgramKey, err := t.Seal(programKeyBlob, tao.SealPolicyDefault)
 	if err != nil {
-		return nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
+		return nil, nil, nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
 	}
 	err = ioutil.WriteFile(path.Join(filePath, "sealedsigningKey"), sealedProgramKey, os.ModePerm)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), newCert, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), programCert, os.ModePerm)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 /*
 	delegateBlob, err := proto.Marshal(k.Delegation)
@@ -255,14 +255,18 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	return k, nil
  */
 
+/*
+	FIX
 	if certChain.size() > 0 {
 		// Save cert chain
+		FIX
 		err = ioutil.WriteFile(path.Join(filePath, "certChain"), certChain, os.ModePerm)
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
 	}
-	return k, newCert, certChain, nil
+ */
+	return k, programCert, certChain, nil
 }
 
 func (pp *TaoProgramData) FillTaoProgramData(policyCert []byte, taoName string,
@@ -368,7 +372,7 @@ func TaoParadigm(cfg *string, filePath *string,
 
 	// Initialize Program policy object.
 	ok := programObject.FillTaoProgramData(derPolicyCert, taoName.String(),
-		*programKey, symKeys, program.Cert, certChain, filePath)
+		*programKey, symKeys, programCert, certChain, filePath)
 	if !ok {
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
 	}
@@ -454,12 +458,11 @@ func LoadProgramKeys(filePath string) ([]byte, []byte, []byte, [][]byte, error) 
 			return nil, nil, nil, nil, err
 		}
 	}
-	var ds []byte
 	_, err = os.Stat(path.Join(filePath, "sealedsigningKey"))
 	if err != nil {
 		sealedProgramKey = nil
 		derCert = nil
-		ds = nil
+		certChain = nil
 	} else {
 		sealedProgramKey, err = ioutil.ReadFile(path.Join(filePath, "sealedsigningKey"))
 		if err != nil {
@@ -469,9 +472,11 @@ func LoadProgramKeys(filePath string) ([]byte, []byte, []byte, [][]byte, error) 
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		certChain, _ = ioutil.ReadFile(path.Join(filePath, "certChain"))
+		// FIX
+		// certChain, _ = ioutil.ReadFile(path.Join(filePath, "certChain"))
+		certChain = nil
 	}
-	return sealedSymmetricKey, sealedProgramKey, derCert, ds, cc 
+	return sealedSymmetricKey, sealedProgramKey, derCert, certChain, nil
 }
 
 // Create a Program Public/Private key.

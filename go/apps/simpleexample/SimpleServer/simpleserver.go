@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 
@@ -126,6 +127,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		log.Printf("server: at accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
+fmt.Printf("simpleserver: can't accept connection: %s\n", err.Error())
 			log.Printf("server: can't accept connection: %s\n", err.Error())
 			continue
 		}

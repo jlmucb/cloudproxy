@@ -132,16 +132,17 @@ fmt.Printf("DomainRequest: Can't do FromPrincipal\n")
 
 	us := "US"
 	issuerName := "Google"
+	localhost := "localhost"
 	x509SubjectName :=  &pkix.Name {
 		Organization:       []string{programPrincipalName},
 		OrganizationalUnit: []string{programPrincipalName},
-		CommonName:	    programPrincipalName,
+		CommonName:	    localhost,
 		Country:	    []string{us},
 	}
 	x509IssuerName :=  &pkix.Name {
 		Organization:       []string {issuerName},
 		OrganizationalUnit: []string {issuerName},
-		CommonName:	    issuerName,
+		CommonName:	    localhost,
 		Country:	    []string{us},
 	}
 

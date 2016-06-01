@@ -26,6 +26,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -356,7 +357,7 @@ func TaoParadigm(cfg *string, filePath *string,
 	// Get my Program private key if present or initialize it.
 	var programKey *tao.Keys
 	if sealedProgramKey != nil {
-		programKey, err = SigningKeyFromBlob(tao.Parent(), sealedProgramKey)
+		programKey, err = SigningKeyFromBlob(tao.Parent(), sealedProgramKey, programCert)
 		if err != nil {
 			return errors.New("TaoParadigm: SigningKeyFromBlob error")
 		}
@@ -409,6 +410,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
+fmt.Printf("OpenTaoChannel: Can't establish channel ", err, "\n")
 		return nil, nil, errors.New("OpenTaoChannel: Can't establish channel")
 	}
 
@@ -529,23 +531,25 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 }
 
 // Obtain a signing private key (usually a Program Key) from a sealed blob.
-func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte) (*tao.Keys, error) {
+func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*tao.Keys, error) {
 
 	// Recover public key from blob
 
 	k := &tao.Keys{}
-/*
-	cert, err := x509.ParseCertificate(certBlob)
+
+	cert, err := x509.ParseCertificate(programCert)
 	if err != nil {
 		return nil, err
 	}
-	k.Cert = cert
+
+/*
 	k.Delegation = new(tao.Attestation)
 	err = proto.Unmarshal(delegateBlob, k.Delegation)
 	if err != nil {
 		return nil, err
 	}
  */
+
 	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
 	if err != nil {
 		return nil, err
@@ -554,9 +558,8 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte) (*tao.Keys, error) {
 		return nil, err
 	}
 	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
-/*
 	k.Cert = cert
- */
+	k.Cert.Raw = programCert
 	return k, err
 }
 

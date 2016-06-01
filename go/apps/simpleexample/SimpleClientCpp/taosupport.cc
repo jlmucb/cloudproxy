@@ -97,6 +97,10 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
       return false;
     }
   }
+  if (client_program_data.program_key_ == nullptr) {
+      printf("No program private key.\n");
+      return false;
+  }
 
   // Open TLS channel with Program cert.
   string network("tcp");
@@ -106,7 +110,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     client_program_data.program_key_type_,
                     client_program_data.program_key_,
                     SSL_SERVER_VERIFY_CLIENT_VERIFY)) {
-    printf("Can't Init SSl channel.\n");
+    printf("Can't Init Ssl channel.\n");
     return false;
   }
 
@@ -535,7 +539,8 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
       return false;
     }
     // Deserialize the key.
-    if (!DeserializePrivateKey(unsealed_key, &program_key_type_, &program_key_)) {
+    if (!DeserializePrivateKey(unsealed_key, &program_key_type_,
+             &program_key_)) {
       printf("InitializeProgramKey: Can't DeserializePrivateKey\n");
       return false;
     }
@@ -543,7 +548,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 
   // Generate the key and specify key bytes.
-  EVP_PKEY* program_key_ = GenerateKey(key_type, key_size);
+  program_key_ = GenerateKey(key_type, key_size);
   if (program_key_ == nullptr) {
     printf("InitializeProgramKey: couldn't generate program key.\n");
     return false;

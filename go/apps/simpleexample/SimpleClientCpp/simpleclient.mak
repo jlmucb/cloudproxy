@@ -49,7 +49,12 @@ INCLUDE= -I$(S) -I/usr/local/include -I$(GFLAGS_INCLUDE) -I$(GLOG_INCLUDE) -I$(C
 CFLAGS=$(INCLUDE) -DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
 CFLAGS1=$(INCLUDE) -DOS_POSIX -O1 -g -Wall -std=c++11
 
-LIBS=-L$(SL)/out/third_party/googlemock/gtest -L$(SL)/out/third_party/google-glog 
+LIBS=-L$(SL)/out/third_party/googlemock/gtest \
+	 -L$(SL)/out/third_party/google-glog \
+	 -L$(SL)/out/tao \
+	 -L$(SL)/out/apps \
+	 -L$(SL)/out/third_party/modp \
+	 -L$(SL)/out/third_party/chromium
 CC=g++
 LINK=g++
 PROTO=protoc
@@ -83,7 +88,7 @@ clean:
 $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	@echo "linking simpleclient"
 	$(LINK) -o $(EXE_DIR)/simpleclient_cc.exe $(dobj_simpleclient) \
-	-L/Domains -lauth -ltao $(LDFLAGS)
+	$(LIBS) -L/Domains -lauth -ltao $(LDFLAGS)
 
 $(EXE_DIR)/helpers_test.exe: $(dobj_test)
 	@echo "linking helpers_test"

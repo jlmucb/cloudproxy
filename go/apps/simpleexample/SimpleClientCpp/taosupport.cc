@@ -280,16 +280,27 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   }
 
   // Retrieve extended name.
-  string tao_name;
-  if (!tao->GetTaoName(&tao_name)) {
+  if (!tao->GetTaoName(&tao_name_)) {
     printf("Can't get tao name.\n");
     return false;
   }
-  tao_name_ = tao_name;
+
+  tao::Prin unmarshalled_tao_name;
+  {
+    ArrayInputStream raw_input_stream(tao_name_.data(),
+                                      tao_name_.size());
+    CodedInputStream input_stream(&raw_input_stream);
+    if (!unmarshalled_tao_name.Unmarshal(&input_stream)) {
+        printf("Can't unmarshal tao name\n");
+    }
+  }
+  printf("test unmarshal: ");
+  PrintBytes(sizeof(unmarshalled_tao_name), (byte*)&unmarshalled_tao_name);
+  printf("\n");
 
 #if 1
 printf("\n\nsimpleclient_cc, Taoname: %s\n", tao_name_.c_str());
-PrintBytes(tao_name.size(), (byte*)tao_name.data());printf("\n");
+PrintBytes(tao_name_.size(), (byte*)tao_name_.data());printf("\n");
 #endif
 
   // Get (or initialize) my symmetric keys.

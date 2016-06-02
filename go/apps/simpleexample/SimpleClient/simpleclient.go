@@ -60,7 +60,8 @@ func main() {
 	// Open the Tao Channel using the Program key.  This program does all the
 	// standard channel negotiation and presents the secure server name after
 	// negotiation is complete.
-	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData, &serverAddr)
+	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData,
+             &serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}

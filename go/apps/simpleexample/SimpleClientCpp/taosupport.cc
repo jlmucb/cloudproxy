@@ -30,8 +30,9 @@
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
 
-#include "tao/keys.pb.h"
-#include "tao/ca.pb.h"
+#include "keys.pb.h"
+#include "ca.pb.h"
+#include "domain_policy.pb.h"
 #include "auth.h"
 
 using std::string;
@@ -96,6 +97,10 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
       return false;
     }
   }
+  if (client_program_data.program_key_ == nullptr) {
+      printf("No program private key.\n");
+      return false;
+  }
 
   // Open TLS channel with Program cert.
   string network("tcp");
@@ -105,7 +110,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     client_program_data.program_key_type_,
                     client_program_data.program_key_,
                     SSL_SERVER_VERIFY_CLIENT_VERIFY)) {
-    printf("Can't Init SSl channel.\n");
+    printf("Can't Init Ssl channel.\n");
     return false;
   }
 
@@ -119,7 +124,6 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
       peer_name_ = buf ;
     }
   }
-
   return true;
 }
 
@@ -135,8 +139,7 @@ bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
     return false;
   }
   int k = SslMessageWrite(peer_channel_.GetSslChannel(),
-                          msg_buf.size(),
-                          (byte*)msg_buf.data());
+                          msg_buf.size(), (byte*)msg_buf.data());
   return k > 0;
 }
 
@@ -275,16 +278,29 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   }
 
   // Retrieve extended name.
-  string tao_name;
-  if (!tao->GetTaoName(&tao_name)) {
+  if (!tao->GetTaoName(&tao_name_)) {
     printf("Can't get tao name.\n");
     return false;
   }
-  tao_name_ = tao_name;
 
-#if 1
+#if 0
+  // Tom: How do I get a printable Tao name out of tao_name_?
+  // This is the important one
+  tao::Prin unmarshalled_tao_name;
+  {
+    ArrayInputStream raw_input_stream(tao_name_.data(),
+                                      tao_name_.size());
+    CodedInputStream input_stream(&raw_input_stream);
+    if (!unmarshalled_tao_name.Unmarshal(&input_stream)) {
+        printf("Can't unmarshal tao name\n");
+    }
+  }
+
+printf("test unmarshal: ");
+PrintBytes(sizeof(unmarshalled_tao_name), (byte*)&unmarshalled_tao_name);
+printf("\n");
 printf("\n\nsimpleclient_cc, Taoname: %s\n", tao_name_.c_str());
-PrintBytes(tao_name.size(), (byte*)tao_name.data());printf("\n");
+PrintBytes(tao_name_.size(), (byte*)tao_name_.data());printf("\n");
 #endif
 
   // Get (or initialize) my symmetric keys.
@@ -292,9 +308,7 @@ PrintBytes(tao_name.size(), (byte*)tao_name.data());printf("\n");
     printf("Can't init symmetric keys.\n");
     return false;
   }
-#if 1
-printf("InitializeSymmetricKeys succeeded\n");
-#endif
+  printf("InitializeSymmetricKeys succeeded\n");
 
   // Get (or initialize) my program key.
   // First, we need the host cert and cert type.
@@ -303,6 +317,7 @@ printf("InitializeSymmetricKeys succeeded\n");
   // the host cert.
   string host_type("fake");
   string host_cert;
+
 #if 0
   string host_cert_file_name = path + "/endorsementCert";
   if (!ReadFile(host_cert_file_name, &endorse_cert)) {
@@ -310,11 +325,13 @@ printf("InitializeSymmetricKeys succeeded\n");
     return false;
   }
 #endif
+
   if (!InitializeProgramKey(path, keyType, key_size, network, address,
           port, host_type, host_cert)) {
     printf("Can't init program keys.\n");
     return false;
   }
+  printf("InitializeProgramKey succeeded\n");
   return true;
 }
 
@@ -354,7 +371,8 @@ bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& port, string& attestation_string,
                               string& endorsement_cert,
-                              string* program_cert) {
+                              string* program_cert,
+                              std::list<string>* certChain) {
 
   if (policyCertificate_ == nullptr) {
     printf("Policy cert is null.\n");
@@ -414,16 +432,24 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
     return false;
   }
 
-printf("READ %d\n", bytes_read);PrintBytes(bytes_read, read_buf); printf("\n");
   response_buf.assign((const char*)read_buf, bytes_read);
-  tao::Attestation response;
+  domain_policy::DomainProgramCerts response;
   if (!response.ParseFromString(response_buf)) {
     printf("Domain channel parse failure.\n");
     return false;
   }
   // Fill in program cert.
-  string serialized_statement;
-  serialized_statement = response.serialized_statement();
+  // program_cert = response.signed_cert();
+  program_cert->assign((const char*)response.signed_cert().data(),
+                       response.signed_cert().size());
+
+  // Cert chain
+  // response.add_cert_chain(str);
+  for (int j = 0; j < response.cert_chain_size(); j++) {
+      certChain->push_back(string(response.cert_chain(j)));
+  }
+
+  /*
   tao::Says says;
   // serialized_statement is a says.
   // Says has speaks for message.
@@ -437,7 +463,6 @@ printf("READ %d\n", bytes_read);PrintBytes(bytes_read, read_buf); printf("\n");
       return false;
     }
   }
-  /*
     Todo:  Tom?
     tao::Speaksfor speaksfor = says.message_;
     tao::Prin delegate = speaksfor.delegate_;
@@ -452,9 +477,6 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   string unsealed;
   string file_name = path + "/sealedsymmetricKey";
 
-#if 1
-printf("symmetric keys are in %s\n", file_name.c_str());
-#endif
   // Read key file.
   if (ReadFile(file_name, &sealed)) {
     if (!Unseal(sealed, &unsealed)) {
@@ -507,11 +529,6 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   string sealed_key;
   string unsealed_key;
 
-#if 1
-printf("Policy cert is in %s\n", policy_cert_file_name.c_str());
-printf("Program cert is in %s\n", signer_cert_file_name.c_str());
-printf("Program key is in %s\n", sealed_key_file_name.c_str());
-#endif
   // Read and parse policy cert.
   if (!ReadFile(policy_cert_file_name, &policy_cert_)) {
     printf("InitializeProgramKey: Can't read policy cert.\n");
@@ -532,7 +549,8 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
       return false;
     }
     // Deserialize the key.
-    if (!DeserializePrivateKey(unsealed_key, &program_key_type_, &program_key_)) {
+    if (!DeserializePrivateKey(unsealed_key, &program_key_type_,
+             &program_key_)) {
       printf("InitializeProgramKey: Can't DeserializePrivateKey\n");
       return false;
     }
@@ -540,7 +558,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 
   // Generate the key and specify key bytes.
-  EVP_PKEY* program_key_ = GenerateKey(key_type, key_size);
+  program_key_ = GenerateKey(key_type, key_size);
   if (program_key_ == nullptr) {
     printf("InitializeProgramKey: couldn't generate program key.\n");
     return false;
@@ -577,13 +595,6 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
   }
 #endif
 
-#if 1
-  printf("\nAbout to marshal speaks for\n");
-  printf("key bytes: ");
-  PrintBytes((int)key_bytes->size(), (byte*)key_bytes->data());
-  printf("\n");
-#endif
-
   // Construct a delegation statement.
   string msf;
   if (!MarshalSpeaksfor(*key_bytes, tao_name_, &msf)) {
@@ -600,7 +611,7 @@ printf("Program key is in %s\n", sealed_key_file_name.c_str());
 
   // Get Program Cert.
   if (!RequestDomainServiceCert(network, address, port, attestation_string,
-          host_cert, &program_cert_)) {
+          host_cert, &program_cert_, &certs_in_chain_)) {
     printf("InitializeProgramKey: couldn't RequestDomainServiceCert.\n");
     return false;
   }

@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
   if (!client_channel.GetRequest(&resp_message)) {
     printf("simpleclient: Error in response to GetRequest\n");
   } else {
-    const char* secret = (const char*) resp_message.data().data();
+    const char* secret = (const char*) resp_message.data(0).data();
     printf("simpleclient: secret is %s, done\n", secret);
   }
   return 0;

@@ -284,7 +284,8 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   }
 
 #if 0
-  // Tom: How do I get a printable Tao name
+  // Tom: How do I get a printable Tao name out of tao_name_?
+  // This is the important one
   tao::Prin unmarshalled_tao_name;
   {
     ArrayInputStream raw_input_stream(tao_name_.data(),

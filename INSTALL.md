@@ -22,3 +22,9 @@ and installed it in `$GOPATH/bin`. You
 can do this with the command
 
     go install github.com/google/go-tpm/...
+
+There are other needed packages including libvirt-dev, libtspi-dev and
+protobuf-compiler. The future plan is to incorporate all installation instructions
+in "CloudProxy Nuts and Bolts" and make this current and authoritative.  Similarly,
+we hope to have authoritative installation and deployment instructions in the
+CloudProxy Deployment Nuts and Bolts guide.

@@ -346,3 +346,28 @@ func TestDatalogLoop(t *testing.T) {
 		}
 	}
 }
+
+func TestDatalogSignedSubprincipal(t *testing.T) {
+	g, key, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatalf("makeDatalogGuard failed: %v", err)
+	}
+	defer os.RemoveAll(tmpdir)
+	name := g.Subprincipal().String()
+	k := key.SigningKey.ToPrincipal().String()
+	if name != ".DatalogGuard("+k+")" {
+		t.Fatalf("Datalog guard has wrong name: %v", name)
+	}
+}
+
+func TestDatalogUnsignedSubprincipal(t *testing.T) {
+	g := NewTemporaryDatalogGuard()
+	err := g.Authorize(subj, "read", []string{"somefile"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := g.Subprincipal().String()
+	if name != ".DatalogGuard([45d9e4c235c05e6750dd18a194512ccbc99b0e6add96b6f90321113c946ec5a0])" {
+		t.Fatalf("Datalog guard has wrong name: %v", name)
+	}
+}

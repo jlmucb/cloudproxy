@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"crypto/sha256"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -47,7 +48,13 @@ func NewACLGuard(key *Verifier, config ACLGuardDetails) Guard {
 // Subprincipal returns a unique subprincipal for this policy.
 func (a *ACLGuard) Subprincipal() auth.SubPrin {
 	if a.Key == nil {
-		e := auth.PrinExt{Name: "ACLGuard"}
+		acls := &ACLSet{Entries: a.ACL}
+		ser, err := proto.Marshal(acls)
+		if err != nil {
+			return nil
+		}
+		hash := sha256.Sum256(ser)
+		e := auth.PrinExt{Name: "ACLGuard", Arg: []auth.Term{auth.Bytes(hash[:])}}
 		return auth.SubPrin{e}
 	}
 	e := auth.PrinExt{Name: "ACLGuard", Arg: []auth.Term{a.Key.ToPrincipal()}}

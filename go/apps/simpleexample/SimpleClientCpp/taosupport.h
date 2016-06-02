@@ -28,6 +28,9 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include <string>
+#include <list>
+
 #ifndef byte
 typedef unsigned char byte;
 #endif
@@ -52,6 +55,8 @@ public:
   string program_cert_;
   X509* programCertificate_;
 
+  std::list<string> certs_in_chain_;
+
   int size_program_sym_key_;
   byte* program_sym_key_;
   string program_file_path_;
@@ -74,7 +79,7 @@ public:
   bool Attest(string& to_attest, string* attested);
   bool RequestDomainServiceCert(string& network, string& address, string& port,
           string& attestation_string, string& endorsement_cert,
-          string* program_cert);
+          string* program_cert, std::list<string>* certsinChain);
 };
 
 class TaoChannel {

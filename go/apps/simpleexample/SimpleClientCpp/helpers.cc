@@ -860,11 +860,9 @@ int SslMessageRead(SSL* ssl, int size, byte* buf) {
   if (tmp_size <= 0)
     return tmp_size;
   int real_size = __builtin_bswap32(*((int*)new_buf));
-printf("SslMessageRead: tmp_size: %d, real_size %d\n", tmp_size, real_size);
   if (tmp_size == sizeof(int)) {
     return SslRead(ssl, real_size, buf);
   }
-printf("SslMessageRead: tmp_size: %d, real_size %d\n", tmp_size, real_size);
   memcpy(buf, &new_buf[4], real_size);
   return real_size;
 }

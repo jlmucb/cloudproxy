@@ -43,6 +43,7 @@ public:
 
   int endorsement_cert_;
 
+  string marshalled_tao_name_;
   string tao_name_;
 
   string policy_cert_;

@@ -67,7 +67,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // printf("Simple client name: %s\n", client_program_data.tao_name_.c_str());
+  printf("simpleclientcpp: Simple client name: %s\n",
+         client_program_data.tao_name_.c_str());
 
   // Open the Tao Channel using the Program key.  This program does all the
   // standard channel negotiation and presents the secure server name after
@@ -90,10 +91,10 @@ int main(int argc, char **argv) {
   }
   printf("Sent request\n");
   if (!client_channel.GetRequest(&resp_message)) {
-    printf("simpleclient: Error in response to GetRequest\n");
+    printf("\nsimpleclient: Error in response to GetRequest\n");
   } else {
     const char* secret = (const char*) resp_message.data(0).data();
-    printf("simpleclient: secret is %s, done\n", secret);
+    printf("\nsimpleclient: secret is %s, done\n", secret);
   }
   return 0;
 }

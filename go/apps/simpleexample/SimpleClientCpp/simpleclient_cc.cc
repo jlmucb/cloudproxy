@@ -66,7 +66,8 @@ int main(int argc, char **argv) {
     printf("client_program_data.InitTao failed\n");
     return 1;
   }
-  printf("Simple client name: %s\n", client_program_data.tao_name_.c_str());
+
+  // printf("Simple client name: %s\n", client_program_data.tao_name_.c_str());
 
   // Open the Tao Channel using the Program key.  This program does all the
   // standard channel negotiation and presents the secure server name after

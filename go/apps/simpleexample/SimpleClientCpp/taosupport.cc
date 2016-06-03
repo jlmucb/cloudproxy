@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 #include <string>
+#include <vector>
 #include <stdlib.h>
 
 #include <gflags/gflags.h>
@@ -55,6 +56,29 @@ using google::protobuf::io::StringOutputStream;
 using google::protobuf::io::ArrayInputStream;
 
 #define BUFSIZE 8192
+
+void printTerm(tao::Term* term) {
+  if (dynamic_cast<tao::Prin*> (term)) {
+    tao::Prin* prin = dynamic_cast<tao::Prin*>(term);
+    printf("%s(", prin->type_.c_str());
+    printTerm(prin->key_.get());
+    printf(")");
+    tao::SubPrin* w = prin->ext_.get();
+    for (std::vector<std::unique_ptr<tao::PrinExt>>::iterator
+           it = w->elts_.begin(); it != w->elts_.end(); ++it) {
+      printf(".");
+      tao::PrinExt* prinExt = (*it).get();
+      printf("%s(", prinExt->name_.c_str());
+      printTerm(prinExt->args_[0].get());
+      printf(")");
+    }
+  } else if (dynamic_cast<tao::Bytes*> (term)) {
+    tao::Bytes* bytes = dynamic_cast<tao::Bytes*> (term);
+    string* hex = ByteToHexLeftToRight((int)bytes->elt_.size(), (byte*)bytes->elt_.data());
+    printf("%s", hex->c_str());
+    delete hex;
+  }
+}
 
 TaoChannel::TaoChannel() {
   peerCertificate_ = nullptr;
@@ -283,9 +307,6 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     return false;
   }
 
-#if 0
-  // Tom: How do I get a printable Tao name out of tao_name_?
-  // This is the important one
   tao::Prin unmarshalled_tao_name;
   {
     ArrayInputStream raw_input_stream(tao_name_.data(),
@@ -295,13 +316,9 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
         printf("Can't unmarshal tao name\n");
     }
   }
-
-printf("test unmarshal: ");
-PrintBytes(sizeof(unmarshalled_tao_name), (byte*)&unmarshalled_tao_name);
-printf("\n");
-printf("\n\nsimpleclient_cc, Taoname: %s\n", tao_name_.c_str());
-PrintBytes(tao_name_.size(), (byte*)tao_name_.data());printf("\n");
-#endif
+  printf("\nClient name: ");
+  printTerm((tao::Term*)&unmarshalled_tao_name);
+  printf("\n");
 
   // Get (or initialize) my symmetric keys.
   if (!InitializeSymmetricKeys(path, 32)) {
@@ -448,27 +465,6 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   for (int j = 0; j < response.cert_chain_size(); j++) {
       certChain->push_back(string(response.cert_chain(j)));
   }
-
-  /*
-  tao::Says says;
-  // serialized_statement is a says.
-  // Says has speaks for message.
-  // Delegate is in speaksfor is a Prin, it's bytes are the certificate.
-  {
-    ArrayInputStream raw_input_stream(serialized_statement.data(),
-                                      serialized_statement.size());
-    CodedInputStream input_stream(&raw_input_stream);
-    if (!says.Unmarshal(&input_stream)) {
-      printf("Domain channel parse failure.\n");
-      return false;
-    }
-  }
-    Todo:  Tom?
-    tao::Speaksfor speaksfor = says.message_;
-    tao::Prin delegate = speaksfor.delegate_;
-    tao::TermVar cert_form = delegate.key_;
-    program_cert_ =  cert_form.value_;
-   */
   return true;
 }
 

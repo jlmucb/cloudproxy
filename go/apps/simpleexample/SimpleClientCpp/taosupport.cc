@@ -80,6 +80,29 @@ void printTerm(tao::Term* term) {
   }
 }
 
+void SerializeTermToString(tao::Term* term, string& name) {
+  if (dynamic_cast<tao::Prin*> (term)) {
+    tao::Prin* prin = dynamic_cast<tao::Prin*>(term);
+    name += prin->type_ + "("; 
+    SerializeTermToString(prin->key_.get(), name);
+    name += ")";
+    tao::SubPrin* w = prin->ext_.get();
+    for (std::vector<std::unique_ptr<tao::PrinExt>>::iterator
+           it = w->elts_.begin(); it != w->elts_.end(); ++it) {
+      name += ".";
+      tao::PrinExt* prinExt = (*it).get();
+      name += prinExt->name_ + "(";
+      SerializeTermToString(prinExt->args_[0].get(), name);
+      name += ")";
+    }
+  } else if (dynamic_cast<tao::Bytes*> (term)) {
+    tao::Bytes* bytes = dynamic_cast<tao::Bytes*> (term);
+    string* hex = ByteToHexLeftToRight((int)bytes->elt_.size(), (byte*)bytes->elt_.data());
+    name += *hex;
+    delete hex;
+  }
+}
+
 TaoChannel::TaoChannel() {
   peerCertificate_ = nullptr;
 }
@@ -568,26 +591,12 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   // Get the program cert from the domain service.
 
 #if 0
-  // I guess we dont need this
   // First, we need the endorsement cert.
   string endorsement_cert_file_name = path + "/endorsementCert";
   string endorse_cert;
   if (!ReadFile(endorsement_cert_file_name, &endorse_cert)) {
     printf("InitializeProgramKey: couldn't read endorsement cert.\n");
     return false;
-  }
-  string serialized_prin;
-
-  std::vector<std::unique_ptr<tao::PrinExt>> v;
-  v.push_back(tao::make_unique<tao::PrinExt>("Validated", std::vector<std::unique_ptr<tao::Term>>()));
-
-  // Should this be "ProgramKeyHash" rather than "key"?
-  tao::Prin p("key", tao::make_unique<tao::Bytes>(key_bytes->c_str()),
-         tao::make_unique<tao::SubPrin>(std::move(v)));
-  {
-    StringOutputStream raw_output_stream(&serialized_prin);
-    CodedOutputStream output_stream(&raw_output_stream);
-    p.Marshal(&output_stream);
   }
 #endif
 

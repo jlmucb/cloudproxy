@@ -283,10 +283,6 @@ char* extEntry::getValue() {
 }
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
-#if 0
-  // Temporary because of go verification
-  return true;
-#endif
   // add extensions
   X509V3_CTX ctx;
   X509V3_set_ctx_nodb(&ctx);
@@ -537,8 +533,7 @@ bool VerifyX509CertificateChain(X509* cacert, X509* cert) {
   X509_STORE_CTX *store_ctx = X509_STORE_CTX_new();
   X509_STORE *store = X509_STORE_new();
   X509_STORE_add_cert(store, cacert);
-  // int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
-  //                      X509 *x509, STACK_OF(X509) *chain);
+  // int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509, STACK_OF(X509) *chain);
   X509_STORE_CTX_init(store_ctx, store, cacert, nullptr);
   int ret = X509_verify_cert(store_ctx);
   if (ret <= 0)
@@ -562,6 +557,7 @@ SslChannel::~SslChannel() {
   fd_ = -1;
   // clear private_key_;
 #if 0
+  // Doesn't need to be freed, context free takes care of it.
   if (ssl_ != nullptr) {
     SSL_free(ssl_);
   }

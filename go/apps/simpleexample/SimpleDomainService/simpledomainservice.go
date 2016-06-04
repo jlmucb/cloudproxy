@@ -123,7 +123,6 @@ fmt.Printf("\nSimpleDomainService: key principal: %s, peogram principal: %s\n", 
 	clientKey, err := tao.FromPrincipal(clientKeyPrincipal)
 	if err != nil {
 		log.Printf("DomainRequest: Can't do FromPrincipal\n")
-fmt.Printf("DomainRequest: Can't do FromPrincipal\n")
 		return false, err
 	}
 	notBefore := time.Now()
@@ -172,7 +171,8 @@ fmt.Printf("DomainRequest: Can't do FromPrincipal\n")
         ra.Error = &zero
         ra.SignedCert= clientCert
 
-	// Add cert chain
+	// Add cert chain (just policy cert for now).
+	ra.CertChain= append(ra.CertChain, policyKey.Cert.Raw)
 
 	_, err = ms.WriteMessage(&ra)
 	if err != nil {

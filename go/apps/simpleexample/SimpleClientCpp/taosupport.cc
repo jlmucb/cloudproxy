@@ -452,12 +452,10 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
     return false;
   }
   // Fill in program cert.
-  // program_cert = response.signed_cert();
   program_cert->assign((const char*)response.signed_cert().data(),
                        response.signed_cert().size());
 
   // Cert chain
-  // response.add_cert_chain(str);
   for (int j = 0; j < response.cert_chain_size(); j++) {
       certChain->push_back(string(response.cert_chain(j)));
   }
@@ -483,7 +481,6 @@ bool TaoProgramData::InitializeSymmetricKeys(string& path, int keysize) {
   }
 
   // Create keys, should really be a call to GetRandom.
-  // TODO: free this
   program_sym_key_ = (byte*)malloc(keysize);
   if (program_sym_key_ == nullptr) {
     printf("InitializeSymmetricKeys: Can't malloc symmetric key.\n");
@@ -562,7 +559,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   }
 
   // Get the program cert from the domain service.
-
+  // if parent it a tpm.
 #if 0
   // First, we need the endorsement cert.
   string endorsement_cert_file_name = path + "/endorsementCert";
@@ -661,19 +658,8 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
   } else if (pKey->type == EVP_PKEY_EC) {
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(pKey);
-#if 0
-    n = i2d_EC_PUBKEY(ec_key, &ptr);
-    if (n <= 0) {
-      printf("GetKeyBytes: Can't i2d ECC public key\n");
-      return nullptr;
-    }
-    byte ec_key_hash[32];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, out, n);
-    SHA256_Final(ec_key_hash, &sha256);
-    key_bytes = ByteToHexLeftToRight(32, ec_key_hash);
-#else
+    // Someday meybe this can just be a hash of 
+    // n = i2d_EC_PUBKEY(ec_key, &ptr);
     key_bytes = new string;
     ecMarshal ec_params;
     ec_params.compress_ = 4;
@@ -707,7 +693,6 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     ck.set_algorithm(tao::CryptoKey_CryptoAlgorithm::CryptoKey_CryptoAlgorithm_ECDSA_SHA);
     ck.set_key(vk_proto);
     ck.SerializeToString(key_bytes);
-#endif
   } else {
     printf("GetKeyBytes: unsupported key type.\n");
     return nullptr;

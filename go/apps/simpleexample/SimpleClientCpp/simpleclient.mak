@@ -48,6 +48,10 @@ export LD_LIBRARY_PATH=/usr/local/lib
 LDFLAGS_SHORT=-lprotobuf -lgtest -lgflags -lpthread -lssl -lglog -lcrypto
 LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog -lmodp
 
+#ifdef MAC_OS
+LIB_EXTRA_MAC=-L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH)
+#endif
+
 dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o $(O)/ca.pb.o $(O)/attestation.pb.o \
 	$(O)/datalog_guard.pb.o $(O)/acl_guard.pb.o $(O)/taosupport.pb.o \
 	$(O)/domain_policy.pb.o $(O)/keys.pb.o $(O)/simpleclient_cc.o
@@ -61,8 +65,6 @@ dobj_server=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/server_test.o
 dobj_client=$(O)/helpers.o $(O)/taosupport.pb.o $(O)/client_test.o
 
 all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/simple_server_test.exe $(EXE_DIR)/simple_client_test.exe $(EXE_DIR)/simpleclient_cc.exe $(EXE_DIR)/gen_keys.exe $(EXE_DIR)/gen_keys_test.exe $(EXE_DIR)/server_test.exe $(EXE_DIR)/client_test.exe
-#For Macs
-#all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/simple_server_test.exe $(EXE_DIR)/simple_client_test.exe#$(EXE_DIR)/simpleclient_cc.exe
 
 clean:
 	@echo "removing object files"
@@ -77,37 +79,31 @@ $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 
 $(EXE_DIR)/helpers_test.exe: $(dobj_test)
 	@echo "linking helpers_test"
-	$(LINK) -o $(EXE_DIR)/helpers_test.exe $(dobj_test) -L/Domains $(LDFLAGS_SHORT)
-#For Macs
-#	$(LINK) -o $(EXE_DIR)/helpers_test.exe $(dobj_test) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+	$(LINK) -o $(EXE_DIR)/helpers_test.exe $(dobj_test) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
 $(EXE_DIR)/simple_client_test.exe: $(dobj_simple_client)
 	@echo "linking simple_client_test"
-	$(LINK) -o $(EXE_DIR)/simple_client_test.exe $(dobj_simple_client) -L/Domains $(LDFLAGS_SHORT)
-#For Macs
-#	$(LINK) -o $(EXE_DIR)/simple_client_test.exe $(dobj_simple_client) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+	$(LINK) -o $(EXE_DIR)/simple_client_test.exe $(dobj_simple_client) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
 $(EXE_DIR)/simple_server_test.exe: $(dobj_simple_server)
 	@echo "linking simple_server_test"
-	$(LINK) -o $(EXE_DIR)/simple_server_test.exe $(dobj_simple_server) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+	$(LINK) -o $(EXE_DIR)/simple_server_test.exe $(dobj_simple_server) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
 $(EXE_DIR)/client_test.exe: $(dobj_client)
 	@echo "linking client_test"
-	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) -L/Domains $(LDFLAGS_SHORT)
-#For Macs
-#	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
 $(EXE_DIR)/server_test.exe: $(dobj_server)
 	@echo "linking server_test"
-	$(LINK) -o $(EXE_DIR)/server_test.exe $(dobj_server) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+	$(LINK) -o $(EXE_DIR)/server_test.exe $(dobj_server) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
 $(EXE_DIR)/gen_keys_test.exe: $(dobj_gen_keys_test)
 	@echo "linking gen_keys_test"
-	$(LINK) -o $(EXE_DIR)/gen_keys_test.exe $(dobj_gen_keys_test) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+	$(LINK) -o $(EXE_DIR)/gen_keys_test.exe $(dobj_gen_keys_test) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
 $(EXE_DIR)/gen_keys.exe: $(dobj_gen_keys)
 	@echo "linking gen_keys"
-	$(LINK) -o $(EXE_DIR)/gen_keys.exe $(dobj_gen_keys) -L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH) -L/Domains $(LDFLAGS_SHORT)
+	$(LINK) -o $(EXE_DIR)/gen_keys.exe $(dobj_gen_keys) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
 $(O)/helpers.o: $(S)/helpers.cc
 	@echo "compiling helpers.cc"

@@ -729,12 +729,16 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
   } else if (pKey->type == EVP_PKEY_EC) {
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(pKey);
-    // Someday meybe this can just be a hash of 
+    // Someday maybe this can just be a hash of 
     // n = i2d_EC_PUBKEY(ec_key, &ptr);
     key_bytes = new string;
     ecMarshal ec_params;
     ec_params.compress_ = 4;
     BN_CTX* bn_ctx = BN_CTX_new();
+    if (bn_ctx == nullptr) {
+      printf("Can't get BN_CTX\n");
+      return nullptr;
+    }
     BIGNUM x;
     BIGNUM y;
     string vk_proto;

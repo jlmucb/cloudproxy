@@ -37,47 +37,74 @@ typedef unsigned char byte;
 
 class TaoProgramData {
 public:
+//private:
+
+  // Most of these should be private
+
+  // Has InitTao initialized me successfully?
   bool  initialized_;
+  // Channel to communicate with host.
   tao::FDMessageChannel* msg_;
+  // Tao object interface
   tao::Tao* tao_;
 
-  int endorsement_cert_;
+  // Endorsement or AIK for TPM
+  string endorsement_cert_;
 
+  // Marshalled tao name (a Prin).
   string marshalled_tao_name_;
+  // Printable tao name
   string tao_name_;
 
   string policy_cert_;
   X509* policyCertificate_;
 
-  // Tao data.
+  // Program key.
   string program_key_type_;
   EVP_PKEY* program_key_;
 
+  // Der encoded and parsed X509 program certificate.
   string program_cert_;
   X509* programCertificate_;
 
+  // Cert chain for Program Certificate.
   std::list<string> certs_in_chain_;
 
   int size_program_sym_key_;
   byte* program_sym_key_;
   string program_file_path_;
 
+public:
   TaoProgramData();
   ~TaoProgramData();
+
+  // Accessors
+  bool GetTaoName(string* name);
+  bool GetSymKeys(string* symkeys);
+  bool GetPolicyCert(string* cert);
+  bool GetProgramKeyType(string* keyType);
+  EVP_PKEY* GetProgramKey();
+  X509* GetPolicyCertificate();
+  bool GetProgramCert(string* cert);
+  std::list<string>* GetCertChain();
+
   void ClearProgramData();
   bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&,
                string& network, string& address, string& port);
   void Print();
 
+  // Maybe the Initialize routines should be private.
   bool InitializeProgramKey(string& path, string& key_type, int key_size,
                             string& network, string& address, string& port,
                             string& hostType, string& hostCert);
   bool InitializeSymmetricKeys(string& path, int keysize);
-  bool ExtendName(string& subprin);
 
+  bool ExtendName(string& subprin);
   bool Seal(string& to_seal, string* sealed);
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
+
+  // This should be private.
   bool RequestDomainServiceCert(string& network, string& address, string& port,
           string& attestation_string, string& endorsement_cert,
           string* program_cert, std::list<string>* certsinChain);

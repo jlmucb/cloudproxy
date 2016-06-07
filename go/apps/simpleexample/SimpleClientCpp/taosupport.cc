@@ -199,6 +199,52 @@ TaoProgramData::~TaoProgramData() {
   ClearProgramData();
 }
 
+bool TaoProgramData::GetTaoName(string* name) {
+  if (!initialized_)
+    return false;
+  *name = tao_name_;
+  return true;
+}
+
+bool TaoProgramData::GetSymKeys(string* symkeys) {
+  if (!initialized_)
+    return false;
+  symkeys->assign((const char*)program_sym_key_, size_program_sym_key_);
+  return true;
+}
+
+bool TaoProgramData::GetPolicyCert(string* cert) {
+  if (!initialized_)
+    return false;
+  *cert = policy_cert_;
+  return true;
+}
+
+X509* TaoProgramData::GetPolicyCertificate() {
+  if (!initialized_)
+    return nullptr;
+  return policyCertificate_;
+}
+
+bool TaoProgramData::GetProgramKeyType(string* keyType) {
+  if (!initialized_)
+    return false;
+  *keyType = program_key_type_;
+  return true;
+}
+
+EVP_PKEY* TaoProgramData::GetProgramKey() {
+  if (!initialized_)
+    return nullptr;
+  return program_key_;
+}
+
+std::list<string>* TaoProgramData::GetCertChain() {
+  if (!initialized_)
+    return nullptr;
+  return &certs_in_chain_;
+}
+
 void TaoProgramData::ClearProgramData() {
   initialized_ = false;
   marshalled_tao_name_.clear();

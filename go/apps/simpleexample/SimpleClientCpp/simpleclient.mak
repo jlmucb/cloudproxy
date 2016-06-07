@@ -75,7 +75,7 @@ clean:
 $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	@echo "linking simpleclient"
 	$(LINK) -o $(EXE_DIR)/simpleclient_cc.exe $(dobj_simpleclient) \
-	-L/Domains -lauth -ltao $(LDFLAGS)
+	$(LIB_EXTRA_MAC) -L/Domains -lauth -ltao $(LDFLAGS)
 
 $(EXE_DIR)/helpers_test.exe: $(dobj_test)
 	@echo "linking helpers_test"

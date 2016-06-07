@@ -36,8 +36,7 @@ typedef unsigned char byte;
 #endif
 
 class TaoProgramData {
-public:
-//private:
+private:
 
   // Most of these should be private
 
@@ -48,7 +47,7 @@ public:
   // Tao object interface
   tao::Tao* tao_;
 
-  // Endorsement or AIK for TPM
+  // Endorsement for AIK for TPM
   string endorsement_cert_;
 
   // Marshalled tao name (a Prin).
@@ -81,11 +80,18 @@ public:
   // Accessors
   bool GetTaoName(string* name);
   bool GetSymKeys(string* symkeys);
+
   bool GetPolicyCert(string* cert);
+  X509* GetPolicyCertificate();
+  void SetPolicyCertificate(X509* c);
+
   bool GetProgramKeyType(string* keyType);
   EVP_PKEY* GetProgramKey();
-  X509* GetPolicyCertificate();
+
+  X509* GetProgramCertificate();
   bool GetProgramCert(string* cert);
+  void SetProgramCertificate(X509* c);
+
   std::list<string>* GetCertChain();
 
   void ClearProgramData();
@@ -104,6 +110,7 @@ public:
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
 
+private:
   // This should be private.
   bool RequestDomainServiceCert(string& network, string& address, string& port,
           string& attestation_string, string& endorsement_cert,

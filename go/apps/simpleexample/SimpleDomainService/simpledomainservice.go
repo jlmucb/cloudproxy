@@ -117,7 +117,7 @@ fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 		log.Printf("DomainRequest: name verification failed\n")
 		return false, err
 	}
-fmt.Printf("\nSimpleDomainService: key principal: %s, peogram principal: %s\n", clientKeyPrincipal, programPrincipalName)
+fmt.Printf("\nSimpleDomainService: key principal: %s, program principal: %s\n", clientKeyPrincipal, programPrincipalName)
 
 	// Sign program certificate.
 	clientKey, err := tao.FromPrincipal(clientKeyPrincipal)

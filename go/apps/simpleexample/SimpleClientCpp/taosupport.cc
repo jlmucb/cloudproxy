@@ -91,48 +91,55 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     string& serverAddress, string& port) {
 
   // Parse policy cert and program cert.
-  if (client_program_data.policy_cert_.size() == 0 ) {
+  string policy_cert;
+  if (!client_program_data.GetPolicyCert(&policy_cert) ||
+       policy_cert.size() == 0 ) {
     printf("No policy cert.\n");
     return false;
   }
-  if (client_program_data.policyCertificate_ == nullptr) {
-    byte* pc = (byte*)client_program_data.policy_cert_.data();
-    client_program_data.policyCertificate_ = d2i_X509(nullptr, (const byte**)&pc,
-          client_program_data.policy_cert_.size());
-    if (client_program_data.policyCertificate_ == nullptr) {
-      printf("No policy certificate.\n");
-      return false;
-    }
+  X509* policyCertificate = nullptr;
+  byte* pc = (byte*)policy_cert.data();
+  policyCertificate = d2i_X509(nullptr,
+      (const byte**)&pc, policy_cert.size());
+  if (policyCertificate == nullptr) {
+    printf("Can't parse policy certificate.\n");
+    return false;
   }
-  if (client_program_data.program_cert_.size() == 0 ) {
+  client_program_data.SetPolicyCertificate(policyCertificate);
+
+  string program_cert;
+  if (!client_program_data.GetProgramCert(&program_cert) ||
+       program_cert.size() == 0 ) {
     printf("No program certificate.\n");
     return false;
   }
-  if (client_program_data.programCertificate_ == nullptr) {
-    if (client_program_data.program_cert_.size() == 0) {
-      printf("No program cert read in.\n");
-      return false;
-    }
-    byte* pc = (byte*)client_program_data.program_cert_.data();
-    client_program_data.programCertificate_= d2i_X509(nullptr, (const byte**)&pc,
-          client_program_data.program_cert_.size());
-    if (client_program_data.programCertificate_ == nullptr) {
-      printf("Can't translate program certificate.\n");
-      return false;
-    }
+
+  pc = (byte*)program_cert.data();
+  X509* programCertificate= d2i_X509(nullptr, (const byte**)&pc,
+        program_cert.size());
+  if (programCertificate == nullptr) {
+    printf("Can't translate program certificate.\n");
+    return false;
   }
-  if (client_program_data.program_key_ == nullptr) {
+  client_program_data.SetProgramCertificate(programCertificate);
+  if (client_program_data.GetProgramKey() == nullptr) {
       printf("No program private key.\n");
+      return false;
+  }
+
+  string key_type;
+  if (!client_program_data.GetProgramKeyType(&key_type)) {
+      printf("No private key type.\n");
       return false;
   }
 
   // Open TLS channel with Program cert.
   string network("tcp");
   if (!peer_channel_.InitClientSslChannel(network, serverAddress, port,
-                    client_program_data.policyCertificate_,
-                    client_program_data.programCertificate_,
-                    client_program_data.program_key_type_,
-                    client_program_data.program_key_,
+                    client_program_data.GetPolicyCertificate(),
+                    client_program_data.GetProgramCertificate(),
+                    key_type,
+                    client_program_data.GetProgramKey(),
                     SSL_SERVER_VERIFY_CLIENT_VERIFY)) {
     printf("Can't Init Ssl channel.\n");
     return false;
@@ -199,6 +206,14 @@ TaoProgramData::~TaoProgramData() {
   ClearProgramData();
 }
 
+void TaoProgramData::SetPolicyCertificate(X509* c) {
+  policyCertificate_ = c;
+}
+
+void TaoProgramData::SetProgramCertificate(X509* c) {
+  programCertificate_ = c;
+}
+
 bool TaoProgramData::GetTaoName(string* name) {
   if (!initialized_)
     return false;
@@ -237,6 +252,15 @@ EVP_PKEY* TaoProgramData::GetProgramKey() {
   if (!initialized_)
     return nullptr;
   return program_key_;
+}
+
+bool TaoProgramData::GetProgramCert(string* cert) {
+  *cert = program_cert_;
+  return true;
+}
+
+X509* TaoProgramData::GetProgramCertificate() {
+  return programCertificate_;
 }
 
 std::list<string>* TaoProgramData::GetCertChain() {
@@ -391,6 +415,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
     printf("Can't init program keys.\n");
     return false;
   }
+  initialized_ = true;
   return true;
 }
 

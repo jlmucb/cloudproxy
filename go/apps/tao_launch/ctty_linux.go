@@ -22,7 +22,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/golang/crypto/ssh/terminal"
+	// "github.com/golang/crypto/ssh/terminal"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func isCtty(fd int) bool {

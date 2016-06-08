@@ -40,7 +40,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 
-	"github.com/golang/crypto/ssh"
+	// "github.com/golang/crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 // A CoreOSConfig contains the details needed to start a new CoreOS VM.

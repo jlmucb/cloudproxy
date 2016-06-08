@@ -314,3 +314,44 @@ func (server linuxHostAdminServerStub) Shutdown(r *LinuxHostAdminRPCRequest, s *
 	close(server.Done)
 	return err
 }
+
+// Serve listens on sock for new connections and services them.
+func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
+	// Set the socket to allow peer credentials to be passed
+	err := NewAuthenticatedFileSocket(sock);
+	if err != nil {
+		return err
+	}
+
+	connections := make(chan *net.UnixConn, 1)
+	errors := make(chan error, 1)
+	go func() {
+		for {
+			conn, err := sock.AcceptUnix()
+			if err != nil {
+				errors <- err
+				break
+			}
+			connections <- conn
+		}
+	}()
+
+	for {
+		var conn *net.UnixConn
+		select {
+		case conn = <-connections:
+			break
+		case err = <-errors:
+			return err
+		case <-server.Done:
+			return nil
+		}
+		s := rpc.NewServer()
+		oob := util.NewOOBUnixConn(conn)
+		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub{oob, server.lh, server.Done})
+		if err != nil {
+			return err
+		}
+		go s.ServeCodec(protorpc.NewServerCodec(oob))
+	}
+}

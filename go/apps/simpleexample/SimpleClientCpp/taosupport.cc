@@ -767,7 +767,7 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     }
     memcpy(ec_params.X_, (byte*)x_str.data(), x_str.size());
     memcpy(ec_params.Y_, (byte*)y_str.data(), y_str.size());
-    // BN_CTX_free(bn_ctx); BN_free(x); BN_free(y);
+    BN_CTX_free(bn_ctx); BN_free(x); BN_free(y);
 
     // set and marshal verifying key
     tao::ECDSA_SHA_VerifyingKey_v1 vk;

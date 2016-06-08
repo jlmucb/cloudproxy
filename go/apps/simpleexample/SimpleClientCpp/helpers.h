@@ -68,6 +68,8 @@ bool VerifyX509CertificateChain(X509* cacert, X509* cert);
 
 BIGNUM* bin_to_BN(int len, byte* buf);
 string* BN_to_bin(BIGNUM& n);
+bool BN_to_string(BIGNUM& n, string* out);
+
 void XorBlocks(int size, byte* in1, byte* in2, byte* out);
 bool AesCtrCrypt(int key_size_bits, byte* key, int size,
                  byte* in, byte* out);

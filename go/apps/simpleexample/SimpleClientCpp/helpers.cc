@@ -220,6 +220,14 @@ string* BN_to_bin(BIGNUM& n) {
   return new string((const char*)buf, len);
 }
 
+bool BN_to_string(BIGNUM& n, string* out) {
+  byte buf[MAX_SIZE_PARAMS];
+
+  int len = BN_bn2bin(&n, buf);
+  out->assign((const char*)buf, len);
+  return true;
+}
+
 EVP_PKEY* GenerateKey(string& keyType, int keySize) {
   EVP_PKEY* pKey = EVP_PKEY_new();
   if (pKey == nullptr) {

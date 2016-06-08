@@ -350,6 +350,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   SHA256_Init(&sha256);
   SHA256_Update(&sha256, (byte*)policy_cert_.data(), policy_cert_.size());
   SHA256_Final(policy_hash, &sha256);
+  // Actually, I think we're supposed to stuff the hash bytes in the name and not hex transform them.
   string* hexPolicyHash = ByteToHexLeftToRight(32, policy_hash);
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
@@ -630,9 +631,9 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   }
 
   // Get the program cert from the domain service.
-  // if parent it a tpm.
 #if 0
-  // First, we need the endorsement cert.
+  // First, we need the endorsement cert,
+  // if parent is a tpm.
   string endorsement_cert_file_name = path + "/endorsementCert";
   string endorse_cert;
   if (!ReadFile(endorsement_cert_file_name, &endorse_cert)) {
@@ -728,9 +729,12 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     SHA256_Final(rsa_key_hash, &sha256);
     key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
   } else if (pKey->type == EVP_PKEY_EC) {
+    // Use get0?
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(pKey);
+
     // Someday maybe this can just be a hash of 
     // n = i2d_EC_PUBKEY(ec_key, &ptr);
+
     key_bytes = new string;
     ecMarshal ec_params;
     ec_params.compress_ = 4;
@@ -739,20 +743,31 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
       printf("Can't get BN_CTX\n");
       return nullptr;
     }
-    BIGNUM x;
-    BIGNUM y;
+    BIGNUM* x = BN_new();
+    BIGNUM* y = BN_new();
     string vk_proto;
     string ec_params_str;
 
     // Get curve, X and Y
     const EC_POINT* public_point = EC_KEY_get0_public_key(ec_key);
     const EC_GROUP* group = EC_KEY_get0_group(ec_key);
-    EC_POINT_get_affine_coordinates_GFp(group, public_point, &x, &y, bn_ctx);
-    string* x_str = BN_to_bin(x);
-    string* y_str = BN_to_bin(y);
-    memcpy(ec_params.X_, (byte*)x_str->data(), x_str->size());
-    memcpy(ec_params.Y_, (byte*)y_str->data(), y_str->size());
-    // delete x_str; delete y_str; BN_CTX_free(bn_ctx);
+    if (1 != EC_POINT_get_affine_coordinates_GFp(group, public_point, x, y, bn_ctx)) {
+      printf("Can't EC_POINT_get_affine_coordinates_GFp\n");
+      return nullptr;
+    }
+    string x_str;
+    string y_str;
+    if (!BN_to_string(*x, &x_str)) {
+      printf("Can't convert x\n");
+      return nullptr;
+    }
+    if (!BN_to_string(*y, &y_str)) {
+      printf("Can't convert y\n");
+      return nullptr;
+    }
+    memcpy(ec_params.X_, (byte*)x_str.data(), x_str.size());
+    memcpy(ec_params.Y_, (byte*)y_str.data(), y_str.size());
+    // BN_CTX_free(bn_ctx); BN_free(x); BN_free(y);
 
     // set and marshal verifying key
     tao::ECDSA_SHA_VerifyingKey_v1 vk;

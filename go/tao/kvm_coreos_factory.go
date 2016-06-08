@@ -40,6 +40,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 
+	// "github.com/golang/crypto/ssh"
 	"golang.org/x/crypto/ssh"
 )
 

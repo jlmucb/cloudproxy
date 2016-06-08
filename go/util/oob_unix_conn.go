@@ -42,8 +42,14 @@ type OOBUnixConn struct {
 	m         sync.Mutex // protects recvFiles, sendFDs, and peerCred
 	recvFiles []*os.File
 	sendFDs   []int
-	peerCred  *syscall.Ucred
+	peerCred  *Ucred
 	*net.UnixConn
+}
+
+// Ucred holds credentials of a peer process.
+type Ucred struct {
+	Uid uint32
+	Gid uint32
 }
 
 // NewOOBUnixConn returns a new util.OOBUnixConn, which provides the same
@@ -70,14 +76,6 @@ func (s *OOBUnixConn) SharedFiles() []*os.File {
 	return fds
 }
 
-// PeerCred retreives the most recently passed peer credential, or nil if no
-// credentials have been received yet.
-func (s *OOBUnixConn) PeerCred() *syscall.Ucred {
-	s.m.Lock()
-	defer s.m.Unlock()
-	return s.peerCred
-}
-
 func (s *OOBUnixConn) Write(buf []byte) (int, error) {
 	var oob []byte
 	s.m.Lock()
@@ -90,40 +88,6 @@ func (s *OOBUnixConn) Write(buf []byte) (int, error) {
 	n, oobn, err := s.WriteMsgUnix(buf, oob, nil)
 	if err == nil && oobn != len(oob) {
 		err = ErrOOBSendFailed
-	}
-	return n, err
-}
-
-func (s *OOBUnixConn) Read(p []byte) (n int, err error) {
-	var oob [OOBMaxLength]byte
-	n, oobn, _, _, err := s.ReadMsgUnix(p, oob[:])
-	if err == nil && n > 0 && oobn > 0 {
-		scm, err := syscall.ParseSocketControlMessage(oob[0:oobn])
-		if err != nil {
-			return n, err
-		}
-		s.m.Lock()
-		for _, m := range scm {
-			if m.Header.Level != syscall.SOL_SOCKET {
-				continue
-			}
-			switch m.Header.Type {
-			case syscall.SCM_RIGHTS:
-				if fds, err := syscall.ParseUnixRights(&m); err == nil {
-					for _, fd := range fds {
-						// Note: We wrap the raw FDs inside an os.File just
-						// once, early, to prevent double-free or leaking FDs.
-						f := NewFile(fd)
-						s.recvFiles = append(s.recvFiles, f)
-					}
-				}
-			case syscall.SCM_CREDENTIALS:
-				if ucred, err := syscall.ParseUnixCredentials(&m); err == nil {
-					s.peerCred = ucred
-				}
-			}
-		}
-		s.m.Unlock()
 	}
 	return n, err
 }

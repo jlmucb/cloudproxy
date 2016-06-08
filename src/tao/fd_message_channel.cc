@@ -41,7 +41,7 @@ void FDMessageChannel::FDClose() {
 }
 
 bool FDMessageChannel::SendData(const void *buffer, size_t buffer_len) {
-  if (IsClosed() < 0) {
+  if (IsClosed()) {
     LOG(ERROR) << "Could not send data, channel already closed";
     return false;
   }

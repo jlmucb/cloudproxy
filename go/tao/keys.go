@@ -41,7 +41,7 @@ import (
 
 	// "github.com/golang/crypto/hkdf"
 	// "github.com/golang/crypto/pbkdf2"
-	"golang/x/crypto/hkdf"
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/pbkdf2"
 )
 

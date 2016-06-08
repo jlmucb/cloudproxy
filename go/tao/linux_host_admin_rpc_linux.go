@@ -16,16 +16,11 @@ package tao
 
 import (
 	"net"
-	"os"
 	"syscall"
-
-	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	"github.com/jlmucb/cloudproxy/go/util"
-	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
 
 func NewAuthenticatedFileSocket(sock *net.UnixListener) (error) {
-	sockFile, err = sock.File()
+	sockFile, err := sock.File()
 	if err != nil {
 		return err
 		}

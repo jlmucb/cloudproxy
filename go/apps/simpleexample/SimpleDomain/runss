@@ -1,5 +1,5 @@
 #
 source ./defines
 #$BINPATH/tao run $BINPATH/simpleserver –pass xxx &
-sudo $BINPATH/tao run -tao_domain $DOMAIN  ../simpleserver –pass xxx &
+sudo $BINPATH/tao run -tao_domain $DOMAIN  /Domains/SimpleServer –pass xxx &
 

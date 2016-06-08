@@ -1,4 +1,4 @@
 #
 source ./defines
 # $BINPATH/tao run $BINPATH/simpledomainservice &
-sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/simpledomainservice &
+sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleDomainService &

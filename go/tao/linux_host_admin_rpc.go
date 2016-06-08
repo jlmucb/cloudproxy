@@ -21,7 +21,6 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	"syscall"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -172,52 +171,6 @@ type linuxHostAdminServerStub struct {
 // interface.
 func NewLinuxHostAdminServer(host *LinuxHost) LinuxHostAdminServer {
 	return LinuxHostAdminServer{host, make(chan bool, 1)}
-}
-
-// Serve listens on sock for new connections and services them.
-func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
-	// Set the socket to allow peer credentials to be passed
-	sockFile, err := sock.File()
-	if err != nil {
-		return err
-	}
-	err = syscall.SetsockoptInt(int(sockFile.Fd()), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1 /* true */)
-	sockFile.Close()
-	if err != nil {
-		return err
-	}
-
-	connections := make(chan *net.UnixConn, 1)
-	errors := make(chan error, 1)
-	go func() {
-		for {
-			conn, err := sock.AcceptUnix()
-			if err != nil {
-				errors <- err
-				break
-			}
-			connections <- conn
-		}
-	}()
-
-	for {
-		var conn *net.UnixConn
-		select {
-		case conn = <-connections:
-			break
-		case err = <-errors:
-			return err
-		case <-server.Done:
-			return nil
-		}
-		s := rpc.NewServer()
-		oob := util.NewOOBUnixConn(conn)
-		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub{oob, server.lh, server.Done})
-		if err != nil {
-			return err
-		}
-		go s.ServeCodec(protorpc.NewServerCodec(oob))
-	}
 }
 
 // StartHostedProgram is the server stub for LinuxHost.StartHostedProgram.

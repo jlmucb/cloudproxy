@@ -39,8 +39,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 
-	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/pbkdf2"
+	"github.com/golang/crypto/hkdf"
+	"github.com/golang/crypto/pbkdf2"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.

@@ -1,54 +1,65 @@
-Cloudproxy
+Cloudproxy Todo
 
 
 Sub-project		End State							People		When
 -----------		---------							------		----
-
-Mac version		Fake tao and tutorial runs on macs				Kevin   	June, 2016
-
-C++			C++ works and is in Nuts and Bolts				Tom/John	May, 2016
-
-Tpm2 integration	Tpm2 support, tpm1.2 and tpm2 scripts and Doc complete		John/Sid/Tom	May, 2016
+Mac version		Done
+C++			Done
+Key management library	Done
+CPDomainServer          Done
+CPSecretServer          Done
+Tpm2 integration	Tpm2 support, tpm1.2 and tpm2 scripts and Doc complete		John/Sid/Tom	June/July, 2016
 			for KVM and Linux                                                               Delayed
-
 State-protection	Local state rollback protection and monotonic counters		John		June, 2016
-                                                                                                        Delayed
-
-Code walk-through		
-Security Review		Full security review						John/Ben	July, 2016
-
-Key management library	CPRotation library: Epochs, key-protection chains		John		June, 2016 (done)
 			"PolicyKey says Program-Name canRead zone-keys"			Sid 		done
-
-Infrastructure servers	Full feature CPDomainServer					Sid, John?	Aug, 2016 (done)
-			Full feature CPSecretServer					Albert?		Oct, 2016 (done)
-			Auth for the masses
-
-New SecApp		Some nifty new app						Albert		Dec, 2016
-			and even standard for example apps
-
 Attackathon		Red teams (UCB?)						John		August, 2016
-
-New_HW			Support other HW mechanisms					Sid/John	Nov, 2016
-
 Industry Hackathon	Run application building thons					John		Sept, 2016
-
+New_HW			Support other HW mechanisms					Sid/John	Dec, 2016
 Industry App		Some deployed major player app							March, 2017
-
-Docker/Kubernetes in	Packaged support for Docker and Kubernetes deployment		John, Tom, Sid
-a box
+Docker/Kubernetes in	Packaged support for Docker and Kubernetes deployment		John, Tom, Sid  Aug, 2017?
 
 
-Todo:
+Platform
+  Tao name
+  Security review
+  Check: key wiping everywhere especially with errors.
+  Support RSA keys, P25519keys
+  Should the examples force SSL NOT to resume channels etc for better assurance?
+  Fix third_party generation
+  Swigs for Java, C, Python?
+  Client version
 
-Check: key wiping everywhere especially with errors.
+Deployment guide  (Done by 8/1/2016?) --- John and Sid
+  AIK, Endorsement cert production
+  TPM Host cert
+  TPM1.2 install
+  TPM 2.0 install
+  Container install
+  Get Kevin's policy changes checked in
 
-Revise simple example to use acl guard. (july --- Sid)
-Fix policy key generation so it can be exported in a standatd format.
+Simple example  (Done by 7/30/2016)  Sid, John
+  memory leaks
+  fix hash extension
+  Symmetric keys using key service
+  ACL Guard example
 
-Fix policy enforcement and names.  It should be loaded in and measured.
-Default should be run everything. (july)  See Kevin's mail
-Support RSA keys
-Names of keys should be hashes and provided for verification, not for getting keys.
+Q4    John, Sid
+  Google integration
 
-Should the examples force SSL NOT to resume channels etc for better assurance?
+App ideas
+  FileProxy II
+  BidProxy II
+  Finish Onion Router
+  LockBox
+  Audit
+  Red/Green with policy (Client)
+  Password protection (Client)
+  Credit Card/Payment (Client/Server)
+  Health
+  Monitor
+  Audit
+  Data Fusion example
+  IC app
+  Split key partition
+  HSM
+

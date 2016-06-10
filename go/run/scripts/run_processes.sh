@@ -21,7 +21,7 @@ FAKE_PASS=BogusPass
 # Make sure we have sudo privileges before trying to start the tao host
 sudo test true
 
-sudo "$TAO" host start -tao_domain "$TAO_DOMAIN" -pass $FAKE_PASS &
+sudo -E "$TAO" host start -tao_domain "$TAO_DOMAIN" -pass $FAKE_PASS &
 
 echo "Waiting for linux_host to start"
 sleep 5

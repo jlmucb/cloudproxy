@@ -394,10 +394,7 @@ func MakeTPMPrin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (auth
 		return auth.Prin{}, err
 	}
 
-	name := auth.Prin{
-		Type: "tpm",
-		Key:  auth.Bytes(aik),
-	}
+	name := auth.NewTPMPrin(aik)
 
 	asp := auth.PrinExt{
 		Name: "PCRs",

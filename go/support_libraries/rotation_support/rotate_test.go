@@ -15,13 +15,12 @@
 package rotation_support
 
 import (
-	"fmt"
 	"container/list"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/jlmucb/cloudproxy/go/support_libraries/protected_objects"
-	"github.com/jlmucb/cloudproxy/go/support_libraries/rotation_support"
 )
 
 func TestAddKeyEpoch(t *testing.T) {
@@ -29,7 +28,7 @@ func TestAddKeyEpoch(t *testing.T) {
 	obj_type := "file"
 	status := "active"
 	nb := time.Now()
-	validFor := 365*24*time.Hour
+	validFor := 365 * 24 * time.Hour
 	na := nb.Add(validFor)
 
 	obj_1, err := protected_objects.CreateObject("/jlm/file/file1", 1,
@@ -39,9 +38,9 @@ func TestAddKeyEpoch(t *testing.T) {
 	}
 	fmt.Printf("Obj: %s\n", *obj_1.NotBefore)
 	obj_type = "key"
-	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
+	obj_2, _ := protected_objects.CreateObject("/jlm/key/key1", 1,
 		&obj_type, &status, &nb, &na, nil)
-	obj_3, _:= protected_objects.CreateObject("/jlm/key/key2", 1,
+	obj_3, _ := protected_objects.CreateObject("/jlm/key/key2", 1,
 		&obj_type, &status, &nb, &na, nil)
 
 	// add them to object list
@@ -53,13 +52,13 @@ func TestAddKeyEpoch(t *testing.T) {
 	_ = protected_objects.AddObject(obj_list, *obj_2)
 	_ = protected_objects.AddObject(obj_list, *obj_3)
 
-	newkey := []byte{ 0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe, 
-			  0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02,
-			  0x07, 0x08, 0x07, 0x08, 0x07, 0x08, 0x07, 0x08,
-			  0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5,}
+	newkey := []byte{0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe,
+		0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02,
+		0x07, 0x08, 0x07, 0x08, 0x07, 0x08, 0x07, 0x08,
+		0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5}
 
-	oldkeyobj, newkeyobj, err := rotation_support.AddNewKeyEpoch(obj_list, "/jlm/key/key1",
-			"key", "active", "active", nb.String(), na.String(), newkey)
+	oldkeyobj, newkeyobj, err := AddNewKeyEpoch(obj_list, "/jlm/key/key1",
+		"key", "active", "active", nb.String(), na.String(), newkey)
 	if err != nil {
 		t.Fatal("Can't add new key epoch")
 	}
@@ -78,8 +77,8 @@ func TestAddKeyEpoch(t *testing.T) {
 	protected_objects.PrintObject(newkeyobj)
 	fmt.Printf("\n")
 
-	oldkeyobj, newkeyobj, err = rotation_support.AddNewKeyEpoch(obj_list, "/jlm/key/key4",
-			"key", "active", "active", nb.String(), na.String(), newkey)
+	oldkeyobj, newkeyobj, err = AddNewKeyEpoch(obj_list, "/jlm/key/key4",
+		"key", "active", "active", nb.String(), na.String(), newkey)
 	if err != nil {
 		t.Fatal("Can't add new key epoch")
 	}
@@ -104,11 +103,11 @@ func TestAddAndRotate(t *testing.T) {
 	obj_type := "file"
 	status := "active"
 	nb := time.Now()
-	validFor := 365*24*time.Hour
+	validFor := 365 * 24 * time.Hour
 	na := nb.Add(validFor)
 
-	protectorKeys := []byte{ 0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,
-			  0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,}
+	protectorKeys := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf}
 
 	obj_1, err := protected_objects.CreateObject("/jlm/file/file1", 1,
 		&obj_type, &status, &nb, &na, nil)
@@ -117,9 +116,9 @@ func TestAddAndRotate(t *testing.T) {
 	}
 	fmt.Printf("Obj: %s\n", *obj_1.NotBefore)
 	obj_type = "key"
-	obj_2, _:= protected_objects.CreateObject("/jlm/key/key1", 1,
+	obj_2, _ := protected_objects.CreateObject("/jlm/key/key1", 1,
 		&obj_type, &status, &nb, &na, protectorKeys)
-	obj_3, _:= protected_objects.CreateObject("/jlm/key/key2", 1,
+	obj_3, _ := protected_objects.CreateObject("/jlm/key/key2", 1,
 		&obj_type, &status, &nb, &na, protectorKeys)
 
 	// add them to object list
@@ -131,12 +130,12 @@ func TestAddAndRotate(t *testing.T) {
 	_ = protected_objects.AddObject(obj_list, *obj_2)
 	_ = protected_objects.AddObject(obj_list, *obj_3)
 
-	newkey := []byte{ 0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe, 
-			  0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02,
-			  0x07, 0x08, 0x07, 0x08, 0x07, 0x08, 0x07, 0x08,
-			  0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5,}
+	newkey := []byte{0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe, 0xff, 0xfe,
+		0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02,
+		0x07, 0x08, 0x07, 0x08, 0x07, 0x08, 0x07, 0x08,
+		0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5, 0xa6, 0xa5}
 
- 	p_obj_1, err := protected_objects.MakeProtectedObject(*obj_1, "/jlm/key/key1", 1, protectorKeys)
+	p_obj_1, err := protected_objects.MakeProtectedObject(*obj_1, "/jlm/key/key1", 1, protectorKeys)
 	if err != nil {
 		t.Fatal("Can't make protected object")
 	}
@@ -144,7 +143,7 @@ func TestAddAndRotate(t *testing.T) {
 		t.Fatal("Bad protected object")
 	}
 
- 	p_obj_2, err := protected_objects.MakeProtectedObject(*obj_2, "/jlm/key/key2", 1, protectorKeys)
+	p_obj_2, err := protected_objects.MakeProtectedObject(*obj_2, "/jlm/key/key2", 1, protectorKeys)
 	if err != nil {
 		t.Fatal("Can't make protected object")
 	}
@@ -175,8 +174,8 @@ func TestAddAndRotate(t *testing.T) {
 	}
 	fmt.Printf("\n\n")
 
-	new_obj, err := rotation_support.AddAndRotateNewKeyEpoch("/jlm/key/key2", "key", "active", "active",
-			nb.String(), na.String(), newkey, obj_list, protected_obj_list) 
+	new_obj, err := AddAndRotateNewKeyEpoch("/jlm/key/key2", "key", "active", "active",
+		nb.String(), na.String(), newkey, obj_list, protected_obj_list)
 	if err != nil {
 		fmt.Printf("Err: %s\n", err)
 		t.Fatal("Can't AddAndRotateNewKeyEpoch")
@@ -198,17 +197,16 @@ func TestAddAndRotate(t *testing.T) {
 	fmt.Printf("\n\n")
 	// Check we can open protected object with new protector
 	protected_kids := protected_objects.FindProtectedObjects(protected_obj_list, *new_obj.ObjId.ObjName,
-			*new_obj.ObjId.ObjEpoch)
+		*new_obj.ObjId.ObjEpoch)
 	if err != nil {
 		t.Fatal("Can't FindProtected kids")
 	}
 	e := protected_kids.Front()
 	o := e.Value.(protected_objects.ProtectedObjectMessage)
 	obj, err := protected_objects.RecoverProtectedObject(&o, new_obj.ObjVal)
-	if err != nil || obj == nil{
+	if err != nil || obj == nil {
 		t.Fatal("Can't recover first kid")
 	}
 	fmt.Printf("\n\nRecovered:\n")
 	protected_objects.PrintObject(obj)
 }
-

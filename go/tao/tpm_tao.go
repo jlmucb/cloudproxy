@@ -128,7 +128,8 @@ func (tt *TPMTao) GetTaoName() (name auth.Prin, err error) {
 
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
 func (tt *TPMTao) ExtendTaoName(subprin auth.SubPrin) error {
-	return errors.New("name extensions are not supported for TPMTao")
+	tt.name = tt.name.MakeSubprincipal(subprin)
+	return nil
 }
 
 // GetRandomBytes returns a slice of n random bytes.

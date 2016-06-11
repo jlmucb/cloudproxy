@@ -27,7 +27,7 @@ type RootHost struct {
 }
 
 // NewTaoRootHostFromKeys returns a RootHost that uses these keys.
-func NewTaoRootHostFromKeys(k *Keys) (Host, error) {
+func NewTaoRootHostFromKeys(k *Keys) (*RootHost, error) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.VerifyingKey == nil {
 		return nil, newError("missing required key for RootHost")
 	}
@@ -42,7 +42,7 @@ func NewTaoRootHostFromKeys(k *Keys) (Host, error) {
 
 // NewTaoRootHost generates a new RootHost with a fresh set of temporary
 // keys.
-func NewTaoRootHost() (Host, error) {
+func NewTaoRootHost() (*RootHost, error) {
 	k, err := NewTemporaryKeys(Signing | Crypting)
 	if err != nil {
 		return nil, err

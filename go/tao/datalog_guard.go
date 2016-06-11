@@ -17,6 +17,7 @@
 package tao
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -258,7 +259,12 @@ func NewDatalogGuard(verifier *Verifier) *DatalogGuard {
 // DatalogGuard(<key>) for persistent guards.
 func (g *DatalogGuard) Subprincipal() auth.SubPrin {
 	if g.Key == nil {
-		e := auth.PrinExt{Name: "DatalogGuard"}
+		rules, err := proto.Marshal(&g.db)
+		if err != nil {
+			return nil
+		}
+		hash := sha256.Sum256(rules)
+		e := auth.PrinExt{Name: "DatalogGuard", Arg: []auth.Term{auth.Bytes(hash[:])}}
 		return auth.SubPrin{e}
 	}
 	e := auth.PrinExt{Name: "DatalogGuard", Arg: []auth.Term{g.Key.ToPrincipal()}}

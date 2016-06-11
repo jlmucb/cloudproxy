@@ -394,3 +394,38 @@ func TestACLGuardString(t *testing.T) {
 		t.Fatalf("Got the wrong string representation of the ACLGuard: expected '%s', but got '%s'", tg.String(), ss)
 	}
 }
+
+func TestACLGuardSignedSubprincipal(t *testing.T) {
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
+	defer os.RemoveAll(tmpdir)
+
+	p := auth.Prin{
+		Type: "key",
+		Key:  auth.Bytes([]byte(`Fake key`)),
+	}
+	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
+		t.Fatal("Couldn't authorize a simple operation:", err)
+	}
+	name := tg.Subprincipal().String()
+	k := s.ToPrincipal().String()
+	if name != ".ACLGuard("+k+")" {
+		t.Fatalf("ACL guard has wrong name: %v", name)
+	}
+}
+
+func TestACLGuardUnsignedSubprincipal(t *testing.T) {
+	g := NewACLGuard(nil, ACLGuardDetails{})
+	err := g.Authorize(subj, "read", []string{"somefile"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := g.Subprincipal().String()
+	if name != ".ACLGuard([676cb0ac8b4df40e8223e89852f12c07c7b04073a242b4fad77030a459d324f8])" {
+		t.Fatalf("ACL guard has wrong name: %v", name)
+	}
+}

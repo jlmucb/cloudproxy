@@ -335,7 +335,7 @@ func (d *Domain) ExtendTaoName(tao Tao) error {
 
 	// This is a key Prin with type "key" and auth.Bytes as its Term
 	p := d.Keys.VerifyingKey.ToPrincipal()
-	b, ok := p.Key.(auth.Bytes)
+	b, ok := p.KeyHash.(auth.Bytes)
 	if !ok {
 		return newError("couldn't get an auth.Bytes value from the key")
 	}

@@ -78,7 +78,7 @@ type Tao interface {
 	// optional issuer, time and expiration will be given default values if nil.
 	// TODO(kwalsh) Maybe create a struct for these optional params? Or use
 	// auth.Says instead (in which time and expiration are optional) with a
-	// bogus Speaker field like key("") or nil("") or self, etc.
+	// bogus Speaker field like key([]) or nil([]) or self, etc.
 	Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error)
 
 	// Seal encrypts data so only certain hosted programs can unseal it.

@@ -5,10 +5,12 @@
 package tao
 
 import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
 
 type CryptoVersion int32
@@ -40,6 +42,7 @@ func (x *CryptoVersion) UnmarshalJSON(data []byte) error {
 	*x = CryptoVersion(value)
 	return nil
 }
+func (CryptoVersion) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
 
 type NamedEllipticCurve int32
 
@@ -70,6 +73,7 @@ func (x *NamedEllipticCurve) UnmarshalJSON(data []byte) error {
 	*x = NamedEllipticCurve(value)
 	return nil
 }
+func (NamedEllipticCurve) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
 
 type CryptoCipherMode int32
 
@@ -100,6 +104,7 @@ func (x *CryptoCipherMode) UnmarshalJSON(data []byte) error {
 	*x = CryptoCipherMode(value)
 	return nil
 }
+func (CryptoCipherMode) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
 
 type CryptoDerivingMode int32
 
@@ -130,6 +135,7 @@ func (x *CryptoDerivingMode) UnmarshalJSON(data []byte) error {
 	*x = CryptoDerivingMode(value)
 	return nil
 }
+func (CryptoDerivingMode) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
 
 type CryptoKey_CryptoPurpose int32
 
@@ -169,6 +175,7 @@ func (x *CryptoKey_CryptoPurpose) UnmarshalJSON(data []byte) error {
 	*x = CryptoKey_CryptoPurpose(value)
 	return nil
 }
+func (CryptoKey_CryptoPurpose) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{0, 0} }
 
 type CryptoKey_CryptoAlgorithm int32
 
@@ -205,6 +212,7 @@ func (x *CryptoKey_CryptoAlgorithm) UnmarshalJSON(data []byte) error {
 	*x = CryptoKey_CryptoAlgorithm(value)
 	return nil
 }
+func (CryptoKey_CryptoAlgorithm) EnumDescriptor() ([]byte, []int) { return fileDescriptor5, []int{0, 1} }
 
 type CryptoKey struct {
 	Version          *CryptoVersion             `protobuf:"varint,1,req,name=version,enum=tao.CryptoVersion" json:"version,omitempty"`
@@ -214,9 +222,10 @@ type CryptoKey struct {
 	XXX_unrecognized []byte                     `json:"-"`
 }
 
-func (m *CryptoKey) Reset()         { *m = CryptoKey{} }
-func (m *CryptoKey) String() string { return proto.CompactTextString(m) }
-func (*CryptoKey) ProtoMessage()    {}
+func (m *CryptoKey) Reset()                    { *m = CryptoKey{} }
+func (m *CryptoKey) String() string            { return proto.CompactTextString(m) }
+func (*CryptoKey) ProtoMessage()               {}
+func (*CryptoKey) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
 
 func (m *CryptoKey) GetVersion() CryptoVersion {
 	if m != nil && m.Version != nil {
@@ -252,9 +261,10 @@ type CryptoKeyset struct {
 	XXX_unrecognized []byte       `json:"-"`
 }
 
-func (m *CryptoKeyset) Reset()         { *m = CryptoKeyset{} }
-func (m *CryptoKeyset) String() string { return proto.CompactTextString(m) }
-func (*CryptoKeyset) ProtoMessage()    {}
+func (m *CryptoKeyset) Reset()                    { *m = CryptoKeyset{} }
+func (m *CryptoKeyset) String() string            { return proto.CompactTextString(m) }
+func (*CryptoKeyset) ProtoMessage()               {}
+func (*CryptoKeyset) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
 
 func (m *CryptoKeyset) GetKeys() []*CryptoKey {
 	if m != nil {
@@ -282,9 +292,10 @@ type PBEData struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *PBEData) Reset()         { *m = PBEData{} }
-func (m *PBEData) String() string { return proto.CompactTextString(m) }
-func (*PBEData) ProtoMessage()    {}
+func (m *PBEData) Reset()                    { *m = PBEData{} }
+func (m *PBEData) String() string            { return proto.CompactTextString(m) }
+func (*PBEData) ProtoMessage()               {}
+func (*PBEData) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
 
 func (m *PBEData) GetVersion() CryptoVersion {
 	if m != nil && m.Version != nil {
@@ -341,9 +352,10 @@ type ECDSA_SHA_VerifyingKeyV1 struct {
 	XXX_unrecognized []byte              `json:"-"`
 }
 
-func (m *ECDSA_SHA_VerifyingKeyV1) Reset()         { *m = ECDSA_SHA_VerifyingKeyV1{} }
-func (m *ECDSA_SHA_VerifyingKeyV1) String() string { return proto.CompactTextString(m) }
-func (*ECDSA_SHA_VerifyingKeyV1) ProtoMessage()    {}
+func (m *ECDSA_SHA_VerifyingKeyV1) Reset()                    { *m = ECDSA_SHA_VerifyingKeyV1{} }
+func (m *ECDSA_SHA_VerifyingKeyV1) String() string            { return proto.CompactTextString(m) }
+func (*ECDSA_SHA_VerifyingKeyV1) ProtoMessage()               {}
+func (*ECDSA_SHA_VerifyingKeyV1) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
 
 func (m *ECDSA_SHA_VerifyingKeyV1) GetCurve() NamedEllipticCurve {
 	if m != nil && m.Curve != nil {
@@ -366,9 +378,10 @@ type ECDSA_SHA_SigningKeyV1 struct {
 	XXX_unrecognized []byte              `json:"-"`
 }
 
-func (m *ECDSA_SHA_SigningKeyV1) Reset()         { *m = ECDSA_SHA_SigningKeyV1{} }
-func (m *ECDSA_SHA_SigningKeyV1) String() string { return proto.CompactTextString(m) }
-func (*ECDSA_SHA_SigningKeyV1) ProtoMessage()    {}
+func (m *ECDSA_SHA_SigningKeyV1) Reset()                    { *m = ECDSA_SHA_SigningKeyV1{} }
+func (m *ECDSA_SHA_SigningKeyV1) String() string            { return proto.CompactTextString(m) }
+func (*ECDSA_SHA_SigningKeyV1) ProtoMessage()               {}
+func (*ECDSA_SHA_SigningKeyV1) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{4} }
 
 func (m *ECDSA_SHA_SigningKeyV1) GetCurve() NamedEllipticCurve {
 	if m != nil && m.Curve != nil {
@@ -398,9 +411,10 @@ type AES_CTR_HMAC_SHA_CryptingKeyV1 struct {
 	XXX_unrecognized []byte            `json:"-"`
 }
 
-func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) Reset()         { *m = AES_CTR_HMAC_SHA_CryptingKeyV1{} }
-func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) String() string { return proto.CompactTextString(m) }
-func (*AES_CTR_HMAC_SHA_CryptingKeyV1) ProtoMessage()    {}
+func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) Reset()                    { *m = AES_CTR_HMAC_SHA_CryptingKeyV1{} }
+func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) String() string            { return proto.CompactTextString(m) }
+func (*AES_CTR_HMAC_SHA_CryptingKeyV1) ProtoMessage()               {}
+func (*AES_CTR_HMAC_SHA_CryptingKeyV1) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{5} }
 
 func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) GetMode() CryptoCipherMode {
 	if m != nil && m.Mode != nil {
@@ -429,9 +443,10 @@ type HMAC_SHA_DerivingKeyV1 struct {
 	XXX_unrecognized []byte              `json:"-"`
 }
 
-func (m *HMAC_SHA_DerivingKeyV1) Reset()         { *m = HMAC_SHA_DerivingKeyV1{} }
-func (m *HMAC_SHA_DerivingKeyV1) String() string { return proto.CompactTextString(m) }
-func (*HMAC_SHA_DerivingKeyV1) ProtoMessage()    {}
+func (m *HMAC_SHA_DerivingKeyV1) Reset()                    { *m = HMAC_SHA_DerivingKeyV1{} }
+func (m *HMAC_SHA_DerivingKeyV1) String() string            { return proto.CompactTextString(m) }
+func (*HMAC_SHA_DerivingKeyV1) ProtoMessage()               {}
+func (*HMAC_SHA_DerivingKeyV1) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{6} }
 
 func (m *HMAC_SHA_DerivingKeyV1) GetMode() CryptoDerivingMode {
 	if m != nil && m.Mode != nil {
@@ -453,9 +468,10 @@ type CryptoHeader struct {
 	XXX_unrecognized []byte         `json:"-"`
 }
 
-func (m *CryptoHeader) Reset()         { *m = CryptoHeader{} }
-func (m *CryptoHeader) String() string { return proto.CompactTextString(m) }
-func (*CryptoHeader) ProtoMessage()    {}
+func (m *CryptoHeader) Reset()                    { *m = CryptoHeader{} }
+func (m *CryptoHeader) String() string            { return proto.CompactTextString(m) }
+func (*CryptoHeader) ProtoMessage()               {}
+func (*CryptoHeader) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{7} }
 
 func (m *CryptoHeader) GetVersion() CryptoVersion {
 	if m != nil && m.Version != nil {
@@ -484,9 +500,10 @@ type SignaturePDU struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *SignaturePDU) Reset()         { *m = SignaturePDU{} }
-func (m *SignaturePDU) String() string { return proto.CompactTextString(m) }
-func (*SignaturePDU) ProtoMessage()    {}
+func (m *SignaturePDU) Reset()                    { *m = SignaturePDU{} }
+func (m *SignaturePDU) String() string            { return proto.CompactTextString(m) }
+func (*SignaturePDU) ProtoMessage()               {}
+func (*SignaturePDU) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{8} }
 
 func (m *SignaturePDU) GetHeader() *CryptoHeader {
 	if m != nil {
@@ -516,9 +533,10 @@ type SignedData struct {
 	XXX_unrecognized []byte        `json:"-"`
 }
 
-func (m *SignedData) Reset()         { *m = SignedData{} }
-func (m *SignedData) String() string { return proto.CompactTextString(m) }
-func (*SignedData) ProtoMessage()    {}
+func (m *SignedData) Reset()                    { *m = SignedData{} }
+func (m *SignedData) String() string            { return proto.CompactTextString(m) }
+func (*SignedData) ProtoMessage()               {}
+func (*SignedData) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{9} }
 
 func (m *SignedData) GetHeader() *CryptoHeader {
 	if m != nil {
@@ -543,9 +561,10 @@ type EncryptedData struct {
 	XXX_unrecognized []byte        `json:"-"`
 }
 
-func (m *EncryptedData) Reset()         { *m = EncryptedData{} }
-func (m *EncryptedData) String() string { return proto.CompactTextString(m) }
-func (*EncryptedData) ProtoMessage()    {}
+func (m *EncryptedData) Reset()                    { *m = EncryptedData{} }
+func (m *EncryptedData) String() string            { return proto.CompactTextString(m) }
+func (*EncryptedData) ProtoMessage()               {}
+func (*EncryptedData) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{10} }
 
 func (m *EncryptedData) GetHeader() *CryptoHeader {
 	if m != nil {
@@ -584,9 +603,10 @@ type KeyDerivationPDU struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *KeyDerivationPDU) Reset()         { *m = KeyDerivationPDU{} }
-func (m *KeyDerivationPDU) String() string { return proto.CompactTextString(m) }
-func (*KeyDerivationPDU) ProtoMessage()    {}
+func (m *KeyDerivationPDU) Reset()                    { *m = KeyDerivationPDU{} }
+func (m *KeyDerivationPDU) String() string            { return proto.CompactTextString(m) }
+func (*KeyDerivationPDU) ProtoMessage()               {}
+func (*KeyDerivationPDU) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{11} }
 
 func (m *KeyDerivationPDU) GetPreviousHash() []byte {
 	if m != nil {
@@ -617,10 +637,72 @@ func (m *KeyDerivationPDU) GetIndex() uint32 {
 }
 
 func init() {
+	proto.RegisterType((*CryptoKey)(nil), "tao.CryptoKey")
+	proto.RegisterType((*CryptoKeyset)(nil), "tao.CryptoKeyset")
+	proto.RegisterType((*PBEData)(nil), "tao.PBEData")
+	proto.RegisterType((*ECDSA_SHA_VerifyingKeyV1)(nil), "tao.ECDSA_SHA_VerifyingKey_v1")
+	proto.RegisterType((*ECDSA_SHA_SigningKeyV1)(nil), "tao.ECDSA_SHA_SigningKey_v1")
+	proto.RegisterType((*AES_CTR_HMAC_SHA_CryptingKeyV1)(nil), "tao.AES_CTR_HMAC_SHA_CryptingKey_v1")
+	proto.RegisterType((*HMAC_SHA_DerivingKeyV1)(nil), "tao.HMAC_SHA_DerivingKey_v1")
+	proto.RegisterType((*CryptoHeader)(nil), "tao.CryptoHeader")
+	proto.RegisterType((*SignaturePDU)(nil), "tao.SignaturePDU")
+	proto.RegisterType((*SignedData)(nil), "tao.SignedData")
+	proto.RegisterType((*EncryptedData)(nil), "tao.EncryptedData")
+	proto.RegisterType((*KeyDerivationPDU)(nil), "tao.KeyDerivationPDU")
 	proto.RegisterEnum("tao.CryptoVersion", CryptoVersion_name, CryptoVersion_value)
 	proto.RegisterEnum("tao.NamedEllipticCurve", NamedEllipticCurve_name, NamedEllipticCurve_value)
 	proto.RegisterEnum("tao.CryptoCipherMode", CryptoCipherMode_name, CryptoCipherMode_value)
 	proto.RegisterEnum("tao.CryptoDerivingMode", CryptoDerivingMode_name, CryptoDerivingMode_value)
 	proto.RegisterEnum("tao.CryptoKey_CryptoPurpose", CryptoKey_CryptoPurpose_name, CryptoKey_CryptoPurpose_value)
 	proto.RegisterEnum("tao.CryptoKey_CryptoAlgorithm", CryptoKey_CryptoAlgorithm_name, CryptoKey_CryptoAlgorithm_value)
+}
+
+var fileDescriptor5 = []byte{
+	// 734 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x54, 0x5d, 0x6f, 0xda, 0x30,
+	0x14, 0x15, 0x04, 0x9a, 0x72, 0x09, 0x85, 0x7a, 0xed, 0x60, 0x53, 0xb5, 0x0f, 0xba, 0x6e, 0xd5,
+	0xb4, 0x55, 0x2a, 0xd2, 0xf6, 0x4e, 0x93, 0xb4, 0xa0, 0x0a, 0x8a, 0xa0, 0x63, 0xea, 0x53, 0x94,
+	0x05, 0x8f, 0x58, 0x03, 0x92, 0x25, 0x06, 0x95, 0xfd, 0x88, 0xfd, 0x94, 0xfd, 0xc6, 0x5d, 0x3b,
+	0x09, 0x5f, 0xe3, 0x81, 0xbd, 0x25, 0xf6, 0xf1, 0x39, 0xd7, 0xc7, 0xe7, 0x5e, 0x80, 0x1f, 0x74,
+	0x1e, 0x5e, 0xf8, 0x81, 0xc7, 0x3d, 0xa2, 0x70, 0xdb, 0x7b, 0x7e, 0x68, 0x73, 0x4e, 0x43, 0x6e,
+	0x73, 0xe6, 0x4d, 0xa2, 0xf5, 0xea, 0x9f, 0x34, 0xe4, 0xf4, 0x60, 0xee, 0x73, 0xef, 0x96, 0xce,
+	0xc9, 0x29, 0xa8, 0x33, 0x1a, 0x84, 0xb8, 0x5d, 0x49, 0xbd, 0x4a, 0x9f, 0x1f, 0xd4, 0xc8, 0x05,
+	0x9e, 0xbb, 0x88, 0x00, 0xfd, 0x68, 0x87, 0x7c, 0x04, 0xd5, 0x9f, 0x06, 0xbe, 0x17, 0xd2, 0x4a,
+	0x5a, 0x82, 0x4e, 0x56, 0x40, 0xc8, 0x12, 0x7f, 0x75, 0x22, 0x0c, 0xb9, 0x84, 0x9c, 0x3d, 0x1a,
+	0x7a, 0x01, 0xe3, 0xee, 0xb8, 0xa2, 0xc8, 0x03, 0x2f, 0xb6, 0x1e, 0xa8, 0x27, 0x28, 0x92, 0x07,
+	0x05, 0x4b, 0xaf, 0x64, 0x10, 0xac, 0x55, 0x6f, 0xa0, 0xb0, 0x4e, 0x58, 0x80, 0x5c, 0xdf, 0xec,
+	0x36, 0xaf, 0x1f, 0x9a, 0xed, 0x9b, 0x52, 0x0a, 0xc1, 0x6a, 0xaf, 0x79, 0xd3, 0x16, 0x3f, 0x69,
+	0xa2, 0xc1, 0xbe, 0xde, 0x7d, 0xe8, 0xdc, 0x8b, 0x3f, 0x45, 0xfc, 0x19, 0x88, 0xec, 0x8b, 0xbf,
+	0x4c, 0xd5, 0x80, 0xe2, 0xa6, 0x10, 0x52, 0x99, 0xba, 0xd1, 0xab, 0x5b, 0xbd, 0x46, 0x1d, 0xa9,
+	0x8e, 0xa0, 0x54, 0x37, 0x7b, 0x96, 0x7e, 0xdf, 0xb5, 0x1a, 0xad, 0xba, 0x2e, 0x57, 0x25, 0xe7,
+	0xe2, 0x4f, 0xa9, 0x76, 0x41, 0x5b, 0x14, 0x1e, 0x52, 0x4e, 0x4e, 0x20, 0x23, 0x6c, 0x46, 0xbf,
+	0x94, 0xf3, 0x7c, 0xed, 0x60, 0xfd, 0x66, 0xe4, 0x0d, 0xc0, 0x80, 0x8e, 0xe8, 0x50, 0x5a, 0x8e,
+	0x76, 0xa5, 0x10, 0x53, 0x92, 0x98, 0xfa, 0xf2, 0x29, 0xaa, 0xbf, 0x53, 0xa0, 0x76, 0xae, 0x4c,
+	0xc3, 0xe6, 0xf6, 0x6e, 0x4f, 0x70, 0x00, 0x7b, 0x0e, 0xf3, 0x5d, 0x1a, 0xc8, 0x17, 0xc8, 0x61,
+	0x89, 0x19, 0x77, 0x6c, 0x3b, 0xd2, 0xde, 0x1c, 0x21, 0x00, 0x8c, 0xd3, 0x40, 0x72, 0x87, 0xd2,
+	0xc5, 0x2c, 0x2e, 0xa5, 0xd9, 0xac, 0x92, 0x15, 0x8e, 0x8a, 0xfd, 0xe8, 0x34, 0xa7, 0x8f, 0xbc,
+	0xb2, 0x27, 0xd7, 0x90, 0x21, 0xb4, 0x47, 0xbc, 0xa2, 0x4a, 0xcf, 0xfb, 0xf0, 0x6c, 0xe1, 0x8b,
+	0x85, 0xa2, 0xec, 0xfb, 0x9c, 0x4d, 0x86, 0x78, 0x21, 0x6b, 0x76, 0x49, 0xde, 0x42, 0xd6, 0x99,
+	0x06, 0x33, 0x1a, 0xd7, 0x57, 0x96, 0xf5, 0xb5, 0xed, 0x31, 0x1d, 0x98, 0xa3, 0x11, 0xf3, 0x39,
+	0x73, 0x74, 0xb1, 0x4d, 0x0e, 0x21, 0x47, 0x1d, 0xcb, 0x9f, 0x7e, 0x1b, 0x31, 0x47, 0xd6, 0xa9,
+	0x55, 0x5d, 0x28, 0x2f, 0x79, 0x7b, 0x6c, 0x38, 0xf9, 0x7f, 0x56, 0x2c, 0x5e, 0xb0, 0x06, 0x6c,
+	0x66, 0xf3, 0x28, 0x80, 0xda, 0xba, 0x92, 0x22, 0x95, 0x7e, 0xc2, 0xcb, 0xcd, 0xa7, 0xb4, 0xa4,
+	0x87, 0x4b, 0xc5, 0x53, 0xc8, 0x8c, 0xbd, 0x41, 0x22, 0x78, 0xbc, 0x62, 0xb3, 0x2e, 0xdd, 0x69,
+	0xe1, 0x26, 0x79, 0x02, 0x79, 0x9b, 0x86, 0x1b, 0x7a, 0x47, 0xa0, 0x09, 0xbb, 0x17, 0xab, 0x4a,
+	0x6c, 0x5a, 0x79, 0x21, 0x65, 0xa0, 0x67, 0xb3, 0xa5, 0xd4, 0xd9, 0x9a, 0x54, 0x79, 0x45, 0x2a,
+	0x01, 0x4a, 0xb1, 0x4d, 0xde, 0xc8, 0x34, 0x33, 0x49, 0x5c, 0x83, 0xda, 0x03, 0x1a, 0xec, 0x96,
+	0x90, 0x12, 0xec, 0x63, 0x2c, 0x2d, 0x97, 0x4d, 0x78, 0x4c, 0xd3, 0x01, 0x4d, 0x38, 0x6e, 0xf3,
+	0x69, 0x40, 0x3b, 0xc6, 0x17, 0xf2, 0x1a, 0xf6, 0x5c, 0x49, 0x28, 0x59, 0xf2, 0xb5, 0xc3, 0x15,
+	0x96, 0x58, 0xa9, 0x08, 0xaa, 0xe3, 0x4d, 0x64, 0x4a, 0x16, 0x39, 0x1b, 0x60, 0x48, 0xe3, 0x0b,
+	0x5f, 0x01, 0x08, 0x46, 0x3a, 0x90, 0xc1, 0xdd, 0x81, 0x0f, 0xdf, 0x29, 0x4c, 0x4a, 0x88, 0xab,
+	0xb2, 0xa0, 0x60, 0x4e, 0x1c, 0x01, 0xda, 0x9d, 0x26, 0xca, 0x72, 0x7a, 0x4b, 0x96, 0x65, 0x5d,
+	0x62, 0x7c, 0x88, 0x66, 0xc8, 0x60, 0xb7, 0x69, 0xd5, 0xaf, 0x50, 0xc2, 0x47, 0x90, 0x36, 0xcb,
+	0x86, 0x10, 0x57, 0x3f, 0x86, 0x82, 0x1f, 0xd0, 0x19, 0xf3, 0xa6, 0xa1, 0xe5, 0xda, 0xa1, 0x2b,
+	0xa5, 0xa2, 0x1e, 0x60, 0xbf, 0xa2, 0xca, 0xd4, 0xd5, 0xcb, 0x47, 0x6d, 0x55, 0x80, 0x2c, 0x9b,
+	0x0c, 0xe8, 0xa3, 0xec, 0x28, 0xf5, 0xfd, 0x59, 0x32, 0x97, 0x12, 0xcb, 0x71, 0x7a, 0xc8, 0xd9,
+	0x73, 0x67, 0xe1, 0x78, 0xea, 0x35, 0xef, 0xda, 0xd6, 0x65, 0x29, 0x85, 0x30, 0xb2, 0x25, 0xc5,
+	0x45, 0xc8, 0x77, 0xba, 0xcd, 0x96, 0x59, 0xfb, 0xf4, 0xd9, 0xea, 0x0b, 0xd8, 0x3b, 0x3c, 0xfc,
+	0x6f, 0xf6, 0x8a, 0x7a, 0xb3, 0xd3, 0x30, 0xbb, 0x56, 0xeb, 0xce, 0x30, 0x45, 0x96, 0x11, 0xf8,
+	0x01, 0xc8, 0x96, 0xe4, 0x3c, 0x05, 0x92, 0x4c, 0xba, 0x08, 0xdc, 0xb8, 0x35, 0xae, 0x4b, 0xa9,
+	0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x78, 0xbe, 0xbf, 0xaa, 0x03, 0x06, 0x00, 0x00,
 }

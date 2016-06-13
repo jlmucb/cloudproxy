@@ -207,13 +207,14 @@ func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message au
 	// Pull off the extensions from the name to get the bare TPM key for the
 	// signer.
 	signer := auth.Prin{
-		Type: tt.name.Type,
-		Key:  tt.name.Key,
+		Type:    tt.name.Type,
+		KeyHash: tt.name.KeyHash,
 	}
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
-		Signer:              auth.Marshal(signer),
+		SignerType:          proto.String("tpm"),
+		SignerKey:           auth.Marshal(signer),
 	}
 	return a, nil
 }
@@ -352,18 +353,10 @@ func extractPCRs(p auth.Prin) ([]int, []byte, error) {
 	return pcrNums, pcrVals, nil
 }
 
-// extractAIK gets an RSA public key from the TPM principal name.
-func extractAIK(p auth.Prin) (*rsa.PublicKey, error) {
+// extractTPMKey gets an RSA public key from the TPM key material.
+func extractTPMKey(material []byte) (*rsa.PublicKey, error) {
 	// The principal's Key should be a binary SubjectPublicKeyInfo.
-	if p.Type != "tpm" {
-		return nil, errors.New("wrong type of principal: should be 'tpm'")
-	}
-
-	k, ok := p.Key.(auth.Bytes)
-	if !ok {
-		return nil, errors.New("the AIK key must be an auth.Bytes values")
-	}
-	pk, err := x509.ParsePKIXPublicKey([]byte(k))
+	pk, err := x509.ParsePKIXPublicKey(material)
 	if err != nil {
 		return nil, err
 	}

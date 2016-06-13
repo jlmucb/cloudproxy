@@ -127,38 +127,13 @@ func TestVerifierFromX509(t *testing.T) {
 	}
 }
 
-func TestFromPrincipalName(t *testing.T) {
-	s, err := GenerateSigner()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	name := s.ToPrincipal()
-
-	v, err := FromPrincipal(name)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	name2 := v.ToPrincipal()
-
-	if !name.Identical(name2) {
-		t.Fatal("Verifier Principal name doesn't match the Signer name it was derived from")
-	}
-}
-
 func TestSignAndVerify(t *testing.T) {
 	s, err := GenerateSigner()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	name := s.ToPrincipal()
-
-	v, err := FromPrincipal(name)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	v := s.GetVerifier()
 
 	data := []byte(`Test data to sign`)
 	context := "Context string"

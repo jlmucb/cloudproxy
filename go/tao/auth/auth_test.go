@@ -131,7 +131,7 @@ func TestScanTerm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	p2 := Prin{Type: "key", Key: Bytes([]byte("abc")), Ext: SubPrin{
+	p2 := Prin{Type: "key", KeyHash: Bytes([]byte("abc")), Ext: SubPrin{
 		PrinExt{"A", []Term{Int(1)}},
 		PrinExt{"B", []Term{Str("2"), Str("#")}},
 	}}
@@ -403,7 +403,7 @@ func TestMakePredicate(t *testing.T) {
 		ptest{"Foo", nil, "Foo()"},
 		ptest{"Foo", []interface{}{}, "Foo()"},
 		ptest{"Foo", []interface{}{1, 2, 3}, "Foo(1, 2, 3)"},
-		ptest{"Foo", []interface{}{"a", 2, Prin{Type: "key", Key: Bytes([]byte("abc"))}}, `Foo("a", 2, key([616263]))`},
+		ptest{"Foo", []interface{}{"a", 2, Prin{Type: "key", KeyHash: Bytes([]byte("abc"))}}, `Foo("a", 2, key([616263]))`},
 		ptest{"Foo", []interface{}{3.14, testStringer(false), true}, `Foo("3.14", "test", "true")`},
 	}
 

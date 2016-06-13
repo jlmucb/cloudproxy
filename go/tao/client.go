@@ -185,7 +185,7 @@ func Dial(network, addr string, guard Guard, v *Verifier, keys *Keys) (net.Conn,
 }
 
 // AddEndorsements reads the SerializedEndorsements in an attestation and adds
-// the ones that are predicates signed by the policy key.
+// the ones that are predicates signed by a guard's policy key.
 func AddEndorsements(guard Guard, a *Attestation, v *Verifier) error {
 	// Before validating against the guard, check to see if there are any
 	// predicates endorsed by the policy key. This allows truncated principals
@@ -213,16 +213,13 @@ func AddEndorsements(guard Guard, a *Attestation, v *Verifier) error {
 			return fmt.Errorf("the message in an endorsement must be a predicate")
 		}
 
-		signerPrin, err := auth.UnmarshalPrin(ea.Signer)
-		if err != nil {
-			return err
-		}
+		signerPrin := auth.NewPrin(*ea.SignerType, ea.SignerKey)
 
 		if !signerPrin.Identical(says.Speaker) {
-			return fmt.Errorf("the speaker of an endorsement must be the signer")
+			return fmt.Errorf("the speaker of an endorsement must be the signer: %v vs %v", signerPrin, says.Speaker)
 		}
 		if !v.ToPrincipal().Identical(signerPrin) {
-			return fmt.Errorf("the signer of an endorsement must be the policy key")
+			return fmt.Errorf("the signer of an endorsement must be the guard's policy key")
 		}
 		if ok, err := v.Verify(ea.SerializedStatement, AttestationSigningContext, ea.Signature); (err != nil) || !ok {
 			return fmt.Errorf("the signature on an endorsement didn't pass verification")

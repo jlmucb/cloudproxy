@@ -2,15 +2,6 @@
 // source: attestation.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	attestation.proto
-
-It has these top-level messages:
-	Attestation
-*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -22,12 +13,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// An Attestation is a signature and a statement together, and it conveys:
+// An Attestation is a key, a signature, and a statement, and it conveys:
 //   signer says statement
 // i.e.
 //   signer says (issuer from time until exp says message)
-// A valid Attestation encodes a public key within the signer name, and it
-// carries a signature that anyone can verify to (eventually) conclude:
+// A valid Attestation encodes a public key, and it carries a signature that
+// anyone can verify to (eventually) conclude:
 //   issuer from time' until exp' says message
 // Note: Because of time restrictions within attached delegations, restrictions
 // time' and exp' here do not necessarily exactly match the restrictions time
@@ -53,7 +44,7 @@ var _ = math.Inf
 //
 // Example of a category (1) attestation:
 //   Attestation = {
-//     statement = "K_aik.PCRs(...) says (K_os speaksfor K_aik.PCRs(...))"
+//     statement = "H_aik.PCRs(...) says (H_os speaksfor H_aik.PCRs(...))"
 //     signer = K_aik
 //     signature = ...
 //     delegation = nil
@@ -77,32 +68,34 @@ var _ = math.Inf
 //
 // Example of a category (2) attestation:
 //   Attestation = {
-//     statement = "K_aik.PCRs(...).Prog(...) says K_app speaksfor K_aik.PCRs(...).Prog(...)"
+//     statement = "H_aik.PCRs(...).Prog(...) says H_app speaksfor H_aik.PCRs(...).Prog(...)"
 //     signer = K_os
 //     signature = ...
 //     delegation = {
-//       statement = K_aik.PCRs(...) says K_os speaksfor K_aik.PCRs(...)
+//       statement = H_aik.PCRs(...) says H_os speaksfor H_aik.PCRs(...)
 //       signer = K_aik
 //       signature = ...
 //       delegation = nil
 //     }
 //   }
-// Here, the OS identified by K_aik.PCRs(...) has signed, using a
+// Here, the OS identified by H_aik.PCRs(...) has signed, using a
 // seemingly unrelated key K_os, a statement on behalf of one of its hosted
-// programs, K_aik.PCRs(...).Prog(...). The embedded delegation statement,
+// programs, H_aik.PCRs(...).Prog(...). The embedded delegation statement,
 // signed by K_aik, binds that seemingly unrelated key K_os to the OS's actual
-// identity, K_aik.PCRs(...).
+// identity, H_aik.PCRs(...).
 //
 // Verifying an attestation signature requires knowing how the signature was
 // produced. We currently define two signature schemes:
 //
+// TODO(kwalsh): add tpm2 signature scheme here and in attestation.go
+//
 // (a) Some signatures are produced by the TPM, so here we are bound by the
 // mechanisms implemented by the TPM. In this case, we encode the signer name as
-//   tpm("..K..") where "..K.." is the serialized, base64w-encoded public half
+//   tpm("..H..") where "..H.." is the hashed, serialized public half
 // of the TPM's RSA key K. The TPM only ever signs things on behalf of its
 // hosted programs, so the issuer used in the serialized statement will always
 // have the form:
-//   tpm("..K..").PCRs("..i..", "..h..")...
+//   tpm("..H..").PCRs("..i..", "..h..")...
 // where "..i.." is a sorted, comma-separated list of PCR numbers, and "..h.."
 // is the corresponding, comma-separated list of hex-encoded PCR values. The
 // signature is computed roughly as:
@@ -119,7 +112,7 @@ var _ = math.Inf
 //
 // (b) Other signatures are produced in software, and here we have flexibility
 // to use simpler signature schemes. In this case, we encode the signer name as
-//   key("..K..") where "..K.." is the serialized, base64w-encoded public half
+//   key("..H..") where "..H.." is the hashed, serialized public half
 // of a DSA key K. The issuer used in the serialized statement can have any
 // form. The signature is roughly:
 //   sig = dsa_sign(K, H(context|message))
@@ -131,55 +124,62 @@ var _ = math.Inf
 //
 // (1a) No delegation, Tao signature.
 //      Historical note: This is the old "ROOT" attestation type.
-//      Typically (or maybe always?), signer is the policy key.
-//      The signer is always key("..K..").
+//      Typically exaample: signer is the "domain policy" key.
+//      The signer is always key("..H..").
 // (1b) No delegation, TPM signature.
-//      This is produced by TPMTaoChildChannel.
-//      The signer is always tpm("..K..") and the statement issuer is
-//      always a tpm("..K..").PCRs("..i..", "..h..")...
+//      This is produced by tpm_tao.
+//      The signer is always tpm("..H..") and the statement issuer is
+//      always a tpm("..H..").PCRs("..i..", "..h..")... principal.
 // (2a) Delegation, Tao signature.
 //      Historical note: This is the old "INTERMEDIATE" attestation type.
-//      The signer is always key("..K..").
+//      The signer is always key("..H..").
 //      The delegation is the head of a chain that eventually terminates in a
 //      type (1a) or (1b) attestation.
 // (2b) Delegation, TPM signature.
 //      Historical note: This is the old "TPM_1_2_QUOTE" attestation type.
 //      This combination is no longer used. If it were, the signer would be
-//      tpm("..K..") and the statement issuer would be something like
-//      K_policy.TrustedPlatform. The delegation would be the head of a chain
+//      tpm("..H..") and the statement issuer would be something like
+//      H_policy.TrustedPlatform. The delegation would be the head of a chain
 //      that eventually terminates in a type (1a) or (1b) attestation. The
-//      issuer at the head of the chain would always be
-//      tpm("..K..").PCRs("..i..", "..h..")
+//      issuer at the head of the chain would always be a
+//      tpm("..H..").PCRs("..i..", "..h..") principal.
 type Attestation struct {
 	// A serialized statement. This is serialized to avoid canonicalization issues
 	// when signing and verifying signatures. In Go, this is obtained using
 	// cloudproxy/tao/auth.Marshal().
 	SerializedStatement []byte `protobuf:"bytes,1,req,name=serialized_statement" json:"serialized_statement,omitempty"`
-	// The signer's public key, encoded using clouddproxy/tao/auth.Marshal()
-	Signer []byte `protobuf:"bytes,2,req,name=signer" json:"signer,omitempty"`
+	// The signature type, either "tpm", "tpm2", or "key". This must match
+	// the type of the signer key, and it is also used to determine how to verify
+	// signatures.
+	SignerType *string `protobuf:"bytes,2,req,name=signer_type" json:"signer_type,omitempty"`
+	// The signer's public key, i.e. the un-hashed key material used within
+	// clouddproxy/tao/auth.New*Prin().
+	SignerKey []byte `protobuf:"bytes,3,req,name=signer_key" json:"signer_key,omitempty"`
 	// Signature over the serialized statement using TPM or Tao signing.
-	Signature []byte `protobuf:"bytes,3,req,name=signature" json:"signature,omitempty"`
+	Signature []byte `protobuf:"bytes,4,req,name=signature" json:"signature,omitempty"`
 	// A delegation attestation that conveys (eventually) that signer speaks for
 	// the issuer in the serialized statement. If this is empty, then it must be
 	// self evident that signer speaks for the issuer in the serialized statement.
 	// This can be added, removed, or replaced without changing the attestation
 	// signature, but verification may fail if a required delegation is missing.
-	SerializedDelegation []byte `protobuf:"bytes,4,opt,name=serialized_delegation" json:"serialized_delegation,omitempty"`
+	SerializedDelegation []byte `protobuf:"bytes,5,opt,name=serialized_delegation" json:"serialized_delegation,omitempty"`
 	// An optional set of further attestations that may pertain, in some way, to
 	// the the issuer or signer of this attestation. These can be added or removed
 	// without changing the attestation signature. This allows attestations to be
 	// piggy-backed, e.g. when an authorization guard requires multiple
 	// attestations to check a policy.
-	SerializedEndorsements [][]byte `protobuf:"bytes,5,rep,name=serialized_endorsements" json:"serialized_endorsements,omitempty"`
+	SerializedEndorsements [][]byte `protobuf:"bytes,6,rep,name=serialized_endorsements" json:"serialized_endorsements,omitempty"`
 	// This is the quote structure actually signed by the tpm 2.0.
-	Tpm2QuoteStructure []byte `protobuf:"bytes,6,opt,name=tpm2_quote_structure" json:"tpm2_quote_structure,omitempty"`
+	// TODO(kwalsh) remove this -- as for tpm1.2, the quote structure should be
+	// recoverable from the principal names in the serialized statement.
+	Tpm2QuoteStructure []byte `protobuf:"bytes,7,opt,name=tpm2_quote_structure" json:"tpm2_quote_structure,omitempty"`
 	XXX_unrecognized   []byte `json:"-"`
 }
 
 func (m *Attestation) Reset()                    { *m = Attestation{} }
 func (m *Attestation) String() string            { return proto.CompactTextString(m) }
 func (*Attestation) ProtoMessage()               {}
-func (*Attestation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*Attestation) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 func (m *Attestation) GetSerializedStatement() []byte {
 	if m != nil {
@@ -188,9 +188,16 @@ func (m *Attestation) GetSerializedStatement() []byte {
 	return nil
 }
 
-func (m *Attestation) GetSigner() []byte {
+func (m *Attestation) GetSignerType() string {
+	if m != nil && m.SignerType != nil {
+		return *m.SignerType
+	}
+	return ""
+}
+
+func (m *Attestation) GetSignerKey() []byte {
 	if m != nil {
-		return m.Signer
+		return m.SignerKey
 	}
 	return nil
 }
@@ -227,17 +234,18 @@ func init() {
 	proto.RegisterType((*Attestation)(nil), "tao.Attestation")
 }
 
-var fileDescriptor0 = []byte{
-	// 171 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x4c, 0x8e, 0x41, 0xca, 0xc2, 0x30,
-	0x10, 0x85, 0x69, 0xfb, 0xff, 0x05, 0x47, 0x11, 0x5a, 0x14, 0xb3, 0x50, 0x2c, 0xae, 0x5c, 0xb9,
-	0xf0, 0x06, 0x9e, 0xa4, 0x04, 0x33, 0x94, 0x40, 0x9b, 0xa9, 0x93, 0xc9, 0xc6, 0x33, 0x79, 0x48,
-	0x93, 0x6c, 0xec, 0xf2, 0xbd, 0x2f, 0xf9, 0xe6, 0x41, 0xa3, 0x45, 0xd0, 0x8b, 0x16, 0x4b, 0xee,
-	0x36, 0x33, 0x09, 0xb5, 0x95, 0x68, 0xba, 0x7c, 0x0a, 0x58, 0x3f, 0x7e, 0xa8, 0x3d, 0xc2, 0xce,
-	0x23, 0x5b, 0x3d, 0xda, 0x37, 0x9a, 0x3e, 0xb5, 0x38, 0xa1, 0x13, 0x55, 0x74, 0xe5, 0x75, 0xd3,
-	0x6e, 0xa1, 0xf6, 0x76, 0x70, 0xc8, 0xaa, 0xcc, 0xb9, 0x81, 0x55, 0xca, 0x5a, 0x02, 0xa3, 0xaa,
-	0x72, 0x75, 0x82, 0xfd, 0x42, 0x60, 0x70, 0xc4, 0x21, 0x9b, 0xd5, 0x5f, 0x57, 0x44, 0x7c, 0x86,
-	0xc3, 0x02, 0xa3, 0x33, 0xc4, 0x3e, 0x5f, 0xf0, 0xea, 0xbf, 0xab, 0xe2, 0x83, 0x38, 0x40, 0xe6,
-	0xe9, 0xde, 0xbf, 0x02, 0x09, 0xc6, 0x01, 0x1c, 0x9e, 0xd9, 0x5e, 0xa7, 0xef, 0xdf, 0x00, 0x00,
-	0x00, 0xff, 0xff, 0xaf, 0xa0, 0x02, 0x07, 0xc7, 0x00, 0x00, 0x00,
+var fileDescriptor1 = []byte{
+	// 185 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x4c, 0x8e, 0x4d, 0xae, 0x82, 0x30,
+	0x14, 0x85, 0x03, 0xbc, 0x9f, 0x70, 0x79, 0x13, 0xfa, 0x34, 0x76, 0xa0, 0x91, 0x38, 0x72, 0xe4,
+	0xc0, 0x1d, 0xb8, 0x12, 0xd2, 0xc8, 0x09, 0x69, 0x84, 0x16, 0xdb, 0xcb, 0x00, 0xf7, 0xe7, 0xbe,
+	0x2c, 0x8d, 0x89, 0x4c, 0xbf, 0xef, 0xde, 0x73, 0x0e, 0x95, 0x8a, 0x19, 0x9e, 0x15, 0x6b, 0x6b,
+	0x4e, 0x83, 0xb3, 0x6c, 0x45, 0xc6, 0xca, 0x1e, 0x9e, 0x09, 0x15, 0x97, 0x8f, 0x12, 0x5b, 0x5a,
+	0x79, 0x38, 0xad, 0x3a, 0xfd, 0x40, 0x53, 0xcf, 0x14, 0x3d, 0x0c, 0xcb, 0xa4, 0x4a, 0x8f, 0x7f,
+	0xe2, 0x9f, 0x0a, 0xaf, 0x5b, 0x03, 0x57, 0xf3, 0x34, 0x40, 0xa6, 0x01, 0xe6, 0x42, 0x10, 0xbd,
+	0xe1, 0x0d, 0x93, 0xcc, 0xe2, 0x61, 0x49, 0xf9, 0xcc, 0x14, 0x8f, 0x0e, 0xf2, 0x2b, 0xa2, 0x1d,
+	0xad, 0x17, 0xc9, 0x0d, 0x3a, 0xb4, 0xb1, 0x52, 0x7e, 0x57, 0x49, 0xd0, 0x7b, 0xda, 0x2c, 0x34,
+	0x4c, 0x63, 0x9d, 0x8f, 0xd5, 0x5e, 0xfe, 0x54, 0x59, 0x38, 0x08, 0xcb, 0x78, 0xe8, 0xcf, 0xf5,
+	0x7d, 0xb4, 0x8c, 0xb0, 0xcc, 0x8d, 0xd7, 0x98, 0xfe, 0x3b, 0xbf, 0xbf, 0x02, 0x00, 0x00, 0xff,
+	0xff, 0xdc, 0x93, 0x02, 0x8c, 0xe0, 0x00, 0x00, 0x00,
 }

@@ -99,7 +99,7 @@ func testTaoHostEncryption(t *testing.T, th Host) {
 
 func testHostName(t *testing.T, th Host) {
 	n := th.HostName()
-	if n.Key == nil {
+	if n.KeyHash == nil {
 		t.Fatal("HostName returned an invalid Host name")
 	}
 }

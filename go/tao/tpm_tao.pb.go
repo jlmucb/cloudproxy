@@ -5,21 +5,24 @@
 package tao
 
 import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
 
 type HybridSealedData struct {
-	SealedKey        []byte `protobuf:"bytes,1,req" json:"SealedKey,omitempty"`
-	EncryptedData    []byte `protobuf:"bytes,2,req" json:"EncryptedData,omitempty"`
+	SealedKey        []byte `protobuf:"bytes,1,req,name=SealedKey" json:"SealedKey,omitempty"`
+	EncryptedData    []byte `protobuf:"bytes,2,req,name=EncryptedData" json:"EncryptedData,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *HybridSealedData) Reset()         { *m = HybridSealedData{} }
-func (m *HybridSealedData) String() string { return proto.CompactTextString(m) }
-func (*HybridSealedData) ProtoMessage()    {}
+func (m *HybridSealedData) Reset()                    { *m = HybridSealedData{} }
+func (m *HybridSealedData) String() string            { return proto.CompactTextString(m) }
+func (*HybridSealedData) ProtoMessage()               {}
+func (*HybridSealedData) Descriptor() ([]byte, []int) { return fileDescriptor9, []int{0} }
 
 func (m *HybridSealedData) GetSealedKey() []byte {
 	if m != nil {
@@ -33,4 +36,18 @@ func (m *HybridSealedData) GetEncryptedData() []byte {
 		return m.EncryptedData
 	}
 	return nil
+}
+
+func init() {
+	proto.RegisterType((*HybridSealedData)(nil), "tao.HybridSealedData")
+}
+
+var fileDescriptor9 = []byte{
+	// 94 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2d, 0x29, 0xc8, 0x8d,
+	0x2f, 0x49, 0xcc, 0xd7, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x06, 0x32, 0x95, 0x6c, 0xb8,
+	0x04, 0x3c, 0x2a, 0x93, 0x8a, 0x32, 0x53, 0x82, 0x53, 0x13, 0x73, 0x52, 0x53, 0x5c, 0x12, 0x4b,
+	0x12, 0x85, 0x04, 0xb9, 0x38, 0x21, 0x3c, 0xef, 0xd4, 0x4a, 0x09, 0x46, 0x05, 0x26, 0x0d, 0x1e,
+	0x21, 0x51, 0x2e, 0x5e, 0xd7, 0xbc, 0xe4, 0xa2, 0xca, 0x82, 0x12, 0x88, 0x1a, 0x09, 0x26, 0x90,
+	0x30, 0x20, 0x00, 0x00, 0xff, 0xff, 0x89, 0x0f, 0xf2, 0x27, 0x52, 0x00, 0x00, 0x00,
 }

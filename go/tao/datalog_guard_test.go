@@ -52,8 +52,8 @@ func makeDatalogGuard() (*DatalogGuard, *Keys, string, error) {
 	return g, keys, tmpdir, nil
 }
 
-var subj = auth.NewKeyPrin([]byte("test1"))
-var subj2 = auth.NewKeyPrin([]byte("test2"))
+var subj = auth.NewKeyPrin([]byte("test1"))  // key([1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014])
+var subj2 = auth.NewKeyPrin([]byte("test2")) // key([60303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752])
 
 func TestDatalogSaveReload(t *testing.T) {
 	g, keys, tmpdir, err := makeDatalogGuard()
@@ -84,8 +84,8 @@ func TestDatalogSaveReload(t *testing.T) {
 	if g.RuleCount() != 2 {
 		t.Fatal("wrong number of rules")
 	}
-	if g.GetRule(1) != `Authorized(key([7465737431]), "read", "somefile")` {
-		t.Fatalf("wrong rule: %s", g.GetRule(0))
+	if g.GetRule(1) != `Authorized(key([1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014]), "read", "somefile")` {
+		t.Fatalf("wrong rule: %s", g.GetRule(1))
 	}
 }
 
@@ -129,7 +129,7 @@ func TestDatalogRules(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpdir)
 
-	err = g.AddRule(fmt.Sprintf(`(forall F: IsFile(F) implies Authorized(%s, "read", F))`, subj))
+	err = g.AddRule(fmt.Sprintf(`(forall F: IsFile(F) implies Authorized(%v, "read", F))`, subj))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,8 +185,8 @@ func TestDatalogSimpleTranslation(t *testing.T) {
 	}
 
 	kprin := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes([]byte{0x70}),
+		Type:    "key",
+		KeyHash: auth.Bytes([]byte{0x70}),
 	}
 	if !g.IsAuthorized(kprin, "Execute", nil) {
 		t.Fatal("Simple authorization check failed")
@@ -234,8 +234,8 @@ func TestDatalogSubprin(t *testing.T) {
 	}
 
 	pprin := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes([]byte{0x70}),
+		Type:    "key",
+		KeyHash: auth.Bytes([]byte{0x70}),
 		Ext: []auth.PrinExt{
 			auth.PrinExt{
 				Name: "Hash",
@@ -367,7 +367,7 @@ func TestDatalogUnsignedSubprincipal(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := g.Subprincipal().String()
-	if name != ".DatalogGuard([45d9e4c235c05e6750dd18a194512ccbc99b0e6add96b6f90321113c946ec5a0])" {
+	if name != ".DatalogGuard([289de2090f7354a8effd50428d9fa56b869cb9f67f002de5e5ebe7d3caa0e931])" {
 		t.Fatalf("Datalog guard has wrong name: %v", name)
 	}
 }

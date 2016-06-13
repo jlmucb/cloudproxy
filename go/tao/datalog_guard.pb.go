@@ -5,10 +5,12 @@
 package tao
 
 import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
 
 // A set of rules.
@@ -17,9 +19,10 @@ type DatalogRules struct {
 	XXX_unrecognized []byte   `json:"-"`
 }
 
-func (m *DatalogRules) Reset()         { *m = DatalogRules{} }
-func (m *DatalogRules) String() string { return proto.CompactTextString(m) }
-func (*DatalogRules) ProtoMessage()    {}
+func (m *DatalogRules) Reset()                    { *m = DatalogRules{} }
+func (m *DatalogRules) String() string            { return proto.CompactTextString(m) }
+func (*DatalogRules) ProtoMessage()               {}
+func (*DatalogRules) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
 
 func (m *DatalogRules) GetRules() [][]byte {
 	if m != nil {
@@ -35,9 +38,10 @@ type SignedDatalogRules struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *SignedDatalogRules) Reset()         { *m = SignedDatalogRules{} }
-func (m *SignedDatalogRules) String() string { return proto.CompactTextString(m) }
-func (*SignedDatalogRules) ProtoMessage()    {}
+func (m *SignedDatalogRules) Reset()                    { *m = SignedDatalogRules{} }
+func (m *SignedDatalogRules) String() string            { return proto.CompactTextString(m) }
+func (*SignedDatalogRules) ProtoMessage()               {}
+func (*SignedDatalogRules) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
 
 func (m *SignedDatalogRules) GetSerializedRules() []byte {
 	if m != nil {
@@ -51,4 +55,21 @@ func (m *SignedDatalogRules) GetSignature() []byte {
 		return m.Signature
 	}
 	return nil
+}
+
+func init() {
+	proto.RegisterType((*DatalogRules)(nil), "tao.DatalogRules")
+	proto.RegisterType((*SignedDatalogRules)(nil), "tao.SignedDatalogRules")
+}
+
+var fileDescriptor3 = []byte{
+	// 122 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0x4e, 0x49, 0x2c, 0x49,
+	0xcc, 0xc9, 0x4f, 0x8f, 0x4f, 0x2f, 0x4d, 0x2c, 0x4a, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,
+	0x62, 0x2e, 0x49, 0xcc, 0x57, 0x92, 0xe5, 0xe2, 0x71, 0x81, 0xc8, 0x05, 0x95, 0xe6, 0xa4, 0x16,
+	0x0b, 0xf1, 0x72, 0xb1, 0x16, 0x81, 0x18, 0x12, 0x8c, 0x0a, 0xcc, 0x1a, 0x3c, 0x4a, 0x8e, 0x5c,
+	0x42, 0xc1, 0x99, 0xe9, 0x79, 0xa9, 0x29, 0x28, 0x8a, 0x24, 0xb8, 0x04, 0x8a, 0x53, 0x8b, 0x32,
+	0x13, 0x73, 0x32, 0xab, 0x52, 0x53, 0xe2, 0x61, 0xea, 0x99, 0x34, 0x78, 0x84, 0x04, 0xb9, 0x38,
+	0x8b, 0x81, 0xea, 0x13, 0x4b, 0x4a, 0x8b, 0x52, 0x25, 0x98, 0x40, 0x42, 0x80, 0x00, 0x00, 0x00,
+	0xff, 0xff, 0x86, 0x56, 0xf4, 0x56, 0x7c, 0x00, 0x00, 0x00,
 }

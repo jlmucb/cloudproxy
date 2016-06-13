@@ -60,7 +60,7 @@ func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain
 	if err != nil {
 		return nil, nil, err
 	}
-	if err = policy.Guard.AddRule(fmt.Sprintf(`IsPerson(%s)`, prin)); err != nil {
+	if err = policy.Guard.AddRule(fmt.Sprintf(`IsPerson(%v)`, prin)); err != nil {
 		return nil, nil, err
 	}
 	if err = policy.Guard.AddRule(`IsFood("sandwich")`); err != nil {
@@ -223,10 +223,7 @@ func TestCachingDatalogValidatePeerAttestation(t *testing.T) {
 	// Generate an attesation of the statements: "k.VerifyingKey speaks for
 	// key(K)" and "TrustedKey(key(K))" signed by the policy key and set to
 	// k.Delegation.
-	prin := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes("This is a terrible key."),
-	}
+	prin := auth.NewKeyPrin([]byte("This is a terrible key."))
 
 	pred := auth.Pred{
 		Name: "TrustedKey",
@@ -283,6 +280,9 @@ func TestCachingDatalogValidatePeerAttestation(t *testing.T) {
 	// policy query to the TaoCA.
 	if err = AddEndorsements(pub.Guard, k.Delegation, pub.Keys.VerifyingKey); err != nil {
 		t.Error("failed to add endorsements:", err)
+		t.Errorf("pub verifier key is %v\n", pub.Keys.VerifyingKey.ToPrincipal())
+		t.Errorf("policy ssigning key  is %v\n", policy.Keys.SigningKey.ToPrincipal())
+		t.Errorf("k signing key is %v\n", k.SigningKey.ToPrincipal())
 		return
 	}
 

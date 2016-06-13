@@ -19,20 +19,15 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-tpm/tpm"
-	"github.com/jlmucb/cloudproxy/go/tpm2"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
-// ValidSigner checks the signature on an attestation and, if so, returns the signer.
+// ValidSigner checks the signature on an attestation and, if so, returns the
+// principal name for the signer.
 func (a *Attestation) ValidSigner() (auth.Prin, error) {
-	signer, err := auth.UnmarshalPrin(a.Signer)
-	if err != nil {
-		return auth.Prin{}, err
-	}
-	if len(signer.Ext) != 0 {
-		return auth.Prin{}, newError("tao: attestation signer principal malformed: %s", signer)
-	}
-	switch signer.Type {
+	signer := auth.NewPrin(*a.SignerType, a.SignerKey)
+	switch *a.SignerType {
 	case "tpm":
 		// The PCRs are contained in the Speaker of an auth.Says statement that
 		// makes up the a.SerializedStatement.
@@ -56,12 +51,12 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		}
 		pcrNums, pcrVals, err := extractPCRs(speaker)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer: %s", err)
+			return auth.Prin{}, newError("tao: couldn't extract TPM PCRs from attestation: %s", err)
 		}
 
-		pk, err := extractAIK(speaker)
+		pk, err := extractTPMKey(a.SignerKey)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract the AIK from the signer: %s", err)
+			return auth.Prin{}, newError("tao: couldn't extract TPM key from attestation: %s", err)
 		}
 		if err := tpm.VerifyQuote(pk, a.SerializedStatement, a.Signature, pcrNums, pcrVals); err != nil {
 			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)
@@ -92,13 +87,13 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 			return auth.Prin{}, newError("tao: the speaker of an attestation must be an auth.Prin")
 		}
 
-		key, err :=  extractAttest(speaker)
+		key, err := extractTPM2Key(a.SignerKey)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract attest key signer")
+			return auth.Prin{}, newError("tao: couldn't extract TPM key from attestation: %s", err)
 		}
 		pcrNums, pcrVal, err := extractTpm2PCRs(speaker)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract pcrs from signer")
+			return auth.Prin{}, newError("tao: couldn't extract TPM PCRs from attestation: %s", err)
 		}
 
 		ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement,
@@ -113,7 +108,7 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		return signer, nil
 	case "key":
 		// Signer is ECDSA key, use Tao signature verification.
-		v, err := FromPrincipal(signer)
+		v, err := UnmarshalKey(a.SignerKey)
 		if err != nil {
 			return auth.Prin{}, err
 		}
@@ -203,8 +198,6 @@ func (a *Attestation) Validate() (auth.Says, error) {
 // GenerateAttestation uses the signing key to generate an attestation for this
 // statement.
 func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attestation, error) {
-	signer := s.ToPrincipal()
-
 	t := time.Now()
 	if stmt.Time == nil {
 		i := t.UnixNano()
@@ -226,7 +219,8 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attesta
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
-		Signer:              auth.Marshal(signer),
+		SignerType:          proto.String("key"),
+		SignerKey:           s.GetVerifier().MarshalKey(),
 	}
 
 	if len(delegation) > 0 {

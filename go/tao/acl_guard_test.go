@@ -43,10 +43,7 @@ func makeACLGuard() (*ACLGuard, *Keys, string, error) {
 	tg := NewACLGuard(keys.VerifyingKey, config)
 
 	// Add a bogus rule.
-	p := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes([]byte(`Fake key`)),
-	}
+	p := auth.NewKeyPrin([]byte(`Fake key`))
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		return nil, nil, "", err
 	}
@@ -74,10 +71,7 @@ func TestACLGuardSaveACLs(t *testing.T) {
 	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
-	p := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes([]byte(`Fake key`)),
-	}
+	p := auth.NewKeyPrin([]byte(`Fake key`))
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		t.Fatal("Couldn't authorize a simple operation:", err)
 	}
@@ -140,10 +134,7 @@ func TestACLGuardAuthorize(t *testing.T) {
 	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
-	p := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes([]byte(`Fake key`)),
-	}
+	p := auth.NewKeyPrin([]byte(`Fake key`))
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		t.Fatal("Couldn't authorize a simple operation:", err)
 	}
@@ -182,10 +173,7 @@ func TestACLGuardDoubleAuthorize(t *testing.T) {
 	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
-	p := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes([]byte(`Fake key`)),
-	}
+	p := auth.NewKeyPrin([]byte(`Fake key`))
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		t.Fatal("Couldn't authorize a simple operation:", err)
 	}
@@ -404,10 +392,7 @@ func TestACLGuardSignedSubprincipal(t *testing.T) {
 	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
-	p := auth.Prin{
-		Type: "key",
-		Key:  auth.Bytes([]byte(`Fake key`)),
-	}
+	p := auth.NewKeyPrin([]byte(`Fake key`))
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		t.Fatal("Couldn't authorize a simple operation:", err)
 	}
@@ -425,7 +410,7 @@ func TestACLGuardUnsignedSubprincipal(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := g.Subprincipal().String()
-	if name != ".ACLGuard([676cb0ac8b4df40e8223e89852f12c07c7b04073a242b4fad77030a459d324f8])" {
+	if name != ".ACLGuard([3ba9dc4681ad463d830d98e4a7c98c4fc909cce061cca19d1c9831ea1d9f5f48])" {
 		t.Fatalf("ACL guard has wrong name: %v", name)
 	}
 }

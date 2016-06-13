@@ -412,18 +412,16 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	fmt.Printf("Quote: %x\n", quote_struct)
 	fmt.Printf("sig: %x\n", sig)
 
-	// Pull off the extensions from the name to get the bare TPM key for the
-	// signer.
-	signer := auth.Prin{
-		Type:    tt.name.Type,
-		KeyHash: tt.name.KeyHash,
+	ek, err := x509.MarshalPKIXPublicKey(tt.verifier)
+	if err != nil {
+		return nil, err
 	}
-	// need to change Attestation to include quote structure for tpm2
+	// TODO(kwalsh) remove Tpm2QuoteStructure from Attestation structure
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
 		SignerType:          proto.String("tpm2"),
-		SignerKey:           auth.Marshal(signer),
+		SignerKey:           ek,
 		Tpm2QuoteStructure:  quote_struct,
 	}
 	return a, nil

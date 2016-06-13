@@ -204,17 +204,15 @@ func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message au
 		return nil, err
 	}
 
-	// Pull off the extensions from the name to get the bare TPM key for the
-	// signer.
-	signer := auth.Prin{
-		Type:    tt.name.Type,
-		KeyHash: tt.name.KeyHash,
+	aik, err := x509.MarshalPKIXPublicKey(tt.verifier)
+	if err != nil {
+		return nil, err
 	}
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
 		SignerType:          proto.String("tpm"),
-		SignerKey:           auth.Marshal(signer),
+		SignerKey:           aik,
 	}
 	return a, nil
 }

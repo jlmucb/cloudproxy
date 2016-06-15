@@ -39,11 +39,10 @@ message object_store_message {
   repeated object_message objects = 1;
 }
 
-message node_store_message {
-  repeated node_message node_objects = 1;
-}
+//message node_store_message {
+//  repeated node_message node_objects = 1;
+//}
 
 message protected_object_store_message {
   repeated protected_object_message protected_objects = 1;
 }
-

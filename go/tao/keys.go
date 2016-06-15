@@ -937,7 +937,7 @@ func NewSignedOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name
 		return nil, newError("the signing key must have a SigningKey and a Cert")
 	}
 
-	if keyTypes & ^Signing != 0 {
+	if keyTypes&Signing == 0 {
 		return nil, newError("can't sign a key that has no signer")
 	}
 

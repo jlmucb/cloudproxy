@@ -2,37 +2,16 @@
 // source: protected_objects.proto
 // DO NOT EDIT!
 
-/*
-Package protected_objects is a generated protocol buffer package.
-
-It is generated from these files:
-	protected_objects.proto
-
-It has these top-level messages:
-	ObjectIdMessage
-	ObjectMessage
-	NodeMessage
-	ProtectedObjectMessage
-	ObjectStoreMessage
-	NodeStoreMessage
-	ProtectedObjectStoreMessage
-*/
 package protected_objects
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
+import json "encoding/json"
 import math "math"
 
-// Reference imports to suppress errors if they are not otherwise used.
+// Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
+var _ = &json.SyntaxError{}
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // Epochs must increase monotonically and be > 0
 type ObjectIdMessage struct {
@@ -41,10 +20,9 @@ type ObjectIdMessage struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *ObjectIdMessage) Reset()                    { *m = ObjectIdMessage{} }
-func (m *ObjectIdMessage) String() string            { return proto.CompactTextString(m) }
-func (*ObjectIdMessage) ProtoMessage()               {}
-func (*ObjectIdMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *ObjectIdMessage) Reset()         { *m = ObjectIdMessage{} }
+func (m *ObjectIdMessage) String() string { return proto.CompactTextString(m) }
+func (*ObjectIdMessage) ProtoMessage()    {}
 
 func (m *ObjectIdMessage) GetObjName() string {
 	if m != nil && m.ObjName != nil {
@@ -74,10 +52,9 @@ type ObjectMessage struct {
 	XXX_unrecognized []byte           `json:"-"`
 }
 
-func (m *ObjectMessage) Reset()                    { *m = ObjectMessage{} }
-func (m *ObjectMessage) String() string            { return proto.CompactTextString(m) }
-func (*ObjectMessage) ProtoMessage()               {}
-func (*ObjectMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (m *ObjectMessage) Reset()         { *m = ObjectMessage{} }
+func (m *ObjectMessage) String() string { return proto.CompactTextString(m) }
+func (*ObjectMessage) ProtoMessage()    {}
 
 func (m *ObjectMessage) GetObjId() *ObjectIdMessage {
 	if m != nil {
@@ -127,10 +104,9 @@ type NodeMessage struct {
 	XXX_unrecognized []byte           `json:"-"`
 }
 
-func (m *NodeMessage) Reset()                    { *m = NodeMessage{} }
-func (m *NodeMessage) String() string            { return proto.CompactTextString(m) }
-func (*NodeMessage) ProtoMessage()               {}
-func (*NodeMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (m *NodeMessage) Reset()         { *m = NodeMessage{} }
+func (m *NodeMessage) String() string { return proto.CompactTextString(m) }
+func (*NodeMessage) ProtoMessage()    {}
 
 func (m *NodeMessage) GetProtectedObjId() *ObjectIdMessage {
 	if m != nil {
@@ -153,10 +129,9 @@ type ProtectedObjectMessage struct {
 	XXX_unrecognized []byte           `json:"-"`
 }
 
-func (m *ProtectedObjectMessage) Reset()                    { *m = ProtectedObjectMessage{} }
-func (m *ProtectedObjectMessage) String() string            { return proto.CompactTextString(m) }
-func (*ProtectedObjectMessage) ProtoMessage()               {}
-func (*ProtectedObjectMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (m *ProtectedObjectMessage) Reset()         { *m = ProtectedObjectMessage{} }
+func (m *ProtectedObjectMessage) String() string { return proto.CompactTextString(m) }
+func (*ProtectedObjectMessage) ProtoMessage()    {}
 
 func (m *ProtectedObjectMessage) GetProtectedObjId() *ObjectIdMessage {
 	if m != nil {
@@ -184,31 +159,13 @@ type ObjectStoreMessage struct {
 	XXX_unrecognized []byte           `json:"-"`
 }
 
-func (m *ObjectStoreMessage) Reset()                    { *m = ObjectStoreMessage{} }
-func (m *ObjectStoreMessage) String() string            { return proto.CompactTextString(m) }
-func (*ObjectStoreMessage) ProtoMessage()               {}
-func (*ObjectStoreMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (m *ObjectStoreMessage) Reset()         { *m = ObjectStoreMessage{} }
+func (m *ObjectStoreMessage) String() string { return proto.CompactTextString(m) }
+func (*ObjectStoreMessage) ProtoMessage()    {}
 
 func (m *ObjectStoreMessage) GetObjects() []*ObjectMessage {
 	if m != nil {
 		return m.Objects
-	}
-	return nil
-}
-
-type NodeStoreMessage struct {
-	NodeObjects      []*NodeMessage `protobuf:"bytes,1,rep,name=node_objects" json:"node_objects,omitempty"`
-	XXX_unrecognized []byte         `json:"-"`
-}
-
-func (m *NodeStoreMessage) Reset()                    { *m = NodeStoreMessage{} }
-func (m *NodeStoreMessage) String() string            { return proto.CompactTextString(m) }
-func (*NodeStoreMessage) ProtoMessage()               {}
-func (*NodeStoreMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
-
-func (m *NodeStoreMessage) GetNodeObjects() []*NodeMessage {
-	if m != nil {
-		return m.NodeObjects
 	}
 	return nil
 }
@@ -218,10 +175,9 @@ type ProtectedObjectStoreMessage struct {
 	XXX_unrecognized []byte                    `json:"-"`
 }
 
-func (m *ProtectedObjectStoreMessage) Reset()                    { *m = ProtectedObjectStoreMessage{} }
-func (m *ProtectedObjectStoreMessage) String() string            { return proto.CompactTextString(m) }
-func (*ProtectedObjectStoreMessage) ProtoMessage()               {}
-func (*ProtectedObjectStoreMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (m *ProtectedObjectStoreMessage) Reset()         { *m = ProtectedObjectStoreMessage{} }
+func (m *ProtectedObjectStoreMessage) String() string { return proto.CompactTextString(m) }
+func (*ProtectedObjectStoreMessage) ProtoMessage()    {}
 
 func (m *ProtectedObjectStoreMessage) GetProtectedObjects() []*ProtectedObjectMessage {
 	if m != nil {
@@ -231,35 +187,4 @@ func (m *ProtectedObjectStoreMessage) GetProtectedObjects() []*ProtectedObjectMe
 }
 
 func init() {
-	proto.RegisterType((*ObjectIdMessage)(nil), "protected_objects.object_id_message")
-	proto.RegisterType((*ObjectMessage)(nil), "protected_objects.object_message")
-	proto.RegisterType((*NodeMessage)(nil), "protected_objects.node_message")
-	proto.RegisterType((*ProtectedObjectMessage)(nil), "protected_objects.protected_object_message")
-	proto.RegisterType((*ObjectStoreMessage)(nil), "protected_objects.object_store_message")
-	proto.RegisterType((*NodeStoreMessage)(nil), "protected_objects.node_store_message")
-	proto.RegisterType((*ProtectedObjectStoreMessage)(nil), "protected_objects.protected_object_store_message")
-}
-
-var fileDescriptor0 = []byte{
-	// 307 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xcc, 0x93, 0xbd, 0x4e, 0xc3, 0x30,
-	0x14, 0x85, 0xe5, 0xfe, 0x41, 0x2e, 0x11, 0x34, 0x16, 0x12, 0x9e, 0xa0, 0x58, 0x0c, 0x95, 0x90,
-	0x32, 0x54, 0x20, 0x31, 0x31, 0x32, 0xc0, 0x43, 0x58, 0x4e, 0x73, 0x4b, 0x8b, 0xda, 0x38, 0x8a,
-	0x0d, 0x12, 0x2f, 0xc1, 0x53, 0x30, 0xf0, 0x98, 0xd8, 0x26, 0xa1, 0x84, 0x24, 0x12, 0x6c, 0xdd,
-	0xac, 0x93, 0x7b, 0x3e, 0x9f, 0xdc, 0x93, 0xc0, 0x49, 0x5e, 0x28, 0x83, 0x73, 0x83, 0xa9, 0x50,
-	0xc9, 0x93, 0x3d, 0xe8, 0xd8, 0x29, 0x8a, 0x46, 0x8d, 0x07, 0xfc, 0x06, 0xa2, 0xaf, 0xa3, 0x58,
-	0xa5, 0x62, 0x83, 0x5a, 0xcb, 0x47, 0xa4, 0x63, 0xd8, 0xb7, 0xa2, 0xc8, 0xe4, 0x06, 0x19, 0x99,
-	0xf4, 0xa6, 0x01, 0x8d, 0x20, 0x70, 0x0a, 0xe6, 0x6a, 0xbe, 0x64, 0xbd, 0x09, 0x99, 0x0e, 0xf9,
-	0x3b, 0x81, 0xc3, 0xd2, 0x5a, 0xf9, 0xae, 0x60, 0xe4, 0xa6, 0x56, 0xa9, 0x77, 0x1d, 0xcc, 0x2e,
-	0xe2, 0x66, 0x92, 0xce, 0xdb, 0xcc, 0x6b, 0x8e, 0x1e, 0x1d, 0x50, 0x0a, 0xe0, 0x14, 0x6d, 0xa4,
-	0x79, 0xd6, 0xac, 0x5f, 0x69, 0x99, 0x32, 0x22, 0xc1, 0x85, 0x2a, 0x90, 0x0d, 0xbc, 0x66, 0x53,
-	0x39, 0x4d, 0x2e, 0x0c, 0x16, 0x6c, 0xe8, 0xa5, 0x23, 0xd8, 0x73, 0xd6, 0x17, 0xb9, 0x66, 0x23,
-	0x2b, 0x84, 0xfc, 0x8d, 0x40, 0x98, 0xa9, 0x14, 0xbf, 0xaf, 0xbb, 0x85, 0x71, 0x2d, 0xd5, 0x7f,
-	0xe3, 0x6e, 0xfd, 0xaa, 0xa8, 0xfc, 0x2e, 0xf6, 0x1f, 0xfd, 0xfc, 0x83, 0x00, 0xfb, 0x3d, 0xb7,
-	0x2b, 0xe1, 0x68, 0x08, 0x83, 0x64, 0xad, 0x12, 0xbf, 0xf3, 0x90, 0xdf, 0xc3, 0x71, 0x39, 0xa2,
-	0x2d, 0x6f, 0xbb, 0xc2, 0x99, 0x5f, 0xb2, 0x43, 0xd8, 0x70, 0x7d, 0x0b, 0x3f, 0xef, 0x86, 0x57,
-	0xaf, 0xfd, 0x00, 0xd4, 0xd7, 0x50, 0x27, 0x5d, 0x97, 0xe5, 0xd4, 0x71, 0x67, 0x2d, 0xb8, 0x9f,
-	0x1d, 0xf2, 0x25, 0x9c, 0x36, 0x56, 0x58, 0x07, 0xdf, 0x41, 0xf3, 0x63, 0x2f, 0xe9, 0x97, 0x71,
-	0xfb, 0xff, 0xd1, 0x56, 0xc8, 0x67, 0x00, 0x00, 0x00, 0xff, 0xff, 0x29, 0xb4, 0xa8, 0x21, 0x4c,
-	0x03, 0x00, 0x00,
 }

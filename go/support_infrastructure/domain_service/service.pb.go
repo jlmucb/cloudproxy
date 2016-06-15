@@ -2,33 +2,16 @@
 // source: service.proto
 // DO NOT EDIT!
 
-/*
-Package domain_service is a generated protocol buffer package.
-
-It is generated from these files:
-	service.proto
-
-It has these top-level messages:
-	DomainServiceRequest
-	DomainServiceResponse
-	TrustedEntities
-*/
 package domain_service
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
+import json "encoding/json"
 import math "math"
 
-// Reference imports to suppress errors if they are not otherwise used.
+// Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
+var _ = &json.SyntaxError{}
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // TODO: explain different types
 type DomainServiceRequestRequestType int32
@@ -61,6 +44,9 @@ func (x DomainServiceRequestRequestType) Enum() *DomainServiceRequestRequestType
 func (x DomainServiceRequestRequestType) String() string {
 	return proto.EnumName(DomainServiceRequestRequestType_name, int32(x))
 }
+func (x DomainServiceRequestRequestType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(x.String())
+}
 func (x *DomainServiceRequestRequestType) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(DomainServiceRequestRequestType_value, data, "DomainServiceRequestRequestType")
 	if err != nil {
@@ -68,9 +54,6 @@ func (x *DomainServiceRequestRequestType) UnmarshalJSON(data []byte) error {
 	}
 	*x = DomainServiceRequestRequestType(value)
 	return nil
-}
-func (DomainServiceRequestRequestType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{0, 0}
 }
 
 type DomainServiceRequest struct {
@@ -84,16 +67,15 @@ type DomainServiceRequest struct {
 	XXX_unrecognized            []byte `json:"-"`
 }
 
-func (m *DomainServiceRequest) Reset()                    { *m = DomainServiceRequest{} }
-func (m *DomainServiceRequest) String() string            { return proto.CompactTextString(m) }
-func (*DomainServiceRequest) ProtoMessage()               {}
-func (*DomainServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *DomainServiceRequest) Reset()         { *m = DomainServiceRequest{} }
+func (m *DomainServiceRequest) String() string { return proto.CompactTextString(m) }
+func (*DomainServiceRequest) ProtoMessage()    {}
 
 func (m *DomainServiceRequest) GetType() DomainServiceRequestRequestType {
 	if m != nil && m.Type != nil {
 		return *m.Type
 	}
-	return DomainServiceRequest_DOMAIN_CERT_REQUEST
+	return 0
 }
 
 func (m *DomainServiceRequest) GetSerializedHostAttestation() []byte {
@@ -119,10 +101,9 @@ type DomainServiceResponse struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *DomainServiceResponse) Reset()                    { *m = DomainServiceResponse{} }
-func (m *DomainServiceResponse) String() string            { return proto.CompactTextString(m) }
-func (*DomainServiceResponse) ProtoMessage()               {}
-func (*DomainServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (m *DomainServiceResponse) Reset()         { *m = DomainServiceResponse{} }
+func (m *DomainServiceResponse) String() string { return proto.CompactTextString(m) }
+func (*DomainServiceResponse) ProtoMessage()    {}
 
 func (m *DomainServiceResponse) GetErrorMessage() string {
 	if m != nil && m.ErrorMessage != nil {
@@ -153,10 +134,9 @@ type TrustedEntities struct {
 	XXX_unrecognized       []byte   `json:"-"`
 }
 
-func (m *TrustedEntities) Reset()                    { *m = TrustedEntities{} }
-func (m *TrustedEntities) String() string            { return proto.CompactTextString(m) }
-func (*TrustedEntities) ProtoMessage()               {}
-func (*TrustedEntities) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (m *TrustedEntities) Reset()         { *m = TrustedEntities{} }
+func (m *TrustedEntities) String() string { return proto.CompactTextString(m) }
+func (*TrustedEntities) ProtoMessage()    {}
 
 func (m *TrustedEntities) GetTrustedProgramTaoNames() []string {
 	if m != nil {
@@ -187,34 +167,5 @@ func (m *TrustedEntities) GetTrustedRootCerts() [][]byte {
 }
 
 func init() {
-	proto.RegisterType((*DomainServiceRequest)(nil), "domain_service.domain_service_request")
-	proto.RegisterType((*DomainServiceResponse)(nil), "domain_service.domain_service_response")
-	proto.RegisterType((*TrustedEntities)(nil), "domain_service.trusted_entities")
 	proto.RegisterEnum("domain_service.DomainServiceRequestRequestType", DomainServiceRequestRequestType_name, DomainServiceRequestRequestType_value)
-}
-
-var fileDescriptor0 = []byte{
-	// 350 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x91, 0xdd, 0x4a, 0xeb, 0x40,
-	0x14, 0x85, 0x49, 0x52, 0x38, 0x9c, 0xdd, 0x1f, 0x72, 0xe6, 0xd0, 0x1f, 0x95, 0x8a, 0x56, 0x04,
-	0xaf, 0x72, 0xa1, 0x4f, 0x10, 0xe2, 0x58, 0x82, 0xfd, 0xd1, 0x18, 0x05, 0xaf, 0x86, 0x21, 0x1d,
-	0xdb, 0x81, 0x26, 0x13, 0x67, 0xa6, 0x42, 0x7d, 0x02, 0x2f, 0x7d, 0x64, 0xa7, 0x35, 0x41, 0x63,
-	0xbd, 0x0a, 0xac, 0x6f, 0xad, 0xbd, 0xb2, 0xf7, 0x40, 0x53, 0x31, 0xf9, 0xc2, 0x13, 0xe6, 0xe5,
-	0x52, 0x68, 0x81, 0x5a, 0x33, 0x91, 0x52, 0x9e, 0x91, 0x42, 0x1d, 0xbc, 0xd9, 0xd0, 0xa9, 0x4a,
-	0x44, 0xb2, 0xe7, 0x15, 0x53, 0x1a, 0xf9, 0x50, 0xd3, 0xeb, 0x9c, 0xf5, 0xac, 0x23, 0xeb, 0xac,
-	0x75, 0x7e, 0xe1, 0x55, 0x6d, 0xde, 0xef, 0x29, 0xaf, 0xf8, 0x92, 0x4d, 0x14, 0x9d, 0xc0, 0x81,
-	0xe1, 0x9c, 0x2e, 0xf9, 0x2b, 0x9b, 0x91, 0x85, 0x30, 0x3a, 0xd5, 0xda, 0x60, 0xaa, 0xb9, 0xc8,
-	0x7a, 0xb6, 0x99, 0xdc, 0x40, 0xa7, 0xd0, 0xff, 0x66, 0xca, 0xc5, 0x92, 0x27, 0xeb, 0x8a, 0xcd,
-	0xd9, 0xd8, 0x06, 0x04, 0x1a, 0x95, 0xd9, 0x5d, 0xf8, 0x7f, 0x39, 0x1d, 0xfb, 0xe1, 0x84, 0x04,
-	0x38, 0x8a, 0x49, 0x84, 0x6f, 0xef, 0xf1, 0x5d, 0xec, 0x5a, 0xe8, 0x1f, 0x34, 0xc7, 0xfe, 0xc4,
-	0x1f, 0x62, 0x72, 0x33, 0x1d, 0x85, 0xc1, 0xa3, 0x6b, 0xa3, 0x0e, 0xa0, 0x08, 0x3f, 0x4c, 0xaf,
-	0xf1, 0xd6, 0x1b, 0x5e, 0x85, 0x81, 0x1f, 0x63, 0xd7, 0x41, 0x75, 0xf8, 0x33, 0xc4, 0x31, 0x09,
-	0xa2, 0x91, 0x5b, 0x1b, 0xcc, 0xa0, 0xbb, 0xb3, 0x93, 0xca, 0x45, 0xa6, 0x18, 0x6a, 0x43, 0x93,
-	0x49, 0x29, 0x24, 0x49, 0x99, 0x52, 0x74, 0xfe, 0x79, 0x93, 0xbf, 0x3f, 0xfe, 0xbc, 0x08, 0xef,
-	0x2e, 0x58, 0x07, 0x27, 0x91, 0xcb, 0x62, 0x8d, 0x77, 0x0b, 0x5c, 0x2d, 0x57, 0x4a, 0x9b, 0x04,
-	0xcb, 0x34, 0xd7, 0x9c, 0x29, 0x74, 0x0c, 0x7b, 0xa5, 0x66, 0x9e, 0x69, 0x2e, 0x69, 0x4a, 0x34,
-	0x15, 0x24, 0xa3, 0xa6, 0xcf, 0x74, 0x39, 0xa6, 0xeb, 0x10, 0x3a, 0xa5, 0x65, 0x7b, 0xc7, 0x2f,
-	0x6e, 0x6f, 0x79, 0x1f, 0xda, 0x25, 0x4f, 0x69, 0xb2, 0xe0, 0x19, 0x23, 0x3c, 0x7b, 0x12, 0xca,
-	0xd4, 0x6e, 0xf0, 0x3e, 0xa0, 0x12, 0x4b, 0x21, 0x34, 0x49, 0x98, 0xd4, 0xaa, 0x57, 0x33, 0xac,
-	0xf1, 0x11, 0x00, 0x00, 0xff, 0xff, 0x54, 0xbf, 0x82, 0xaf, 0x23, 0x02, 0x00, 0x00,
 }

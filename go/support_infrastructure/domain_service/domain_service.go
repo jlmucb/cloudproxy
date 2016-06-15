@@ -76,20 +76,22 @@ func VerifyHostAttestation(serializedHostAttestation []byte, domain *tao.Domain,
 
 	// Look for endorsement cert(s), rooted in the policy key, that ultimately certify the
 	// key of the signer.
-	serializedSigner := hostAttestation.GetSigner()
-	signer, err := auth.UnmarshalPrin(serializedSigner)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if !speaker.Identical(signer) {
-		// TODO: first endorsement endorses speaker or signer?
-	}
+	signingKey := hostAttestation.GetSignerKey()
+	// TODO(sidtelang): Fix below.
+	// signer, err := auth.UnmarshalPrin(serializedSigner)
+	// if err != nil {
+	//	return nil, nil, nil, err
+	// }
+	//if !speaker.Identical(signer) {
+	// TODO: first endorsement endorses speaker or signer?
+	//}
 
 	// Look for endorsement(s) of signer, rooted in policy key.
 	serializedEndorsements := hostAttestation.GetSerializedEndorsements()
 	var realErr error
 	var kPrin *auth.Prin
-	kPrin = &signer
+	prin := auth.NewPrin("key", signingKey)
+	kPrin = &prin
 	for _, serializedEndorsement := range serializedEndorsements {
 		// serializedEndorsement could be X.509 certificate or Tao attestation.
 		var attestation tao.Attestation
@@ -160,17 +162,18 @@ func validateEndorsementCertificate(cert *x509.Certificate, guard tao.Guard,
 	if err != nil {
 		return err
 	}
-	verifier, err := tao.FromPrincipal(*kPrin)
-	if err != nil {
-		return err
-	}
-	if !verifier.Equals(cert) {
-		return errors.New(
-			"endorsement cert does not endorse signer of (previous) attestation")
-	}
+	/*
+		verifier, err := tao.FromPrincipal(*kPrin)
+		if err != nil {
+			return err
+		}
+		if !verifier.Equals(cert) {
+			return errors.New(
+				"endorsement cert does not endorse signer of (previous) attestation")
+		}*/
 	machinePrin := auth.Prin{
-		Type: "MachineInfo",
-		Key:  auth.Str(cert.Subject.CommonName),
+		Type:    "MachineInfo",
+		KeyHash: auth.Str(cert.Subject.CommonName),
 	}
 	if !guard.IsAuthorized(machinePrin, "Root", []string{}) {
 		return errors.New(
@@ -226,17 +229,17 @@ func parseSaysStatement(saysStatement *auth.Says) (*auth.Prin, *auth.Prin, *auth
 // Tao name of the program and subject public key being programKey.
 // Certificate expiration time is one year from issuing time.
 func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth.Prin,
-	programKey *auth.Prin, now, expiry time.Time) (*tao.Attestation, error) {
+	programKey *tao.Keys, now, expiry time.Time) (*tao.Attestation, error) {
 
 	policyCert := domain.Keys.Cert
 	x509Info := domain.Config.GetX509Info()
 	programName := programPrin.String()
 	x509Info.CommonName = &programName
 	subjectName := tao.NewX509Name(x509Info)
-	verifier, err := tao.FromPrincipal(*programKey)
-	if err != nil {
-		return nil, err
-	}
+	verifier := programKey.VerifyingKey
+	//if err != nil {
+	//	return nil, err
+	//}
 	clientCert, err := domain.Keys.SigningKey.CreateSignedX509(
 		policyCert, serialNumber, verifier, subjectName)
 	if err != nil {
@@ -311,8 +314,8 @@ func InitAcls(domain *tao.Domain, trustedEntitiesPath string) error {
 	}
 	for _, machineInfo := range trustedEntities.GetTrustedMachineInfos() {
 		machinePrin := auth.Prin{
-			Type: "MachineInfo",
-			Key:  auth.Str(machineInfo),
+			Type:    "MachineInfo",
+			KeyHash: auth.Str(machineInfo),
 		}
 		err = domain.Guard.Authorize(machinePrin, "Root", []string{})
 		if err != nil {

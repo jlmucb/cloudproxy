@@ -63,7 +63,7 @@ func TestProcessDirectiveAndUpdateGuard(t *testing.T) {
 	failOnError(t, err)
 	info := x509Info
 	speakerStr := Delegator.String()
-	info.CommonName = &speakerStr
+	info.OrganizationalUnit = &speakerStr
 	subject := tao.NewX509Name(&info)
 	programKey.Cert, err = domain.Keys.SigningKey.CreateSignedX509(
 		domain.Keys.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
@@ -157,7 +157,7 @@ func TestCreateAndVerifyDirectiveSignedByProgram(t *testing.T) {
 	failOnError(t, err)
 	info := x509Info
 	speakerStr := Delegator.String()
-	info.CommonName = &speakerStr
+	info.OrganizationalUnit = &speakerStr
 	subject := tao.NewX509Name(&info)
 	programKey.Cert, err = policyKey.SigningKey.CreateSignedX509(
 		policyKey.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
@@ -212,51 +212,62 @@ func TestVerifyDirectiveWithBadSignature(t *testing.T) {
 }
 
 func TestVerifyDirectiveWithBadSays(t *testing.T) {
+	var con auth.Form
+	con = auth.Const(true)
 	params := Params{
-		Says: auth.Const(true),
+		Says: &con,
 	}
 	expectError(&params, t)
 }
 
 func TestVerifyDirectiveWithBadPredicate_badName(t *testing.T) {
+	var form auth.Form
+	form = auth.Pred{
+		Name: "CanNotRead",
+	}
 	params := Params{
-		CanRead: auth.Pred{
-			Name: "CanNotRead",
-		},
+		CanRead: &form,
 	}
 	expectError(&params, t)
 }
 
 func TestVerifyDirectiveWithBadPredicate_badTerms(t *testing.T) {
+	var form auth.Form
+	form = auth.Pred{
+		Name: ReadPredicate,
+		Arg:  []auth.Term{auth.Int(0), auth.Str(""), auth.Str("a")},
+		// TODO: Note make([]auth.Term, 3) above causes NPE in auth.Marshal(thisPred)
+		// Is that a bug?
+	}
 	params := Params{
-		CanRead: auth.Pred{
-			Name: ReadPredicate,
-			Arg:  []auth.Term{auth.Int(0), auth.Str(""), auth.Str("a")},
-			// TODO: Note make([]auth.Term, 3) above causes NPE in auth.Marshal(thisPred)
-			// Is that a bug?
-		},
+		CanRead: &form,
 	}
 	expectError(&params, t)
 }
 
 func TestVerifyDirectiveWithBadDelegate(t *testing.T) {
+	var term auth.Term
+	term = auth.Str("")
 	params := Params{
-		Delegate: auth.Str(""),
+		Delegate: &term,
 	}
 	expectError(&params, t)
 }
 
 func TestVerifyDirectiveWithBadProtectedObjectId_invalidType(t *testing.T) {
+	var term auth.Term
+	term = auth.Str("")
 	params := Params{
-		SerializedObjectId: auth.Str(""),
+		SerializedObjectId: &term,
 	}
 	expectError(&params, t)
 }
 
 func TestVerifyDirectiveWithBadProtectedObjectId_invalidProtoBuf(t *testing.T) {
-	badBytes := []byte("bad bytes")
+	var term auth.Term
+	term = auth.Bytes([]byte("bad bytes"))
 	params := Params{
-		SerializedObjectId: auth.Bytes(badBytes),
+		SerializedObjectId: &term,
 	}
 	expectError(&params, t)
 }
@@ -278,10 +289,10 @@ func failOnError(t *testing.T, err error) {
 }
 
 type Params struct {
-	Delegate           auth.Term
-	SerializedObjectId auth.Term
-	Says               auth.Form
-	CanRead            auth.Form
+	Delegate           *auth.Term
+	SerializedObjectId *auth.Term
+	Says               *auth.Form
+	CanRead            *auth.Form
 	CanReadTerms       []auth.Term
 	Signer             []byte
 	Signature          []byte
@@ -291,16 +302,16 @@ type Params struct {
 func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMessage, error) {
 	var programName auth.Term
 	if params.Delegate != nil {
-		programName = params.Delegate
+		programName = *params.Delegate
 	} else {
 		programName = Delegate
 	}
 	var serializedObjectId auth.Term
 	if params.SerializedObjectId != nil {
-		serializedObjectId = params.SerializedObjectId
+		serializedObjectId = *params.SerializedObjectId
 	} else {
 		bytes, err := proto.Marshal(&ProtectedObjectId)
-		if err != nil {
+		if err != nil || len(bytes) == 0 {
 			return nil, nil, err
 		}
 		serializedObjectId = auth.Bytes(bytes)
@@ -311,7 +322,7 @@ func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMe
 	}
 	var canRead auth.Form
 	if params.CanRead != nil {
-		canRead = params.CanRead
+		canRead = *params.CanRead
 	} else {
 		canRead = auth.Pred{
 			Name: ReadPredicate,
@@ -324,7 +335,7 @@ func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMe
 	}
 	info := x509Info
 	name := policyKey.SigningKey.ToPrincipal().String()
-	info.CommonName = &name
+	info.OrganizationalUnit = &name
 	subject := tao.NewX509Name(&info)
 	policyKey.Cert, err = policyKey.SigningKey.CreateSelfSignedX509(subject)
 	if err != nil {
@@ -332,7 +343,7 @@ func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMe
 	}
 	var says auth.Form
 	if params.Says != nil {
-		says = params.Says
+		says = *params.Says
 	} else {
 		says = auth.Says{
 			Speaker:    policyKey.SigningKey.ToPrincipal(),

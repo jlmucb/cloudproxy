@@ -2,33 +2,16 @@
 // source: service.proto
 // DO NOT EDIT!
 
-/*
-Package domain_service is a generated protocol buffer package.
-
-It is generated from these files:
-	service.proto
-
-It has these top-level messages:
-	DomainServiceRequest
-	DomainServiceResponse
-	TrustedEntities
-*/
 package domain_service
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
+import json "encoding/json"
 import math "math"
 
-// Reference imports to suppress errors if they are not otherwise used.
+// Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
+var _ = &json.SyntaxError{}
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // TODO: explain different types
 type DomainServiceRequestRequestType int32
@@ -61,6 +44,9 @@ func (x DomainServiceRequestRequestType) Enum() *DomainServiceRequestRequestType
 func (x DomainServiceRequestRequestType) String() string {
 	return proto.EnumName(DomainServiceRequestRequestType_name, int32(x))
 }
+func (x DomainServiceRequestRequestType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(x.String())
+}
 func (x *DomainServiceRequestRequestType) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(DomainServiceRequestRequestType_value, data, "DomainServiceRequestRequestType")
 	if err != nil {
@@ -68,9 +54,6 @@ func (x *DomainServiceRequestRequestType) UnmarshalJSON(data []byte) error {
 	}
 	*x = DomainServiceRequestRequestType(value)
 	return nil
-}
-func (DomainServiceRequestRequestType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{0, 0}
 }
 
 type DomainServiceRequest struct {
@@ -87,16 +70,15 @@ type DomainServiceRequest struct {
 	XXX_unrecognized            []byte `json:"-"`
 }
 
-func (m *DomainServiceRequest) Reset()                    { *m = DomainServiceRequest{} }
-func (m *DomainServiceRequest) String() string            { return proto.CompactTextString(m) }
-func (*DomainServiceRequest) ProtoMessage()               {}
-func (*DomainServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *DomainServiceRequest) Reset()         { *m = DomainServiceRequest{} }
+func (m *DomainServiceRequest) String() string { return proto.CompactTextString(m) }
+func (*DomainServiceRequest) ProtoMessage()    {}
 
 func (m *DomainServiceRequest) GetType() DomainServiceRequestRequestType {
 	if m != nil && m.Type != nil {
 		return *m.Type
 	}
-	return DomainServiceRequest_DOMAIN_CERT_REQUEST
+	return 0
 }
 
 func (m *DomainServiceRequest) GetSerializedHostAttestation() []byte {
@@ -129,10 +111,9 @@ type DomainServiceResponse struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *DomainServiceResponse) Reset()                    { *m = DomainServiceResponse{} }
-func (m *DomainServiceResponse) String() string            { return proto.CompactTextString(m) }
-func (*DomainServiceResponse) ProtoMessage()               {}
-func (*DomainServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (m *DomainServiceResponse) Reset()         { *m = DomainServiceResponse{} }
+func (m *DomainServiceResponse) String() string { return proto.CompactTextString(m) }
+func (*DomainServiceResponse) ProtoMessage()    {}
 
 func (m *DomainServiceResponse) GetErrorMessage() string {
 	if m != nil && m.ErrorMessage != nil {
@@ -163,10 +144,9 @@ type TrustedEntities struct {
 	XXX_unrecognized       []byte   `json:"-"`
 }
 
-func (m *TrustedEntities) Reset()                    { *m = TrustedEntities{} }
-func (m *TrustedEntities) String() string            { return proto.CompactTextString(m) }
-func (*TrustedEntities) ProtoMessage()               {}
-func (*TrustedEntities) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (m *TrustedEntities) Reset()         { *m = TrustedEntities{} }
+func (m *TrustedEntities) String() string { return proto.CompactTextString(m) }
+func (*TrustedEntities) ProtoMessage()    {}
 
 func (m *TrustedEntities) GetTrustedProgramTaoNames() []string {
 	if m != nil {
@@ -197,9 +177,6 @@ func (m *TrustedEntities) GetTrustedRootCerts() [][]byte {
 }
 
 func init() {
-	proto.RegisterType((*DomainServiceRequest)(nil), "domain_service.domain_service_request")
-	proto.RegisterType((*DomainServiceResponse)(nil), "domain_service.domain_service_response")
-	proto.RegisterType((*TrustedEntities)(nil), "domain_service.trusted_entities")
 	proto.RegisterEnum("domain_service.DomainServiceRequestRequestType", DomainServiceRequestRequestType_name, DomainServiceRequestRequestType_value)
 }
 

@@ -265,10 +265,14 @@ func SaveProtectedObjects(l *list.List, file string) error {
 	for e := l.Front(); e != nil; e = e.Next() {
 		o := e.Value.(ProtectedObjectMessage)
 		p := new(ProtectedObjectMessage)
+		p.ProtectedObjId = new(ObjectIdMessage)
 		p.ProtectedObjId.ObjName = o.ProtectedObjId.ObjName
 		p.ProtectedObjId.ObjEpoch = o.ProtectedObjId.ObjEpoch
-		p.ProtectorObjId.ObjName = o.ProtectorObjId.ObjName
-		p.ProtectorObjId.ObjEpoch = o.ProtectorObjId.ObjEpoch
+		if o.ProtectorObjId != nil {
+			p.ProtectorObjId = new(ObjectIdMessage)
+			p.ProtectorObjId.ObjName = o.ProtectorObjId.ObjName
+			p.ProtectorObjId.ObjEpoch = o.ProtectorObjId.ObjEpoch
+		}
 		p.Blob = o.Blob
 		po_store.ProtectedObjects = append(po_store.ProtectedObjects, p)
 	}
@@ -321,8 +325,12 @@ func LoadProtectedObjects(file string) *list.List {
 	l := list.New()
 	for _, v := range po_store.ProtectedObjects {
 		o := new(ProtectedObjectMessage)
-		o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
-		o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
+		if v.ProtectorObjId != nil {
+			o.ProtectorObjId = new(ObjectIdMessage)
+			o.ProtectorObjId.ObjName = v.ProtectorObjId.ObjName
+			o.ProtectorObjId.ObjEpoch = v.ProtectorObjId.ObjEpoch
+		}
+		o.ProtectedObjId = new(ObjectIdMessage)
 		o.ProtectedObjId.ObjName = v.ProtectedObjId.ObjName
 		o.ProtectedObjId.ObjEpoch = v.ProtectedObjId.ObjEpoch
 		o.Blob = v.Blob

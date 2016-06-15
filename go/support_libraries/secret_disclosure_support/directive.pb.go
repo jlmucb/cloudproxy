@@ -2,31 +2,16 @@
 // source: directive.proto
 // DO NOT EDIT!
 
-/*
-Package secret_disclosure is a generated protocol buffer package.
-
-It is generated from these files:
-	directive.proto
-
-It has these top-level messages:
-	DirectiveMessage
-*/
 package secret_disclosure
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
+import json "encoding/json"
 import math "math"
 
-// Reference imports to suppress errors if they are not otherwise used.
+// Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
+var _ = &json.SyntaxError{}
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // As of now, the only type supported is "secret_disclosure".
 type DirectiveMessageDirectiveType int32
@@ -50,6 +35,9 @@ func (x DirectiveMessageDirectiveType) Enum() *DirectiveMessageDirectiveType {
 func (x DirectiveMessageDirectiveType) String() string {
 	return proto.EnumName(DirectiveMessageDirectiveType_name, int32(x))
 }
+func (x DirectiveMessageDirectiveType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(x.String())
+}
 func (x *DirectiveMessageDirectiveType) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(DirectiveMessageDirectiveType_value, data, "DirectiveMessageDirectiveType")
 	if err != nil {
@@ -57,9 +45,6 @@ func (x *DirectiveMessageDirectiveType) UnmarshalJSON(data []byte) error {
 	}
 	*x = DirectiveMessageDirectiveType(value)
 	return nil
-}
-func (DirectiveMessageDirectiveType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor0, []int{0, 0}
 }
 
 type DirectiveMessage struct {
@@ -78,16 +63,15 @@ type DirectiveMessage struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *DirectiveMessage) Reset()                    { *m = DirectiveMessage{} }
-func (m *DirectiveMessage) String() string            { return proto.CompactTextString(m) }
-func (*DirectiveMessage) ProtoMessage()               {}
-func (*DirectiveMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *DirectiveMessage) Reset()         { *m = DirectiveMessage{} }
+func (m *DirectiveMessage) String() string { return proto.CompactTextString(m) }
+func (*DirectiveMessage) ProtoMessage()    {}
 
 func (m *DirectiveMessage) GetType() DirectiveMessageDirectiveType {
 	if m != nil && m.Type != nil {
 		return *m.Type
 	}
-	return DirectiveMessage_SECRET_DISCLOSURE
+	return 0
 }
 
 func (m *DirectiveMessage) GetSerializedStatement() []byte {
@@ -119,23 +103,5 @@ func (m *DirectiveMessage) GetCert() []byte {
 }
 
 func init() {
-	proto.RegisterType((*DirectiveMessage)(nil), "secret_disclosure.directive_message")
 	proto.RegisterEnum("secret_disclosure.DirectiveMessageDirectiveType", DirectiveMessageDirectiveType_name, DirectiveMessageDirectiveType_value)
-}
-
-var fileDescriptor0 = []byte{
-	// 196 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x4f, 0xc9, 0x2c, 0x4a,
-	0x4d, 0x2e, 0xc9, 0x2c, 0x4b, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x2c, 0x4e, 0x4d,
-	0x2e, 0x4a, 0x2d, 0x89, 0x4f, 0xc9, 0x2c, 0x4e, 0xce, 0xc9, 0x2f, 0x2e, 0x2d, 0x4a, 0x55, 0x3a,
-	0xc7, 0xc8, 0x25, 0x08, 0x57, 0x16, 0x9f, 0x9b, 0x5a, 0x5c, 0x9c, 0x98, 0x9e, 0x2a, 0xe4, 0xc8,
-	0xc5, 0x52, 0x52, 0x59, 0x90, 0x2a, 0xc1, 0xa8, 0xc0, 0xa8, 0xc1, 0x67, 0x64, 0xac, 0x87, 0xa1,
-	0x4f, 0x0f, 0x43, 0x0f, 0x92, 0x08, 0x48, 0xab, 0x90, 0x0c, 0x97, 0x48, 0x71, 0x6a, 0x51, 0x66,
-	0x62, 0x4e, 0x66, 0x55, 0x6a, 0x4a, 0x7c, 0x71, 0x49, 0x62, 0x49, 0x6a, 0x6e, 0x6a, 0x5e, 0x89,
-	0x04, 0x13, 0xd0, 0x48, 0x1e, 0x21, 0x3e, 0x2e, 0xb6, 0xe2, 0xcc, 0xf4, 0xbc, 0xd4, 0x22, 0x09,
-	0x66, 0x30, 0x5f, 0x90, 0x8b, 0x13, 0xc4, 0x4f, 0x2c, 0x01, 0x9a, 0x2d, 0xc1, 0x02, 0x16, 0xe2,
-	0xe1, 0x62, 0x49, 0x4e, 0x2d, 0x2a, 0x91, 0x60, 0x05, 0xf1, 0x94, 0xd4, 0xb9, 0xf8, 0xd0, 0x2c,
-	0x10, 0xe5, 0x12, 0x0c, 0x76, 0x75, 0x0e, 0x72, 0x0d, 0x89, 0x77, 0xf1, 0x0c, 0x76, 0xf6, 0xf1,
-	0x0f, 0x0e, 0x0d, 0x72, 0x15, 0x60, 0x04, 0x04, 0x00, 0x00, 0xff, 0xff, 0x4f, 0x72, 0xc2, 0x3a,
-	0xf5, 0x00, 0x00, 0x00,
 }

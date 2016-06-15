@@ -3,8 +3,6 @@
 // Definition of protobufs for directives.
 syntax = "proto2";
 
-// TODO: fix this: import "github.com/jlmucb/cloudproxy/go/support_libraries/protected_objects/protected_objects.proto";
-
 package secret_service;
 
 // Epochs must increase monotonically and be > 0
@@ -20,18 +18,24 @@ message secret_service_request {
     WRITE = 2;
     CREATE = 3;
     DELETE = 4;
+    NOP = 5;
   }
   optional operation_type op = 1;
 
-  optional object_id_message secret_id = 2;
+  optional string obj_name = 2;
+
+  optional int32 obj_epoch = 3;
 
   // Fields for type: WRITE.
-  optional string new_secret_type = 3;
-  optional bytes new_secret_val  = 4;
+  optional string new_type = 4;
+  optional bytes new_val  = 5;
 
   // Fields for type: CREATE (in addition to above fields).
-  optional object_id_message new_secret_id = 5;
-  optional object_id_message protector_id = 6;
+  optional string protector_name = 6;
+  optional int32 protector_epoch = 7;
+
+  // Directives that are processed before processing request.
+  repeated bytes directives = 8;
 }
 
 message secret_service_response {

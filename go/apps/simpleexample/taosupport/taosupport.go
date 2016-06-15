@@ -94,14 +94,14 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 //     For tpm2 we need the ekCert and the tao and we need the data
 //     for ActivateCredential.
 //     For tpm1.2, we need the aikCert.
-func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
-		v *tao.Verifier) (*domain_policy.DomainProgramCerts, error) {
-// (*tao.Attestation, error) {
-	if keys.Cert == nil {
+func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
+		v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
+
+	// Note requesting program key contains a self-signed cert to open channel.
+	if requesting_key.Cert == nil {
 		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
 	}
-	// Explain what keys are used
-	tlsCert, err := tao.EncodeTLSCert(keys)
+	tlsCert, err := tao.EncodeTLSCert(requesting_key)
 	if err != nil {
 		return nil, err
 	}
@@ -115,40 +115,27 @@ func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 	}
 	defer conn.Close()
 
+	var request domain_policy.DomainCertRequest
+	request.Attestation, err = proto.Marshal(requesting_key.Delegation)
+	signer := requesting_key.SigningKey.GetSigner()
+	key_type := "ECDSA"
+	request.KeyType = &key_type
+	request.SubjectPublicKey, err = domain_policy.GetPublicDerFromEcdsaKey(signer.PublicKey)
+
 	// Tao handshake: send client delegation.
 	ms := util.NewMessageStream(conn)
-	_, err = ms.WriteMessage(keys.Delegation)
+	_, err = ms.WriteMessage(requesting_key.Delegation)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read the new cert
-	var dc domain_policy.DomainProgramCerts
-	err = ms.ReadMessage(&dc)
+	var response domain_policy.DomainCertResponse
+	err = ms.ReadMessage(&response)
 	if err != nil {
 		return nil, err
 	}
-
-/*
-	// Read the truncated attestation and check it.
-	var a tao.Attestation
-	err = ms.ReadMessage(&a)
-	if err != nil {
-		return nil, err
-	}
-
-	// Explain Verify and what keys are used.
-	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, errors.New("invalid attestation signature from Tao CA")
-	}
-
-	return &a, nil
- */
-	return &dc, nil
+	return &response, nil
 }
 
 func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
@@ -178,48 +165,15 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 		return nil, nil, nil, err
 	}
 
-/*
-	// Request attestations.  Policy key is verifier.
-	na, err := RequestDomainServiceCert("tcp", *caAddr, k,
-			domain.Keys.VerifyingKey)
-	if err != nil || na == nil {
-		log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
-		return nil, nil, nil, err
-	}
-
-	// TODO: Remove this code
-	k.Delegation = na
-	pa, _ := auth.UnmarshalForm(na.SerializedStatement)
-	var saysStatement *auth.Says
-	if ptr, ok := pa.(*auth.Says); ok {
-		saysStatement = ptr
-	} else if val, ok := pa.(auth.Says); ok {
-		saysStatement = &val
-	}
-	sf, ok := saysStatement.Message.(auth.Speaksfor)
-	if ok != true {
-		return nil, nil, nil, errors.New("InitializeSealedProgramKey: says doesnt have speaksfor message")
-	}
-	kprin, ok := sf.Delegate.(auth.Term)
-	if ok != true {
-		return nil, nil, nil, errors.New("InitializeSealedProgramKey: speaksfor message doesn't have Delegate")
-	}
-	programCert := auth.Bytes(kprin.(auth.Bytes))
-	k.Cert, err = x509.ParseCertificate(programCert)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-*/
-
 	// Get program cert.
-	dc, err := RequestDomainServiceCert("tcp", *caAddr, k,
+	domain_response, err := RequestDomainServiceCert("tcp", *caAddr, k,
 			domain.Keys.VerifyingKey)
-	if err != nil || dc == nil {
+	if err != nil || domain_response == nil {
 		log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
 		return nil, nil, nil, err
 	}
-	programCert := dc.SignedCert
-	certChain := dc.CertChain
+	programCert := domain_response.SignedCert
+	certChain := domain_response.CertChain
 	k.Cert, err = x509.ParseCertificate(programCert)
 	if err != nil {
 		return nil, nil, nil, err
@@ -244,18 +198,6 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, nil, nil, err
 	}
-/*
-	delegateBlob, err := proto.Marshal(k.Delegation)
-	if err != nil {
-		return nil, errors.New("InitializeSealedProgramKey: Can't marshal delegation")
-	}
-	err = ioutil.WriteFile(path.Join(filePath, "delegationBlob"), delegateBlob, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	return k, nil
- */
-
 /*
 	FIX
 	if certChain.size() > 0 {

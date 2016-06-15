@@ -25,7 +25,7 @@ import (
 	"net"
 	"time"
 
-	//"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/domain_policy"
@@ -57,15 +57,31 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 fmt.Printf("DomainRequest\n")
 	log.Printf("DomainRequest\n")
 
-	// Expect an attestation from the client.
+	// Expect a request with attestation from client.
 	ms := util.NewMessageStream(conn)
-	var a tao.Attestation
-	err := ms.ReadMessage(&a)
+	var request domain_policy.DomainCertRequest
+	err := ms.ReadMessage(&request)
 	if err != nil {
-fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read attestation from channel: %s\n", err)
+fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read request from channel: %s\n", err)
 		log.Printf("DomainRequest: Couldn't read attestation from channel:", err)
 		log.Printf("\n")
 		return false, err
+	}
+
+	var a tao.Attestation
+	err = proto.Unmarshal(request.Attestation, &a)
+	if request.KeyType == nil || *request.KeyType != "ECDSA" {
+		log.Printf("Domain: unsupported key type")
+		return false, errors.New("Unsupported key type")
+	}
+	subject_public_key, err := domain_policy.GetEcdsaKeyFromDer(request.SubjectPublicKey)
+
+	// Get hash of the public key subject.
+	serialized_key, err := domain_policy.SerializeKeyToInternalName(subject_public_key)
+	subject_key_hash, err := domain_policy.GetKeyHash(serialized_key)
+	if err != nil || subject_key_hash == nil {
+		log.Printf("Can't compute subject key hash\n")
+		return false, errors.New("Can't compute subject key hash")
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
@@ -78,10 +94,9 @@ fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read attestation from
 fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 */
 
-	// Sign cert and put it in attestation statement
-	// which consists of serialized statement, sig and SignerInfo
+	// Sign cert
 
-	// Get Program name and key name
+	// Get Program name and key info from delegation.
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
 		log.Printf("DomainRequest: Can't unmarshal a.SerializedStatement\n")
@@ -119,12 +134,10 @@ fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 	}
 fmt.Printf("\nSimpleDomainService: key principal: %s, program principal: %s\n", clientKeyPrincipal, programPrincipalName)
 
+	// Is the delegate the same key as was presented in the request?
+
 	// Sign program certificate.
-	clientKey, err := tao.FromPrincipal(clientKeyPrincipal)
-	if err != nil {
-		log.Printf("DomainRequest: Can't do FromPrincipal\n")
-		return false, err
-	}
+
 	notBefore := time.Now()
 	validFor := 365*24*time.Hour
         notAfter := notBefore.Add(validFor)
@@ -159,7 +172,7 @@ fmt.Printf("\nSimpleDomainService: key principal: %s, program principal: %s\n", 
 	}
 
 	clientCert, err := x509.CreateCertificate(rand.Reader, &certificateTemplate,
-                            policyKey.Cert, clientKey.GetVerifier(),
+                            policyKey.Cert, subject_public_key,
                             policyKey.SigningKey.GetSigner())
 	if err != nil {
 		fmt.Printf("Can't create client certificate: ", err, "\n")
@@ -167,7 +180,7 @@ fmt.Printf("\nSimpleDomainService: key principal: %s, program principal: %s\n", 
 	}
 
 	zero := int32(0)
-	var ra domain_policy.DomainProgramCerts;
+	var ra domain_policy.DomainCertResponse;
         ra.Error = &zero
         ra.SignedCert= clientCert
 

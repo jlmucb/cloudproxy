@@ -9,7 +9,8 @@ It is generated from these files:
 	domain_policy.proto
 
 It has these top-level messages:
-	DomainProgramCerts
+	DomainCertRequest
+	DomainCertResponse
 */
 package domain_policy
 
@@ -22,39 +23,81 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+// This is used to request a signed cert from the domain service.
+// attestation is the marshaled attestation.
+// program_key is the der encoded program public key.
+// cert chain is any supporting certificates.
+type DomainCertRequest struct {
+	Attestation      []byte  `protobuf:"bytes,1,opt,name=attestation" json:"attestation,omitempty"`
+	KeyType          *string `protobuf:"bytes,2,opt,name=key_type" json:"key_type,omitempty"`
+	SubjectPublicKey []byte  `protobuf:"bytes,3,opt,name=subject_public_key" json:"subject_public_key,omitempty"`
+	CertChain        []byte  `protobuf:"bytes,4,opt,name=cert_chain" json:"cert_chain,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
 
-type DomainProgramCerts struct {
+func (m *DomainCertRequest) Reset()                    { *m = DomainCertRequest{} }
+func (m *DomainCertRequest) String() string            { return proto.CompactTextString(m) }
+func (*DomainCertRequest) ProtoMessage()               {}
+func (*DomainCertRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+func (m *DomainCertRequest) GetAttestation() []byte {
+	if m != nil {
+		return m.Attestation
+	}
+	return nil
+}
+
+func (m *DomainCertRequest) GetKeyType() string {
+	if m != nil && m.KeyType != nil {
+		return *m.KeyType
+	}
+	return ""
+}
+
+func (m *DomainCertRequest) GetSubjectPublicKey() []byte {
+	if m != nil {
+		return m.SubjectPublicKey
+	}
+	return nil
+}
+
+func (m *DomainCertRequest) GetCertChain() []byte {
+	if m != nil {
+		return m.CertChain
+	}
+	return nil
+}
+
+// This is the response from the domain service.
+// signed_cert is the signed program cert.
+// cert_chain is the supporting certificate chain.
+type DomainCertResponse struct {
 	Error            *int32   `protobuf:"varint,1,req,name=error" json:"error,omitempty"`
 	SignedCert       []byte   `protobuf:"bytes,2,opt,name=signed_cert" json:"signed_cert,omitempty"`
 	CertChain        [][]byte `protobuf:"bytes,3,rep,name=cert_chain" json:"cert_chain,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
-func (m *DomainProgramCerts) Reset()                    { *m = DomainProgramCerts{} }
-func (m *DomainProgramCerts) String() string            { return proto.CompactTextString(m) }
-func (*DomainProgramCerts) ProtoMessage()               {}
-func (*DomainProgramCerts) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *DomainCertResponse) Reset()                    { *m = DomainCertResponse{} }
+func (m *DomainCertResponse) String() string            { return proto.CompactTextString(m) }
+func (*DomainCertResponse) ProtoMessage()               {}
+func (*DomainCertResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-func (m *DomainProgramCerts) GetError() int32 {
+func (m *DomainCertResponse) GetError() int32 {
 	if m != nil && m.Error != nil {
 		return *m.Error
 	}
 	return 0
 }
 
-func (m *DomainProgramCerts) GetSignedCert() []byte {
+func (m *DomainCertResponse) GetSignedCert() []byte {
 	if m != nil {
 		return m.SignedCert
 	}
 	return nil
 }
 
-func (m *DomainProgramCerts) GetCertChain() [][]byte {
+func (m *DomainCertResponse) GetCertChain() [][]byte {
 	if m != nil {
 		return m.CertChain
 	}
@@ -62,17 +105,22 @@ func (m *DomainProgramCerts) GetCertChain() [][]byte {
 }
 
 func init() {
-	proto.RegisterType((*DomainProgramCerts)(nil), "domain_policy.DomainProgramCerts")
+	proto.RegisterType((*DomainCertRequest)(nil), "domain_policy.DomainCertRequest")
+	proto.RegisterType((*DomainCertResponse)(nil), "domain_policy.DomainCertResponse")
 }
 
 var fileDescriptor0 = []byte{
-	// 120 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0x4e, 0xc9, 0xcf, 0x4d,
-	0xcc, 0xcc, 0x8b, 0x2f, 0xc8, 0xcf, 0xc9, 0x4c, 0xae, 0xd4, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,
-	0xe2, 0x45, 0x11, 0x54, 0xf2, 0xe1, 0x12, 0x72, 0x01, 0x0b, 0x04, 0x14, 0xe5, 0xa7, 0x17, 0x25,
-	0xe6, 0x3a, 0xa7, 0x16, 0x95, 0x14, 0x0b, 0xf1, 0x72, 0xb1, 0xa6, 0x16, 0x15, 0xe5, 0x17, 0x49,
-	0x30, 0x2a, 0x30, 0x69, 0xb0, 0x0a, 0x09, 0x73, 0x71, 0x17, 0x67, 0xa6, 0xe7, 0xa5, 0xa6, 0xc4,
-	0x27, 0x03, 0xa5, 0x25, 0x98, 0x14, 0x18, 0x35, 0x78, 0x84, 0x84, 0xb8, 0xb8, 0x40, 0xbc, 0xf8,
-	0xe4, 0x0c, 0xa0, 0x6e, 0x09, 0x66, 0x05, 0x66, 0x0d, 0x1e, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0xe7, 0xbd, 0xbd, 0x04, 0x72, 0x00, 0x00, 0x00,
+	// 182 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x5c, 0x8d, 0xc1, 0x8e, 0x82, 0x30,
+	0x10, 0x86, 0x03, 0x2c, 0xc9, 0xee, 0x2c, 0x24, 0x3a, 0x5c, 0x1a, 0x4f, 0x84, 0x13, 0x27, 0x5f,
+	0x42, 0x8f, 0x9e, 0x7c, 0x81, 0x06, 0xca, 0x44, 0x8b, 0xda, 0xd6, 0x76, 0x38, 0xf0, 0xf6, 0x16,
+	0x4e, 0xea, 0x6d, 0xf2, 0xe5, 0x9f, 0xef, 0x83, 0x6a, 0xb0, 0x8f, 0x4e, 0x1b, 0xe9, 0xec, 0x5d,
+	0xab, 0x79, 0xef, 0xbc, 0x65, 0x8b, 0xe5, 0x07, 0x6c, 0x46, 0xd8, 0x1e, 0x57, 0x70, 0x20, 0xcf,
+	0x67, 0x7a, 0x4e, 0x14, 0x18, 0x2b, 0xf8, 0xef, 0x98, 0xe3, 0xd5, 0xb1, 0xb6, 0x46, 0x24, 0x75,
+	0xd2, 0x16, 0xb8, 0x81, 0xdf, 0x1b, 0xcd, 0x92, 0x67, 0x47, 0x22, 0x8d, 0xe4, 0x0f, 0x77, 0x80,
+	0x61, 0xea, 0x47, 0x52, 0x2c, 0xdd, 0xd4, 0x47, 0x9d, 0x8c, 0x03, 0x91, 0xad, 0x6b, 0x04, 0x50,
+	0xd1, 0x28, 0xd5, 0x35, 0xba, 0xc5, 0xcf, 0xc2, 0x9a, 0x13, 0xe0, 0x7b, 0x2b, 0x38, 0x6b, 0x02,
+	0x61, 0x09, 0x39, 0x79, 0x6f, 0x7d, 0xcc, 0xa4, 0x6d, 0xbe, 0xb4, 0x83, 0xbe, 0x18, 0x1a, 0xe4,
+	0xf2, 0xbf, 0x96, 0xbe, 0x6d, 0x59, 0x9d, 0xb5, 0xc5, 0x2b, 0x00, 0x00, 0xff, 0xff, 0x10, 0x05,
+	0xa6, 0xbe, 0xde, 0x00, 0x00, 0x00,
 }

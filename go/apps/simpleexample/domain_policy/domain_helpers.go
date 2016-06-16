@@ -25,7 +25,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-func GetPublicDerFromEcdsaKey(key ecdsa.PublicKey) ([]byte, error) {
+func GetPublicDerFromEcdsaKey(key *ecdsa.PublicKey) ([]byte, error) {
 	return x509.MarshalPKIXPublicKey(key)
 }
 

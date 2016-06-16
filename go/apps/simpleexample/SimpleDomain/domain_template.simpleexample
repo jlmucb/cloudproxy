@@ -2,7 +2,7 @@ config: {
   domain_info: {
     name: "SimpleExample"
     policy_keys_path: "policy_keys"
-    guard_type: "Datalog"
+    guard_type: "AllowAll"
   }
 
   x509_info: {

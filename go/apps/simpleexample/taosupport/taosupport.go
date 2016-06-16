@@ -118,13 +118,19 @@ func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 	var request domain_policy.DomainCertRequest
 	request.Attestation, err = proto.Marshal(requesting_key.Delegation)
 	signer := requesting_key.SigningKey.GetSigner()
+	if signer == nil {
+		return nil, err
+	}
 	key_type := "ECDSA"
 	request.KeyType = &key_type
-	request.SubjectPublicKey, err = domain_policy.GetPublicDerFromEcdsaKey(signer.PublicKey)
+	request.SubjectPublicKey, err = domain_policy.GetPublicDerFromEcdsaKey(&signer.PublicKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// Tao handshake: send client delegation.
 	ms := util.NewMessageStream(conn)
-	_, err = ms.WriteMessage(requesting_key.Delegation)
+	_, err = ms.WriteMessage(&request)
 	if err != nil {
 		return nil, err
 	}
@@ -176,6 +182,7 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	certChain := domain_response.CertChain
 	k.Cert, err = x509.ParseCertificate(programCert)
 	if err != nil {
+		log.Printf("InitializeSealedProgramKey: Can't parse certificate\n")
 		return nil, nil, nil, err
 	}
 	k.Cert.Raw = programCert

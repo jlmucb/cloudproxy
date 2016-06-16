@@ -64,7 +64,6 @@ fmt.Printf("DomainRequest\n")
 	var request domain_policy.DomainCertRequest
 	err := ms.ReadMessage(&request)
 	if err != nil {
-fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read request from channel: %s\n", err)
 		log.Printf("DomainRequest: Couldn't read attestation from channel:", err)
 		log.Printf("\n")
 		return false, err
@@ -72,19 +71,25 @@ fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read request from cha
 
 	var a tao.Attestation
 	err = proto.Unmarshal(request.Attestation, &a)
-	if request.KeyType == nil || *request.KeyType != "ECDSA" {
-		log.Printf("Domain: unsupported key type")
-		return false, errors.New("Unsupported key type")
+	if request.KeyType == nil  {
+		log.Printf("Domain: Empty key type")
+		return false, errors.New("Empty key type")
+	}
+	if *request.KeyType != "ECDSA"  {
+		log.Printf("Domain: bad key type")
+		return false, errors.New("Domain: bad key type")
 	}
 	subject_public_key, err := domain_policy.GetEcdsaKeyFromDer(request.SubjectPublicKey)
 	if err != nil {
+		log.Printf("DomainRequest: can't get key from der")
+		return false, errors.New("DomainRequest: can't get key from der")
 	}
 
 	// Get hash of the public key subject.
 	serialized_key, err := domain_policy.SerializeEcdsaKeyToInternalName(subject_public_key.(*ecdsa.PublicKey))
 	if err!= nil || serialized_key == nil {
-		log.Printf("Can't serialize key to internal format\n")
-		return false, errors.New("Can't serialize key to internal format")
+		log.Printf("DomainRequest: Can't serialize key to internal format\n")
+		return false, errors.New("DomainRequest: Can't serialize key to internal format")
 	}
 	subject_key_hash := domain_policy.GetKeyHash(serialized_key)
 

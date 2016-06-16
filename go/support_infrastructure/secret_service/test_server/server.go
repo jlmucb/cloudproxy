@@ -14,6 +14,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"flag"
 	"log"
 
@@ -38,7 +39,7 @@ var network = flag.String("network", "tcp", "The network to use for connections"
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 
 var domainPass = flag.String("password", "xxx", "The domain password")
-var configPath = flag.String("config", "../server/state/tao.config", "The Tao domain config")
+var configPath = flag.String("config", "../server/state/server.config", "The server config")
 
 func main() {
 
@@ -62,7 +63,7 @@ func main() {
 	// Send create request from program 1.
 	key1Name := "MyKey"
 	epoch := int32(1)
-	key1Val := []byte("I am a key 1")
+	key1Val := createKeyVal()
 	err = secret_service.CreateSecret(key1Name, epoch, "key", key1Val, nil, nil,
 		[]secret_disclosure.DirectiveMessage{*directive}, *addr, domain.Keys.Cert,
 		program1Key)
@@ -103,13 +104,78 @@ func main() {
 		log.Fatalf("Program 2 read wrong secret val. \nExpected: %v\nBut got: %v.",
 			key1Val, val)
 	}
+
 	// Program 1 authorizes program 2 for create.
+	directive, err = secret_disclosure.CreateSecretDisclosureDirective(program1Key, program1,
+		program2, secret_disclosure.CreatePredicate, &key1Id)
+	failOnError(err)
+	log.Println("Successfully created directive authorizing Program2 to create under key1.")
+
 	// Program 2 creates sub secret.
+	key2Name := "Key 2"
+	key2Val := createKeyVal()
+	err = secret_service.CreateSecret(key2Name, epoch, "key", key2Val, &key1Name, &epoch,
+		[]secret_disclosure.DirectiveMessage{*directive}, *addr, domain.Keys.Cert,
+		program2Key)
+	failOnError(err)
+	log.Println("Program 2 successfully created key2 under key1.")
+
 	// Program 2 authorizes program 1 to write.
+	key2Id := protected_objects.ObjectIdMessage{
+		ObjName:  &key2Name,
+		ObjEpoch: &epoch}
+	directive, err = secret_disclosure.CreateSecretDisclosureDirective(program2Key, program2,
+		program1, secret_disclosure.WritePredicate, &key2Id)
+	failOnError(err)
+	log.Println("Successfully created directive authorizing Program1 to write key2.")
+
 	// Program 1 writes.
+	key2NewVal := createKeyVal()
+	err = secret_service.WriteSecret(key2Name, epoch, "key", key2NewVal,
+		[]secret_disclosure.DirectiveMessage{*directive}, *addr, domain.Keys.Cert, program1Key)
+	failOnError(err)
+	log.Println("Program 1 successfully overwrote key2.")
+
 	// Program 1 authorizes Program 3 to read subsecret. Fails.
+	directive, err = secret_disclosure.CreateSecretDisclosureDirective(program1Key, program1,
+		program3, secret_disclosure.ReadPredicate, &key2Id)
+	failOnError(err)
+	log.Println("Successfully created directive authorizing Program3 to read key2.")
+
+	program3Key := createProgramKey(program3, domain)
+	_, _, err = secret_service.ReadSecret(key2Name, epoch,
+		[]secret_disclosure.DirectiveMessage{*directive}, *addr, domain.Keys.Cert, program3Key)
+	if err == nil {
+		log.Fatalln("Expected error but didn't get one: Program1 authorized read of key2.")
+	}
+	log.Println("Program1 not allowed to authorize read of key2, got error as expected.")
+
 	// Program 2 authorizes Program 1 to own sub-secret.
+	directive, err = secret_disclosure.CreateSecretDisclosureDirective(program2Key, program2,
+		program1, secret_disclosure.OwnPredicate, &key2Id)
+	failOnError(err)
+	log.Println("Successfully created directive authorizing Program1 to own key2.")
+	err = secret_service.ProcessDirectives([]secret_disclosure.DirectiveMessage{*directive},
+		*addr, domain.Keys.Cert, program2Key)
+	failOnError(err)
+	log.Println("Program 2 authorized Program 1 to own key2.")
+
 	// Program 1 authorizes Program 3 to read subsecret.
+	directive, err = secret_disclosure.CreateSecretDisclosureDirective(program1Key, program1,
+		program3, secret_disclosure.ReadPredicate, &key2Id)
+	failOnError(err)
+	log.Println("Successfully created directive authorizing Program3 to read key2.")
+
+	typ, val, err = secret_service.ReadSecret(key2Name, epoch,
+		[]secret_disclosure.DirectiveMessage{*directive}, *addr, domain.Keys.Cert, program3Key)
+	failOnError(err)
+	if *typ != "key" {
+		log.Fatalf("Program 3 read wrong secret type. Expected key but got %v.", *typ)
+	}
+	if !bytes.Equal(val, key2NewVal) {
+		log.Fatalf("Program 3 read wrong secret val. \nExpected: %v\nBut got: %v.",
+			key2NewVal, val)
+	}
 }
 
 func failOnError(err error) {
@@ -128,4 +194,13 @@ func createProgramKey(program *auth.Prin, domain *tao.Domain) *tao.Keys {
 	failOnError(err)
 	programKey.Cert = programCert
 	return programKey
+}
+
+func createKeyVal() []byte {
+	keyVal := make([]byte, 32)
+	_, err := rand.Read(keyVal)
+	if err != nil {
+		log.Fatalln("Error creating key values. Error: ", err)
+	}
+	return keyVal
 }

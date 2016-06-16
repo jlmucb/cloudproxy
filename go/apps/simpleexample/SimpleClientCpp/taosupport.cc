@@ -518,7 +518,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   }
 
   response_buf.assign((const char*)read_buf, bytes_read);
-  domain_policy::DomainProgramCerts response;
+  domain_policy::DomainCertResponse response;
   if (!response.ParseFromString(response_buf)) {
     printf("Domain channel parse failure.\n");
     return false;
@@ -698,8 +698,6 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
 //     Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
 //     EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
 // Points marshalled as in section 4.3.6 of ANSI X9.62.
-// Recommend we remove ToPrincipal and FromPrincipal as key information
-// transmission vehicle.
 
 #pragma pack(push, 1)
 struct ecMarshal {

@@ -659,7 +659,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   // Der serialize key
   byte out[4096];
   byte* ptr = out;
-  int n = i2d_PublicKey(program_key_, &ptr);
+  int n = i2d_PUBKEY(program_key_, &ptr);
   if (n <= 0) {
     printf("Can't i2d ECC public key\n");
     return false;
@@ -670,7 +670,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
   request.set_attestation(attestation_string);
   request.set_key_type("ECDSA");
   request.set_subject_public_key(out, n);
-  printf("Der program key: ");PrintBytes(n, out); printf("\n");
+  // printf("Der program key: ");PrintBytes(n, out); printf("\n");
 
   string request_string;
   if (!request.SerializeToString(&request_string)) {

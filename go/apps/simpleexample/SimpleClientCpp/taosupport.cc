@@ -656,8 +656,31 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
     return false;
   }
 
+  // Der serialize key
+  byte out[4096];
+  byte* ptr = out;
+  int n = i2d_PublicKey(program_key_, &ptr);
+  if (n <= 0) {
+    printf("Can't i2d ECC public key\n");
+    return false;
+  }
+
+  // Make cert request.
+  domain_policy::DomainCertRequest request;
+  request.set_attestation(attestation_string);
+  request.set_key_type("ECDSA");
+  request.set_subject_public_key(out, n);
+  printf("Der program key: ");PrintBytes(n, out); printf("\n");
+
+  string request_string;
+  if (!request.SerializeToString(&request_string)) {
+    printf("InitializeProgramKey: couldn't serialize request.\n");
+    return false;
+  }
+
   // Get Program Cert.
-  if (!RequestDomainServiceCert(network, address, port, attestation_string,
+  // if (!RequestDomainServiceCert(network, address, port, attestation_string,
+  if (!RequestDomainServiceCert(network, address, port, request_string,
           host_cert, &program_cert_, &certs_in_chain_)) {
     printf("InitializeProgramKey: couldn't RequestDomainServiceCert.\n");
     return false;

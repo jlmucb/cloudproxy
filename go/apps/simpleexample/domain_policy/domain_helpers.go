@@ -17,6 +17,7 @@ package domain_policy
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 
@@ -32,7 +33,11 @@ func GetEcdsaKeyFromDer(der []byte) (interface{}, error) {
 	return x509.ParsePKIXPublicKey(der)
 }
 
-func SerializeKeyToInternalName(ec_key *ecdsa.PublicKey) ([]byte, error) {
+func SerializeRSAKeyToInternalName(rsa_key *rsa.PublicKey) ([]byte, error) {
+	return nil, nil
+}
+
+func SerializeEcdsaKeyToInternalName(ec_key *ecdsa.PublicKey) ([]byte, error) {
 	m := &tao.ECDSA_SHA_VerifyingKeyV1{
                 Curve:    tao.NamedEllipticCurve_PRIME256_V1.Enum(),
 		EcPublic: elliptic.Marshal(ec_key.Curve, ec_key.X, ec_key.Y),

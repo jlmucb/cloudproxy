@@ -81,7 +81,7 @@ fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read request from cha
 	}
 
 	// Get hash of the public key subject.
-	serialized_key, err := domain_policy.SerializeKeyToInternalName(subject_public_key.(*ecdsa.PublicKey))
+	serialized_key, err := domain_policy.SerializeEcdsaKeyToInternalName(subject_public_key.(*ecdsa.PublicKey))
 	if err!= nil || serialized_key == nil {
 		log.Printf("Can't serialize key to internal format\n")
 		return false, errors.New("Can't serialize key to internal format")

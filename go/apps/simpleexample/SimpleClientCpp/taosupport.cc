@@ -624,8 +624,8 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
     printf("InitializeProgramKey: couldn't generate program key.\n");
     return false;
   }
-  string* key_bytes = GetKeyBytes(program_key_);
-  if (key_bytes == nullptr) {
+  string key_bytes;
+  if (!GetKeyBytes(program_key_, &key_bytes)) {
     printf("InitializeProgramKey: couldn't get key bytes.\n");
     return false;
   }
@@ -644,7 +644,7 @@ bool TaoProgramData::InitializeProgramKey(string& path, string& key_type,
 
   // Construct a delegation statement.
   string msf;
-  if (!MarshalSpeaksfor(*key_bytes, marshalled_tao_name_, &msf)) {
+  if (!MarshalSpeaksfor(key_bytes, marshalled_tao_name_, &msf)) {
     printf("InitializeProgramKey: couldn't MarshalSpeaksfor.\n");
     return false;
   }
@@ -709,39 +709,36 @@ struct ecMarshal {
 };
 #pragma pack(pop)
 
-string* GetKeyBytes(EVP_PKEY* pKey) {
-  string* key_bytes;
+bool GetKeyBytes(EVP_PKEY* pKey, string* bytes_out) {
+  string key_bytes;
+  byte key_hash[32];
   byte out[4096];
   byte* ptr = out;
   int n;
 
   if (pKey->type == EVP_PKEY_RSA) {
     RSA* rsa_key = EVP_PKEY_get1_RSA(pKey);
+    // FIX: change to however Rsa keys are serialized
     n = i2d_RSA_PUBKEY(rsa_key, &ptr);
     if (n <= 0) {
       printf("GetKeyBytes: Can't i2d RSA public key\n");
-      return nullptr;
+      return false;
     }
-    byte rsa_key_hash[32];
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, out, n);
-    SHA256_Final(rsa_key_hash, &sha256);
-    key_bytes = ByteToHexLeftToRight(32, rsa_key_hash);
+    SHA256_Final(key_hash, &sha256);
+    bytes_out->assign((const char*)key_hash, 32);
   } else if (pKey->type == EVP_PKEY_EC) {
     // Use get0?
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(pKey);
 
-    // Someday maybe this can just be a hash of 
-    // n = i2d_EC_PUBKEY(ec_key, &ptr);
-
-    key_bytes = new string;
     ecMarshal ec_params;
     ec_params.compress_ = 4;
     BN_CTX* bn_ctx = BN_CTX_new();
     if (bn_ctx == nullptr) {
       printf("Can't get BN_CTX\n");
-      return nullptr;
+      return false;
     }
     BIGNUM* x = BN_new();
     BIGNUM* y = BN_new();
@@ -753,17 +750,17 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     const EC_GROUP* group = EC_KEY_get0_group(ec_key);
     if (1 != EC_POINT_get_affine_coordinates_GFp(group, public_point, x, y, bn_ctx)) {
       printf("Can't EC_POINT_get_affine_coordinates_GFp\n");
-      return nullptr;
+      return false;
     }
     string x_str;
     string y_str;
     if (!BN_to_string(*x, &x_str)) {
       printf("Can't convert x\n");
-      return nullptr;
+      return false;
     }
     if (!BN_to_string(*y, &y_str)) {
       printf("Can't convert y\n");
-      return nullptr;
+      return false;
     }
     memcpy(ec_params.X_, (byte*)x_str.data(), x_str.size());
     memcpy(ec_params.Y_, (byte*)y_str.data(), y_str.size());
@@ -782,11 +779,16 @@ string* GetKeyBytes(EVP_PKEY* pKey) {
     ck.set_purpose(tao::CryptoKey_CryptoPurpose::CryptoKey_CryptoPurpose_VERIFYING);
     ck.set_algorithm(tao::CryptoKey_CryptoAlgorithm::CryptoKey_CryptoAlgorithm_ECDSA_SHA);
     ck.set_key(vk_proto);
-    ck.SerializeToString(key_bytes);
+    ck.SerializeToString(&key_bytes);
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, key_bytes.data(), key_bytes.size());
+    SHA256_Final(key_hash, &sha256);
+    bytes_out->assign((const char*)key_hash, 32);
   } else {
     printf("GetKeyBytes: unsupported key type.\n");
-    return nullptr;
+    return false;
   }
-  return key_bytes;
+  return true;
 }
 

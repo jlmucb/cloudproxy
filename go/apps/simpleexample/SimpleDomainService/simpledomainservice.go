@@ -13,6 +13,8 @@
 package main
 
 import (
+	"bytes"
+	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/rand"
 	"crypto/x509"
@@ -75,14 +77,16 @@ fmt.Printf("\nSimpleDomainService: DomainRequest: Couldn't read request from cha
 		return false, errors.New("Unsupported key type")
 	}
 	subject_public_key, err := domain_policy.GetEcdsaKeyFromDer(request.SubjectPublicKey)
+	if err != nil {
+	}
 
 	// Get hash of the public key subject.
-	serialized_key, err := domain_policy.SerializeKeyToInternalName(subject_public_key)
-	subject_key_hash, err := domain_policy.GetKeyHash(serialized_key)
-	if err != nil || subject_key_hash == nil {
-		log.Printf("Can't compute subject key hash\n")
-		return false, errors.New("Can't compute subject key hash")
+	serialized_key, err := domain_policy.SerializeKeyToInternalName(subject_public_key.(*ecdsa.PublicKey))
+	if err!= nil || serialized_key == nil {
+		log.Printf("Can't serialize key to internal format\n")
+		return false, errors.New("Can't serialize key to internal format")
 	}
+	subject_key_hash := domain_policy.GetKeyHash(serialized_key)
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	err = tao.ValidatePeerAttestation(&a, peerCert, guard)
@@ -134,7 +138,15 @@ fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 	}
 fmt.Printf("\nSimpleDomainService: key principal: %s, program principal: %s\n", clientKeyPrincipal, programPrincipalName)
 
-	// Is the delegate the same key as was presented in the request?
+	// Is the delegate the same key as was presented in the name in the request?
+	named_hash := clientKeyPrincipal.KeyHash.(auth.Bytes)
+fmt.Printf("\nkeyhash: %x\n", named_hash)
+	if bytes.Compare(subject_key_hash[:], named_hash) != 0 {
+		log.Printf("DomainRequest: named hash is wrong\n")
+fmt.Printf("DomainRequest: named hash is wrong, named: %x, computed: %x\n",
+			named_hash, subject_key_hash)
+		return false, errors.New("DomainRequest: named hash is wrong") 
+	}
 
 	// Sign program certificate.
 

@@ -16,46 +16,40 @@ package domain_policy
 
 import (
 	"crypto/ecdsa"
-/*
-	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/hmac"
-	"crypto/rand"
+	"crypto/elliptic"
 	"crypto/sha256"
-	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
-	"errors"
-	"flag"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"path"
-	"strings"
 
 	"github.com/golang/protobuf/proto"
-
 	"github.com/jlmucb/cloudproxy/go/tao"
-	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	"github.com/jlmucb/cloudproxy/go/util"
-*/
 )
 
 func GetPublicDerFromEcdsaKey(key ecdsa.PublicKey) ([]byte, error) {
-	return nil, nil
+	return x509.MarshalPKIXPublicKey(key)
 }
 
-func GetEcdsaKeyFromDer(der []byte) (*ecdsa.PublicKey, error) {
-	return nil, nil
+func GetEcdsaKeyFromDer(der []byte) (interface{}, error) {
+	return x509.ParsePKIXPublicKey(der)
 }
 
-func SerializeKeyToInternalName(key *ecdsa.PublicKey) ([]byte, error) {
-	return nil, nil
+func SerializeKeyToInternalName(ec_key *ecdsa.PublicKey) ([]byte, error) {
+	m := &tao.ECDSA_SHA_VerifyingKeyV1{
+                Curve:    tao.NamedEllipticCurve_PRIME256_V1.Enum(),
+		EcPublic: elliptic.Marshal(ec_key.Curve, ec_key.X, ec_key.Y),
+	}
+	b, _ := proto.Marshal(m)
+
+	s := &tao.CryptoKey{
+		Version:   tao.CryptoVersion_CRYPTO_VERSION_1.Enum(),
+		Purpose:   tao.CryptoKey_VERIFYING.Enum(),
+		Algorithm: tao.CryptoKey_ECDSA_SHA.Enum(),
+		Key:       b,
+        }
+
+	return proto.Marshal(s)
 }
 
-func GetKeyHash(der []byte) ([]byte, error) {
-	return nil, nil
+func GetKeyHash(s []byte) ([32]byte) {
+	return sha256.Sum256(s)
 }
 

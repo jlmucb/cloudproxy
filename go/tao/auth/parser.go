@@ -129,7 +129,7 @@ func (p *parser) expectPrin() (prin Prin, err error) {
 	if err != nil {
 		return
 	}
-	prin.Key, err = p.expectTerm()
+	prin.KeyHash, err = p.expectTerm()
 	if err != nil {
 		return
 	}

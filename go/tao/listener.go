@@ -95,8 +95,8 @@ func ValidatePeerAttestation(a *Attestation, cert *x509.Certificate, guard Guard
 		return errors.New("a peer attestation must have an auth.Prin of type 'key' as its delegate")
 	}
 
-	if _, ok := kprin.Key.(auth.Bytes); !ok {
-		return errors.New("a peer attestation must have a Key of type auth.Bytes")
+	if _, ok := kprin.KeyHash.(auth.Bytes); !ok {
+		return errors.New("a peer attestation must have a KeyHash of type auth.Bytes")
 	}
 
 	prin, ok := sf.Delegator.(auth.Prin)
@@ -115,12 +115,12 @@ func ValidatePeerAttestation(a *Attestation, cert *x509.Certificate, guard Guard
 	// The bytes of the delegate are the result of ToPrincipal on
 	// Keys.SigningKey. Check that this represents the same key as the one
 	// in the certificate.
-	verifier, err := FromPrincipal(kprin)
+	verifier, err := FromX509(cert)
 	if err != nil {
 		return err
 	}
-	if !verifier.Equals(cert) {
-		return errors.New("a peer attestation must have an auth.Prin.Key of type auth.Bytes where the bytes match the auth.Prin representation of the X.509 certificate")
+	if !verifier.ToPrincipal().Identical(kprin) {
+		return errors.New("a peer attestation must have an auth.Prin.KeyHash of type auth.Bytes where the bytes match the auth.Prin hash representation of the X.509 certificate")
 	}
 
 	return nil

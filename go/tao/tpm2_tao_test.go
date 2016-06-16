@@ -144,7 +144,7 @@ func TestTPM2TaoAttest(t *testing.T) {
 		t.Fatal("Couldn't get the name of the tao:", err)
 	}
 	stmt := auth.Speaksfor{
-		Delegate:  auth.Prin{Type: "key", Key: auth.Bytes([]byte(`FakeKeyBytes`))},
+		Delegate:  auth.NewKeyPrin([]byte(`FakeKeyBytes`)),
 		Delegator: taoname,
 	}
 

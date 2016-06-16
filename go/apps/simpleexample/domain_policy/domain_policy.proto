@@ -15,7 +15,21 @@ syntax = "proto2";
 
 package domain_policy;
 
-message DomainProgramCerts {
+// This is used to request a signed cert from the domain service.
+// attestation is the marshaled attestation.
+// program_key is the der encoded program public key.
+// cert chain is any supporting certificates.
+message DomainCertRequest {
+  optional bytes attestation = 1;
+  optional string key_type = 2;
+  optional bytes subject_public_key = 3;
+  optional bytes cert_chain = 4;
+}
+
+// This is the response from the domain service.
+// signed_cert is the signed program cert.
+// cert_chain is the supporting certificate chain.
+message DomainCertResponse {
   required int32 error = 1;
   optional bytes signed_cert = 2;
   repeated bytes cert_chain = 3;

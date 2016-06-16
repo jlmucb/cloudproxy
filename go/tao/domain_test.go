@@ -25,10 +25,7 @@ import (
 )
 
 var testDomainPassword = []byte(`insecure dummy password`)
-var authPrin = auth.Prin{
-	Type: "key",
-	Key:  auth.Bytes([]byte(`fake key`)),
-}
+var authPrin = auth.NewKeyPrin([]byte(`fake key`))
 
 func testNewACLDomain(t *testing.T) (*Domain, string) {
 	tmpdir, err := ioutil.TempDir("/tmp", "acl_domain_test")

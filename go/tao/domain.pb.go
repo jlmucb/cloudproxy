@@ -2,22 +2,6 @@
 // source: domain.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	domain.proto
-
-It has these top-level messages:
-	DomainDetails
-	X509Details
-	ACLGuardDetails
-	DatalogGuardDetails
-	TPMDetails
-	TPM2Details
-	DomainConfig
-	DomainTemplate
-*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -42,7 +26,7 @@ type DomainDetails struct {
 func (m *DomainDetails) Reset()                    { *m = DomainDetails{} }
 func (m *DomainDetails) String() string            { return proto.CompactTextString(m) }
 func (*DomainDetails) ProtoMessage()               {}
-func (*DomainDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*DomainDetails) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 func (m *DomainDetails) GetName() string {
 	if m != nil && m.Name != nil {
@@ -99,7 +83,7 @@ type X509Details struct {
 func (m *X509Details) Reset()                    { *m = X509Details{} }
 func (m *X509Details) String() string            { return proto.CompactTextString(m) }
 func (*X509Details) ProtoMessage()               {}
-func (*X509Details) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*X509Details) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
 
 func (m *X509Details) GetCommonName() string {
 	if m != nil && m.CommonName != nil {
@@ -151,7 +135,7 @@ type ACLGuardDetails struct {
 func (m *ACLGuardDetails) Reset()                    { *m = ACLGuardDetails{} }
 func (m *ACLGuardDetails) String() string            { return proto.CompactTextString(m) }
 func (*ACLGuardDetails) ProtoMessage()               {}
-func (*ACLGuardDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*ACLGuardDetails) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
 
 func (m *ACLGuardDetails) GetSignedAclsPath() string {
 	if m != nil && m.SignedAclsPath != nil {
@@ -168,7 +152,7 @@ type DatalogGuardDetails struct {
 func (m *DatalogGuardDetails) Reset()                    { *m = DatalogGuardDetails{} }
 func (m *DatalogGuardDetails) String() string            { return proto.CompactTextString(m) }
 func (*DatalogGuardDetails) ProtoMessage()               {}
-func (*DatalogGuardDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*DatalogGuardDetails) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
 
 func (m *DatalogGuardDetails) GetSignedRulesPath() string {
 	if m != nil && m.SignedRulesPath != nil {
@@ -188,7 +172,7 @@ type TPMDetails struct {
 func (m *TPMDetails) Reset()                    { *m = TPMDetails{} }
 func (m *TPMDetails) String() string            { return proto.CompactTextString(m) }
 func (*TPMDetails) ProtoMessage()               {}
-func (*TPMDetails) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*TPMDetails) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{4} }
 
 func (m *TPMDetails) GetTpmPath() string {
 	if m != nil && m.TpmPath != nil {
@@ -223,7 +207,7 @@ type TPM2Details struct {
 func (m *TPM2Details) Reset()                    { *m = TPM2Details{} }
 func (m *TPM2Details) String() string            { return proto.CompactTextString(m) }
 func (*TPM2Details) ProtoMessage()               {}
-func (*TPM2Details) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*TPM2Details) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{5} }
 
 func (m *TPM2Details) GetTpm2InfoDir() string {
 	if m != nil && m.Tpm2InfoDir != nil {
@@ -273,7 +257,7 @@ type DomainConfig struct {
 func (m *DomainConfig) Reset()                    { *m = DomainConfig{} }
 func (m *DomainConfig) String() string            { return proto.CompactTextString(m) }
 func (*DomainConfig) ProtoMessage()               {}
-func (*DomainConfig) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*DomainConfig) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{6} }
 
 func (m *DomainConfig) GetDomainInfo() *DomainDetails {
 	if m != nil {
@@ -348,7 +332,7 @@ type DomainTemplate struct {
 func (m *DomainTemplate) Reset()                    { *m = DomainTemplate{} }
 func (m *DomainTemplate) String() string            { return proto.CompactTextString(m) }
 func (*DomainTemplate) ProtoMessage()               {}
-func (*DomainTemplate) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*DomainTemplate) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{7} }
 
 func (m *DomainTemplate) GetConfig() *DomainConfig {
 	if m != nil {
@@ -473,8 +457,7 @@ func init() {
 	proto.RegisterType((*DomainTemplate)(nil), "tao.DomainTemplate")
 }
 
-/*
-var fileDescriptor0 = []byte{
+var fileDescriptor4 = []byte{
 	// 625 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x54, 0x41, 0x6f, 0xd4, 0x3c,
 	0x10, 0x55, 0x9b, 0x6e, 0xdb, 0x9d, 0xec, 0x76, 0xb7, 0x69, 0xbf, 0x8f, 0x14, 0x10, 0x6a, 0xd3,
@@ -517,4 +500,3 @@ var fileDescriptor0 = []byte{
 	0xe6, 0x5d, 0xe9, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff, 0xe1, 0x29, 0xb1, 0xbf, 0x19, 0x05, 0x00,
 	0x00,
 }
-*/

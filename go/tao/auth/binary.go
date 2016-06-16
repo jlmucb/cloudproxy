@@ -80,7 +80,7 @@ func Marshal(e LogicElement) []byte {
 func (t Prin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPrin)
 	buf.EncodeString(t.Type)
-	t.Key.Marshal(buf)
+	t.KeyHash.Marshal(buf)
 	t.Ext.Marshal(buf)
 }
 
@@ -262,7 +262,7 @@ func decodePrin(buf *Buffer) (p Prin, err error) {
 	if err != nil {
 		return
 	}
-	p.Key, err = unmarshalTerm(buf)
+	p.KeyHash, err = unmarshalTerm(buf)
 	if err != nil {
 		return
 	}

@@ -121,7 +121,7 @@ func main() {
 		}
 		switch *request.Type {
 		case domain_service.DomainServiceRequest_DOMAIN_CERT_REQUEST:
-			_, key, prog, err := domain_service.VerifyHostAttestation(
+			_, _, prog, err := domain_service.VerifyHostAttestation(
 				request.GetSerializedHostAttestation(), domain, rootCerts)
 			if err != nil {
 				log.Printf("domain_server: Error verifying host att: %s\n", err)
@@ -129,7 +129,7 @@ func main() {
 				continue
 			}
 			att, err := domain_service.GenerateProgramCert(domain, serialNumber, prog,
-				key, time.Now(), time.Now().AddDate(1, 0, 0))
+				nil, time.Now(), time.Now().AddDate(1, 0, 0))
 			if err != nil {
 				log.Printf("domain_server: Error generating program cert: %s\n", err)
 				sendError(err, ms)

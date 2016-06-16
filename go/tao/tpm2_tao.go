@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"fmt"
 	"bytes"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -23,6 +22,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -37,7 +37,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-func EncodeTwoBytes(b1 []byte, b2 []byte) ([]byte) {
+func EncodeTwoBytes(b1 []byte, b2 []byte) []byte {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, uint16(len(b1)))
 	if err != nil {
@@ -93,30 +93,30 @@ type TPM2Tao struct {
 
 	// ekHandle is an integer handle for an ek held by the TPM.
 	ekContext []byte
-	ekHandle tpm2.Handle
+	ekHandle  tpm2.Handle
 
 	// rootHandle is an integer handle for an root key held by the TPM.
 	rootContext []byte
-	rootHandle tpm2.Handle
+	rootHandle  tpm2.Handle
 
 	// signHandle is an integer handle for an signing held by the TPM.
 	signContext []byte
-	signHandle tpm2.Handle
+	signHandle  tpm2.Handle
 
 	// session handle
-	policy_digest []byte
+	policy_digest  []byte
 	sessionContext []byte
-	sessionHandle tpm2.Handle
+	sessionHandle  tpm2.Handle
 
 	// verifier is a representation of the ek that can be used to verify Attestations.
 	verifier *rsa.PublicKey
 
-	// pcrCount is the number of PCRs in the TPM. 
+	// pcrCount is the number of PCRs in the TPM.
 	// implementation fixes this at 24.
 	pcrCount uint32
 	pcrNums  []int
 	pcrVals  [][]byte
-	pcrs	 []int
+	pcrs     []int
 
 	// The name of the TPM2Tao is tpm(...K...) with extensions that represent the
 	// PCR values (and maybe someday the locality).
@@ -160,7 +160,7 @@ func (tt *TPM2Tao) loadSession() (tpm2.Handle, []byte, error) {
 	return sh, digest, nil
 }
 
-func (tt *TPM2Tao) GetPcrNums() ([]int){
+func (tt *TPM2Tao) GetPcrNums() []int {
 	return tt.pcrs
 }
 
@@ -196,10 +196,7 @@ func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (aut
 		return auth.Prin{}, err
 	}
 
-	name := auth.Prin{
-		Type: "tpm2",
-		Key:  auth.Bytes(ek),
-	}
+	name := auth.NewTPM2Prin(ek)
 
 	asp := auth.PrinExt{
 		Name: "PCRs",
@@ -225,15 +222,15 @@ func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (aut
 
 // FinalizeTPM2Tao releases the resources for the TPM2Tao.
 func FinalizeTPM2Tao(tt *TPM2Tao) {
-	if  tt.sessionHandle != 0 {
+	if tt.sessionHandle != 0 {
 		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sessionHandle))
 	}
 	tt.sessionHandle = 0
-	if  tt.ekHandle != 0 {
+	if tt.ekHandle != 0 {
 		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.ekHandle))
 	}
 	tt.ekHandle = 0
-	if  tt.signHandle != 0 {
+	if tt.signHandle != 0 {
 		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.signHandle))
 	}
 	tt.signHandle = 0
@@ -246,14 +243,14 @@ func FinalizeTPM2Tao(tt *TPM2Tao) {
 func (tt *TPM2Tao) TmpRm() {
 
 	if tt.ekHandle != 0 {
-                tpm2.FlushContext(tt.rw, tt.ekHandle)
-        }
-        tt.ekHandle = 0
+		tpm2.FlushContext(tt.rw, tt.ekHandle)
+	}
+	tt.ekHandle = 0
 
-        if tt.signHandle != 0 {
-                tpm2.FlushContext(tt.rw, tt.signHandle)
-        }
-        tt.signHandle = 0
+	if tt.signHandle != 0 {
+		tpm2.FlushContext(tt.rw, tt.signHandle)
+	}
+	tt.signHandle = 0
 }
 
 // GetTaoName returns the Tao principal name assigned to the caller.
@@ -294,7 +291,7 @@ func (tt *TPM2Tao) GetSharedSecret(n int, policy string) (bytes []byte, err erro
 func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	var err error
 	tt := &TPM2Tao{pcrCount: 24,
-		       password: "",}
+		password: ""}
 
 	tt.rw, err = tpm2.OpenTPM(tpmPath)
 	if err != nil {
@@ -358,7 +355,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 // Attest requests the Tao host sign a statement on behalf of the caller. The
 // optional issuer, time and expiration will be given default values if nil.
 func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
-		message auth.Form) (*Attestation, error) {
+	message auth.Form) (*Attestation, error) {
 	qH, err := tt.loadQuote()
 	if err != nil {
 		return nil, errors.New("Can't load quote key")
@@ -407,7 +404,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
 	// clearing the PCRs.
 	quote_struct, sig, err := tpm2.Quote(tt.rw, qH, "", tt.password,
-			toQuote, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
+		toQuote, tt.pcrs, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
 		return nil, err
 	}
@@ -415,17 +412,16 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	fmt.Printf("Quote: %x\n", quote_struct)
 	fmt.Printf("sig: %x\n", sig)
 
-	// Pull off the extensions from the name to get the bare TPM key for the
-	// signer.
-	signer := auth.Prin{
-		Type: tt.name.Type,
-		Key:  tt.name.Key,
+	ek, err := x509.MarshalPKIXPublicKey(tt.verifier)
+	if err != nil {
+		return nil, err
 	}
-	// need to change Attestation to include quote structure for tpm2
+	// TODO(kwalsh) remove Tpm2QuoteStructure from Attestation structure
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
-		Signer:              auth.Marshal(signer),
+		SignerType:          proto.String("tpm2"),
+		SignerKey:           ek,
 		Tpm2QuoteStructure:  quote_struct,
 	}
 	return a, nil
@@ -476,7 +472,7 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	defer ZeroBytes(ckb)
 
 	priv, pub, err := tpm2.AssistSeal(tt.rw, rH, ckb,
-				"", tt.password, tt.pcrs, policy_digest)
+		"", tt.password, tt.pcrs, policy_digest)
 	if err != nil {
 		return nil, err
 	}
@@ -594,36 +590,17 @@ func extractTpm2PCRs(p auth.Prin) ([]int, []byte, error) {
 	return pcrNums, pcrVals, nil
 }
 
-// extractAttest gets an RSA public key from the TPM principal name.
-func extractAttest(p auth.Prin) (*rsa.PublicKey, error) {
-	// The principal's Key should be a binary SubjectPublicKeyInfo.
-	if p.Type != "tpm2" {
-		return nil, errors.New("wrong type of principal: should be 'tpm'")
-	}
-
-	k, ok := p.Key.(auth.Bytes)
-	if !ok {
-		return nil, errors.New("the AIK key must be an auth.Bytes values")
-	}
-	pk, err := x509.ParsePKIXPublicKey([]byte(k))
-	if err != nil {
-		return nil, err
-	}
-
-	ek, ok := pk.(*rsa.PublicKey)
-	if !ok {
-		return nil, errors.New("wrong type of public key: only RSA is supported for EKs")
-	}
-
-	return ek, nil
+// extractTPM2Key gets an RSA public key from the TPM key material.
+func extractTPM2Key(material []byte) (*rsa.PublicKey, error) {
+	return extractTPMKey(material) // same key format as TPM 1.2
 }
 
 // Input: Der encoded endorsement cert and handles
 // quote key is certified key unlike in the tpm2.go library
 // Returns program CertRequestMessage
 func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
-		qH tpm2.Handle, parentPassword string, ownerPassword string,
-		keyName string) (*tpm2.ProgramCertRequestMessage, error) {
+	qH tpm2.Handle, parentPassword string, ownerPassword string,
+	keyName string) (*tpm2.ProgramCertRequestMessage, error) {
 
 	// Generate Request
 	request := new(tpm2.ProgramCertRequestMessage)
@@ -645,11 +622,11 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 	modSize := int32(rsaQuoteParams.Mod_sz)
 
 	keyType := "rsa"
-	request.ProgramKey.ProgramName =  &keyName
+	request.ProgramKey.ProgramName = &keyName
 	request.ProgramKey.ProgramKeyType = &keyType
 	request.ProgramKey.ProgramBitModulusSize = &modSize
 
-	request.ProgramKey.ProgramKeyExponent =  []byte{0,1,0,1}
+	request.ProgramKey.ProgramKeyExponent = []byte{0, 1, 0, 1}
 	request.ProgramKey.ProgramKeyModulus = rsaQuoteParams.Modulus
 	serializedProgramKey := proto.CompactTextString(request.ProgramKey)
 	sha1Hash := sha1.New()
@@ -665,21 +642,21 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 
 	// Quote key info.
 	request.QuoteKeyInfo = new(tpm2.QuoteKeyInfoMessage)
-	request.QuoteKeyInfo.Name = tpm2QuoteName 
-	request.QuoteKeyInfo.PublicKey= new(tpm2.PublicKeyMessage)
+	request.QuoteKeyInfo.Name = tpm2QuoteName
+	request.QuoteKeyInfo.PublicKey = new(tpm2.PublicKeyMessage)
 	request.QuoteKeyInfo.PublicKey.RsaKey = new(tpm2.RsaPublicKeyMessage)
 	request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &keyName
 
 	var encAlg string
 	var hashAlg string
-	if  rsaQuoteParams.Enc_alg == tpm2.AlgTPM_ALG_RSA {
+	if rsaQuoteParams.Enc_alg == tpm2.AlgTPM_ALG_RSA {
 		encAlg = "rsa"
 	} else {
 		return nil, err
 	}
-	if  rsaQuoteParams.Hash_alg == tpm2.AlgTPM_ALG_SHA1 {
+	if rsaQuoteParams.Hash_alg == tpm2.AlgTPM_ALG_SHA1 {
 		hashAlg = "sha1"
-	} else if  rsaQuoteParams.Hash_alg == tpm2.AlgTPM_ALG_SHA256 {
+	} else if rsaQuoteParams.Hash_alg == tpm2.AlgTPM_ALG_SHA256 {
 		hashAlg = "sha256"
 	} else {
 		return nil, err
@@ -692,8 +669,8 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 
 	request.ProgramKey = new(tpm2.ProgramKeyParameters)
 	request.ProgramKey.ProgramName = &keyName
-	request.ProgramKey.ProgramKeyType= &encAlg
-	request.ProgramKey.ProgramBitModulusSize= &modSize
+	request.ProgramKey.ProgramKeyType = &encAlg
+	request.ProgramKey.ProgramBitModulusSize = &modSize
 	request.ProgramKey.ProgramKeyModulus = rsaQuoteParams.Modulus
 
 	request.QuotedBlob = attest
@@ -703,9 +680,9 @@ func Tpm2ConstructClientRequest(rw io.ReadWriter, derEkCert []byte, pcrs []int,
 
 // Output is der encoded Program Cert
 func Tpm2ClientDecodeServerResponse(rw io.ReadWriter,
-		protectorHandle tpm2.Handle,
-		quoteHandle tpm2.Handle, password string,
-		response tpm2.ProgramCertResponseMessage) ([]byte, error) {
+	protectorHandle tpm2.Handle,
+	quoteHandle tpm2.Handle, password string,
+	response tpm2.ProgramCertResponseMessage) ([]byte, error) {
 	certBlob := append(response.IntegrityHMAC, response.EncIdentity...)
 	certInfo, err := tpm2.ActivateCredential(rw, quoteHandle,
 		protectorHandle, password, "", certBlob, response.Secret)
@@ -714,7 +691,7 @@ func Tpm2ClientDecodeServerResponse(rw io.ReadWriter,
 	}
 
 	// Decrypt cert.
-	_, out, err :=  tpm2.EncryptDataWithCredential(false,
+	_, out, err := tpm2.EncryptDataWithCredential(false,
 		uint16(tpm2.AlgTPM_ALG_SHA1),
 		certInfo, response.EncryptedCert, response.EncryptedCertHmac)
 	if err != nil {
@@ -754,4 +731,3 @@ func (tt *TPM2Tao) Tpm2Certify(network, addr string, keyName string) ([]byte, er
 		tt.password, resp)
 	return attestCert, nil
 }
-

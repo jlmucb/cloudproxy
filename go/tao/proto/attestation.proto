@@ -29,10 +29,9 @@ package tao;
 // a statement conveying a particular message:
 //   issuer ... says (delegate speaksfor issuer)
 // Here, delegate is the name of some principal, usually a (non-tpm) Tao key
-// principal, i.e. key("...") where "..." is a base64w-encoded, serialized
-// public key as produced by Signer.ToPrincipalName() or
-// Verifier.ToPrincipalName(). If time restrictions are met, from a delegation
-// statement we can derive:
+// principal, i.e. key("...") where "..." is a hashed, serialized public key as
+// produced by Signer.ToPrincipal() or Verifier.ToPrincipal(). If time
+// restrictions are met, from a delegation statement we can derive:
 //   issuer says (delegate speaksfor issuer)
 // and further:
 //   delegate speaksfor issuer
@@ -41,9 +40,9 @@ package tao;
 // Delegation Statement Example:
 //
 // Suppose some program Prog(...), running on some OS PCRs(...), running on some
-// TPM K_aik, generates a key and wants to arrange for that key to
-// speak for itself. It can express as much with this statement:
-//  K_aik.PCRs(...).Prog(...) says (K_prog speaksfor K_aik.PCRs(...).Prog(...))
+// TPM K_aik where H_aik = Hash(K_aik), generates a key and wants to arrange for
+// that key to speak for itself. It can express as much with this statement:
+//  H_aik.PCRs(...).Prog(...) says (H_prog speaksfor H_aik.PCRs(...).Prog(...))
 //
 // Other Statements:
 //
@@ -57,17 +56,17 @@ package tao;
 // Other Statement Examples:
 //
 // Following the above delegation example, the policy key might want to express
-// that the TPM identified by K_aik is a trusted platform, and the OS identified
-// by PCRs(...) is a trusted OS. It can do so with these statements:
-//  K_policy says IsTrustedPlatform(K_aik)
-//  K_policy says IsTrustedOS("PCRs(...)")
+// that the TPM identified by H_aik = H(K_aik) is a trusted platform, and the OS
+// identified by PCRs(...) is a trusted OS. It can do so with these statements:
+//  H_policy says IsTrustedPlatform(H_aik)
+//  H_policy says IsTrustedOS("PCRs(...)")
 
-// An Attestation is a signature and a statement together, and it conveys:
+// An Attestation is a key, a signature, and a statement, and it conveys:
 //   signer says statement
 // i.e.
 //   signer says (issuer from time until exp says message)
-// A valid Attestation encodes a public key within the signer name, and it
-// carries a signature that anyone can verify to (eventually) conclude:
+// A valid Attestation encodes a public key, and it carries a signature that
+// anyone can verify to (eventually) conclude:
 //   issuer from time' until exp' says message
 // Note: Because of time restrictions within attached delegations, restrictions
 // time' and exp' here do not necessarily exactly match the restrictions time
@@ -93,7 +92,7 @@ package tao;
 //
 // Example of a category (1) attestation:
 //   Attestation = {
-//     statement = "K_aik.PCRs(...) says (K_os speaksfor K_aik.PCRs(...))"
+//     statement = "H_aik.PCRs(...) says (H_os speaksfor H_aik.PCRs(...))"
 //     signer = K_aik
 //     signature = ...
 //     delegation = nil
@@ -117,32 +116,34 @@ package tao;
 //
 // Example of a category (2) attestation:
 //   Attestation = {
-//     statement = "K_aik.PCRs(...).Prog(...) says K_app speaksfor K_aik.PCRs(...).Prog(...)"
+//     statement = "H_aik.PCRs(...).Prog(...) says H_app speaksfor H_aik.PCRs(...).Prog(...)"
 //     signer = K_os
 //     signature = ...
 //     delegation = {
-//       statement = K_aik.PCRs(...) says K_os speaksfor K_aik.PCRs(...)
+//       statement = H_aik.PCRs(...) says H_os speaksfor H_aik.PCRs(...)
 //       signer = K_aik
 //       signature = ...
 //       delegation = nil
 //     }
 //   }
-// Here, the OS identified by K_aik.PCRs(...) has signed, using a
+// Here, the OS identified by H_aik.PCRs(...) has signed, using a
 // seemingly unrelated key K_os, a statement on behalf of one of its hosted
-// programs, K_aik.PCRs(...).Prog(...). The embedded delegation statement,
+// programs, H_aik.PCRs(...).Prog(...). The embedded delegation statement,
 // signed by K_aik, binds that seemingly unrelated key K_os to the OS's actual
-// identity, K_aik.PCRs(...).
+// identity, H_aik.PCRs(...).
 //
 // Verifying an attestation signature requires knowing how the signature was
 // produced. We currently define two signature schemes:
 //
+// TODO(kwalsh): add tpm2 signature scheme here and in attestation.go
+//
 // (a) Some signatures are produced by the TPM, so here we are bound by the
 // mechanisms implemented by the TPM. In this case, we encode the signer name as
-//   tpm("..K..") where "..K.." is the serialized, base64w-encoded public half
+//   tpm("..H..") where "..H.." is the hashed, serialized public half
 // of the TPM's RSA key K. The TPM only ever signs things on behalf of its
 // hosted programs, so the issuer used in the serialized statement will always
 // have the form:
-//   tpm("..K..").PCRs("..i..", "..h..")...
+//   tpm("..H..").PCRs("..i..", "..h..")...
 // where "..i.." is a sorted, comma-separated list of PCR numbers, and "..h.."
 // is the corresponding, comma-separated list of hex-encoded PCR values. The
 // signature is computed roughly as:
@@ -159,7 +160,7 @@ package tao;
 // 
 // (b) Other signatures are produced in software, and here we have flexibility
 // to use simpler signature schemes. In this case, we encode the signer name as
-//   key("..K..") where "..K.." is the serialized, base64w-encoded public half
+//   key("..H..") where "..H.." is the hashed, serialized public half
 // of a DSA key K. The issuer used in the serialized statement can have any
 // form. The signature is roughly:
 //   sig = dsa_sign(K, H(context|message))
@@ -171,53 +172,61 @@ package tao;
 //
 // (1a) No delegation, Tao signature.
 //      Historical note: This is the old "ROOT" attestation type.
-//      Typically (or maybe always?), signer is the policy key.
-//      The signer is always key("..K..").
+//      Typically exaample: signer is the "domain policy" key.
+//      The signer is always key("..H..").
 // (1b) No delegation, TPM signature.
-//      This is produced by TPMTaoChildChannel.
-//      The signer is always tpm("..K..") and the statement issuer is
-//      always a tpm("..K..").PCRs("..i..", "..h..")...
+//      This is produced by tpm_tao.
+//      The signer is always tpm("..H..") and the statement issuer is
+//      always a tpm("..H..").PCRs("..i..", "..h..")... principal.
 // (2a) Delegation, Tao signature.
 //      Historical note: This is the old "INTERMEDIATE" attestation type. 
-//      The signer is always key("..K..").
+//      The signer is always key("..H..").
 //      The delegation is the head of a chain that eventually terminates in a
 //      type (1a) or (1b) attestation.
 // (2b) Delegation, TPM signature.
 //      Historical note: This is the old "TPM_1_2_QUOTE" attestation type.
 //      This combination is no longer used. If it were, the signer would be
-//      tpm("..K..") and the statement issuer would be something like
-//      K_policy.TrustedPlatform. The delegation would be the head of a chain
+//      tpm("..H..") and the statement issuer would be something like
+//      H_policy.TrustedPlatform. The delegation would be the head of a chain
 //      that eventually terminates in a type (1a) or (1b) attestation. The
-//      issuer at the head of the chain would always be
-//      tpm("..K..").PCRs("..i..", "..h..")
+//      issuer at the head of the chain would always be a
+//      tpm("..H..").PCRs("..i..", "..h..") principal.
 message Attestation {
   // A serialized statement. This is serialized to avoid canonicalization issues
   // when signing and verifying signatures. In Go, this is obtained using
   // cloudproxy/tao/auth.Marshal().
   required bytes serialized_statement = 1;
 
-  // The signer's public key, encoded using clouddproxy/tao/auth.Marshal()
-  required bytes signer = 2;
+  // The signature type, either "tpm", "tpm2", or "key". This must match
+  // the type of the signer key, and it is also used to determine how to verify
+  // signatures.
+  required string signer_type = 2;
+
+  // The signer's public key, i.e. the un-hashed key material used within 
+  // clouddproxy/tao/auth.New*Prin().
+  required bytes signer_key = 3;
 
   // Signature over the serialized statement using TPM or Tao signing.
-  required bytes signature = 3;
+  required bytes signature = 4;
 
   // A delegation attestation that conveys (eventually) that signer speaks for
   // the issuer in the serialized statement. If this is empty, then it must be
   // self evident that signer speaks for the issuer in the serialized statement.
   // This can be added, removed, or replaced without changing the attestation
   // signature, but verification may fail if a required delegation is missing.
-  optional bytes serialized_delegation = 4;
+  optional bytes serialized_delegation = 5;
 
   // An optional set of further attestations that may pertain, in some way, to
   // the the issuer or signer of this attestation. These can be added or removed
   // without changing the attestation signature. This allows attestations to be
   // piggy-backed, e.g. when an authorization guard requires multiple
   // attestations to check a policy.
-  repeated bytes serialized_endorsements = 5;
+  repeated bytes serialized_endorsements = 6;
 
   // This is the quote structure actually signed by the tpm 2.0.
-  optional bytes tpm2_quote_structure = 6;
+  // TODO(kwalsh) remove this -- as for tpm1.2, the quote structure should be
+  // recoverable from the principal names in the serialized statement.
+  optional bytes tpm2_quote_structure = 7;
 }
 
 // TODO(kwalsh) Consider moving issuer (and expiration times) out of serialized

@@ -133,7 +133,7 @@ public:
   void Print();
 };
 
-string* GetKeyBytes(EVP_PKEY* pKey);
+bool GetKeyBytes(EVP_PKEY* pKey, string* bytes_out);
 #endif
 
 

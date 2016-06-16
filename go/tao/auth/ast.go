@@ -16,6 +16,7 @@ package auth
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 )
 
@@ -106,9 +107,9 @@ var _ fmt.Scanner = &AnyTerm{}
 // signatures on credentials issued by the principal, and a sequence of zero or
 // more extensions to identify the subprincipal of that key.
 type Prin struct {
-	Type string  // The keyword of a principal token, e.g. "key" or "tpm".
-	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING. Or this can be a marshalled TPM AIK, or a X.509 certificate, marshalled as ASN.1 DER.
-	Ext  SubPrin // zero or more extensions for descendents
+	Type    string  // The keyword of a principal token, e.g. "key" or "tpm".
+	KeyHash Term    // TermVar or Bytes with hashed CryptoKey protobuf structure with purpose CryptoKey.VERIFYING. Or this can be a hashed marshalled TPM AIK, or a X.509 certificate, marshalled as ASN.1 DER then hashed.
+	Ext     SubPrin // zero or more extensions for descendents
 }
 
 // PrinExt is an extension of a principal.
@@ -273,7 +274,7 @@ func (t Prin) Identical(other Term) bool {
 	} else {
 		return false
 	}
-	return t.Type == p.Type && t.Key.Identical(p.Key) && t.Ext.Identical(p.Ext)
+	return t.Type == p.Type && t.KeyHash.Identical(p.KeyHash) && t.Ext.Identical(p.Ext)
 }
 
 // Identical checks if a PrinTail is identical to another Term.
@@ -340,7 +341,7 @@ func SubprinOrIdentical(child, parent Term) bool {
 	} else {
 		return false
 	}
-	if p.Type != c.Type || !p.Key.Identical(c.Key) || len(p.Ext) > len(c.Ext) {
+	if p.Type != c.Type || !p.KeyHash.Identical(c.KeyHash) || len(p.Ext) > len(c.Ext) {
 		return false
 	}
 	for i, a := range p.Ext {
@@ -353,7 +354,7 @@ func SubprinOrIdentical(child, parent Term) bool {
 
 // MakeSubprincipal creates principal p.e... given principal p and extensions e.
 func (t Prin) MakeSubprincipal(e SubPrin) Prin {
-	other := Prin{Type: t.Type, Key: t.Key, Ext: append([]PrinExt{}, t.Ext...)}
+	other := Prin{Type: t.Type, KeyHash: t.KeyHash, Ext: append([]PrinExt{}, t.Ext...)}
 	other.Ext = append(other.Ext, []PrinExt(e)...)
 	return other
 }
@@ -404,7 +405,23 @@ func MakePredicate(name string, arg ...interface{}) Pred {
 	return Pred{name, terms}
 }
 
+// NewPrin returns a new Prin with the given key type and material.
+func NewPrin(keytype string, material []byte) Prin {
+	hash := sha256.Sum256(material)
+	return Prin{Type: keytype, KeyHash: Bytes(hash[:])}
+}
+
 // NewKeyPrin returns a new Prin of type "key" with the given key material.
 func NewKeyPrin(material []byte) Prin {
-	return Prin{Type: "key", Key: Bytes(material)}
+	return NewPrin("key", material)
+}
+
+// NewTpmPrin returns a new Prin of type "tpm" with the given (aik) key material.
+func NewTPMPrin(material []byte) Prin {
+	return NewPrin("tpm", material)
+}
+
+// NewTpm2Prin returns a new Prin of type "tpm2" with the given (ek) key material.
+func NewTPM2Prin(material []byte) Prin {
+	return NewPrin("tpm2", material)
 }

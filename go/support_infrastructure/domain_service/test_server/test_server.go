@@ -27,12 +27,12 @@ import (
 var machineName = "Encode Machine Information"
 
 var hostName = &auth.Prin{
-	Type: "program",
-	Key:  auth.Str("hostHash")}
+	Type:    "program",
+	KeyHash: auth.Str("hostHash")}
 
 var programName = &auth.Prin{
-	Type: "program",
-	Key:  auth.Str("programHash")}
+	Type:    "program",
+	KeyHash: auth.Str("programHash")}
 
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")

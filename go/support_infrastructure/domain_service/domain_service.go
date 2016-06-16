@@ -13,6 +13,9 @@
 package domain_service
 
 import (
+	"bytes"
+	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
@@ -37,7 +40,7 @@ import (
 //     or rootCerts, via an endorsement chain. Each endorsement in this chain endorses the key
 //     signing the previous endorsement (starting with the 'Speaker' key).
 //
-//     An endorsemennt endorses either a host key, in which case it is an attestation,
+//     An endorsement endorses either a host key, in which case it is an attestation,
 //     or the root hardware key, in which case it is certificate.
 //     This function also checks that each host or root hardware encoutered along this endorsement
 //     chain is allowed as per domain policy. In particular the policy should allow the predicates
@@ -76,27 +79,26 @@ func VerifyHostAttestation(serializedHostAttestation []byte, domain *tao.Domain,
 
 	// Look for endorsement cert(s), rooted in the policy key, that ultimately certify the
 	// key of the signer.
-	serializedSigner := hostAttestation.GetSigner()
-	signer, err := auth.UnmarshalPrin(serializedSigner)
-	if err != nil {
-		return nil, nil, nil, err
+	signingKey := hostAttestation.GetSignerKey()
+	if hostAttestation.SignerType == nil {
+		return nil, nil, nil, errors.New("host attestation missing SignerType field")
 	}
-	if !speaker.Identical(signer) {
-		// TODO: first endorsement endorses speaker or signer?
+	signingPrin := auth.NewPrin(*hostAttestation.SignerType, signingKey)
+	if !speaker.Identical(signingPrin) {
+		// TODO: endorsement endorses speaker or signer?
 	}
 
 	// Look for endorsement(s) of signer, rooted in policy key.
 	serializedEndorsements := hostAttestation.GetSerializedEndorsements()
 	var realErr error
 	var kPrin *auth.Prin
-	kPrin = &signer
+	kPrin = &signingPrin
 	for _, serializedEndorsement := range serializedEndorsements {
 		// serializedEndorsement could be X.509 certificate or Tao attestation.
 		var attestation tao.Attestation
 		err := proto.Unmarshal(serializedEndorsement, &attestation)
 		if err == nil {
-			kPrin, realErr = validateEndorsementAttestation(&attestation,
-				domain.Guard, kPrin)
+			kPrin, realErr = validateEndorsementAttestation(&attestation, domain.Guard, kPrin)
 			if realErr != nil {
 				return nil, nil, nil, realErr
 			}
@@ -134,19 +136,22 @@ func validateEndorsementAttestation(attestation *tao.Attestation, guard tao.Guar
 	if err != nil {
 		return nil, err
 	}
-	speaker, key, host, err := parseSaysStatement(&saysStatement)
+	_, key, host, err := parseSaysStatement(&saysStatement)
 	if err != nil {
 		return nil, err
 	}
 	if !key.Identical(kPrin) {
-		return nil, errors.New(
-			"endorsement does not endorse signer of (previous) attestaton")
+		return nil, errors.New("endorsement does not endorse signer of (previous) attestaton")
 	}
 	if !guard.IsAuthorized(*host, "Host", []string{}) {
-		return nil, errors.New(
-			"endorsement host not authorized to run in this domain")
+		return nil, errors.New("endorsement host not authorized to run in this domain")
 	}
-	return speaker, nil
+	signerType := attestation.SignerType
+	if signerType == nil {
+		return nil, errors.New("endorsement chain has attestation with missing SignerType")
+	}
+	signerPrin := auth.NewPrin(*signerType, attestation.SignerKey)
+	return &signerPrin, nil
 }
 
 // Checks the following:
@@ -160,17 +165,34 @@ func validateEndorsementCertificate(cert *x509.Certificate, guard tao.Guard,
 	if err != nil {
 		return err
 	}
-	verifier, err := tao.FromPrincipal(*kPrin)
+	var hwPublicKey *rsa.PublicKey
+	hwPublicKey, ok := cert.PublicKey.(*rsa.PublicKey)
+	if !ok {
+		key, ok := cert.PublicKey.(rsa.PublicKey)
+		if !ok {
+			return errors.New("endorsement cert does not contain a valid RSA public key")
+		}
+		hwPublicKey = &key
+	}
+	ek, err := x509.MarshalPKIXPublicKey(hwPublicKey)
 	if err != nil {
 		return err
 	}
-	if !verifier.Equals(cert) {
-		return errors.New(
-			"endorsement cert does not endorse signer of (previous) attestation")
+	hashedCertKey := sha256.Sum256(ek)
+	if kPrin.Type != "tpm" && kPrin.Type != "tpm2" {
+		return errors.New("key principal to be endorsed is not a TPM key, but it's expected to be")
+	}
+	hashedBytes, ok := kPrin.KeyHash.(auth.Bytes)
+	if !ok {
+		return errors.New("key principal to be endorsed does not have bytes as its auth.Term")
+	}
+	if !bytes.Equal(hashedBytes, hashedCertKey[:]) {
+		return errors.New(fmt.Sprintf(
+			"endorsement cert endorses %v but needs to endorse %v", hashedCertKey, hashedBytes))
 	}
 	machinePrin := auth.Prin{
-		Type: "MachineInfo",
-		Key:  auth.Str(cert.Subject.CommonName),
+		Type:    "MachineInfo",
+		KeyHash: auth.Str(cert.Subject.CommonName),
 	}
 	if !guard.IsAuthorized(machinePrin, "Root", []string{}) {
 		return errors.New(
@@ -226,17 +248,15 @@ func parseSaysStatement(saysStatement *auth.Says) (*auth.Prin, *auth.Prin, *auth
 // Tao name of the program and subject public key being programKey.
 // Certificate expiration time is one year from issuing time.
 func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth.Prin,
-	programKey *auth.Prin, now, expiry time.Time) (*tao.Attestation, error) {
+	programKey *tao.Keys, now, expiry time.Time) (*tao.Attestation, error) {
 
 	policyCert := domain.Keys.Cert
 	x509Info := domain.Config.GetX509Info()
 	programName := programPrin.String()
 	x509Info.CommonName = &programName
+	x509Info.OrganizationalUnit = &programName
 	subjectName := tao.NewX509Name(x509Info)
-	verifier, err := tao.FromPrincipal(*programKey)
-	if err != nil {
-		return nil, err
-	}
+	verifier := programKey.VerifyingKey
 	clientCert, err := domain.Keys.SigningKey.CreateSignedX509(
 		policyCert, serialNumber, verifier, subjectName)
 	if err != nil {
@@ -311,8 +331,8 @@ func InitAcls(domain *tao.Domain, trustedEntitiesPath string) error {
 	}
 	for _, machineInfo := range trustedEntities.GetTrustedMachineInfos() {
 		machinePrin := auth.Prin{
-			Type: "MachineInfo",
-			Key:  auth.Str(machineInfo),
+			Type:    "MachineInfo",
+			KeyHash: auth.Str(machineInfo),
 		}
 		err = domain.Guard.Authorize(machinePrin, "Root", []string{})
 		if err != nil {

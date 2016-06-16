@@ -71,13 +71,6 @@ func main() {
 	kprin := auth.NewKeyPrin(data)
 	fmt.Printf("kprin: %x\n", kprin)
 
-	kps, err :=  tao.FromPrincipal(kprin)
-	if err != nil {
-		fmt.Printf("Can't FromPrincipal\n")
-		return
-	}
-	fmt.Printf("kps: %x\n", kps)
-
 	c_gen_prin, err := ioutil.ReadFile("/Domains/keyprin")
-	fmt.Printf("From c: %x\n", c_gen_prin);
+	fmt.Printf("From c: %x\n", c_gen_prin)
 }

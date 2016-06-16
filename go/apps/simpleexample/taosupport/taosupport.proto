@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+syntax = "proto2";
 package taosupport;
 
 enum MessageType {
@@ -24,5 +25,24 @@ message SimpleMessage {
   required string  request_type = 2;
   optional string  err = 3;
   repeated bytes   data = 4;
+}
+
+message RsaPrivateKeyMessage {
+  optional bytes   m = 1;
+  optional bytes   e = 2;
+  optional bytes   d = 3;
+  optional bytes   p = 4;
+  optional bytes   q = 5;
+}
+
+// The cheap way
+message EcPrivateKeyMessage {
+  optional bytes der_blob = 1;
+}
+
+message PrivateKeyMessage {
+  required string key_type = 1;
+  optional RsaPrivateKeyMessage rsa_key = 2;
+  optional EcPrivateKeyMessage ec_key = 3;
 }
 

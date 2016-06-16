@@ -24,10 +24,16 @@ import (
 	"fmt"
 )
 
+// ElisionCutoff is the maximum length a String or Byte can be without being elided.
+var ElisionCutoff int = 32
+
+// ElisionLength is the number of characters to show in an elided String or Byte.
+var ElisionLength int = 24
+
 // Format outputs a pretty-printed Prin.
 func (p Prin) Format(out fmt.State, verb rune) {
 	fmt.Fprintf(out, "%s(", p.Type)
-	p.Key.Format(out, verb)
+	p.KeyHash.Format(out, verb)
 	fmt.Fprint(out, ")")
 	p.Ext.Format(out, verb)
 }
@@ -66,8 +72,8 @@ func (p SubPrin) Format(out fmt.State, verb rune) {
 
 // Format outputs a pretty-printed Str.
 func (t Str) Format(out fmt.State, verb rune) {
-	if verb == 's' && len(string(t)) > 15 {
-		fmt.Fprintf(out, "%.10q...", string(t))
+	if verb == 's' && len(string(t)) > ElisionCutoff {
+		fmt.Fprintf(out, "%q...", string(t)[:ElisionLength])
 	} else {
 		fmt.Fprintf(out, "%q", string(t))
 	}
@@ -78,15 +84,15 @@ func (t Bytes) Format(out fmt.State, verb rune) {
 	if out.Flag('#') {
 		// use alternate format: base64w
 		s := base64.URLEncoding.EncodeToString([]byte(t))
-		if verb == 's' && len(string(t)) > 25 {
-			fmt.Fprintf(out, "{%s...}", s[:20])
+		if verb == 's' && len(string(t)) > ElisionCutoff {
+			fmt.Fprintf(out, "{%s...}", s[:ElisionLength])
 		} else {
 			fmt.Fprintf(out, "{%s}", s)
 		}
 	} else {
 		// use default format: hex
-		if verb == 's' && len(string(t)) > 25 {
-			fmt.Fprintf(out, "[%02x...]", []byte(t)[:20])
+		if verb == 's' && len(string(t)) > ElisionCutoff {
+			fmt.Fprintf(out, "[%02x...]", []byte(t)[:ElisionLength])
 		} else {
 			fmt.Fprintf(out, "[%02x]", []byte(t))
 		}

@@ -16,16 +16,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"errors"
+	// "errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
 	"log"
 	"net"
-	"os"
+	// "os"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	// "github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
@@ -73,6 +73,8 @@ func handleRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) error {
 	if ok != true {
 		return fmt.Errorf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
 	}
+/*
+	// JLM: FIX
 	subjectPrin, ok := sf.Delegator.(auth.Prin)
 	if ok != true {
 		return fmt.Errorf("keynegoserver: can't get subject principal\n")
@@ -96,6 +98,8 @@ func handleRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) error {
 	}
 	clientDERCert := clientCert.Raw
 	err = ioutil.WriteFile("ClientCert", clientDERCert, os.ModePerm)
+ */
+	clientDERCert := []byte{1,2}  //REMOVE
 
 	nowTime := time.Now().UnixNano()
 	expireTime := time.Now().AddDate(1, 0, 0).UnixNano()

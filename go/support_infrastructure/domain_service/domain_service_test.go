@@ -15,10 +15,12 @@
 package domain_service
 
 import (
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -31,12 +33,12 @@ import (
 var machineName = "Encode Machine Information"
 
 var hostName = &auth.Prin{
-	Type: "program",
-	Key:  auth.Str("hostHash")}
+	Type:    "program",
+	KeyHash: auth.Str("hostHash")}
 
 var programName = &auth.Prin{
-	Type: "program",
-	Key:  auth.Str("programHash")}
+	Type:    "program",
+	KeyHash: auth.Str("programHash")}
 
 var us = "US"
 var google = "Google"
@@ -300,6 +302,9 @@ func generatePolicyKey(t *testing.T) (*tao.Keys, *x509.Certificate) {
 
 func generateEndorsementCertficate(t *testing.T, policyKey *tao.Keys,
 	policyCert *x509.Certificate) (*tao.Keys, *x509.Certificate) {
+	rng := rand.Reader
+	privKey, err := rsa.GenerateKey(rng, 256)
+	hwPublicKey := privKey.PublicKey
 	k, err := tao.NewTemporaryKeys(tao.Signing)
 	if k == nil || err != nil {
 		t.Fatal("Can't generate signing key")
@@ -352,7 +357,7 @@ func generateGuard(t *testing.T) *tao.Guard {
 	if err != nil {
 		t.Fatal("Error adding a rule to the guard", err)
 	}
-	machinePrin := auth.Prin{Type: "MachineInfo", Key: auth.Str(machineName)}
+	machinePrin := auth.Prin{Type: "MachineInfo", KeyHash: auth.Str(machineName)}
 	err = guard.Authorize(machinePrin, "Root", []string{})
 	if err != nil {
 		t.Fatal("Error adding a rule to the guard", err)

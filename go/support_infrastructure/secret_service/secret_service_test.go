@@ -54,7 +54,7 @@ func TestStateFunctions(t *testing.T) {
 	if err != nil {
 		failOnError(t, err)
 	}
-	state, err := LoadState("./state/tao.config", "xxx")
+	state, err := LoadState("./tao.config", "xxx")
 	if err != nil {
 		failOnError(t, err)
 	}
@@ -66,7 +66,7 @@ func TestStateFunctions(t *testing.T) {
 	if err != nil {
 		failOnError(t, err)
 	}
-	state, err = LoadState("./state/tao.config", "xxx")
+	state, err = LoadState("./tao.config", "xxx")
 	if err != nil {
 		failOnError(t, err)
 	}

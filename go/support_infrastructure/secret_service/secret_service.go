@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path"
 
 	"github.com/golang/protobuf/proto"
@@ -77,6 +78,13 @@ func InitState(configPath, domainPass, secretServiceName string) (*ServerData, e
 }
 
 func LoadState(configPath, domainPass string) (*ServerData, error) {
+	configDir := path.Dir(configPath)
+	configPath = path.Join(configDir, "state/server.config")
+	_, err := os.Stat(configPath)
+	if err != nil {
+		return nil, errors.New(
+			"Could not find server state to load. If starting first time, use -init flag.")
+	}
 	domain, err := tao.LoadDomain(configPath, []byte(domainPass))
 	if domain == nil {
 		log.Printf("secretserver: no domain path - %s, pass - %s, err - %s\n",
@@ -87,7 +95,7 @@ func LoadState(configPath, domainPass string) (*ServerData, error) {
 			configPath, err)
 		return nil, err
 	}
-	configDir := path.Dir(configPath)
+	configDir = path.Dir(configPath)
 	encKeyPath := path.Join(configDir, "encKey")
 	encKey, err := tao.NewOnDiskPBEKeys(tao.Crypting|tao.Signing, []byte(domainPass),
 		encKeyPath, nil)
@@ -305,7 +313,7 @@ func DeleteObject(l *list.List, id *protected_objects.ObjectIdMessage, program *
 
 func createDomain(domainConfigPath, stateDir, domainPass string) (*tao.Domain, error) {
 	var cfg tao.DomainConfig
-	newConfigPath := path.Join(stateDir, "tao.config")
+	newConfigPath := path.Join(stateDir, "server.config")
 	d, err := ioutil.ReadFile(domainConfigPath)
 	if err != nil {
 		log.Printf("secret server: error in reading domain config. err: %s, path: %s\n",

@@ -33,13 +33,11 @@ import (
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 
 var domainPass = flag.String("password", "xxx", "The domain password")
-var domainConfigPath = flag.String("config", "./tao.config",
-	"The Tao domain config")
+var configPath = flag.String("config", "./tao.config", "The server config")
 
 var initServerFlag = flag.Bool("init", false, "To create new server from specified config.")
 
 var secretServiceName = "The Secret Service"
-var encKeyPath = flag.String("encKeys", "/Domains/domainserver/keys", "The root encrypting keys")
 var rootName = "Root Object"
 var epoch = int32(1)
 
@@ -50,14 +48,13 @@ func main() {
 	var err error
 	if *initServerFlag {
 		log.Println("Creating new server...")
-		state, err = secret_service.InitState(*domainConfigPath, *domainPass,
-			secretServiceName)
+		state, err = secret_service.InitState(*configPath, *domainPass, secretServiceName)
 		if err != nil {
 			log.Fatalln("Error creating new server.", err)
 		}
 	} else {
 		log.Println("Loading domain info...")
-		state, err = secret_service.LoadState(*domainConfigPath, *domainPass)
+		state, err = secret_service.LoadState(*configPath, *domainPass)
 		if err != nil {
 			log.Fatalln("Error loading server.", err)
 		}

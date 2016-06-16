@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/jlmucb/cloudproxy/go/support_libraries/protected_objects"
+	"github.com/jlmucb/cloudproxy/go/support_libraries/secret_disclosure_support"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
@@ -87,7 +88,8 @@ func TestReadObject(t *testing.T) {
 	failOnError(t, err)
 	l.PushFront(*pObj)
 
-	err = domain.Guard.Authorize(*authorizedPrin, "READ", []string{obj.ObjId.String()})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.ReadPredicate,
+		[]string{obj.ObjId.String()})
 	failOnError(t, err)
 
 	typ, val, err := ReadObject(l, encKey, obj.ObjId, authorizedPrin, domain)
@@ -126,9 +128,11 @@ func TestWriteObject(t *testing.T) {
 	failOnError(t, err)
 	l.PushFront(*pObj)
 
-	err = domain.Guard.Authorize(*authorizedPrin, "WRITE", []string{obj.ObjId.String()})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.WritePredicate,
+		[]string{obj.ObjId.String()})
 	failOnError(t, err)
-	err = domain.Guard.Authorize(*authorizedPrin, "READ", []string{obj.ObjId.String()})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.ReadPredicate,
+		[]string{obj.ObjId.String()})
 	failOnError(t, err)
 
 	newType := "file"
@@ -151,10 +155,11 @@ func TestCreateObject(t *testing.T) {
 	l := list.New()
 	l.PushFront(createRootKey(t))
 
-	err := domain.Guard.Authorize(*authorizedPrin, "CREATE", []string{})
+	err := domain.Guard.Authorize(*authorizedPrin, secret_disclosure.CreatePredicate, []string{})
 	failOnError(t, err)
 	id := createObjectId(name, epoch)
-	err = domain.Guard.Authorize(*authorizedPrin, "READ", []string{id.String()})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.ReadPredicate,
+		[]string{id.String()})
 	failOnError(t, err)
 	fileType := "file"
 	err = CreateObject(l, id, nil, rootId, encKey, authorizedPrin, domain, fileType, value)
@@ -180,7 +185,8 @@ func TestCreateObject(t *testing.T) {
 		t.Fatal("Did not get error by creating new object with unauthorized program.")
 	}
 
-	err = domain.Guard.Authorize(*authorizedPrin, "CREATE", []string{id.String()})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.CreatePredicate,
+		[]string{id.String()})
 	failOnError(t, err)
 	err = CreateObject(l, newId, newId, rootId, encKey, authorizedPrin, domain, secretType,
 		newValue)
@@ -206,20 +212,23 @@ func TestDeleteObject(t *testing.T) {
 		t.Fatal("Did not get error when unauthorized program attempted to delete object.")
 	}
 
-	err = domain.Guard.Authorize(*authorizedPrin, "DELETE", []string{newId.String()})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.DeletePredicate,
+		[]string{newId.String()})
 	failOnError(t, err)
 	err = DeleteObject(l, newId, authorizedPrin, domain)
 	if err == nil {
 		t.Fatal("Did not get error when program attempts to delete non-existant object.")
 	}
 
-	err = domain.Guard.Authorize(*authorizedPrin, "CREATE", []string{})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.CreatePredicate,
+		[]string{})
 	failOnError(t, err)
 	err = CreateObject(l, newId, nil, rootId, encKey, authorizedPrin, domain, secretType, value)
 	failOnError(t, err)
 	err = DeleteObject(l, newId, authorizedPrin, domain)
 	failOnError(t, err)
-	err = domain.Guard.Authorize(*authorizedPrin, "READ", []string{newId.String()})
+	err = domain.Guard.Authorize(*authorizedPrin, secret_disclosure.ReadPredicate,
+		[]string{newId.String()})
 	failOnError(t, err)
 	_, _, err = ReadObject(l, encKey, newId, authorizedPrin, domain)
 	if err == nil {

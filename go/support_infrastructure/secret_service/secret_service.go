@@ -87,7 +87,6 @@ func LoadState(configPath, domainPass string) (*ServerData, error) {
 			configPath, err)
 		return nil, err
 	}
-	log.Printf("secretserver: Loaded domain\n")
 	configDir := path.Dir(configPath)
 	encKeyPath := path.Join(configDir, "encKey")
 	encKey, err := tao.NewOnDiskPBEKeys(tao.Crypting|tao.Signing, []byte(domainPass),
@@ -327,7 +326,6 @@ func createDomain(domainConfigPath, stateDir, domainPass string) (*tao.Domain, e
 			domainConfigPath, err)
 		return nil, err
 	}
-	log.Printf("secretserver: Created domain\n")
 	err = domain.Save()
 	if err != nil {
 		log.Printf("secret server: error in saving domain. err: %s\n", err)

@@ -150,6 +150,9 @@ func VerifySecretDisclosureDirective(policyKey *tao.Keys, directive *DirectiveMe
 				"program cert not valid")
 		}
 		verifier, err = tao.FromX509(cert)
+		if cert == nil || len(cert.Subject.OrganizationalUnit) == 0 {
+			return nil, nil, nil, nil, errors.New("secret_disclosure: malformed cert.")
+		}
 		delegatorStr = cert.Subject.OrganizationalUnit[0]
 		if err != nil {
 			return nil, nil, nil, nil, err

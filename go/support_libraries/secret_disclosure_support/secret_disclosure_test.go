@@ -63,7 +63,7 @@ func TestProcessDirectiveAndUpdateGuard(t *testing.T) {
 	failOnError(t, err)
 	info := x509Info
 	speakerStr := Delegator.String()
-	info.CommonName = &speakerStr
+	info.OrganizationalUnit = &speakerStr
 	subject := tao.NewX509Name(&info)
 	programKey.Cert, err = domain.Keys.SigningKey.CreateSignedX509(
 		domain.Keys.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
@@ -157,7 +157,7 @@ func TestCreateAndVerifyDirectiveSignedByProgram(t *testing.T) {
 	failOnError(t, err)
 	info := x509Info
 	speakerStr := Delegator.String()
-	info.CommonName = &speakerStr
+	info.OrganizationalUnit = &speakerStr
 	subject := tao.NewX509Name(&info)
 	programKey.Cert, err = policyKey.SigningKey.CreateSignedX509(
 		policyKey.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
@@ -335,7 +335,7 @@ func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMe
 	}
 	info := x509Info
 	name := policyKey.SigningKey.ToPrincipal().String()
-	info.CommonName = &name
+	info.OrganizationalUnit = &name
 	subject := tao.NewX509Name(&info)
 	policyKey.Cert, err = policyKey.SigningKey.CreateSelfSignedX509(subject)
 	if err != nil {

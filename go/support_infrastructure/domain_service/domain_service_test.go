@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-	"runtime"
 	"testing"
 	"time"
 
@@ -62,7 +61,7 @@ func TestVerifyHostAttestation_stackedHost(t *testing.T) {
 	if !ok {
 		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
 	}
-	defer cleanUpTPMTao(tt)
+	defer tao.CleanUpTPMTao(tt)
 	hwPublicKey, err := tpm.UnmarshalRSAPublicKey(aikblob)
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +160,7 @@ func TestValidateEndorsementCert(t *testing.T) {
 	if !ok {
 		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
 	}
-	defer cleanUpTPMTao(tt)
+	defer tao.CleanUpTPMTao(tt)
 	hwPublicKey, err := tpm.UnmarshalRSAPublicKey(aikblob)
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +301,7 @@ func generateEndorsementCertficate(t *testing.T, policyKey *tao.Keys, hwPublicKe
 		Organization: &google,
 		CommonName:   &machineName}
 	subject := tao.NewX509Name(&details)
-	signTemplate := prepareX509Template(subject)
+	signTemplate := tao.PrepareX509Template(subject)
 	derSignedCert, err := x509.CreateCertificate(rand.Reader, signTemplate, policyCert,
 		hwPublicKey, policyKey.SigningKey.GetSigner())
 	if err != nil {
@@ -383,31 +382,4 @@ func generateGuard(t *testing.T) *tao.Guard {
 		t.Fatal("Error adding a rule to the guard", err)
 	}
 	return &guard
-}
-
-// cleanUpTPMTao runs the finalizer for TPMTao early then unsets it so it
-// doesn't run later. Normal code will only create one instance of TPMTao, so
-// the finalizer will work correctly. But this test code creates multiple such
-// instances, so it needs to call the finalizer early.
-func cleanUpTPMTao(tt *tao.TPMTao) {
-	tao.FinalizeTPMTao(tt)
-	runtime.SetFinalizer(tt, nil)
-}
-
-// prepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
-func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
-	return &x509.Certificate{
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		PublicKeyAlgorithm: x509.ECDSA,
-		Version:            2, // x509v3
-		// It's always allowed for self-signed certs to have serial 1.
-		SerialNumber: new(big.Int).SetInt64(1),
-		Subject:      *subjectName,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
-		// TODO(tmroeder): I'm not sure which of these I need to make
-		// OpenSSL happy.
-		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-	}
 }

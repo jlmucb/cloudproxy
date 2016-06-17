@@ -138,8 +138,8 @@ func NewX509Name(p *X509Details) *pkix.Name {
 	}
 }
 
-// prepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
-func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
+// PrepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
+func PrepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 	return &x509.Certificate{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		PublicKeyAlgorithm: x509.ECDSA,
@@ -159,7 +159,7 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 // CreateSelfSignedDER creates a DER representation of a new self-signed
 // certificate for the given name.
 func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
-	template := prepareX509Template(name)
+	template := PrepareX509Template(name)
 	template.BasicConstraintsValid = true
 	template.IsCA = true
 	template.Issuer = template.Subject
@@ -173,7 +173,7 @@ func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
 // CreateSelfSignedX509 creates a self-signed X.509 certificate for the public
 // key of this Signer.
 func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error) {
-	template := prepareX509Template(name)
+	template := PrepareX509Template(name)
 	template.IsCA = true
 	template.BasicConstraintsValid = true
 	template.Issuer = template.Subject
@@ -197,7 +197,7 @@ func (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCe
 // CreateSignedX509 creates a signed X.509 certificate for some other subject's
 // key.
 func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) (*x509.Certificate, error) {
-	template := prepareX509Template(subjectName)
+	template := PrepareX509Template(subjectName)
 	template.SerialNumber = new(big.Int).SetInt64(int64(certSerial))
 
 	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.ec, s.ec)

@@ -408,3 +408,12 @@ func MakeTPMPrin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (auth
 
 	return name, nil
 }
+
+// CleanUpTPMTao runs the finalizer for TPMTao early then unsets it so it
+// doesn't run later. Normal code will only create one instance of TPMTao, so
+// the finalizer will work correctly. But this test code creates multiple such
+// instances, so it needs to call the finalizer early.
+func CleanUpTPMTao(tt *TPMTao) {
+	FinalizeTPMTao(tt)
+	runtime.SetFinalizer(tt, nil)
+}

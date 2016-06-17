@@ -51,14 +51,12 @@ func main() {
 	if policyCert == nil {
 		log.Fatalln("Policy cert not found")
 	}
-	// hwKey, hwCert := generateEndorsementCertficate(policyKey, policyCert)
 	hostKey, hostAtt := generateAttestation(policyKey, hostName)
 	programKey, programAtt := generateAttestation(hostKey, programName)
 	rawEnd1, err := proto.Marshal(hostAtt)
 	if err != nil {
 		log.Fatalln("Error serializing attestation.")
 	}
-	//	rawEnd2 := hwCert.Raw
 	programAtt.SerializedEndorsements = [][]byte{rawEnd1}
 	cert, err := domain_service.RequestProgramCert(programAtt, programKey.VerifyingKey,
 		*network, *addr)

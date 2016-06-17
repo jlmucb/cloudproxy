@@ -356,7 +356,7 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
 
   std::vector<std::unique_ptr<tao::Term>> w;
   w.push_back(tao::make_unique<tao::Bytes>(policy_hash_str.data()));
-  v.push_back(tao::make_unique<tao::PrinExt> ("key", std::move(w)));
+  v.push_back(tao::make_unique<tao::PrinExt> ("PolicyKey", std::move(w)));
   tao::SubPrin p(std::move(v));
   string subprin;
   {

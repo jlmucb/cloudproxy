@@ -342,22 +342,20 @@ bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
   }
 
 
-  // Extend principal name, hash of policy cert identifies policy extension.
+  // Extend principal name, with hash of policy public key.
 
   // Hash of policy cert.
-  byte policy_hash[32];
-  SHA256_CTX sha256;
-  SHA256_Init(&sha256);
-  SHA256_Update(&sha256, (byte*)policy_cert_.data(), policy_cert_.size());
-  SHA256_Final(policy_hash, &sha256);
-  // Actually, I think we're supposed to stuff the hash bytes in the name and not hex transform them.
-  string* hexPolicyHash = ByteToHexLeftToRight(32, policy_hash);
+  string policy_hash_str;
+
+  if(!GetKeyBytes(evp_policy_key, &policy_hash_str)) {
+    printf("Can't get key bytes.\n");
+    return false;
+  }
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
 
-  // Should it be "PolicyCertHash" rather than "key"?
   std::vector<std::unique_ptr<tao::Term>> w;
-  w.push_back(tao::make_unique<tao::Bytes>(hexPolicyHash->c_str()));
+  w.push_back(tao::make_unique<tao::Bytes>(policy_hash_str.data()));
   v.push_back(tao::make_unique<tao::PrinExt> ("key", std::move(w)));
   tao::SubPrin p(std::move(v));
   string subprin;
@@ -739,7 +737,7 @@ bool GetKeyBytes(EVP_PKEY* pKey, string* bytes_out) {
 
   if (pKey->type == EVP_PKEY_RSA) {
     RSA* rsa_key = EVP_PKEY_get1_RSA(pKey);
-    // FIX: change to however Rsa keys are serialized
+    // FIX: change to however Rsa keys are serialized internally.
     n = i2d_RSA_PUBKEY(rsa_key, &ptr);
     if (n <= 0) {
       printf("GetKeyBytes: Can't i2d RSA public key\n");

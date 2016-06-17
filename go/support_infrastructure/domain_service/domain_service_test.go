@@ -15,17 +15,20 @@
 package domain_service
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"io/ioutil"
 	"math/big"
-	"math/rand"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/go-tpm/tpm"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
@@ -47,10 +50,28 @@ var x509Info = &tao.X509Details{
 	Organization: &google}
 
 func TestVerifyHostAttestation_stackedHost(t *testing.T) {
+	aikblob, err := ioutil.ReadFile("./aikblob")
+	if err != nil {
+		t.Skip("Skipping tests, since there's no ./aikblob file")
+	}
+	tpmtao, err := tao.NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	if err != nil {
+		t.Skip("Couldn't create a new TPM Tao:", err)
+	}
+	tt, ok := tpmtao.(*tao.TPMTao)
+	if !ok {
+		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
+	}
+	defer cleanUpTPMTao(tt)
+	hwPublicKey, err := tpm.UnmarshalRSAPublicKey(aikblob)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	domain := generateDomain(t)
 	policyKey, policyCert := domain.Keys, domain.Keys.Cert
-	hwKey, hwCert := generateEndorsementCertficate(t, policyKey, policyCert)
-	hostKey, hostAtt := generateAttestation(t, hwKey, hostName)
+	hwCert := generateEndorsementCertficate(t, policyKey, hwPublicKey, policyCert)
+	hostKey, hostAtt := generateTpmAttestation(t, tt, hostName)
 	programKey, programAtt := generateAttestation(t, hostKey, programName)
 	rawEnd1, err := proto.Marshal(hostAtt)
 	if err != nil {
@@ -116,42 +137,8 @@ func TestGenerateProgramCert(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error generating keys.", err)
 	}
-	programKprin := programKey.SigningKey.ToPrincipal()
-	att, err := GenerateProgramCert(domain, 0, programName, &programKprin,
+	cert, err := GenerateProgramCert(domain, 0, programName, programKey.VerifyingKey,
 		time.Now(), time.Now().AddDate(1, 0, 0))
-	if err != nil {
-		t.Fatal("Error generating Program Cert.", err)
-	}
-	saysStmt, err := att.Validate()
-	if err != nil {
-		t.Fatal("Error validating attestation.", err)
-	}
-	speaker, ok := saysStmt.Speaker.(auth.Prin)
-	if !ok {
-		t.Fatal("attestation 'Says' speaker is not a auth.Prin.")
-	}
-	if !domain.Keys.SigningKey.ToPrincipal().Identical(speaker) {
-		t.Fatal("Attestation speaker not identical to policy key.")
-	}
-	sf, ok := saysStmt.Message.(auth.Speaksfor)
-	if !ok {
-		t.Fatal("attestation statement does not have a 'SpeaksFor'.")
-	}
-	delegator, ok := sf.Delegator.(auth.Prin)
-	if !ok {
-		t.Fatal("attestation 'speaksFor' delegator is not a auth.Prin.")
-	}
-	if !programName.Identical(delegator) {
-		t.Fatal("Attestation speaker not identical to policy key.")
-	}
-	delegate, ok := sf.Delegate.(auth.Bytes)
-	if !ok {
-		t.Fatal("Attestation 'speaksFor' delegate is not a auth.Bytes.")
-	}
-	cert, err := x509.ParseCertificate(delegate)
-	if err != nil {
-		t.Fatal("Error parsing program certificate.", err)
-	}
 	rootCerts := x509.NewCertPool()
 	rootCerts.AddCert(domain.Keys.Cert)
 	options := x509.VerifyOptions{Roots: rootCerts}
@@ -162,28 +149,34 @@ func TestGenerateProgramCert(t *testing.T) {
 }
 
 func TestValidateEndorsementCert(t *testing.T) {
-	k, err := tao.NewTemporaryKeys(tao.Signing)
-	if k == nil || err != nil {
-		t.Fatal("Can't generate signing key")
-	}
-
-	// publicString is now a canonicalized Tao Principal name
-	us := "US"
-	google := "Google"
-	details := tao.X509Details{
-		Country:      &us,
-		Organization: &google,
-		CommonName:   &machineName}
-	subjectname := tao.NewX509Name(&details)
-
-	cert, err := k.SigningKey.CreateSelfSignedX509(subjectname)
+	aikblob, err := ioutil.ReadFile("./aikblob")
 	if err != nil {
-		t.Fatal("Can't self sign cert\n")
+		t.Skip("Skipping tests, since there's no ./aikblob file")
 	}
+	tpmtao, err := tao.NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	if err != nil {
+		t.Skip("Couldn't create a new TPM Tao:", err)
+	}
+	tt, ok := tpmtao.(*tao.TPMTao)
+	if !ok {
+		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
+	}
+	defer cleanUpTPMTao(tt)
+	hwPublicKey, err := tpm.UnmarshalRSAPublicKey(aikblob)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	domain := generateDomain(t)
+	policyKey, policyCert := domain.Keys, domain.Keys.Cert
+	hwCert := generateEndorsementCertficate(t, policyKey, hwPublicKey, policyCert)
 	rootCerts := x509.NewCertPool()
-	rootCerts.AddCert(cert)
-	kPrin := k.SigningKey.GetVerifier().ToPrincipal()
-	err = validateEndorsementCertificate(cert, *generateGuard(t), &kPrin, rootCerts)
+	rootCerts.AddCert(policyCert)
+	taoname, err := tt.GetTaoName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = validateEndorsementCertificate(hwCert, *generateGuard(t), &taoname, rootCerts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,8 +221,8 @@ func TestInitAcls(t *testing.T) {
 		t.Fatal(err)
 	}
 	machinePrin := auth.Prin{
-		Type: "MachineInfo",
-		Key:  auth.Str(machineName),
+		Type:    "MachineInfo",
+		KeyHash: auth.Str(machineName),
 	}
 	if !domain.Guard.IsAuthorized(*programName, "Execute", []string{}) ||
 		!domain.Guard.IsAuthorized(*hostName, "Host", []string{}) ||
@@ -300,15 +293,8 @@ func generatePolicyKey(t *testing.T) (*tao.Keys, *x509.Certificate) {
 	return k, cert
 }
 
-func generateEndorsementCertficate(t *testing.T, policyKey *tao.Keys,
-	policyCert *x509.Certificate) (*tao.Keys, *x509.Certificate) {
-	rng := rand.Reader
-	privKey, err := rsa.GenerateKey(rng, 256)
-	hwPublicKey := privKey.PublicKey
-	k, err := tao.NewTemporaryKeys(tao.Signing)
-	if k == nil || err != nil {
-		t.Fatal("Can't generate signing key")
-	}
+func generateEndorsementCertficate(t *testing.T, policyKey *tao.Keys, hwPublicKey *rsa.PublicKey,
+	policyCert *x509.Certificate) *x509.Certificate {
 	us := "US"
 	google := "Google"
 	details := tao.X509Details{
@@ -316,16 +302,49 @@ func generateEndorsementCertficate(t *testing.T, policyKey *tao.Keys,
 		Organization: &google,
 		CommonName:   &machineName}
 	subject := tao.NewX509Name(&details)
-	cert, err := policyKey.SigningKey.CreateSignedX509(
-		policyCert, 0, k.SigningKey.GetVerifier(), subject)
+	signTemplate := prepareX509Template(subject)
+	derSignedCert, err := x509.CreateCertificate(rand.Reader, signTemplate, policyCert,
+		hwPublicKey, policyKey.SigningKey.GetSigner())
 	if err != nil {
 		t.Fatal(err)
 	}
-	return k, cert
+	cert, err := x509.ParseCertificate(derSignedCert)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cert
 }
 
-func generateAttestation(t *testing.T, signingKey *tao.Keys,
-	delegator *auth.Prin) (*tao.Keys, *tao.Attestation) {
+func generateTpmAttestation(t *testing.T, tpmtao *tao.TPMTao, delegator *auth.Prin) (*tao.Keys,
+	*tao.Attestation) {
+	k, err := tao.NewTemporaryKeys(tao.Signing)
+	if k == nil || err != nil {
+		t.Fatal("Can't generate signing key")
+	}
+	speaksFor := &auth.Speaksfor{
+		Delegate:  k.SigningKey.ToPrincipal(),
+		Delegator: delegator,
+	}
+	taoname, err := tpmtao.GetTaoName()
+	if err != nil {
+		t.Fatal("Couldn't get the name of the tao:", err)
+	}
+	says := &auth.Says{
+		Speaker:    taoname,
+		Time:       nil,
+		Expiration: nil,
+		Message:    speaksFor,
+	}
+
+	att, err := tpmtao.Attest(&taoname, nil, nil, says)
+	if err != nil {
+		t.Fatal("TPM couldn't attest:", err)
+	}
+	return k, att
+}
+
+func generateAttestation(t *testing.T, signingKey *tao.Keys, delegator *auth.Prin) (*tao.Keys,
+	*tao.Attestation) {
 	k, err := tao.NewTemporaryKeys(tao.Signing)
 	if k == nil || err != nil {
 		t.Fatal("Can't generate signing key")
@@ -340,9 +359,10 @@ func generateAttestation(t *testing.T, signingKey *tao.Keys,
 		Expiration: nil,
 		Message:    speaksFor,
 	}
+
 	att, err := tao.GenerateAttestation(signingKey.SigningKey, nil, *says)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("Error generating attestation:", err)
 	}
 	return k, att
 }
@@ -363,4 +383,31 @@ func generateGuard(t *testing.T) *tao.Guard {
 		t.Fatal("Error adding a rule to the guard", err)
 	}
 	return &guard
+}
+
+// cleanUpTPMTao runs the finalizer for TPMTao early then unsets it so it
+// doesn't run later. Normal code will only create one instance of TPMTao, so
+// the finalizer will work correctly. But this test code creates multiple such
+// instances, so it needs to call the finalizer early.
+func cleanUpTPMTao(tt *tao.TPMTao) {
+	tao.FinalizeTPMTao(tt)
+	runtime.SetFinalizer(tt, nil)
+}
+
+// prepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
+func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
+	return &x509.Certificate{
+		SignatureAlgorithm: x509.ECDSAWithSHA256,
+		PublicKeyAlgorithm: x509.ECDSA,
+		Version:            2, // x509v3
+		// It's always allowed for self-signed certs to have serial 1.
+		SerialNumber: new(big.Int).SetInt64(1),
+		Subject:      *subjectName,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
+		// TODO(tmroeder): I'm not sure which of these I need to make
+		// OpenSSL happy.
+		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	}
 }

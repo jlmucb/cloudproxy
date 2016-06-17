@@ -31,8 +31,8 @@ import (
 // This function packages a host attestation into a DomainServiceRequest of the type
 // DOMAIN_CERT_REQUEST, sends it to the domain service and deserializes the response
 // into an attestation that contains the domain program certificate.
-func RequestProgramCert(hostAtt *tao.Attestation, network string, addr string) (*tao.Attestation,
-	error) {
+func RequestProgramCert(hostAtt *tao.Attestation, verifier *tao.Verifier,
+	network string, addr string) (*x509.Certificate, error) {
 	serAtt, err := proto.Marshal(hostAtt)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,9 @@ func RequestProgramCert(hostAtt *tao.Attestation, network string, addr string) (
 	reqType := DomainServiceRequest_DOMAIN_CERT_REQUEST
 	request := &DomainServiceRequest{
 		Type: &reqType,
-		SerializedHostAttestation: serAtt}
+		SerializedHostAttestation: serAtt,
+		ProgramKey:                verifier.MarshalKey(),
+	}
 
 	conn, err := net.Dial(network, addr)
 	if err != nil {
@@ -63,12 +65,11 @@ func RequestProgramCert(hostAtt *tao.Attestation, network string, addr string) (
 	if errStr := response.GetErrorMessage(); errStr != "" {
 		return nil, errors.New(errStr)
 	}
-	var a tao.Attestation
-	err = proto.Unmarshal(response.GetSerializedDomainAttestation(), &a)
+	cert, err := x509.ParseCertificate(response.GetDerProgramCert())
 	if err != nil {
 		return nil, err
 	}
-	return &a, nil
+	return cert, nil
 }
 
 // This function packages a certificate revoke request into a DomainServiceRequest of type

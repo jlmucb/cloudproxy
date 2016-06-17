@@ -31,8 +31,8 @@ import (
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "xxx", "The domain password")
-var configPath = flag.String("config", "/Domains/domainserver/tao.config", "The Tao domain config")
-var trustedEntitiesPath = flag.String("trusted entities", "/Domains/domainserver/TrustedEntities", "File containing trusted entities.")
+var configPath = flag.String("config", "./tao.config", "The Tao domain config")
+var trustedEntitiesPath = flag.String("trusted entities", "./TrustedEntities", "File containing trusted entities.")
 var createDomainFlag = flag.Bool("createDomain", false, "To create new domain from specified config.")
 
 var serialNumber = 0
@@ -121,28 +121,34 @@ func main() {
 		}
 		switch *request.Type {
 		case domain_service.DomainServiceRequest_DOMAIN_CERT_REQUEST:
-			_, _, prog, err := domain_service.VerifyHostAttestation(
+			_, kPrin, prog, err := domain_service.VerifyHostAttestation(
 				request.GetSerializedHostAttestation(), domain, rootCerts)
 			if err != nil {
 				log.Printf("domain_server: Error verifying host att: %s\n", err)
 				sendError(err, ms)
 				continue
 			}
-			att, err := domain_service.GenerateProgramCert(domain, serialNumber, prog,
-				nil, time.Now(), time.Now().AddDate(1, 0, 0))
+			programKeyBytes := request.GetProgramKey()
+			verifier, err := tao.UnmarshalKey(programKeyBytes)
+			if err != nil {
+				log.Printf("domain_server: Error parsing program key: %v\n", err)
+				sendError(err, ms)
+				continue
+			}
+			if !verifier.ToPrincipal().Identical(kPrin) {
+				log.Printf("domain_server: Program key in request does not match key being attested to.")
+				sendError(err, ms)
+				continue
+			}
+			cert, err := domain_service.GenerateProgramCert(domain, serialNumber, prog,
+				verifier, time.Now(), time.Now().AddDate(1, 0, 0))
 			if err != nil {
 				log.Printf("domain_server: Error generating program cert: %s\n", err)
 				sendError(err, ms)
 				continue
 			}
-			serAtt, err := proto.Marshal(att)
-			if err != nil {
-				log.Printf("domain_server: Error marshalling program cert: %s\n", err)
-				sendError(err, ms)
-				continue
-			}
 			resp := &domain_service.DomainServiceResponse{
-				SerializedDomainAttestation: serAtt}
+				DerProgramCert: cert.Raw}
 			if _, err := ms.WriteMessage(resp); err != nil {
 				log.Printf("domain_server: Error sending cert on the channel: %s\n ",
 					err)

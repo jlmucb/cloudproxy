@@ -24,8 +24,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"
 )
 
-var machineName = "Encode Machine Information"
-
 var hostName = &auth.Prin{
 	Type:    "program",
 	KeyHash: auth.Str("hostHash")}
@@ -38,7 +36,7 @@ var network = flag.String("network", "tcp", "The network to use for connections"
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 
 var domainPass = flag.String("password", "xxx", "The domain password")
-var configPath = flag.String("config", "/Domains/domainserver/tao.config", "The Tao domain config")
+var configPath = flag.String("config", "../server/tao.config", "The Tao domain config")
 
 func main() {
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
@@ -53,48 +51,19 @@ func main() {
 	if policyCert == nil {
 		log.Fatalln("Policy cert not found")
 	}
-	hwKey, hwCert := generateEndorsementCertficate(policyKey, policyCert)
-	hostKey, hostAtt := generateAttestation(hwKey, hostName)
+	// hwKey, hwCert := generateEndorsementCertficate(policyKey, policyCert)
+	hostKey, hostAtt := generateAttestation(policyKey, hostName)
 	programKey, programAtt := generateAttestation(hostKey, programName)
 	rawEnd1, err := proto.Marshal(hostAtt)
 	if err != nil {
 		log.Fatalln("Error serializing attestation.")
 	}
-	rawEnd2 := hwCert.Raw
-	programAtt.SerializedEndorsements = [][]byte{rawEnd1, rawEnd2}
-	att, err := domain_service.RequestProgramCert(programAtt, *network, *addr)
+	//	rawEnd2 := hwCert.Raw
+	programAtt.SerializedEndorsements = [][]byte{rawEnd1}
+	cert, err := domain_service.RequestProgramCert(programAtt, programKey.VerifyingKey,
+		*network, *addr)
 	if err != nil {
 		log.Fatalln("Error:", err)
-	}
-	saysStmt, err := att.Validate()
-	if err != nil {
-		log.Fatalln("Error validating attestation.", err)
-	}
-	speaker, ok := saysStmt.Speaker.(auth.Prin)
-	if !ok {
-		log.Fatalln("attestation 'Says' speaker is not a auth.Prin.")
-	}
-	if !domain.Keys.SigningKey.ToPrincipal().Identical(speaker) {
-		log.Fatalln("Attestation speaker not identical to policy key.")
-	}
-	sf, ok := saysStmt.Message.(auth.Speaksfor)
-	if !ok {
-		log.Fatalln("attestation statement does not have a 'SpeaksFor'.")
-	}
-	delegator, ok := sf.Delegator.(auth.Prin)
-	if !ok {
-		log.Fatalln("attestation 'speaksFor' delegator is not a auth.Prin.")
-	}
-	if !programName.Identical(delegator) {
-		log.Fatalln("Attestation speaker not identical to policy key.")
-	}
-	delegate, ok := sf.Delegate.(auth.Bytes)
-	if !ok {
-		log.Fatalln("Attestation 'speaksFor' delegate is not a auth.Bytes.")
-	}
-	cert, err := x509.ParseCertificate(delegate)
-	if err != nil {
-		log.Fatalln("Error parsing program certificate.", err)
 	}
 	rootCerts := x509.NewCertPool()
 	rootCerts.AddCert(domain.Keys.Cert)
@@ -107,8 +76,8 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error getting verifier from Program cert", err)
 	}
-	if v := programKey.SigningKey.GetVerifier(); !v.Equals(cert) {
-		log.Fatalln("Key in Program cert differs from expected value.", v, ver)
+	if v := programKey.VerifyingKey; !v.Equals(cert) {
+		log.Fatalf("Key in Program cert %v differs from expected value %v.", ver, v)
 	}
 
 	// Test Certificate Revocation.
@@ -119,7 +88,7 @@ func main() {
 			Name: "revoke",
 			Arg:  []auth.Term{auth.Bytes(serialNumber.Bytes())}}}
 
-	att, err = tao.GenerateAttestation(domain.Keys.SigningKey, nil, says)
+	att, err := tao.GenerateAttestation(domain.Keys.SigningKey, nil, says)
 	if err != nil {
 		log.Fatalln("Error generating attestation for certificate revocation.")
 	}
@@ -150,6 +119,7 @@ func generateEndorsementCertficate(policyKey *tao.Keys, policyCert *x509.Certifi
 	}
 	us := "US"
 	google := "Google"
+	machineName := "Encoded Machine Information"
 	details := tao.X509Details{
 		Country:      &us,
 		Organization: &google,

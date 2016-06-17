@@ -113,15 +113,13 @@ func VerifyHostAttestation(serializedHostAttestation []byte, domain *tao.Domain,
 			}
 
 		} else {
-			return nil, nil, nil, errors.New(
-				"error parsing host endorsement")
+			return nil, nil, nil, errors.New("error parsing host endorsement")
 		}
 	}
 	if domain.Keys.SigningKey.ToPrincipal().Identical(*kPrin) {
 		return speaker, key, prog, nil
 	}
-	return nil, nil, nil, errors.New(
-		"endorsement chain does not terminate in policy key")
+	return nil, nil, nil, errors.New("endorsement chain does not terminate in policy key")
 
 }
 
@@ -248,7 +246,7 @@ func parseSaysStatement(saysStatement *auth.Says) (*auth.Prin, *auth.Prin, *auth
 // Tao name of the program and subject public key being programKey.
 // Certificate expiration time is one year from issuing time.
 func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth.Prin,
-	programKey *tao.Keys, now, expiry time.Time) (*tao.Attestation, error) {
+	verifier *tao.Verifier, now, expiry time.Time) (*x509.Certificate, error) {
 
 	policyCert := domain.Keys.Cert
 	x509Info := domain.Config.GetX509Info()
@@ -256,31 +254,12 @@ func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth
 	x509Info.CommonName = &programName
 	x509Info.OrganizationalUnit = &programName
 	subjectName := tao.NewX509Name(x509Info)
-	verifier := programKey.VerifyingKey
 	clientCert, err := domain.Keys.SigningKey.CreateSignedX509(
 		policyCert, serialNumber, verifier, subjectName)
 	if err != nil {
 		return nil, err
 	}
-	clientDerCert := clientCert.Raw
-
-	nowTime := now.UnixNano()
-	expireTime := expiry.UnixNano()
-
-	speaksFor := &auth.Speaksfor{
-		Delegate:  auth.Bytes(clientDerCert),
-		Delegator: programPrin}
-	says := &auth.Says{
-		Speaker:    domain.Keys.SigningKey.ToPrincipal(),
-		Time:       &nowTime,
-		Expiration: &expireTime,
-		Message:    speaksFor}
-
-	ra, err := tao.GenerateAttestation(domain.Keys.SigningKey, nil, *says)
-	if err != nil {
-		return nil, err
-	}
-	return ra, nil
+	return clientCert, nil
 }
 
 // This function reads in trusted entities from a file at trustedEntitiesPath. In particular,

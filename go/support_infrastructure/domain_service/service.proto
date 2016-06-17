@@ -18,17 +18,21 @@ message domain_service_request {
   // Fields for type: DOMAIN_CERT_REQUEST.
   optional bytes serialized_host_attestation = 2;
 
+  // The program key, serialized in the format that
+  // auth.NewKeyPrin() accepts.
+  optional bytes program_key = 3;
+
   // Fields for type: REVOKE_CERTIFICATE.
   // This is an attestation signed by the policy key with the statement:
   // policyKey says revoke certificateSerialNumber
-  optional bytes serialized_policy_attestation = 3;
+  optional bytes serialized_policy_attestation = 4;
 }
 
 message domain_service_response {
   optional string error_message = 1;
 
   // Fields for response to DOMAIN_CERT_REQUEST.
-  optional bytes serialized_domain_attestation = 2;
+  optional bytes der_program_cert = 2;
 
   // Fields for response to GET_CRL.
   optional bytes crl = 3;

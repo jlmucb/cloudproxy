@@ -79,19 +79,19 @@ fmt.Printf("DomainRequest\n")
 		log.Printf("Domain: bad key type")
 		return false, errors.New("Domain: bad key type")
 	}
-	subject_public_key, err := domain_policy.GetEcdsaKeyFromDer(request.SubjectPublicKey)
+	subjectPublicKey, err := domain_policy.GetEcdsaKeyFromDer(request.SubjectPublicKey)
 	if err != nil {
 		log.Printf("DomainRequest: can't get key from der")
 		return false, errors.New("DomainRequest: can't get key from der")
 	}
 
 	// Get hash of the public key subject.
-	serialized_key, err := domain_policy.SerializeEcdsaKeyToInternalName(subject_public_key.(*ecdsa.PublicKey))
-	if err!= nil || serialized_key == nil {
+	serializedKey, err := domain_policy.SerializeEcdsaKeyToInternalName(subjectPublicKey.(*ecdsa.PublicKey))
+	if err!= nil || serializedKey == nil {
 		log.Printf("DomainRequest: Can't serialize key to internal format\n")
 		return false, errors.New("DomainRequest: Can't serialize key to internal format")
 	}
-	subject_key_hash := domain_policy.GetKeyHash(serialized_key)
+	subjectKeyHash := domain_policy.GetKeyHash(serializedKey)
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	err = tao.ValidatePeerAttestation(&a, peerCert, guard)
@@ -144,12 +144,12 @@ fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 fmt.Printf("\nSimpleDomainService: key principal: %s, program principal: %s\n", clientKeyPrincipal, programPrincipalName)
 
 	// Is the delegate the same key as was presented in the name in the request?
-	named_hash := clientKeyPrincipal.KeyHash.(auth.Bytes)
-fmt.Printf("\nkeyhash: %x\n", named_hash)
-	if bytes.Compare(subject_key_hash[:], named_hash) != 0 {
+	namedHash := clientKeyPrincipal.KeyHash.(auth.Bytes)
+fmt.Printf("\nkeyhash: %x\n", namedHash)
+	if bytes.Compare(subjectKeyHash[:], namedHash) != 0 {
 		log.Printf("DomainRequest: named hash is wrong\n")
 fmt.Printf("DomainRequest: named hash is wrong, named: %x, computed: %x\n",
-			named_hash, subject_key_hash)
+			namedHash, subjectKeyHash)
 		return false, errors.New("DomainRequest: named hash is wrong") 
 	}
 
@@ -189,7 +189,7 @@ fmt.Printf("DomainRequest: named hash is wrong, named: %x, computed: %x\n",
 	}
 
 	clientCert, err := x509.CreateCertificate(rand.Reader, &certificateTemplate,
-                            policyKey.Cert, subject_public_key,
+                            policyKey.Cert, subjectPublicKey,
                             policyKey.SigningKey.GetSigner())
 	if err != nil {
 		fmt.Printf("Can't create client certificate: ", err, "\n")

@@ -25,22 +25,22 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-func GetPublicDerFromEcdsaKey(key *ecdsa.PublicKey) ([]byte, error) {
-	return x509.MarshalPKIXPublicKey(key)
+func GetPublicDerFromEcdsaKey(ecKey *ecdsa.PublicKey) ([]byte, error) {
+	return x509.MarshalPKIXPublicKey(ecKey)
 }
 
 func GetEcdsaKeyFromDer(der []byte) (interface{}, error) {
 	return x509.ParsePKIXPublicKey(der)
 }
 
-func SerializeRSAKeyToInternalName(rsa_key *rsa.PublicKey) ([]byte, error) {
+func SerializeRSAKeyToInternalName(rsaKey *rsa.PublicKey) ([]byte, error) {
 	return nil, nil
 }
 
-func SerializeEcdsaKeyToInternalName(ec_key *ecdsa.PublicKey) ([]byte, error) {
+func SerializeEcdsaKeyToInternalName(ecKey *ecdsa.PublicKey) ([]byte, error) {
 	m := &tao.ECDSA_SHA_VerifyingKeyV1{
                 Curve:    tao.NamedEllipticCurve_PRIME256_V1.Enum(),
-		EcPublic: elliptic.Marshal(ec_key.Curve, ec_key.X, ec_key.Y),
+		EcPublic: elliptic.Marshal(ecKey.Curve, ecKey.X, ecKey.Y),
 	}
 	b, _ := proto.Marshal(m)
 

@@ -1,45 +1,39 @@
 Cloudproxy Todo
 
-
-Sub-project		End State							People		When
------------		---------							------		----
+Sub-project		End State					People		When
+-----------		---------					------		----
 Mac version		Done
 C++			Done
 Key management library	Done
 CPDomainServer          Done
 CPSecretServer          Done
-Tpm2 integration	Tpm2 support, tpm1.2 and tpm2 scripts and Doc complete		John/Sid/Tom	June/July, 2016
-			for KVM and Linux                                                               Delayed
-State-protection	Local state rollback protection and monotonic counters		John		June, 2016
-			"PolicyKey says Program-Name canRead zone-keys"			Sid 		done
-Attackathon		Red teams (UCB?)						John		August, 2016
-Industry Hackathon	Run application building thons					John		Sept, 2016
-New_HW			Support other HW mechanisms					Sid/John	Dec, 2016
-Industry App		Some deployed major player app							March, 2017
-Docker/Kubernetes in	Packaged support for Docker and Kubernetes deployment		John, Tom, Sid  Aug, 2017?
+Tpm2 integration	Tpm2 , tpm1.2 and tpm2 scripts, Doc complete	John/Sid/Tom	June/July, 2016
+State-protection	Local state rollback protection counters	John		June, 2016
+Attackathon		Red teams (UCB?)				John		August, 2016
+Industry Hackathon	Run application building thons			John		Sept
+New_HW			Support other HW mechanisms			Sid/John	Dec, 2016
+Industry App		Some deployed major player app					March, 2017
+Docker/Kubernetes in	Docker and Kubernetes deployment		John, Tom, Sid  Aug, 2017
 
 
 Platform
-  Tao name
   Security review
   Check: key wiping everywhere especially with errors.
   Support RSA keys, P25519keys
   Should the examples force SSL NOT to resume channels etc for better assurance?
   Fix third_party generation
   Swigs for Java, C, Python?
-  Client version
+  Fix C++ library builds
 
-Deployment guide  (Done by 8/1/2016?) --- John and Sid
+Deployment guide 
   AIK, Endorsement cert production
   TPM Host cert
   TPM1.2 install
   TPM 2.0 install
   Container install
-  Get Kevin's policy changes checked in
 
-Simple example  (Done by 7/30/2016)  Sid, John
+Simple example
   memory leaks
-  fix hash extension
   Symmetric keys using key service
   ACL Guard example
 

@@ -12,6 +12,9 @@
 
 package secret_service
 
+// This class provides helper functions for the secret service.
+//
+
 import (
 	"container/list"
 	"crypto/rand"
@@ -29,10 +32,16 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
+// This struct is for storing server data, which includes the protected objects
+// and ACLS for them.
 type ServerData struct {
-	Domain   *tao.Domain
-	EncKey   *tao.Keys
-	Lis      *list.List
+	// Protected object ACLs are stored in Domain.Guard.
+	Domain *tao.Domain
+	// EncKey is used for encrypting the root protected object.
+	EncKey *tao.Keys
+	// List of protected objects.
+	Lis *list.List
+	// The root protected object, which is a key used to encrypt other protected objects.
 	RootPObj *protected_objects.ProtectedObjectMessage
 	Path     *string
 }

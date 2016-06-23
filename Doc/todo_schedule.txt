@@ -3,7 +3,7 @@ Cloudproxy Todo
 Sub-project		End State					People		When
 -----------		---------					------		----
 Mac version		Done
-C++			Done
+C++			Done (except for library build which needs work)
 Key management library	Done
 CPDomainServer          Done
 CPSecretServer          Done

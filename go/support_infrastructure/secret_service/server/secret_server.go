@@ -30,15 +30,29 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+// The address where server accepts connections.
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 
+// The password with which server secrets are stored.
 var domainPass = flag.String("password", "xxx", "The domain password")
+
+// The path to the server configuration file. Server data is stored in $DIR/state/ directory
+// where $DIR is the directory of the server configuration file.
+// A sample configuration file can be found at ./tao.config
 var configPath = flag.String("config", "./tao.config", "The server config")
 
 var initServerFlag = flag.Bool("init", false, "To create new server from specified config.")
 
+// The name used as OrganizationalUnit in the server certificate.
 var secretServiceName = "The Secret Service"
+
+// The name used as CommonName in the server certificate.
+var serviceHostName = "localhost"
+
+// The name of the root key protected object.
 var rootName = "Root Object"
+
+// The starting epoch of the root key protected object.
 var epoch = int32(1)
 
 var state *secret_service.ServerData
@@ -48,7 +62,8 @@ func main() {
 	var err error
 	if *initServerFlag {
 		log.Println("Creating new server...")
-		state, err = secret_service.InitState(*configPath, *domainPass, secretServiceName)
+		state, err = secret_service.InitState(*configPath, *domainPass, secretServiceName,
+			serviceHostName)
 		if err != nil {
 			log.Fatalln("Error creating new server.", err)
 		}

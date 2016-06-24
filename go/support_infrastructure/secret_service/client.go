@@ -29,6 +29,10 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+// This function sends the directives to the secret server at addr, for the server to process
+// and update its policy accordingly. policyCert is a self-signed certificate for the policy key
+// and programKey is the key of the requesting program (both are required to establish the Tao
+// channel.
 func ProcessDirectives(directives []secret_disclosure.DirectiveMessage, addr string,
 	policyCert *x509.Certificate, programKey *tao.Keys) error {
 	var serDirectives [][]byte
@@ -66,6 +70,11 @@ func ProcessDirectives(directives []secret_disclosure.DirectiveMessage, addr str
 	return nil
 }
 
+// This function requests the secret server at addr to read the protected object identified by
+// name and epoch. The server first processes directives and updates the policy accordingly.
+// policyCert is a self-signed certificate for the policy key and programKey is the key of the
+// requesting program (both are required to establish the Tao channel.
+// The function returns the type and value of the protected object.
 func ReadSecret(name string, epoch int32, directives []secret_disclosure.DirectiveMessage,
 	addr string, policyCert *x509.Certificate, programKey *tao.Keys) (*string, []byte, error) {
 	var serDirectives [][]byte
@@ -106,6 +115,11 @@ func ReadSecret(name string, epoch int32, directives []secret_disclosure.Directi
 	return &typ, response.GetSecretVal(), nil
 }
 
+// This function requests the secret server at addr to write the protected object identified by
+// name and epoch with newType and newVal.
+// The server first processes directives and updates the policy accordingly.
+// policyCert is a self-signed certificate for the policy key and programKey is the key of the
+// requesting program (both are required to establish the Tao channel.
 func WriteSecret(name string, epoch int32, newType string, newVal []byte,
 	directives []secret_disclosure.DirectiveMessage, addr string, policyCert *x509.Certificate,
 	programKey *tao.Keys) error {
@@ -148,6 +162,12 @@ func WriteSecret(name string, epoch int32, newType string, newVal []byte,
 	return nil
 }
 
+// This function requests the secret server at addr to create a new protected object identified by
+// name and epoch with newType and newVal, protected by the object identified by protectorName and
+// protectorEpoch.
+// The server first processes directives and updates the policy accordingly.
+// policyCert is a self-signed certificate for the policy key and programKey is the key of the
+// requesting program (both are required to establish the Tao channel.
 func CreateSecret(name string, epoch int32, newType string, newVal []byte, protectorName *string,
 	protectorEpoch *int32, directives []secret_disclosure.DirectiveMessage, addr string,
 	policyCert *x509.Certificate, programKey *tao.Keys) error {
@@ -192,6 +212,11 @@ func CreateSecret(name string, epoch int32, newType string, newVal []byte, prote
 	return nil
 }
 
+// This function requests the secret server at addr to delete the protected object identified by
+// name and epoch.
+// The server first processes directives and updates the policy accordingly.
+// policyCert is a self-signed certificate for the policy key and programKey is the key of the
+// requesting program (both are required to establish the Tao channel.
 func DeleteSecret(name string, epoch int32, directives []secret_disclosure.DirectiveMessage,
 	addr string, policyCert *x509.Certificate, programKey *tao.Keys) error {
 	var serDirectives [][]byte

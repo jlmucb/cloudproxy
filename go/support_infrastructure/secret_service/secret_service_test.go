@@ -50,7 +50,7 @@ var unAuthorizedPrin = &auth.Prin{
 	Ext:  []auth.PrinExt{}}
 
 func TestStateFunctions(t *testing.T) {
-	_, err := InitState("./tao.config", "xxx", "The Secret Service")
+	_, err := InitState("./tao.config", "xxx", "The Secret Service", "localhost")
 	if err != nil {
 		failOnError(t, err)
 	}

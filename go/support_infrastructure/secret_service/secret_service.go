@@ -46,14 +46,22 @@ type ServerData struct {
 	Path     *string
 }
 
-func InitState(configPath, domainPass, secretServiceName string) (*ServerData, error) {
+// This function initilizes a new server by creating a new ServerData struct based on
+// the configuration it finds at configPath. A sample configuration can be found at
+// ./server/tao.config. This struct is saved to disk in the $DIR/state/ directory where $DIR
+// is the directory of configPath.
+// Secrets in this ServerData struct are stored with domainPass as password.
+// The certificate for the secret service contains secretServiceName as OrganizationalUnit
+// and serviceHost as the CommonName (which is expected to be the hostname of the address at
+// which the secret service is available)
+func InitState(configPath, domainPass, secretServiceName, serviceHost string) (*ServerData, error) {
 	dir := path.Join(path.Dir(configPath), "state")
 	domain, err := createDomain(configPath, dir, domainPass)
 	if err != nil {
 		return nil, err
 	}
 	encKey, err := createEncKey(path.Join(dir, "encKey"), domainPass,
-		secretServiceName, domain)
+		secretServiceName, serviceHost, domain)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +94,9 @@ func InitState(configPath, domainPass, secretServiceName string) (*ServerData, e
 	return &state, nil
 }
 
+// This function loads a ServerData struct from disk, saved with domainPass as password.
+// It expects configPath to be the path of the server configuration file used to initialize the
+// server.
 func LoadState(configPath, domainPass string) (*ServerData, error) {
 	configDir := path.Dir(configPath)
 	configPath = path.Join(configDir, "state/server.config")
@@ -149,6 +160,8 @@ func LoadState(configPath, domainPass string) (*ServerData, error) {
 	return &state, nil
 }
 
+// This function saves the ServerData object to disk in the $DIR/state/ directory where $DIR
+// is the directory of the server configuration file used to initialize this server.
 func SaveState(state *ServerData) error {
 	if state.Domain != nil {
 		err := state.Domain.Save()
@@ -175,6 +188,9 @@ func SaveState(state *ServerData) error {
 	return nil
 }
 
+// This function returns the type and value of a protected object identified by id, from
+// the list of protected objects l whose root key is protected by encKey. It does so only
+// when program is authorized to read the object as per the policy in domain.
 func ReadObject(l *list.List, encKey *tao.Keys, id *protected_objects.ObjectIdMessage,
 	program *auth.Prin, domain *tao.Domain) (*string, []byte, error) {
 
@@ -216,6 +232,10 @@ func readObjRec(l *list.List, encKey *tao.Keys, id *protected_objects.ObjectIdMe
 	return obj.ObjType, obj.ObjVal, nil
 }
 
+// This function writes newType and newVal as type and value to a protected object identified
+// by id, where l is the list of protected objects and encKey protects the root key.
+// The write is only performed if program is authorized to write the object as per policy in
+// domain.
 func WriteObject(l *list.List, encKey *tao.Keys, id *protected_objects.ObjectIdMessage,
 	program *auth.Prin, domain *tao.Domain, newType string,
 	newVal []byte) error {
@@ -254,6 +274,12 @@ func WriteObject(l *list.List, encKey *tao.Keys, id *protected_objects.ObjectIdM
 	return nil
 }
 
+// This function creates a new protected object identified by newId, with newType and newVal
+// as type and value respectively. The new object is protected by protected object identified
+// by protectorId, which must be of type 'key'. The function adds this new object to the list
+// l whose root key is protected by encKey. These operations are performed only when the
+// program is authorized to create protected objects under protectorId as per the policy in
+// domain.
 func CreateObject(l *list.List, newId, protectorId, rootId *protected_objects.ObjectIdMessage,
 	encKey *tao.Keys, program *auth.Prin, domain *tao.Domain, newType string,
 	newVal []byte) error {
@@ -304,6 +330,8 @@ func CreateObject(l *list.List, newId, protectorId, rootId *protected_objects.Ob
 	return nil
 }
 
+// This function deletes a protected object identified by id, from the list l. It does so only
+// when program is authorized to delete the object as per the policy in domain.
 func DeleteObject(l *list.List, id *protected_objects.ObjectIdMessage, program *auth.Prin,
 	domain *tao.Domain) error {
 
@@ -351,11 +379,11 @@ func createDomain(domainConfigPath, stateDir, domainPass string) (*tao.Domain, e
 	return domain, nil
 }
 
-func createEncKey(encKeyPath, domainPass, secretServiceName string,
+func createEncKey(encKeyPath, domainPass, secretServiceName string, serviceHost string,
 	domain *tao.Domain) (*tao.Keys, error) {
 	name := tao.NewX509Name(domain.Config.X509Info)
 	name.OrganizationalUnit = []string{secretServiceName}
-	name.CommonName = "localhost"
+	name.CommonName = serviceHost
 	var err error
 	encKey, err := tao.NewSignedOnDiskPBEKeys(tao.Crypting|tao.Signing, []byte(domainPass),
 		encKeyPath, name, 1, domain.Keys)

@@ -24,8 +24,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -85,30 +85,31 @@ type TPM2Tao struct {
 	// State path (includes config info)
 	path string
 
-	// ekCert
-	ekCert []byte
+	// quote-key cert
+	rootCert []byte
 
 	// password is the password.
 	password string
 
-	// ekHandle is an integer handle for an ek held by the TPM.
-	ekContext []byte
-	ekHandle  tpm2.Handle
-
-	// rootHandle is an integer handle for an root key held by the TPM.
+	// rootHandle is an integer handle for an root held by the TPM.
 	rootContext []byte
 	rootHandle  tpm2.Handle
 
-	// signHandle is an integer handle for an signing held by the TPM.
-	signContext []byte
-	signHandle  tpm2.Handle
+	// quoteHandle is an integer handle for an quote key held by the TPM.
+	quoteContext []byte
+	quotePublic  []byte
+	quoteHandle  tpm2.Handle
+
+	// sealHandle is an integer handle for sealing, held by the TPM.
+	sealContext []byte
+	sealPublic  []byte
+	sealHandle  tpm2.Handle
 
 	// session handle
-	policy_digest  []byte
 	sessionContext []byte
 	sessionHandle  tpm2.Handle
 
-	// verifier is a representation of the ek that can be used to verify Attestations.
+	// verifier is a representation of the root that can be used to verify Attestations.
 	verifier *rsa.PublicKey
 
 	// pcrCount is the number of PCRs in the TPM.
@@ -126,15 +127,6 @@ type TPM2Tao struct {
 	locality byte
 }
 
-func (tt *TPM2Tao) loadEk() (tpm2.Handle, error) {
-	keySize := uint16(2048)
-	ek, _, err := tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
-	if err != nil {
-		return tpm2.Handle(0), err
-	}
-	return ek, nil
-}
-
 func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
 	rh, err := tpm2.LoadContext(tt.rw, tt.rootContext)
 	if err != nil {
@@ -144,9 +136,17 @@ func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
 }
 
 func (tt *TPM2Tao) loadQuote() (tpm2.Handle, error) {
-	sh, err := tpm2.LoadContext(tt.rw, tt.signContext)
+	qh, err := tpm2.LoadContext(tt.rw, tt.quoteContext)
 	if err != nil {
 		return tpm2.Handle(0), errors.New("Load Context fails for quote")
+	}
+	return qh, nil
+}
+
+func (tt *TPM2Tao) loadSeal() (tpm2.Handle, error) {
+	sh, err := tpm2.LoadContext(tt.rw, tt.sealContext)
+	if err != nil {
+		return tpm2.Handle(0), errors.New("Load Context fails for root")
 	}
 	return sh, nil
 }
@@ -177,11 +177,15 @@ func (tt *TPM2Tao) Rand() io.Reader {
 	return tt.rw
 }
 
-func (tt *TPM2Tao) ReadPcrs(pcrNums []int) ([][]byte, error) {
+func ReadTPM2PCRs(rw io.ReadWriter, pcrNums []int) ([][]byte, error) {
+	fmt.Fprintf(os.Stderr, "Getting the PCRs\n")
 	pcrVals := make([][]byte, len(pcrNums))
 	for i, v := range pcrNums {
+		fmt.Fprintf(os.Stderr, "Working on iteration %d\n", i)
 		pcr, _ := tpm2.SetShortPcrs([]int{v})
-		_, _, _, pv, err := tpm2.ReadPcrs(tt.rw, byte(4), pcr)
+		fmt.Fprintf(os.Stderr, "set short pcr %v, returned %v\n", v, pcr)
+		_, _, _, pv, err := tpm2.ReadPcrs(rw, byte(4), pcr)
+		fmt.Fprintf(os.Stderr, "got PCR value % x\n", pv)
 		if err != nil {
 			return nil, err
 		}
@@ -191,12 +195,12 @@ func (tt *TPM2Tao) ReadPcrs(pcrNums []int) ([][]byte, error) {
 }
 
 func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (auth.Prin, error) {
-	ek, err := x509.MarshalPKIXPublicKey(verifier)
+	root, err := x509.MarshalPKIXPublicKey(verifier)
 	if err != nil {
 		return auth.Prin{}, err
 	}
 
-	name := auth.NewTPM2Prin(ek)
+	name := auth.NewTPM2Prin(root)
 
 	asp := auth.PrinExt{
 		Name: "PCRs",
@@ -226,14 +230,14 @@ func FinalizeTPM2Tao(tt *TPM2Tao) {
 		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sessionHandle))
 	}
 	tt.sessionHandle = 0
-	if tt.ekHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.ekHandle))
+	if tt.rootHandle != 0 {
+		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.rootHandle))
 	}
-	tt.ekHandle = 0
-	if tt.signHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.signHandle))
+	tt.rootHandle = 0
+	if tt.sealHandle != 0 {
+		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sealHandle))
 	}
-	tt.signHandle = 0
+	tt.sealHandle = 0
 
 	// Release the file handle.
 	tt.rw.Close()
@@ -242,15 +246,15 @@ func FinalizeTPM2Tao(tt *TPM2Tao) {
 // Remove this
 func (tt *TPM2Tao) TmpRm() {
 
-	if tt.ekHandle != 0 {
-		tpm2.FlushContext(tt.rw, tt.ekHandle)
+	if tt.rootHandle != 0 {
+		tpm2.FlushContext(tt.rw, tt.rootHandle)
 	}
-	tt.ekHandle = 0
+	tt.rootHandle = 0
 
-	if tt.signHandle != 0 {
-		tpm2.FlushContext(tt.rw, tt.signHandle)
+	if tt.sealHandle != 0 {
+		tpm2.FlushContext(tt.rw, tt.sealHandle)
 	}
-	tt.signHandle = 0
+	tt.sealHandle = 0
 }
 
 // GetTaoName returns the Tao principal name assigned to the caller.
@@ -260,7 +264,8 @@ func (tt *TPM2Tao) GetTaoName() (name auth.Prin, err error) {
 
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
 func (tt *TPM2Tao) ExtendTaoName(subprin auth.SubPrin) error {
-	return errors.New("name extensions are not supported for TPM2Tao")
+	tt.name = tt.name.MakeSubprincipal(subprin)
+	return nil
 }
 
 // GetRandomBytes returns a slice of n random bytes.
@@ -303,14 +308,58 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 
 	tt.pcrs = pcrNums
 
-	keySize := uint16(2048)
-	ek, _, err := tpm2.CreateEndorsement(tt.rw, keySize, tt.pcrs)
+	// Create the root key.
+	//
+	// TODO(tmroeder): Replace this temporary key with a key read from a
+	// file.
+	keySize := uint16(1024)
+	quotePassword := ""
+	var empty []byte
+	primaryParams := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault,
+		empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), keySize, uint32(0x00010001), empty}
+	tt.rootHandle, tt.rootContext, err = tpm2.CreatePrimary(tt.rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), tt.pcrs, "", "", primaryParams)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("CreatePrimary failed")
 	}
-	defer tpm2.FlushContext(tt.rw, ek)
 
-	tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, ek)
+	// CreateKey (Quote Key)
+	keyParams := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
+		tpm2.FlagSignerDefault, empty, uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
+		uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), keySize, uint32(0x00010001), empty}
+	tt.quoteContext, tt.quotePublic, err = tpm2.CreateKey(tt.rw,
+		uint32(tt.rootHandle), tt.pcrs, "", quotePassword, keyParams)
+	if err != nil {
+		return nil, errors.New("Can't create quote key")
+	}
+
+	tt.quoteHandle, _, err = tpm2.Load(tt.rw, tt.rootHandle, "",
+		"", tt.quotePublic, tt.quoteContext)
+	if err != nil {
+		return nil, errors.New("Load failed for the quote key")
+	}
+
+	sealParams := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault,
+		empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), keySize, uint32(0x00010001), empty}
+	tt.sealContext, tt.sealPublic, err = tpm2.CreateKey(tt.rw,
+		uint32(tt.rootHandle), tt.pcrs, "", quotePassword, sealParams)
+	if err != nil {
+		return nil, errors.New("Can't create store key")
+	}
+
+	tt.sealHandle, _, err = tpm2.Load(tt.rw, tt.rootHandle, "", "", tt.sealPublic, tt.sealContext)
+	if err != nil {
+		return nil, errors.New("Load failed for the seal key")
+	}
+
+	tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +370,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		tt.pcrNums[i] = v
 	}
 
-	tt.pcrVals, err = tt.ReadPcrs(pcrNums)
+	tt.pcrVals, err = ReadTPM2PCRs(tt.rw, pcrNums)
 	if err != nil {
 		return nil, err
 	}
@@ -332,35 +381,20 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		return nil, err
 	}
 
-	// Load handles for unsealing and attestation
-	tt.path = statePath
-	rn := []string{tt.path, "rootContext.bin"}
-	sn := []string{tt.path, "quoteContext.bin"}
-	rootFileName := strings.Join(rn, "/")
-	signFileName := strings.Join(sn, "/")
-
-	tt.rootContext, err = ioutil.ReadFile(rootFileName)
-	if err != nil {
-		return nil, errors.New("Can't read root context file")
-	}
-
-	tt.signContext, err = ioutil.ReadFile(signFileName)
-	if err != nil {
-		return nil, errors.New("Can't read sign context file")
-	}
-
 	return tt, nil
 }
 
-// Attest requests the Tao host sign a statement on behalf of the caller. The
+// Attest requests the Tao host seal a statement on behalf of the caller. The
 // optional issuer, time and expiration will be given default values if nil.
 func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	message auth.Form) (*Attestation, error) {
-	qH, err := tt.loadQuote()
-	if err != nil {
-		return nil, errors.New("Can't load quote key")
-	}
-	defer tpm2.FlushContext(tt.rw, qH)
+	fmt.Fprintf(os.Stderr, "About to load the quote key in attest\n")
+	qH := tt.quoteHandle
+	//qH, err := tt.loadQuote()
+	//if err != nil {
+	//return nil, errors.New("Can't load quote key")
+	//}
+	//defer tpm2.FlushContext(tt.rw, qH)
 	if issuer == nil {
 		issuer = &tt.name
 	} else if !auth.SubprinOrIdentical(*issuer, tt.name) {
@@ -380,7 +414,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 		Message:    message,
 	}
 
-	// This is done in GenerateAttestation, but the TPM attestation is signed
+	// This is done in GenerateAttestation, but the TPM attestation is sealed
 	// differently, so we do the time calculations here.
 	t := time.Now()
 	if stmt.Time == nil {
@@ -412,7 +446,8 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	fmt.Printf("Quote: %x\n", quote_struct)
 	fmt.Printf("sig: %x\n", sig)
 
-	ek, err := x509.MarshalPKIXPublicKey(tt.verifier)
+	// TODO(tmroeder): this shouldn't be the root but rather the quote key.
+	root, err := x509.MarshalPKIXPublicKey(tt.verifier)
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +456,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 		SerializedStatement: ser,
 		Signature:           sig,
 		SignerType:          proto.String("tpm2"),
-		SignerKey:           ek,
+		SignerKey:           root,
 		Tpm2QuoteStructure:  quote_struct,
 	}
 	return a, nil
@@ -433,11 +468,12 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 // data separately. We use the keys infrastructure to perform secure and
 // flexible encryption.
 func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
-	rH, err := tt.loadRoot()
-	if err != nil {
-		return nil, errors.New("Can't load root key")
-	}
-	defer tpm2.FlushContext(tt.rw, rH)
+	rH := tt.rootHandle
+	//rH, err := tt.loadRoot()
+	//if err != nil {
+	//return nil, errors.New("Can't load root key")
+	//}
+	//defer tpm2.FlushContext(tt.rw, rH)
 	sK, policy_digest, err := tt.loadSession()
 	if err != nil {
 		return nil, errors.New("Can't load root key")
@@ -710,12 +746,12 @@ func (tt *TPM2Tao) Tpm2Certify(network, addr string, keyName string) ([]byte, er
 	}
 	defer conn.Close()
 
+	rk, err := tt.loadRoot()
 	qH, err := tt.loadQuote()
-	eK, err := tt.loadEk()
 
 	ms := util.NewMessageStream(conn)
 	programCertMessage, err := Tpm2ConstructClientRequest(tt.rw,
-		tt.ekCert, tt.pcrs,
+		tt.rootCert, tt.pcrs,
 		qH, "", tt.password, keyName)
 	_, err = ms.WriteMessage(programCertMessage)
 	if err != nil {
@@ -727,7 +763,7 @@ func (tt *TPM2Tao) Tpm2Certify(network, addr string, keyName string) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
-	attestCert, err := Tpm2ClientDecodeServerResponse(tt.rw, eK, qH,
+	attestCert, err := Tpm2ClientDecodeServerResponse(tt.rw, rk, qH,
 		tt.password, resp)
 	return attestCert, nil
 }

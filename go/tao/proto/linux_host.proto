@@ -25,7 +25,7 @@ message LinuxHostConfig {
   // Either "root" or "stacked"
   required string type = 1;
 
-  // Either "TPM", "pipe", "file", or "unix"
+  // Either "TPM", "TPM2", "pipe", "file", or "unix"
   optional string parent_type = 2;
 
   // For non-tpm parent types, the parent connection spec

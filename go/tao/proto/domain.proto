@@ -93,4 +93,6 @@ message DomainTemplate {
   optional string tpm_predicate_name = 15;
   // The name of the predicate to use for trusted OSs.
   optional string os_predicate_name = 16;
+  // The name of the predicate to use for trusted TPM2s.
+  optional string tpm2_predicate_name = 17;
 }

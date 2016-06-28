@@ -121,6 +121,7 @@ func ParentFromConfig(tc Config) Tao {
 		// The incoming config overrides the environment variables for
 		// any values that are set in it.
 		tcEnv.Merge(tc)
+
 		switch tcEnv.HostChannelType {
 		case "tpm":
 			aikblob, err := ioutil.ReadFile(tcEnv.TPMAIKPath)

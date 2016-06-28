@@ -2032,6 +2032,49 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 	return encrypted_secret, encIdentity, marshalled_hmac, nil
 }
 
+func VerifyRsaQuote(to_quote []byte, rsaQuoteKey *rsa.PublicKey,
+		hash_alg_id uint16, quote_struct_blob []byte,
+		signature []byte) (bool) {
+	// Decode attest
+	attest, err := UnmarshalCertifyInfo(quote_struct_blob)
+	if err != nil {
+		return false
+	}
+	PrintAttestData(attest)
+
+	if attest.Magic_number != ordTpmMagic {
+		fmt.Printf("Bad magic number\n")
+		return false
+	}
+
+	// PCR's valid?
+	if !ValidPcr(attest.PcrSelect, attest.PcrDigest) {
+		return false
+	}
+
+	// Compute quote
+	quote_hash, err := ComputeHashValue(hash_alg_id, quote_struct_blob)
+	if err != nil {
+		fmt.Printf("ComputeHashValue fails")
+		return false
+	}
+
+	// Verify quote
+	e := new(big.Int)
+	e.SetUint64(uint64(rsaQuoteKey.E))
+	x := new(big.Int)
+	x.SetBytes(signature)
+	z := new(big.Int)
+	z = z.Exp(x, e, rsaQuoteKey.N)
+	decrypted_quote := z.Bytes()
+	start_quote_blob := len(decrypted_quote) - SizeHash(hash_alg_id)
+	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
+		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
+		return false
+	}
+	return true
+}
+
 func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 		hash_alg_id uint16, quote_struct_blob []byte,
 		signature []byte) (bool) {
@@ -2080,7 +2123,6 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	start_quote_blob := len(decrypted_quote) - SizeHash(hash_alg_id)
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
 		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
-
 		return false
 	}
 	return true
@@ -2154,6 +2196,10 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	}
 	return credBlob, encrypted_secret, nil
 }
+
+/*
+ *  	TPM Activate Credential interface
+ */
 
 // Input: Der encoded endorsement cert and handles
 // Returns program private key protobuf, CertRequestMessage

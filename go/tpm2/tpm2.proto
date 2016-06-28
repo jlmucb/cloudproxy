@@ -156,3 +156,29 @@ message quote_certification_information {
   optional bytes digest                       = 8;
 }
 
+// This is used to request a signed cert from the domain service for a tpm2 quote key.
+message AttestCertRequest {
+  optional bytes attest_blob= 1;
+  optional bytes sig_blob= 2;
+  optional string key_type = 3;
+  optional string key_name = 4;
+  optional string hash_type = 5;
+  optional bytes tpm2_key_name = 6;
+  optional bytes subject_public_key = 7;
+  optional bytes der_endorsement_cert = 8;
+  optional bytes cert_chain = 9;
+}
+
+// This is the response from the domain service with the encrypted attest cert.
+message AttestCertResponse {
+  required int32 error = 1;
+  optional string integrity_alg = 2;
+  optional bytes integrity_hmac= 3;
+  optional bytes enc_identity = 4;
+  optional bytes encrypted_secret = 5;
+  optional bytes encrypted_cert = 6;
+  optional bytes encrypted_cert_hmac = 7;
+  repeated bytes cert_chain = 8;
+}
+
+

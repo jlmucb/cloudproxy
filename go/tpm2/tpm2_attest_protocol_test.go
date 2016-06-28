@@ -39,27 +39,27 @@ func TestAttestProtocol(t *testing.T) {
 	}
 
 	notBefore := time.Now()
-	validFor := 365*24*time.Hour
-        notAfter := notBefore.Add(validFor)
+	validFor := 365 * 24 * time.Hour
+	notAfter := notBefore.Add(validFor)
 
 	us := "US"
 	issuerName := "CloudProxyPolicy"
-	x509SubjectName :=  &pkix.Name {
+	x509SubjectName := &pkix.Name{
 		Organization:       []string{issuerName},
 		OrganizationalUnit: []string{issuerName},
-		CommonName:	    issuerName,
-		Country:	    []string{us},
+		CommonName:         issuerName,
+		Country:            []string{us},
 	}
 	var sn big.Int
 	sn.SetUint64(1)
-	certificateTemplate := x509.Certificate {
-		SerialNumber:		&sn,
-		Issuer:			*x509SubjectName,
-		Subject:		*x509SubjectName,
-		NotBefore:		notBefore,
-		NotAfter:		notAfter,
-		KeyUsage:		x509.KeyUsageCertSign |
-		x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
+	certificateTemplate := x509.Certificate{
+		SerialNumber: &sn,
+		Issuer:       *x509SubjectName,
+		Subject:      *x509SubjectName,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+		KeyUsage: x509.KeyUsageCertSign |
+			x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
 		BasicConstraintsValid: true,
 		IsCA: true,
 	}
@@ -69,16 +69,16 @@ func TestAttestProtocol(t *testing.T) {
 	priv = policyKey
 	pub = policyKey.Public()
 	derPolicyCert, err := x509.CreateCertificate(rand.Reader, &certificateTemplate,
-                            &certificateTemplate, pub, priv)
-        if err != nil {
+		&certificateTemplate, pub, priv)
+	if err != nil {
 		t.Fatal("Can't self sign policy key ", err)
-        }
+	}
 	pcrs := []int{7}
 
 	policyCert, err := x509.ParseCertificate(derPolicyCert)
-        if err != nil {
+	if err != nil {
 		t.Fatal("Can't parse policy cert")
-        }
+	}
 
 	rootHandle, quoteHandle, storageHandle, err := CreateTpm2KeyHierarchy(rw, pcrs,
 		2048, uint16(AlgTPM_ALG_SHA1), "01020304")
@@ -96,30 +96,30 @@ func TestAttestProtocol(t *testing.T) {
 	defer FlushContext(rw, ekHandle)
 
 	ekPublicKey, err := GetRsaKeyFromHandle(rw, ekHandle)
-        if err != nil {
+	if err != nil {
 		t.Fatal("Can't Create endorsement public key")
-        }
-	ekSubjectName :=  &pkix.Name {
+	}
+	ekSubjectName := &pkix.Name{
 		Organization:       []string{"Endorsement"},
 		OrganizationalUnit: []string{"Endorsement"},
-		CommonName:	    "Endorsement",
-		Country:	    []string{us},
+		CommonName:         "Endorsement",
+		Country:            []string{us},
 	}
 	sn.SetUint64(2)
-	ekTemplate := x509.Certificate {
-		SerialNumber:		&sn,
-		Issuer:			*x509SubjectName,
-		Subject:		*ekSubjectName,
-		NotBefore:		notBefore,
-		NotAfter:		notAfter,
-		KeyUsage:		x509.KeyUsageCertSign |
-		x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
+	ekTemplate := x509.Certificate{
+		SerialNumber: &sn,
+		Issuer:       *x509SubjectName,
+		Subject:      *ekSubjectName,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+		KeyUsage: x509.KeyUsageCertSign |
+			x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
 	}
 	derEndorsementCert, err := x509.CreateCertificate(rand.Reader,
-                            &ekTemplate, policyCert, ekPublicKey, policyKey)
-        if err != nil {
+		&ekTemplate, policyCert, ekPublicKey, policyKey)
+	if err != nil {
 		t.Fatal("Can't sign endorsement key")
-        }
+	}
 
 	// Todo: make taoname
 	taoName := "MachineCert"
@@ -141,4 +141,3 @@ func TestAttestProtocol(t *testing.T) {
 	}
 	fmt.Printf("\nCert: %x\n", cert)
 }
-

@@ -24,10 +24,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-  "io/ioutil"
+	"io/ioutil"
 	"net"
 	"os"
-  "path"
+	"path"
 	"runtime"
 	"strconv"
 	"strings"
@@ -100,6 +100,7 @@ type TPM2Tao struct {
 	// quoteHandle is an integer handle for an quote key held by the TPM.
 	quoteContext []byte
 	quotePublic  []byte
+	quoteCert    []byte
 	quoteHandle  tpm2.Handle
 
 	// sealHandle is an integer handle for sealing, held by the TPM.
@@ -144,6 +145,7 @@ func (tt *TPM2Tao) loadQuote() (tpm2.Handle, error) {
 	}
 	return qh, nil
 }
+
 // IAH: does it build?
 func (tt *TPM2Tao) loadSeal() (tpm2.Handle, error) {
 	sh, err := tpm2.LoadContext(tt.rw, tt.sealContext)
@@ -290,135 +292,51 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	runtime.SetFinalizer(tt, FinalizeTPM2Tao)
 
 	tt.pcrs = pcrNums
-  tt.path = statePath
+	tt.path = statePath
 
 	// Create the root key.
 	keySize := uint16(2048)
 	quotePassword := ""
 	//var empty []byte
 
-  rootSaveContext := path.Join(tt.path, "root_context")
-  _, rootErr := os.Stat(rootSaveContext)
+	rootSaveContext := path.Join(tt.path, "root_context")
+	_, rootErr := os.Stat(rootSaveContext)
 
-  quoteSaveContext := path.Join(tt.path, "quote_context")
-  _, quoteErr := os.Stat(quoteSaveContext)
+	quoteSaveContext := path.Join(tt.path, "quote_context")
+	_, quoteErr := os.Stat(quoteSaveContext)
 
-  sealSaveContext := path.Join(tt.path, "seal_context")
-  _, sealErr := os.Stat(sealSaveContext)
+	sealSaveContext := path.Join(tt.path, "seal_context")
+	_, sealErr := os.Stat(sealSaveContext)
 
-  if rootErr != nil || quoteErr != nil || sealErr != nil {
-    if err := tpm2.InitTpm2Keys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1), quotePassword, rootSaveContext, quoteSaveContext, sealSaveContext); err != nil {
-      return nil, err
-    }
-  }
+	if rootErr != nil || quoteErr != nil || sealErr != nil {
+		if err := tpm2.InitTpm2Keys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1), quotePassword, rootSaveContext, quoteSaveContext, sealSaveContext); err != nil {
+			return nil, err
+		}
+	}
 
-//  if rootErr != nil || quoteErr != nil || sealErr != nil {
-//    primaryParams := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
-//      uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault,
-//      empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-//      uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
-//      uint16(0), keySize, uint32(0x00010001), empty}
-//    tt.rootHandle, _, err = tpm2.CreatePrimary(tt.rw,
-//      uint32(tpm2.OrdTPM_RH_OWNER), tt.pcrs, "", "", primaryParams)
-//    if err != nil {
-//      return nil, errors.New("CreatePrimary failed")
-//    }
-//
-//    if tt.rootContext, err = tpm2.SaveContext(tt.rw, tt.rootHandle); err != nil {
-//      return nil, err
-//    }
-//
-//    if err := ioutil.WriteFile(rootSaveContext, tt.rootContext, 0644); err != nil {
-//      return nil, fmt.Errorf("Could not write the root context to %s: %v", rootSaveContext, err)
-//    }
-//
-//    // CreateKey (Quote Key)
-//    keyParams := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-//      tpm2.FlagSignerDefault, empty, uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
-//      uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
-//      uint16(tpm2.AlgTPM_ALG_SHA1), keySize, uint32(0x00010001), empty}
-//    tt.quoteContext, tt.quotePublic, err = tpm2.CreateKey(tt.rw,
-//      uint32(tt.rootHandle), tt.pcrs, "", quotePassword, keyParams)
-//    if err != nil {
-//      return nil, errors.New("Can't create quote key")
-//    }
-//
-//    tt.quoteHandle, _, err = tpm2.Load(tt.rw, tt.rootHandle, "",
-//      "", tt.quotePublic, tt.quoteContext)
-//    if err != nil {
-//      return nil, errors.New("Load failed for the quote key")
-//    }
-//
-//    if tt.quoteContext, err = tpm2.SaveContext(tt.rw, tt.quoteHandle); err != nil {
-//      return nil, err
-//    }
-//
-//    if err := ioutil.WriteFile(quoteSaveContext, tt.quoteContext, 0644); err != nil {
-//      return nil, fmt.Errorf("Could not write the quote context to %s: %v", quoteSaveContext, err)
-//    }
-//
-//    tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle)
-//    if err != nil {
-//      return nil, err
-//    }
-//
-//    // TODO(tmroeder): call something like GetQuoteCert and save to disk.
-//    // args: quoteHandle, taoName, rsa.PublicKey, 
-//    //tt.quoteCert, err = GetQuoteCert(tt.quoteHandle, taoName, tt.verifier)
-//    //if err != nil {
-//      //return nil, err
-//    //}
-//
-//    //if err := ioutil.WriteFile(quoteCertPath, tt.quoteCert, 0644); err != nil {
-//    //  return nil, fmt.Errorf("Could not write the quote context to %s: %v", quoteCertPath, err)
-//    //}
-//
-//    sealParams := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
-//      uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault,
-//      empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-//      uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
-//      uint16(0), keySize, uint32(0x00010001), empty}
-//    tt.sealContext, tt.sealPublic, err = tpm2.CreateKey(tt.rw,
-//      uint32(tt.rootHandle), tt.pcrs, "", quotePassword, sealParams)
-//    if err != nil {
-//      return nil, errors.New("Can't create store key")
-//    }
-//
-//    if tt.sealHandle, _, err = tpm2.Load(tt.rw, tt.rootHandle, "", "", tt.sealPublic, tt.sealContext); err != nil {
-//      return nil, errors.New("Load failed for the seal key")
-//    }
-//
-//    if tt.sealContext, err = tpm2.SaveContext(tt.rw, tt.sealHandle); err != nil {
-//      return nil, err
-//    }
-//
-//    if err := ioutil.WriteFile(sealSaveContext, tt.sealContext, 0644); err != nil {
-//      return nil, fmt.Errorf("Could not write the seal context to %s: %v", sealSaveContext, err)
-//    }
-//
-  // Read the contexts and public info and use them to load the handles.
-  if tt.rootContext, err = ioutil.ReadFile(rootSaveContext); err != nil {
-    return nil, fmt.Errorf("Could not read the root context from %s: %v", rootSaveContext, err)
-  }
+	// Read the contexts and public info and use them to load the handles.
+	if tt.rootContext, err = ioutil.ReadFile(rootSaveContext); err != nil {
+		return nil, fmt.Errorf("Could not read the root context from %s: %v", rootSaveContext, err)
+	}
 
-  if tt.quoteContext, err = ioutil.ReadFile(quoteSaveContext); err != nil {
-    return nil, fmt.Errorf("Could not read the quote context from %s: %v", quoteSaveContext, err)
-  }
+	if tt.quoteContext, err = ioutil.ReadFile(quoteSaveContext); err != nil {
+		return nil, fmt.Errorf("Could not read the quote context from %s: %v", quoteSaveContext, err)
+	}
 
-  if tt.sealContext, err = ioutil.ReadFile(sealSaveContext); err != nil {
-    return nil, fmt.Errorf("Could not read the seal context from %s: %v", sealSaveContext, err)
-  }
+	if tt.sealContext, err = ioutil.ReadFile(sealSaveContext); err != nil {
+		return nil, fmt.Errorf("Could not read the seal context from %s: %v", sealSaveContext, err)
+	}
 
-  if tt.quoteHandle, err = tt.loadQuote(); err != nil {
-    return nil, err
-  }
-  defer tpm2.FlushContext(tt.rw, tt.quoteHandle)
+	if tt.quoteHandle, err = tt.loadQuote(); err != nil {
+		return nil, err
+	}
+	defer tpm2.FlushContext(tt.rw, tt.quoteHandle)
 
-  if tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle); err != nil {
-    return nil, err
-  }
+	if tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle); err != nil {
+		return nil, err
+	}
 
-  fmt.Fprintf(os.Stderr, "Loaded the handles and the verifier\n")
+	fmt.Fprintf(os.Stderr, "Loaded the handles and the verifier\n")
 
 	// Get the pcr values for the PCR nums.
 	tt.pcrNums = make([]int, len(pcrNums))
@@ -437,9 +355,30 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		return nil, err
 	}
 
-  fmt.Fprintf(os.Stderr, "Got TPM 2.0 principal name %q\n", tt.name)
+	quoteCertPath := path.Join(tt.path, "quote_cert")
+	if _, quoteCertErr := os.Stat(quoteCertPath); quoteCertErr != nil {
+		tt.quoteCert, err = getQuoteCert(tt.quoteHandle, tt.name, tt.verifier)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := ioutil.WriteFile(quoteCertPath, tt.quoteCert, 0644); err != nil {
+			return nil, err
+		}
+	} else {
+		if tt.quoteCert, err = ioutil.ReadFile(quoteCertPath); err != nil {
+			return nil, err
+		}
+	}
+	fmt.Fprintf(os.Stderr, "Got TPM 2.0 principal name %q\n", tt.name)
 
 	return tt, nil
+}
+
+// getQuoteCert requests and acquires a certificate for the quote key.
+// TODO(tmroeder): for now, this returns a dummy value for the cert.
+func getQuoteCert(quoteHandle tpm2.Handle, name auth.Prin, verifier *rsa.PublicKey) ([]byte, error) {
+	return []byte("Not really a quote certificate"), nil
 }
 
 // Attest requests the Tao host seal a statement on behalf of the caller. The
@@ -448,10 +387,10 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	message auth.Form) (*Attestation, error) {
 	fmt.Fprintf(os.Stderr, "About to load the quote key in attest\n")
 	qh, err := tt.loadQuote()
-  if err != nil {
-    return nil, err
-  }
-  defer tpm2.FlushContext(tt.rw, qh)
+	if err != nil {
+		return nil, err
+	}
+	defer tpm2.FlushContext(tt.rw, qh)
 
 	if issuer == nil {
 		issuer = &tt.name
@@ -528,10 +467,10 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 // flexible encryption.
 func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	rh, err := tt.loadRoot()
-  if err != nil {
-    return nil, err
-  }
-  defer tpm2.FlushContext(tt.rw, rh)
+	if err != nil {
+		return nil, err
+	}
+	defer tpm2.FlushContext(tt.rw, rh)
 
 	sk, policy_digest, err := tt.loadSession()
 	if err != nil {
@@ -587,11 +526,11 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 // Unseal decrypts data that has been sealed by the Seal() operation, but only
 // if the policy specified during the Seal() operation is satisfied.
 func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error) {
-  rh, err := tt.loadRoot()
-  if err != nil {
-    return nil, "", err
-  }
-  defer tpm2.FlushContext(tt.rw, rh)
+	rh, err := tt.loadRoot()
+	if err != nil {
+		return nil, "", err
+	}
+	defer tpm2.FlushContext(tt.rw, rh)
 
 	sh, policy_digest, err := tt.loadSession()
 	if err != nil {
@@ -806,17 +745,17 @@ func (tt *TPM2Tao) Tpm2Certify(network, addr string, keyName string) ([]byte, er
 	}
 	defer conn.Close()
 
-  rk, err := tt.loadRoot()
-  if err != nil {
-    return nil, err
-  }
-  defer tpm2.FlushContext(tt.rw, rk)
+	rk, err := tt.loadRoot()
+	if err != nil {
+		return nil, err
+	}
+	defer tpm2.FlushContext(tt.rw, rk)
 
-  qh, err := tt.loadQuote()
-  if err != nil {
-    return nil, err
-  }
-  defer tpm2.FlushContext(tt.rw, qh)
+	qh, err := tt.loadQuote()
+	if err != nil {
+		return nil, err
+	}
+	defer tpm2.FlushContext(tt.rw, qh)
 
 	ms := util.NewMessageStream(conn)
 	programCertMessage, err := Tpm2ConstructClientRequest(tt.rw,

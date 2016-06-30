@@ -176,6 +176,7 @@ func ParentFromConfig(tc Config) Tao {
 				}
 			}
 
+      fmt.Fprintf(os.Stderr, "Info dir is %s\n", tc.TPM2InfoDir)
 			host, err := NewTPM2Tao(tcEnv.TPM2Device, tc.TPM2InfoDir, pcrs)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't create a new TPM2Tao: %s\n", err)

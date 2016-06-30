@@ -295,6 +295,8 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 			if domain.Config.Tpm2Info == nil {
 				options.Usage("Must provide TPM2 configuration in the domain to use a TPM2")
 			}
+
+			tc.TPM2InfoDir = domainPath()
 			tc.TPM2PCRs = domain.Config.Tpm2Info.GetTpm2Pcrs()
 			tc.TPM2Device = domain.Config.Tpm2Info.GetTpm2Device()
 		}

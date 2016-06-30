@@ -75,6 +75,7 @@ type Config struct {
 	TPM2Device    string
 	TPM2EkCert    string
 	TPM2QuoteCert string
+	TPM2SealCert  string
 }
 
 // IsValid checks a Config for validity.

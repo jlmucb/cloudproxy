@@ -30,7 +30,7 @@ import (
 // processes, or shutting down the host. A LinuxTao can be run in stacked mode
 // (on top of a host Tao) or in root mode (without an underlying host Tao).
 type LinuxHost struct {
-	Host        Host
+	Host           Host
 	path           string
 	guard          Guard
 	childFactory   HostedProgramFactory

@@ -2,5 +2,6 @@
 rm linux_tao_host/admin_socket
 rm ./SimpleClient/*
 rm ./SimpleServer/*
+rm ./SimpleClientCpp/*
 ps aux | fgrep "simple"
 

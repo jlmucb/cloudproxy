@@ -5,6 +5,10 @@ sleep 1
 sleep 1
 ./runhost
 sleep 1
+#
+# runss and runsc should be called as different unprivileged users for isolation,
+# we run as root for convenience.  runds could also be run as third user.
+#
 ./runds
 sleep 1
 ./runss

@@ -32,7 +32,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/util/options"
-	// "github.com/golang/crypto/ssh/terminal"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -61,7 +60,7 @@ var opts = []options.Option{
 	{"pass", "", "<password>", "Host password for root hosts (for testing only!)", "root"},
 
 	// Flags for stacked
-	{"parent_type", "", "<type>", "Type of channel to parent Tao: TPM, pipe, file, or unix", "stacked"},
+	{"parent_type", "", "<type>", "Type of channel to parent Tao: TPM, TPM2, pipe, file, or unix", "stacked"},
 	{"parent_spec", "", "<spec>", "Spec for channel to parent Tao", "stacked"},
 
 	// Flags for QEMU/KVM CoreOS init
@@ -258,11 +257,13 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 		options.Usage("Invalid hosting type: %s", cfg.GetHosting())
 	}
 
-	// For stacked hosts, figure out the channel type: TPM, pipe, file, or unix
+	// For stacked hosts, figure out the channel type: TPM, TPM2, pipe, file, or unix
 	if tc.HostType == tao.Stacked {
 		switch cfg.GetParentType() {
 		case "TPM":
 			tc.HostChannelType = "tpm"
+		case "TPM2":
+			tc.HostChannelType = "tpm2"
 		case "pipe":
 			tc.HostChannelType = "pipe"
 		case "file":
@@ -272,16 +273,16 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 		case "":
 			options.Usage("Must supply -parent_type for stacked hosts")
 		default:
-			options.Usage("Invalid parent type: %s", cfg.GetParentType())
+			options.Usage("Invalid parent type: '%s'", cfg.GetParentType())
 		}
 
 		// For stacked hosts on anything but a TPM, we also need parent spec
-		if tc.HostChannelType != "tpm" {
+		if tc.HostChannelType != "tpm" && tc.HostChannelType != "tpm2" {
 			tc.HostSpec = cfg.GetParentSpec()
 			if tc.HostSpec == "" {
 				options.Usage("Must supply -parent_spec for non-TPM stacked hosts")
 			}
-		} else {
+		} else if tc.HostChannelType == "tpm" {
 			// For stacked hosts on a TPM, we also need info from domain config
 			if domain.Config.TpmInfo == nil {
 				options.Usage("Must provide TPM configuration in the domain to use a TPM")
@@ -289,6 +290,15 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 			tc.TPMAIKPath = path.Join(domainPath(), domain.Config.TpmInfo.GetAikPath())
 			tc.TPMPCRs = domain.Config.TpmInfo.GetPcrs()
 			tc.TPMDevice = domain.Config.TpmInfo.GetTpmPath()
+		} else if tc.HostChannelType == "tpm2" {
+			// For stacked hosts on a TPM2, we also need info from domain config
+			if domain.Config.Tpm2Info == nil {
+				options.Usage("Must provide TPM2 configuration in the domain to use a TPM2")
+			}
+
+			tc.TPM2InfoDir = domainPath()
+			tc.TPM2PCRs = domain.Config.Tpm2Info.GetTpm2Pcrs()
+			tc.TPM2Device = domain.Config.Tpm2Info.GetTpm2Device()
 		}
 	}
 

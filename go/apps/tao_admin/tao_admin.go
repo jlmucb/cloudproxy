@@ -15,6 +15,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"flag"
 	"fmt"
@@ -72,6 +74,7 @@ var opts = []options.Option{
 	{"add_linux_host", false, "", "Add LinuxHost to the policy", "policy"},
 	{"add_guard", false, "", "Add a trusted guard to the policy", "policy"},
 	{"add_tpm", false, "", "Add trusted platform module to the policy", "policy"},
+	{"add_tpm2", false, "", "Add trusted platform module 2.0 to the policy", "policy"},
 
 	// Flags for 'user' command, used to create new user keys.
 	{"user_key_details", "", "<file>", "File containing an X509Details proto", "user"},
@@ -246,6 +249,9 @@ func managePolicy() {
 		if *options.Bool["add_tpm"] {
 			addTPMRules(domain)
 		}
+		if *options.Bool["add_tpm2"] {
+			addTPM2Rules(domain)
+		}
 	}
 
 	// Retract permissions
@@ -335,6 +341,28 @@ func makeContainerSubPrin(prog string) (auth.SubPrin, error) {
 		return auth.SubPrin{}, err
 	}
 	return tao.FormatDockerSubprin(id, h), nil
+}
+
+// TODO(tmroeder): The keys for the TPM2 have to already be created here so
+// that we can produce the name of the TPM2 key. For now, this just returns a
+// dummy key.
+func makeTPM2Prin(tpmPath string, pcrNums []int) auth.Prin {
+	// TODO(tmroeder): The following key is generated on the spot. This should
+	// instead be the key read from a file.
+	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	options.FailIf(err, "Can't generate a temp RSA key")
+
+	// Open a connection to the TPM.
+	tpmFile, err := os.OpenFile(tpmPath, os.O_RDWR, 0)
+	options.FailIf(err, "Can't access TPM")
+
+	pcrVals, err := tao.ReadTPM2PCRs(tpmFile, pcrNums)
+	tpmFile.Close()
+	options.FailIf(err, "Can't get the PCRs from a TPM 2.0")
+
+	prin, err := tao.MakeTPM2Prin(&privKey.PublicKey, pcrNums, pcrVals)
+	options.FailIf(err, "Can't create a TPM2 principal")
+	return prin
 }
 
 func makeTPMPrin(tpmPath, aikFile string, pcrNums []int) auth.Prin {
@@ -663,6 +691,27 @@ func addTPMRules(domain *tao.Domain) {
 	options.FailIf(err, "Can't save domain")
 }
 
+func addTPM2Rules(domain *tao.Domain) {
+	dt := template()
+	tpmPath, pcrNums := getTPM2Config()
+	prin := makeTPM2Prin(tpmPath, pcrNums)
+
+	// TrustedOS predicate from PCR principal tail.
+	prinPCRs := auth.PrinTail{Ext: prin.Ext}
+	predTrustedOS := auth.MakePredicate(dt.GetOsPredicateName(), prinPCRs)
+	err := domain.Guard.AddRule(fmt.Sprint(predTrustedOS))
+	options.FailIf(err, "Can't add rule to domain")
+
+	// TrustedTPM predicate from TPM principal.
+	prin.Ext = nil
+	predTrustedTPM2 := auth.MakePredicate(dt.GetTpm2PredicateName(), prin)
+	err = domain.Guard.AddRule(fmt.Sprint(predTrustedTPM2))
+	options.FailIf(err, "Can't add rule to domain")
+
+	err = domain.Save()
+	options.FailIf(err, "Can't save domain")
+}
+
 func createUserKeys() {
 	// Read the X509Details for this user from a text protobuf file.
 	userKeyDetails := *options.String["user_key_details"]
@@ -702,6 +751,26 @@ func getTPMConfig() (string, string, []int) {
 	return tpmPath, aikFile, pcrNums
 }
 
+func getTPM2Config() (string, []int) {
+	domain, err := tao.LoadDomain(configPath(), nil)
+	options.FailIf(err, "Can't load domain")
+	// TODO(tmroeder): This ignores the info path, since it ignores the cert
+	// files.
+	tpmPath := domain.Config.GetTpm2Info().GetTpm2Device()
+	pcrVals := domain.Config.GetTpm2Info().GetTpm2Pcrs()
+	// TODO(tmroeder): This currently ignores the paths to the ek_cert and
+	// quote_cert, since it creates its own keys.
+	var pcrNums []int
+	for _, s := range strings.Split(pcrVals, ",") {
+		v, err := strconv.ParseInt(s, 10, 32)
+		options.FailIf(err, "Can't parse TPM PCR spec")
+
+		pcrNums = append(pcrNums, int(v))
+	}
+
+	return tpmPath, pcrNums
+}
+
 func outputPrincipal() {
 	if path := *options.String["program"]; path != "" {
 		subprin, err := makeProgramSubPrin(path)
@@ -718,6 +787,15 @@ func outputPrincipal() {
 	if *options.Bool["tpm"] {
 		tpmPath, aikFile, pcrVals := getTPMConfig()
 		prin := makeTPMPrin(tpmPath, aikFile, pcrVals)
+		// In the domain template the host name is in quotes. We need to escape
+		// quote strings in the Principal string so that domain_template.pb gets
+		// parsed correctly.
+		name := strings.Replace(prin.String(), "\"", "\\\"", -1)
+		fmt.Println(name)
+	}
+	if *options.Bool["tpm2"] {
+		tpmPath, pcrVals := getTPM2Config()
+		prin := makeTPM2Prin(tpmPath, pcrVals)
 		// In the domain template the host name is in quotes. We need to escape
 		// quote strings in the Principal string so that domain_template.pb gets
 		// parsed correctly.

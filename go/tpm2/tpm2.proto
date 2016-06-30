@@ -160,10 +160,13 @@ message quote_certification_information {
 message AttestCertRequest {
   optional bytes attest_blob= 1;
   optional bytes sig_blob= 2;
+  // "rsa"
   optional string key_type = 3;
+  // Tao name of the host.
   optional string key_name = 4;
   optional string hash_type = 5;
   optional bytes tpm2_key_name = 6;
+  // MarshalPKIX... of quote key
   optional bytes subject_public_key = 7;
   optional bytes der_endorsement_cert = 8;
   optional bytes cert_chain = 9;

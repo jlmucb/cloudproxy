@@ -86,6 +86,14 @@ func (cfg *DomainConfig) SetDefaults() {
 	if cfg.TpmInfo.Pcrs == nil {
 		cfg.TpmInfo.Pcrs = proto.String("17,18")
 	}
+
+	if cfg.Tpm2Info.Tpm2Device == nil {
+		cfg.Tpm2Info.Tpm2Device = proto.String("/dev/tpm0")
+	}
+
+	if cfg.Tpm2Info.Tpm2Pcrs == nil {
+		cfg.Tpm2Info.Tpm2Pcrs = proto.String("17,18")
+	}
 }
 
 // String returns the name of the domain.

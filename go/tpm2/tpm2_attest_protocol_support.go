@@ -210,6 +210,7 @@ func RequestDomainQuoteCert(network, addr string, endorsementCert []byte, tpmDev
 	return GetCertFromAttestResponse(tpmDevice, quoteHandle, endorsementHandle, ownerPw, response)
 }
 
+// This is the operation of the server. It computes the AttestResponse.
 func ProcessQuoteDomainRequest(request AttestCertRequest, policyKey *ecdsa.PrivateKey, derPolicyCert []byte) (*AttestCertResponse, error) {
 
 	if *request.KeyType != "rsa" {

@@ -70,11 +70,12 @@ type Config struct {
 	TPMPCRs    string
 	TPMDevice  string
 
-	TPM2InfoDir string
-	TPM2PCRs string
-	TPM2Device string
-	TPM2EkCert string
+	TPM2InfoDir   string
+	TPM2PCRs      string
+	TPM2Device    string
+	TPM2EkCert    string
 	TPM2QuoteCert string
+	TPM2SealCert  string
 }
 
 // IsValid checks a Config for validity.
@@ -129,10 +130,9 @@ func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Conf
 		tc.TPMDevice = tpmdev
 	}
 	if htct == "tpm2" {
-		// TODO -- tpm2
 		// tc.TPM2InfoDir string
-		// tc.TPM2PCRs string
-		// tc.TPM2Device string
+		tc.TPM2PCRs = tpmpcrs
+		tc.TPM2Device = tpmdev
 		// tc.TPM2EkCert string
 		// tc.TPM2QuoteCert string
 	}
@@ -201,5 +201,25 @@ func (tc *Config) Merge(c Config) {
 
 	if tc.TPMDevice == "" || c.TPMDevice != "" {
 		tc.TPMDevice = c.TPMDevice
+	}
+
+	if tc.TPM2InfoDir == "" || c.TPM2InfoDir != "" {
+		tc.TPM2InfoDir = c.TPM2InfoDir
+	}
+
+	if tc.TPM2PCRs == "" || c.TPM2PCRs != "" {
+		tc.TPM2PCRs = c.TPM2PCRs
+	}
+
+	if tc.TPM2Device == "" || c.TPM2Device != "" {
+		tc.TPM2Device = c.TPM2Device
+	}
+
+	if tc.TPM2EkCert == "" || c.TPM2EkCert != "" {
+		tc.TPM2EkCert = c.TPM2EkCert
+	}
+
+	if tc.TPM2QuoteCert == "" || c.TPM2QuoteCert != "" {
+		tc.TPM2QuoteCert = c.TPM2QuoteCert
 	}
 }

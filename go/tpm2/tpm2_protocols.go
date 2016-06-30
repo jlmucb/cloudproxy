@@ -106,6 +106,7 @@ func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
 	return unsealed, nonce, err
 }
 
+// Call with tpm 2.0 and the quote handle, get the key back for serialization in AttestCertRequest.
 func GetRsaKeyFromHandle(rw io.ReadWriter, handle Handle) (*rsa.PublicKey, error) {
 	publicBlob, _, _, err := ReadPublic(rw, handle)
 	if err != nil {

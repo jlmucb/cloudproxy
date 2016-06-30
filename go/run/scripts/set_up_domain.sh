@@ -13,7 +13,7 @@ elif [ "$#" == "3" ]; then
   CA_ADDR="$3"
 else
 	echo "Must supply type of domain guard ('Datalog', 'ACLs', 'AllowAll', or 'DenyAll'),"
-	echo "root Tao type ('TPM' or 'Soft'). Optionally, also provide a CA address."
+	echo "root Tao type ('TPM', 'TPM2', or 'Soft'). Optionally, also provide a CA address."
 	exit 1
 fi
 
@@ -49,6 +49,12 @@ if [ "$TYPE" == "TPM" ]; then
     exit 1
   fi
   AIK_PATH="$path/aikblob"
+elif [ "$TYPE" == "TPM2" ]; then
+  # need sudo to read from /dev/tpm0
+  sudo test true
+
+  # TODO(tmroeder): add code to find the appropriate files. For now, the
+  # TPM2 just creates its own keys.
 fi
 
 # Fill in guard type in the domain template.
@@ -75,7 +81,7 @@ fi
 if [ "$TYPE" == "Soft" ]; then
   "$TAO" host init -tao_domain $DOMAIN -hosting process -root -pass $FAKE_PASS
 else
-  "$TAO" host init -tao_domain $DOMAIN -hosting process -stacked -parent_type tpm 
+  "$TAO" host init -tao_domain $DOMAIN -hosting process -stacked -parent_type "$TYPE"
 fi
 
 # Create the docker images.
@@ -95,6 +101,9 @@ if [ "$TYPE" == "TPM" ]; then
   sudo "$TAO" domain policy -add_tpm \
     -pass $FAKE_PASS -tao_domain $DOMAIN -config_template $TEMPLATE
   cp "$AIK_PATH" ${DOMAIN}/aikblob
+elif [ "$TYPE" == "TPM2" ]; then
+  sudo "$TAO" domain policy -add_tpm2 \
+    -pass $FAKE_PASS -tao_domain $DOMAIN -config_template $TEMPLATE
 fi
 
 rm $TEMPLATE
@@ -110,4 +119,3 @@ fi
 echo "Tao domain created in $DOMAIN"
 echo "To use this as the default for tao commands, use:"
 echo "  export TAO_DOMAIN=$DOMAIN"
-

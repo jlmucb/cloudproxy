@@ -377,7 +377,19 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 }
 
 // getActivateResponse gets encrypted cert from attest service.
-func getActivateResponse(request tpm2.AttestCertRequest) (*tpm2.AttestCertResponse, error) {
+func getActivateResponse(filePath string, request tpm2.AttestCertRequest) (*tpm2.AttestCertResponse, error) {
+	// If the file filePath/service_location exists, use that address/port, otherwise use default.
+	/* uncomment later
+	address := "localhost"
+	port := "8121"
+	serviceFileName :=  path.Join(filePath, "service_location")
+	serviceInfo, err := ioutil.ReadFile(serviceFileName)
+	if err == nil {
+		// Reset address/port
+	}
+	if len(address) > 256 || len(port) > 32 || serviceInfo == nil {
+	}
+	*/
 	return nil, nil
 }
 
@@ -409,7 +421,7 @@ func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handl
 	}
 
 	// Send request to attest service
-	response, err := getActivateResponse(*request)
+	response, err := getActivateResponse(filePath, *request)
 	if err != nil {
 		return nil, fmt.Errorf("Could not activate quote key %v", err)
 	}
@@ -417,7 +429,7 @@ func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handl
 	// Recover cert.
 	quoteCert, err := tpm2.GetCertFromAttestResponse(rw, quoteHandle, ekHandle,
 		quotePassword, *response)
-	 */
+	*/
 
 	quoteCert := []byte("Not really a quote certificate")
 	return quoteCert, nil

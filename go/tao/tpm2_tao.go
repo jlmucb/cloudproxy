@@ -357,7 +357,8 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 
 	quoteCertPath := path.Join(tt.path, "quote_cert")
 	if _, quoteCertErr := os.Stat(quoteCertPath); quoteCertErr != nil {
-		tt.quoteCert, err = getQuoteCert(tt.quoteHandle, tt.name, tt.verifier)
+		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, tt.quoteHandle,
+			quotePassword, tt.name, tt.verifier)
 		if err != nil {
 			return nil, err
 		}
@@ -375,10 +376,51 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	return tt, nil
 }
 
+// getActivateResponse gets encrypted cert from attest service.
+func getActivateResponse(request tpm2.AttestCertRequest) (*tpm2.AttestCertResponse, error) {
+	return nil, nil
+}
+
 // getQuoteCert requests and acquires a certificate for the quote key.
 // TODO(tmroeder): for now, this returns a dummy value for the cert.
-func getQuoteCert(quoteHandle tpm2.Handle, name auth.Prin, verifier *rsa.PublicKey) ([]byte, error) {
-	return []byte("Not really a quote certificate"), nil
+func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handle,
+		quotePassword string, name auth.Prin, verifier *rsa.PublicKey) ([]byte, error) {
+
+	/* uncomment later
+	// Generate Ek.
+	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{17,18})
+	if err != nil {
+		return nil, fmt.Errorf("Could not open endorsement handle")
+	}
+	defer tpm2.FlushContext(rw, ekHandle)
+
+	// Get endorsement cert.
+	endorsementFile :=  path.Join(filePath, "endorsement_cert")
+	derEndorsementCert, err := ioutil.ReadFile(endorsementFile)
+	if err != nil {
+		return nil, fmt.Errorf("Could not read endorsement from %s: %v",
+			endorsementFile, err)
+	}
+
+	request, err := tpm2.BuildAttestCertRequest(rw, quoteHandle, ekHandle,
+		derEndorsementCert, name.String(),  quotePassword)
+	if err != nil {
+		return nil, fmt.Errorf("Could not build cert request %v", err)
+	}
+
+	// Send request to attest service
+	response, err := getActivateResponse(*request)
+	if err != nil {
+		return nil, fmt.Errorf("Could not activate quote key %v", err)
+	}
+
+	// Recover cert.
+	quoteCert, err := tpm2.GetCertFromAttestResponse(rw, quoteHandle, ekHandle,
+		quotePassword, *response)
+	 */
+
+	quoteCert := []byte("Not really a quote certificate")
+	return quoteCert, nil
 }
 
 // Attest requests the Tao host seal a statement on behalf of the caller. The

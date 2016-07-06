@@ -429,7 +429,6 @@ func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handl
 	quoteCert, err := tpm2.GetCertFromAttestResponse(rw, quoteHandle, ekHandle,
 		quotePassword, *response)
 
-	// quoteCert := []byte("Not really a quote certificate")
 	return quoteCert, nil
 }
 

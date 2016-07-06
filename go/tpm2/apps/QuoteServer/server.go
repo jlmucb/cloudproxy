@@ -52,7 +52,6 @@ func main() {
 		if err != nil {
 			log.Fatalln("Quote server: could not accept connection:", err)
 		}
-		// switch case
 		ms := util.NewMessageStream(conn)
 		var request tpm2.AttestCertRequest
 		if err := ms.ReadMessage(&request); err != nil {

@@ -379,35 +379,34 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 // getActivateResponse gets encrypted cert from attest service.
 func getActivateResponse(filePath string, request tpm2.AttestCertRequest) (*tpm2.AttestCertResponse, error) {
 	// If the file filePath/service_location exists, use that address/port, otherwise use default.
-	/* uncomment later
+
 	address := "localhost"
 	port := "8121"
-	serviceFileName :=  path.Join(filePath, "service_location")
+	serviceFileName := path.Join(filePath, "service_location")
 	serviceInfo, err := ioutil.ReadFile(serviceFileName)
 	if err == nil {
 		// Reset address/port
 	}
 	if len(address) > 256 || len(port) > 32 || serviceInfo == nil {
 	}
-	*/
+
 	return nil, nil
 }
 
 // getQuoteCert requests and acquires a certificate for the quote key.
 // TODO(tmroeder): for now, this returns a dummy value for the cert.
 func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handle,
-		quotePassword string, name auth.Prin, verifier *rsa.PublicKey) ([]byte, error) {
+	quotePassword string, name auth.Prin, verifier *rsa.PublicKey) ([]byte, error) {
 
-	/* uncomment later
 	// Generate Ek.
-	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{17,18})
+	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{17, 18})
 	if err != nil {
 		return nil, fmt.Errorf("Could not open endorsement handle")
 	}
 	defer tpm2.FlushContext(rw, ekHandle)
 
 	// Get endorsement cert.
-	endorsementFile :=  path.Join(filePath, "endorsement_cert")
+	endorsementFile := path.Join(filePath, "endorsement_cert")
 	derEndorsementCert, err := ioutil.ReadFile(endorsementFile)
 	if err != nil {
 		return nil, fmt.Errorf("Could not read endorsement from %s: %v",
@@ -415,7 +414,7 @@ func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handl
 	}
 
 	request, err := tpm2.BuildAttestCertRequest(rw, quoteHandle, ekHandle,
-		derEndorsementCert, name.String(),  quotePassword)
+		derEndorsementCert, name.String(), quotePassword)
 	if err != nil {
 		return nil, fmt.Errorf("Could not build cert request %v", err)
 	}
@@ -429,9 +428,7 @@ func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handl
 	// Recover cert.
 	quoteCert, err := tpm2.GetCertFromAttestResponse(rw, quoteHandle, ekHandle,
 		quotePassword, *response)
-	*/
 
-	quoteCert := []byte("Not really a quote certificate")
 	return quoteCert, nil
 }
 

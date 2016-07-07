@@ -378,19 +378,35 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 
 // getActivateResponse gets encrypted cert from attest service.
 func getActivateResponse(filePath string, request tpm2.AttestCertRequest) (*tpm2.AttestCertResponse, error) {
-	// If the file filePath/service_location exists, use that address/port, otherwise use default.
 
-	address := "localhost"
-	port := "8121"
+	// If the file filePath/service_location exists, use that address/port, otherwise use default.
+	network := "tcp"
+	address := "localhost:8121"
 	serviceFileName := path.Join(filePath, "service_location")
 	serviceInfo, err := ioutil.ReadFile(serviceFileName)
 	if err == nil {
-		// Reset address/port
+		address = string(serviceInfo)
 	}
-	if len(address) > 256 || len(port) > 32 || serviceInfo == nil {
+	if len(address) > 256 {
+		return nil, errors.New("Bad service address string")
 	}
 
-	return nil, nil
+	conn, err := net.Dial(network, address)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	ms := util.NewMessageStream(conn)
+	_, err = ms.WriteMessage(&request)
+	if err != nil {
+		return nil, err
+	}
+	var response tpm2.AttestCertResponse
+	err = ms.ReadMessage(&response)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 // getQuoteCert requests and acquires a certificate for the quote key.

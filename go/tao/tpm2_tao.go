@@ -441,10 +441,15 @@ func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handl
 		return nil, fmt.Errorf("Could not activate quote key %v", err)
 	}
 
+	if response == nil || response.Error == nil || *response.Error != 0 {
+		return nil, fmt.Errorf("AttestCertResponse is nil or has non-zero error")
+	}
 	// Recover cert.
 	quoteCert, err := tpm2.GetCertFromAttestResponse(rw, quoteHandle, ekHandle,
 		quotePassword, *response)
-
+	if err != nil {
+		return nil, fmt.Errorf("Could not get cert from AttestCertResponse %v", err)
+	}
 	return quoteCert, nil
 }
 

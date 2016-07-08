@@ -314,7 +314,6 @@ func ProcessQuoteDomainRequest(request AttestCertRequest, policyKey *ecdsa.Priva
 	if !ok {
 		return nil, errors.New("Bad endorsement cert")
 	}
-
 	var protectorPublic *rsa.PublicKey
 	switch k := endorsement_cert.PublicKey.(type) {
 	case *rsa.PublicKey:
@@ -349,6 +348,10 @@ func ProcessQuoteDomainRequest(request AttestCertRequest, policyKey *ecdsa.Priva
 	}
 	response.EncryptedCert = cert_out
 	response.EncryptedCertHmac = cert_hmac
+
+	// Need to set required error field to 0.
+	noError := int32(0)
+	response.Error = &noError
 	return response, nil
 }
 

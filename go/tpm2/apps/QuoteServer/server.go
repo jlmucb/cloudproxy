@@ -44,6 +44,9 @@ func main() {
 	}
 	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*pass), *path,
 		tao.NewX509Name(&details))
+	if err != nil {
+		log.Fatalln("Error loading policy key: ", err)
+	}
 	if policyKey.Cert == nil || policyKey.Cert.Raw == nil {
 		log.Fatalln("Quote server: cert missing in policy key.")
 	}
@@ -71,8 +74,8 @@ func main() {
 }
 
 func sendError(err error, ms *util.MessageStream) {
-	error := int32(1)
-	resp := &tpm2.AttestCertResponse{Error: &error}
+	errCode := int32(1)
+	resp := &tpm2.AttestCertResponse{Error: &errCode}
 	if _, err := ms.WriteMessage(resp); err != nil {
 		log.Printf("Quote server: Error sending resp on the channel: %s\n ", err)
 	}

@@ -1,35 +1,38 @@
 Cloudproxy Todo
 
+
 Sub-project		End State					People		When
 -----------		---------					------		----
 Mac version		Done
-C++			Done (except for library build which needs work)
+C++			Done 
 Key management library	Done
 CPDomainServer          Done
 CPSecretServer          Done
-Tpm2 integration	Tpm2 , tpm1.2 and tpm2 scripts, Doc complete	John/Sid/Tom	June/July, 2016
-State-protection	Local state rollback protection counters	John		June, 2016
+Tpm2 integration	Done
+
+Initiram Doc								Sid		July, 2016
+Non CoreOs VM (with kernel and initram measurement			Sid		July, 2016
+Tpm2 hosted simpleexample with full domain service			Sid		August, 2016
+
+State-protection	Local state rollback protection counters	John		August, 2016
 Attackathon		Red teams (UCB?)				John		August, 2016
 Industry Hackathon	Run application building thons			John		Sept
 New_HW			Support other HW mechanisms			Sid/John	Dec, 2016
 Industry App		Some deployed major player app					March, 2017
-Docker/Kubernetes in	Docker and Kubernetes deployment		John, Tom, Sid  Aug, 2017
+Docker/Kubernetes in	Docker and Kubernetes deployment		John, Tom, Sid  Dec, 2016
 
 
 Platform
+  Fix C++ library builds
+  Fix third_party generation
   Security review
   Check: key wiping everywhere especially with errors.
   Support RSA keys, P25519keys
   Should the examples force SSL NOT to resume channels etc for better assurance?
-  Fix third_party generation
   Swigs for Java, C, Python?
-  Fix C++ library builds
 
 Deployment guide 
   AIK, Endorsement cert production
-  TPM Host cert
-  TPM1.2 install
-  TPM 2.0 install
   Container install
 
 Simple example

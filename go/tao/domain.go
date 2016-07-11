@@ -87,6 +87,10 @@ func (cfg *DomainConfig) SetDefaults() {
 		cfg.TpmInfo.Pcrs = proto.String("17,18")
 	}
 
+	if cfg.Tpm2Info == nil {
+		cfg.Tpm2Info = &TPM2Details{}
+	}
+
 	if cfg.Tpm2Info.Tpm2Device == nil {
 		cfg.Tpm2Info.Tpm2Device = proto.String("/dev/tpm0")
 	}

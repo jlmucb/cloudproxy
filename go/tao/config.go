@@ -66,9 +66,10 @@ type Config struct {
 	HostedType      HostedProgramType
 
 	// Variables for the TPM configuration
-	TPMAIKPath string
-	TPMPCRs    string
-	TPMDevice  string
+	TPMAIKPath     string
+	TPMAIKCertPath string
+	TPMPCRs        string
+	TPMDevice      string
 
 	TPM2InfoDir   string
 	TPM2PCRs      string
@@ -201,6 +202,10 @@ func (tc *Config) Merge(c Config) {
 
 	if tc.TPMDevice == "" || c.TPMDevice != "" {
 		tc.TPMDevice = c.TPMDevice
+	}
+
+	if tc.TPMAIKCertPath == "" || c.TPMAIKCertPath != "" {
+		tc.TPMAIKCertPath = c.TPMAIKCertPath
 	}
 
 	if tc.TPM2InfoDir == "" || c.TPM2InfoDir != "" {

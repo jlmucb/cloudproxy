@@ -31,7 +31,7 @@ func TestTPMTao(t *testing.T) {
 	// Set up a TPM Tao that seals and attests against PCRs 17 and 18 and uses
 	// the AIK stored in aikblob. It communicates with the TPM directly through
 	// /dev/tpm0.
-	tt, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tt, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18}, nil)
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
@@ -48,7 +48,7 @@ func TestTPMTaoSeal(t *testing.T) {
 		t.Skip("Skipping tests, since there's no ./aikblob file")
 	}
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18}, nil)
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
@@ -85,7 +85,7 @@ func TestTPMTaoLargeSeal(t *testing.T) {
 		t.Skip("Skipping tests, since there's no ./aikblob file")
 	}
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18}, nil)
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
@@ -122,7 +122,7 @@ func TestTPMTaoAttest(t *testing.T) {
 		t.Skip("Skipping tests, since there's no ./aikblob file")
 	}
 
-	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18}, nil)
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}

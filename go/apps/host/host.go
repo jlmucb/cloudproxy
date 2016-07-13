@@ -290,6 +290,7 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 			tc.TPMAIKPath = path.Join(domainPath(), domain.Config.TpmInfo.GetAikPath())
 			tc.TPMPCRs = domain.Config.TpmInfo.GetPcrs()
 			tc.TPMDevice = domain.Config.TpmInfo.GetTpmPath()
+			tc.TPMAIKCertPath = path.Join(domainPath(), domain.Config.TpmInfo.GetAikCertPath())
 		} else if tc.HostChannelType == "tpm2" {
 			// For stacked hosts on a TPM2, we also need info from domain config
 			if domain.Config.Tpm2Info == nil {

@@ -53,7 +53,7 @@ func TestVerifyHostAttestation_stackedHost(t *testing.T) {
 	if err != nil {
 		t.Skip("Skipping tests, since there's no ./aikblob file")
 	}
-	tpmtao, err := tao.NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := tao.NewTPMTao("/dev/tpm0", aikblob, []int{17, 18}, nil)
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
@@ -152,7 +152,7 @@ func TestValidateEndorsementCert(t *testing.T) {
 	if err != nil {
 		t.Skip("Skipping tests, since there's no ./aikblob file")
 	}
-	tpmtao, err := tao.NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	tpmtao, err := tao.NewTPMTao("/dev/tpm0", aikblob, []int{17, 18}, nil)
 	if err != nil {
 		t.Skip("Couldn't create a new TPM Tao:", err)
 	}

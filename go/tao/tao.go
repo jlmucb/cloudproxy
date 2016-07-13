@@ -131,6 +131,16 @@ func ParentFromConfig(tc Config) Tao {
 				return
 			}
 
+			var aikCert []byte
+			if tcEnv.TPMAIKCertPath != "" {
+				aikCert, err = ioutil.ReadFile(tcEnv.TPMAIKCertPath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Couldn't read the aik cert: %s\n", err)
+					glog.Error(err)
+					return
+				}
+			}
+
 			taoPCRs := tcEnv.TPMPCRs
 			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
 
@@ -149,7 +159,7 @@ func ParentFromConfig(tc Config) Tao {
 				}
 			}
 
-			host, err := NewTPMTao(tcEnv.TPMDevice, aikblob, pcrs)
+			host, err := NewTPMTao(tcEnv.TPMDevice, aikblob, pcrs, aikCert)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't create a new TPMTao: %s\n", err)
 				glog.Error(err)
@@ -176,7 +186,7 @@ func ParentFromConfig(tc Config) Tao {
 				}
 			}
 
-      fmt.Fprintf(os.Stderr, "Info dir is %s\n", tc.TPM2InfoDir)
+			fmt.Fprintf(os.Stderr, "Info dir is %s\n", tc.TPM2InfoDir)
 			host, err := NewTPM2Tao(tcEnv.TPM2Device, tc.TPM2InfoDir, pcrs)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't create a new TPM2Tao: %s\n", err)

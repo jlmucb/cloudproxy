@@ -49,6 +49,9 @@ type TPMTao struct {
 	// and Quote2 attestations.
 	verifier *rsa.PublicKey
 
+	// DER encoded endorsement certificate for the AIK
+	aikCert []byte
+
 	// pcrCount is the number of PCRs in the TPM. The current go-tpm
 	// implementation fixes this at 24.
 	pcrCount uint32
@@ -64,7 +67,7 @@ type TPMTao struct {
 }
 
 // NewTPMTao creates a new TPMTao and returns it under the Tao interface.
-func NewTPMTao(tpmPath string, aikblob []byte, pcrNums []int) (Tao, error) {
+func NewTPMTao(tpmPath string, aikblob []byte, pcrNums []int, aikCert []byte) (Tao, error) {
 	var err error
 	tt := &TPMTao{pcrCount: 24}
 	tt.tpmfile, err = os.OpenFile(tpmPath, os.O_RDWR, 0)
@@ -91,6 +94,8 @@ func NewTPMTao(tpmPath string, aikblob []byte, pcrNums []int) (Tao, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	tt.aikCert = aikCert
 
 	// Get the pcr values for the PCR nums.
 	tt.pcrNums = make([]int, len(pcrNums))

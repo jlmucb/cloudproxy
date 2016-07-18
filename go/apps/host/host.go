@@ -46,7 +46,7 @@ var opts = []options.Option{
 	{"stacked", false, "", "Create a stacked host, backed by a parent Tao", "init,start"},
 	// TODO(kwalsh) hosted program type should be selectable at time of
 	// tao_launch. A single host should be able to host all types concurrently.
-	{"hosting", "", "<type>", "Hosted program type: process, docker, or kvm_coreos", "init"},
+	{"hosting", "", "<type>", "Hosted program type: process, docker, kvm_coreos or kvm_custom", "init"},
 	{"socket_dir", "", "<dir>", "Hosted program socket directory, relative to host directory or absolute", "init"},
 
 	// Flags for start command
@@ -69,6 +69,9 @@ var opts = []options.Option{
 	// TODO(kwalsh) shouldn't keys be generated randomly within the host?
 	// Otherwise, we need to trust whoever holds the keys, no?
 	{"kvm_coreos_ssh_auth_keys", "", "<path>", "An authorized_keys file for SSH to CoreOS guest, relative to domain or absolute", "kvm"},
+
+	// Flags for QEMU/KVM init with custom kernel and initram
+	{"kvm_custom_vm_memory", 0, "SIZE", "The amount of RAM (in KB) to give VM", "kvm_custom"},
 }
 
 func init() {
@@ -95,6 +98,7 @@ func help() {
 		{"root", "Options for root hosts"},
 		{"stacked", "Options for stacked hosts"},
 		{"kvm", "Options for hosting QEMU/KVM CoreOS"},
+		{"kvm_custom", "Options for hosting QEMU/KVM instance with custom kernel and initram"},
 		{"logging", "Options to control log output"},
 	}
 	options.ShowRelevant(w, categories...)
@@ -214,6 +218,9 @@ func configureFromOptions(cfg *tao.LinuxHostConfig) {
 	if s := *options.String["kvm_coreos_ssh_auth_keys"]; s != "" {
 		cfg.KvmCoreosSshAuthKeys = proto.String(s)
 	}
+	if i := *options.Int["kvm_custom_vm_memory"]; i != 0 {
+		cfg.KvmCustomVmMemory = proto.Int32(int32(i))
+	}
 }
 
 func configureFromFile() *tao.LinuxHostConfig {
@@ -251,6 +258,8 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 		tc.HostedType = tao.DockerUnix
 	case "kvm_coreos":
 		tc.HostedType = tao.KVMCoreOSFile
+	case "kvm_custom":
+		tc.HostedType = tao.KVMCustom
 	case "":
 		options.Usage("Must supply -hosting flag")
 	default:
@@ -359,6 +368,16 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 		}
 		childFactory, err = tao.NewLinuxKVMCoreOSFactory(socketPath, cfg)
 		options.FailIf(err, "Can't create KVM CoreOS factory")
+	case tao.KVMCustom:
+		vmMemory := cfg.GetKvmCustomVmMemory()
+		if vmMemory == 0 {
+			vmMemory = 1024
+		}
+		cfg := &tao.VmConfig{
+			Memory:     vmMemory,
+			SocketPath: socketPath,
+		}
+		childFactory = tao.NewLinuxKVMCustomFactory(cfg)
 	}
 
 	if tc.HostType == tao.Root {

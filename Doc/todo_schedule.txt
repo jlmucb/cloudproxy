@@ -1,47 +1,54 @@
-Cloudproxy Todo
+Cloudproxy Schedule
 
 
-Sub-project		End State					People		When
------------		---------					------		----
+Sub-project
+-----------		---------
 Mac version		Done
 C++			Done 
 Key management library	Done
 CPDomainServer          Done
 CPSecretServer          Done
 Tpm2 integration	Done
+Initiram Doc		Done
+Non CoreOs VM 		Done.
 
-Initiram Doc								Sid		July, 2016
-Non CoreOs VM (with kernel and initram measurement			Sid		July, 2016
-Tpm2 hosted simpleexample with full domain service			Sid		August, 2016
+
+Sub-project		End State					People		When
+-----------		---------					------		----
+Tpm 1.2 and 2.0 simpleexample with doc					John/Sid	Aug, 2016
+Industry Hackathon	Run application building thons			John		Oct, 2016
+Tpm2 hosted simpleexample with full domain service			Sid		Sept, 2016
 
 State-protection	Local state rollback protection counters	John		August, 2016
-Attackathon		Red teams (UCB?)				John		August, 2016
-Industry Hackathon	Run application building thons			John		Sept
-New_HW			Support other HW mechanisms			Sid/John	Dec, 2016
 Industry App		Some deployed major player app					March, 2017
 Docker/Kubernetes in	Docker and Kubernetes deployment		John, Tom, Sid  Dec, 2016
+Security review								Ben		Dec, 2016
+Attackathon		Red teams (UCB?)				John		December, 2016
 
 
 Platform
-  Fix C++ library builds
-  Fix third_party generation
-  Security review
-  Check: key wiping everywhere especially with errors.
-  Support RSA keys, P25519keys
-  Should the examples force SSL NOT to resume channels etc for better assurance?
-  Swigs for Java, C, Python?
+  Fix C++ library builds						John
+  Fix third_party generation						John
+  Check: key wiping everywhere especially with errors.			John
+  Support RSA keys, P25519keys, Quantum resistant alg			Future (John)
+  Should SSL NOT allow resume channels etc for better assurance?	John
+  Swigs for Java, C, Python?						Future
+  Fix FileProxy example							John		Sept, 2016
+
 
 Deployment guide 
-  AIK, Endorsement cert production
   Container install
 
-Simple example
+
+Simple example checks
   memory leaks
   Symmetric keys using key service
   ACL Guard example
 
+
 Q4    John, Sid
-  Google integration
+  Additional HW integration								Jan, 2017
+
 
 App ideas
   FileProxy II
@@ -54,9 +61,10 @@ App ideas
   Credit Card/Payment (Client/Server)
   Health
   Monitor
+  Introspect
   Audit
   Data Fusion example
-  IC app
   Split key partition
   HSM
+
 

@@ -192,6 +192,7 @@ func help() {
 		fmt.Fprintf(w, "  %s run [options] [process:]<prog> [args...]\t Run a new hosted process\n", av0)
 		fmt.Fprintf(w, "  %s run [options] docker:<img> [dockerargs...] [-- [imgargs...]]\t Run a new hosted docker image\n", av0)
 		fmt.Fprintf(w, "  %s run [options] kvm_coreos:<img> [dockerargs...] [-- [imgargs...]]\t Run a new hosted QEMU/kvm CoreOS image\n", av0)
+		fmt.Fprintf(w, "  %s run [options] kvm_custom:<img> [-- <kernel image path> <initram image path> <SSH port>]\t Run a new hosted QEMU/kvm custom instance\n", av0)
 		fmt.Fprintf(w, "  %s list [options]\t List hosted programs\n", av0)
 		fmt.Fprintf(w, "  %s stop [options] subprin [subprin...]\t Stop hosted programs\n", av0)
 		fmt.Fprintf(w, "  %s stop [options] subprin [subprin...]\t Kill hosted programs\n", av0)
@@ -295,7 +296,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 
 	ctype := "process"
 	spec.Path = args[0]
-	for _, prefix := range []string{"process", "docker", "kvm_coreos"} {
+	for _, prefix := range []string{"process", "docker", "kvm_coreos", "kvm_custom"} {
 		if strings.HasPrefix(spec.Path, prefix+":") {
 			ctype = prefix
 			spec.Path = strings.TrimPrefix(spec.Path, prefix+":")
@@ -318,6 +319,8 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		// Replace docker arg 0 with valid image name constructed from // base(argv[0]).
 		r, _ := regexp.Compile("[^a-zA-Z0-9_.]+")
 		spec.ContainerArgs[0] = r.ReplaceAllLiteralString(path.Base(spec.Path), "_")
+	case "kvm_custom":
+		_, spec.Args = split(args, "--")
 	}
 
 	pidfile := *options.String["pidfile"]

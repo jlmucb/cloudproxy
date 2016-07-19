@@ -45,4 +45,7 @@ message LinuxHostConfig {
 
   // Path to CoreOS authorized_keys for hosted KVM, absolute or relative to domain.
   optional string kvm_coreos_ssh_auth_keys = 8;
+
+  // KB of memory to allocate for each VM with custom kernel and initram.
+  optional int32 kvm_custom_vm_memory = 9;
 }

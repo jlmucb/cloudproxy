@@ -47,6 +47,7 @@ const (
 	ProcessPipe
 	DockerUnix
 	KVMCoreOSFile
+	KVMCustom
 )
 
 // HostedProgramTypeMap maps strings to the type of a hosted program.
@@ -55,6 +56,7 @@ var HostedProgramTypeMap = map[string]HostedProgramType{
 	"process":    ProcessPipe,
 	"docker":     DockerUnix,
 	"kvm_coreos": KVMCoreOSFile,
+	"kvm_custom": KVMCustom,
 }
 
 // A Config stores the information about the Tao, its Host Tao, and the way
@@ -149,6 +151,8 @@ func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Conf
 		tc.HostedType = DockerUnix
 	case "kvm_coreos":
 		tc.HostedType = KVMCoreOSFile
+	case "kvm_custom":
+		tc.HostedType = KVMCustom
 	default:
 		tc.HostedType = NoHostedPrograms
 	}

@@ -296,7 +296,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 
 	ctype := "process"
 	spec.Path = args[0]
-	for _, prefix := range []string{"process", "docker", "kvm_coreos"} {
+	for _, prefix := range []string{"process", "docker", "kvm_coreos", "kvm_custom"} {
 		if strings.HasPrefix(spec.Path, prefix+":") {
 			ctype = prefix
 			spec.Path = strings.TrimPrefix(spec.Path, prefix+":")

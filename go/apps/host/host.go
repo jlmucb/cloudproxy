@@ -71,7 +71,7 @@ var opts = []options.Option{
 	{"kvm_coreos_ssh_auth_keys", "", "<path>", "An authorized_keys file for SSH to CoreOS guest, relative to domain or absolute", "kvm"},
 
 	// Flags for QEMU/KVM init with custom kernel and initram
-	{"kvm_custom_vm_memory", 0, "SIZE", "The amount of RAM (in KB) to give VM", "kvm_custom"},
+	{"kvm_custom_vm_memory", 1024, "SIZE", "The amount of RAM (in KB) to give VM", "kvm_custom"},
 }
 
 func init() {
@@ -374,7 +374,7 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 			vmMemory = 1024
 		}
 		cfg := &tao.VmConfig{
-			Memory:     vmMemory,
+			Memory:     int(vmMemory),
 			SocketPath: socketPath,
 		}
 		childFactory = tao.NewLinuxKVMCustomFactory(cfg)

@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"syscall"
 	"time"
@@ -94,10 +95,9 @@ func (kcc *KvmCustomContainer) startVM() error {
 	qemuProg := "qemu-system-x86_64"
 	qemuArgs := []string{"-name", cfg.Name,
 		"-m", strconv.Itoa(cfg.Memory),
-		// "-machine", "accel=kvm:tcg",
 		// Networking.
-		// "-net", "nic,vlan=0,model=virtio",
-		// "-net", "user,vlan=0,hostfwd=tcp::" + kcc.spec.Args[2] + "-:22,hostname=" + cfg.Name,
+		"-net", "nic,vlan=0,model=virtio",
+		"-net", "user,vlan=0,hostfwd=tcp::" + kcc.spec.Args[2] + "-:22,hostname=" + cfg.Name,
 		// Tao communications through virtio-serial. With this
 		// configuration, QEMU waits for a server on cfg.SocketPath,
 		// then connects to it.
@@ -107,10 +107,7 @@ func (kcc *KvmCustomContainer) startVM() error {
 		// The kernel and initram image to boot from.
 		"-kernel", cfg.KernelPath,
 		"-initrd", cfg.InitRamPath,
-		// Machine config.
-		// "-cpu", "host",
-		// "-smp", "4",
-		"-nographic"} // for now, we add -nographic explicitly.
+	}
 
 	kcc.QCmd = exec.Command(qemuProg, qemuArgs...)
 	kcc.QCmd.Stdin = os.Stdin
@@ -188,12 +185,15 @@ func (lkcf *LinuxKVMCustomFactory) NewHostedProgram(spec HostedProgramSpec) (chi
 	}
 	h2 := sha256.Sum256(b)
 
+	sockName := getRandomFileName(nameLen)
+	sockPath := path.Join(lkcf.Cfg.SocketPath, sockName)
+
 	cfg := VmConfig{
 		Name:        getRandomFileName(nameLen),
 		KernelPath:  spec.Args[0],
 		InitRamPath: spec.Args[1],
 		Memory:      lkcf.Cfg.Memory,
-		SocketPath:  lkcf.Cfg.SocketPath,
+		SocketPath:  sockPath,
 		Port:        spec.Args[2],
 	}
 

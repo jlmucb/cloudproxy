@@ -25,12 +25,10 @@ import (
 	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
-var simpleCfg = flag.String("tao.config",
-			"/Domains/domain.simpleexample/tao.config",
-			"path to tao configuration")
-var simpleClientPath = flag.String("/Domains/domain.simpleexample/SimpleClient", 
-			"/Domains/domain.simpleexample/SimpleClient",
-			"path to SimpleClient files")
+var simpleCfg = flag.String("domain_config",
+	"./tao.config",
+	"path to tao configuration")
+var simpleClientPath = flag.String("path", "./SimpleClient", "path to SimpleClient files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
@@ -50,18 +48,18 @@ func main() {
 
 	// If TaoParadigm completes without error, clientProgramData contains all the
 	// Cloudproxy information needed throughout simpleclient execution.
-	if taosupport.TaoParadigm(simpleCfg, simpleClientPath, &clientProgramData) !=
-			nil {
-		log.Fatalln("simpleclient: Can't establish Tao")
+	err := taosupport.TaoParadigm(simpleCfg, simpleClientPath, &clientProgramData)
+	if err != nil {
+		log.Fatalln("simpleclient: Can't establish Tao: ", err)
 	}
 	fmt.Printf("simpleclient: TaoParadigm complete, name: %s\n",
-	   clientProgramData.TaoName)
+		clientProgramData.TaoName)
 
 	// Open the Tao Channel using the Program key.  This program does all the
 	// standard channel negotiation and presents the secure server name after
 	// negotiation is complete.
 	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData,
-             &serverAddr)
+		&serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}
@@ -94,7 +92,7 @@ func main() {
 		log.Fatalln("simpleclient: Error protecting data\n")
 	}
 	err = ioutil.WriteFile(path.Join(*simpleClientPath,
-			"retrieved_secret"), out, os.ModePerm)
+		"retrieved_secret"), out, os.ModePerm)
 	if err != nil {
 		log.Fatalln("simpleclient: error saving retrieved secret\n")
 	}

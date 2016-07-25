@@ -34,10 +34,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
+	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/domain_policy"
+	"github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/domain_policy"
 )
 
 var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
@@ -49,28 +50,28 @@ const SizeofSymmetricKeys = 64
 //  This is the structure containing all the Tao data required by a Hosted System.
 type TaoProgramData struct {
 	// true after initialization.
-	Initialized       bool
+	Initialized bool
 
 	// Program name.
-	TaoName           string
+	TaoName string
 
 	// DER encoded policy cert for domain.
-	PolicyCert        []byte
+	PolicyCert []byte
 
 	// Private program key.
-	ProgramKey        tao.Keys
+	ProgramKey tao.Keys
 
 	// Symmetric Keys for program.
-	ProgramSymKeys    []byte
+	ProgramSymKeys []byte
 
 	// Program Cert.
-	ProgramCert       []byte
+	ProgramCert []byte
 
 	// Cert Chain
-	CertChain	  [][]byte
+	CertChain [][]byte
 
 	// Path for program to read and write files.
-	ProgramFilePath   *string
+	ProgramFilePath *string
 }
 
 // Zero Tao sensitive data.
@@ -87,14 +88,14 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 	programData.ProgramFilePath = nil
 }
 
-// RequestDomainServiceCert requests the signed Program 
+// RequestDomainServiceCert requests the signed Program
 // Certificate from simpledomainservice.
 //  TODO: This needs to change in a way that is tao supplier dependent.
 //     For tpm2 we need the ekCert and the tao and we need the data
 //     for ActivateCredential.
 //     For tpm1.2, we need the aikCert.
 func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
-		v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
+	v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
 
 	// Note requesting program key contains a self-signed cert to open channel.
 	if requesting_key.Cert == nil {
@@ -144,7 +145,7 @@ func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 }
 
 func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
-		[]byte, error) {
+	[]byte, error) {
 
 	// Make up symmetric key and save sealed version.
 	log.Printf("InitializeSealedSymmetricKeys\n")
@@ -162,29 +163,28 @@ func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 
 // Returns key, cert and cert chain
 func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
-		*tao.Keys, []byte, [][]byte, error) {
+	*tao.Keys, []byte, [][]byte, error) {
 
 	k, derCert, err := CreateSigningKey(t)
-	if err != nil  || derCert == nil{
+	if err != nil || derCert == nil {
 		log.Printf("InitializeSealedProgramKey: CreateSigningKey failed with error %s\n", err)
 		return nil, nil, nil, err
 	}
 
 	// Get program cert.
-	domain_response, err := RequestDomainServiceCert("tcp", *caAddr, k,
-			domain.Keys.VerifyingKey)
-	if err != nil || domain_response == nil {
-		log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
-		return nil, nil, nil, err
-	}
-	programCert := domain_response.SignedCert
-	certChain := domain_response.CertChain
-	k.Cert, err = x509.ParseCertificate(programCert)
+	cert, err := domain_service.RequestProgramCert(k.Delegation, k.VerifyingKey, "tcp", *caAddr)
 	if err != nil {
-		log.Printf("InitializeSealedProgramKey: Can't parse certificate\n")
 		return nil, nil, nil, err
 	}
-	k.Cert.Raw = programCert
+	/*
+		domain_response, err := RequestDomainServiceCert("tcp", *caAddr, k,
+			domain.Keys.VerifyingKey)
+		if err != nil || domain_response == nil {
+			log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
+			return nil, nil, nil, err
+		}
+	*/
+	k.Cert = cert
 
 	// Serialize and save key blob
 	programKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
@@ -200,33 +200,33 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), programCert, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), cert.Raw, os.ModePerm)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-/*
-	FIX
-	if certChain.size() > 0 {
-		// Save cert chain
+	/*
 		FIX
-		err = ioutil.WriteFile(path.Join(filePath, "certChain"), certChain, os.ModePerm)
-		if err != nil {
-			return nil, nil, nil, err
+		if certChain.size() > 0 {
+			// Save cert chain
+			FIX
+			err = ioutil.WriteFile(path.Join(filePath, "certChain"), certChain, os.ModePerm)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 		}
-	}
- */
-	return k, programCert, certChain, nil
+	*/
+	return k, cert.Raw, nil, nil
 }
 
 func (pp *TaoProgramData) FillTaoProgramData(policyCert []byte, taoName string,
-		programKey tao.Keys, symKeys []byte, programCert []byte, certChain [][]byte,
-		filePath *string) bool {
+	programKey tao.Keys, symKeys []byte, programCert []byte, certChain [][]byte,
+	filePath *string) bool {
 	pp.PolicyCert = policyCert
 	pp.TaoName = taoName
 	pp.ProgramKey = programKey
 	pp.ProgramSymKeys = symKeys
 	pp.ProgramCert = programCert
-	pp.CertChain = certChain 
+	pp.CertChain = certChain
 	pp.ProgramFilePath = filePath
 	pp.Initialized = true
 	return true
@@ -241,12 +241,12 @@ func (pp *TaoProgramData) FillTaoProgramData(policyCert []byte, taoName string,
 // Cloudproxy information needed throughout the calling program execution
 // ensures that this information is sealed and stored for subsequent invocations.
 func TaoParadigm(cfg *string, filePath *string,
-		programObject *TaoProgramData) (error) {
+	programObject *TaoProgramData) error {
 
 	// Load domain info for this domain.
 	simpleDomain, err := tao.LoadDomain(*cfg, nil)
 	if err != nil {
-		return errors.New("TaoParadigm: Can't load domain")
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't load domain. Error: ", err))
 	}
 
 	// Get policy cert.
@@ -259,12 +259,15 @@ func TaoParadigm(cfg *string, filePath *string,
 	}
 
 	// Extend tao name with policy key
-	simpleDomain.ExtendTaoName(tao.Parent())
+	err = simpleDomain.ExtendTaoName(tao.Parent())
+	if err != nil {
+		return errors.New(fmt.Sprintln("TaoParadigm: Error extending name: ", err))
+	}
 
 	// Retrieve extended name.
 	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
-		return errors.New("TaoParadigm: Can't extend Tao Principal name")
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't extend Tao Principal name. Error: ", err))
 	}
 	log.Printf("TaoParadigm: my name is %s\n", taoName)
 
@@ -272,21 +275,23 @@ func TaoParadigm(cfg *string, filePath *string,
 	sealedSymmetricKey, sealedProgramKey, programCert, certChain, err :=
 		LoadProgramKeys(*filePath)
 	if err != nil {
-		return errors.New("TaoParadigm: Can't retrieve existing key material")
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't retrieve existing key material. Error: ", err))
 	}
 	// Unseal my symmetric keys, or initialize them.
 	var symKeys []byte
 	var policy string
 	if sealedSymmetricKey != nil {
 		symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey)
-		if err != nil || policy != tao.SealPolicyDefault {
-			return errors.New("TaoParadigm: can't unseal symmetric keys")
+		if err != nil {
+			return errors.New(fmt.Sprintln("TaoParadigm: can't unseal symmetric keys. Error: ", err))
+		}
+		if policy != tao.SealPolicyDefault {
+			return errors.New("TaoParadigm: can't unseal symmetric keys. SealPolicy does not match.")
 		}
 	} else {
-		symKeys, err = InitializeSealedSymmetricKeys(*filePath, tao.Parent(),
-			SizeofSymmetricKeys)
+		symKeys, err = InitializeSealedSymmetricKeys(*filePath, tao.Parent(), SizeofSymmetricKeys)
 		if err != nil {
-			return errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
+			return errors.New(fmt.Sprintf("TaoParadigm: InitializeSealedSymmetricKeys error: %v", err))
 		}
 	}
 	log.Printf("Unsealed symmetric keys\n")
@@ -296,14 +301,17 @@ func TaoParadigm(cfg *string, filePath *string,
 	if sealedProgramKey != nil {
 		programKey, err = SigningKeyFromBlob(tao.Parent(), sealedProgramKey, programCert)
 		if err != nil {
-			return errors.New("TaoParadigm: SigningKeyFromBlob error")
+			return errors.New(fmt.Sprintln("TaoParadigm: SigningKeyFromBlob error: ", err))
 		}
 	} else {
 		// Get Program key.
 		programKey, programCert, certChain, err = InitializeSealedProgramKey(
 			*filePath, tao.Parent(), *simpleDomain)
-		if err != nil || programKey == nil {
-			return errors.New("TaoParadigm: InitializeSealedSigningKey error")
+		if err != nil {
+			return errors.New(fmt.Sprintln("TaoParadigm: InitializeSealedSigningKey error: ", err))
+		}
+		if programKey == nil {
+			return errors.New("TaoParadigm: InitializeSealedSigningKey error: programKey not loaded")
 		}
 	}
 	log.Printf("TaoParadigm: Retrieved Signing key\n")
@@ -324,7 +332,7 @@ func TaoParadigm(cfg *string, filePath *string,
 // integrity protected channel.  OpenTaoChannel returns the stream (ms) for subsequent reads
 // and writes as well as the server's Tao Principal Name.
 func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
-		*util.MessageStream, *string, error) {
+	*util.MessageStream, *string, error) {
 
 	// Parse policy cert and make it the root of our
 	// hierarchy for verifying Tao Channel peer.
@@ -347,7 +355,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
-fmt.Printf("OpenTaoChannel: Can't establish channel ", err, "\n")
+		fmt.Printf("OpenTaoChannel: Can't establish channel : %v\n", err)
 		return nil, nil, errors.New("OpenTaoChannel: Can't establish channel")
 	}
 
@@ -355,12 +363,10 @@ fmt.Printf("OpenTaoChannel: Can't establish channel ", err, "\n")
 
 	// Stream for Tao Channel.
 	ms := util.NewMessageStream(conn)
-	return ms, &peerName, nil 
+	return ms, &peerName, nil
 }
 
-
 // Support functions
-
 
 func ZeroBytes(buf []byte) {
 	n := len(buf)
@@ -479,13 +485,13 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*t
 		return nil, err
 	}
 
-/*
-	k.Delegation = new(tao.Attestation)
-	err = proto.Unmarshal(delegateBlob, k.Delegation)
-	if err != nil {
-		return nil, err
-	}
- */
+	/*
+		k.Delegation = new(tao.Attestation)
+		err = proto.Unmarshal(delegateBlob, k.Delegation)
+		if err != nil {
+			return nil, err
+		}
+	*/
 
 	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
 	if err != nil {
@@ -515,14 +521,14 @@ func PrintMessage(msg *SimpleMessage) {
 	if msg.Err != nil {
 		log.Printf("\terror: %s\n", msg.Err)
 	}
-	log.Printf("\tdata: ");
+	log.Printf("\tdata: ")
 	for _, data := range msg.GetData() {
-		log.Printf("\t: %x\n", data);
+		log.Printf("\t: %x\n", data)
 	}
 	log.Printf("\n")
 }
 
-func SendMessage(ms *util.MessageStream, msg *SimpleMessage) (error) {
+func SendMessage(ms *util.MessageStream, msg *SimpleMessage) error {
 	out, err := proto.Marshal(msg)
 	if err != nil {
 		return errors.New("SendRequest: Can't encode response")
@@ -536,7 +542,7 @@ func SendMessage(ms *util.MessageStream, msg *SimpleMessage) (error) {
 }
 
 func GetMessage(ms *util.MessageStream) (*SimpleMessage,
-		error) {
+	error) {
 	resp, err := ms.ReadString()
 	if err != nil {
 		return nil, err
@@ -549,13 +555,13 @@ func GetMessage(ms *util.MessageStream) (*SimpleMessage,
 	return msg, nil
 }
 
-func SendRequest(ms *util.MessageStream, msg *SimpleMessage) (error) {
+func SendRequest(ms *util.MessageStream, msg *SimpleMessage) error {
 	m1 := int32(MessageType_REQUEST)
 	msg.MessageType = &m1
 	return SendMessage(ms, msg)
 }
 
-func SendResponse(ms *util.MessageStream, msg *SimpleMessage) (error) {
+func SendResponse(ms *util.MessageStream, msg *SimpleMessage) error {
 	m1 := int32(MessageType_RESPONSE)
 	msg.MessageType = &m1
 	return SendMessage(ms, msg)
@@ -606,7 +612,7 @@ func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
-	out := make([]byte, len(in) - 48, len(in) - 48)
+	out := make([]byte, len(in)-48, len(in)-48)
 	var iv []byte
 	iv = in[32:48]
 	encKey := keys[0:16]
@@ -626,4 +632,3 @@ func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	}
 	return out, nil
 }
-

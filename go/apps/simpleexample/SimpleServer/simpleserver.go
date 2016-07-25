@@ -22,20 +22,19 @@ import (
 	"log"
 	"net"
 
-	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
+	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-var simpleCfg = flag.String("tao.config",
-	"/Domains/domain.simpleexample/tao.config",
+var simpleCfg = flag.String("domain_config",
+	"./tao.config",
 	"path to simple tao configuration")
-var simpleServerPath = flag.String("/Domains/domain.simpleexample/SimpleServer",
-			"/Domains/domain.simpleexample/SimpleServer",
-			"path to Server files")
+var simpleServerPath = flag.String("path", "./SimpleServer", "path to Server files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
+
 // Handle service request, req and return response over channel (ms).
 // This handles the one valid service request: "SecretRequest"
 // and terminates the channel after the first successful request
@@ -50,7 +49,7 @@ func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.
 	//  The somewhat boring secret is the corresponding simpleclient's program name || 43
 	secret := clientProgramName + "43"
 
-	if *req.RequestType == "SecretRequest"  {
+	if *req.RequestType == "SecretRequest" {
 		req.Data = append(req.Data, []byte(secret))
 		taosupport.SendResponse(ms, req)
 		log.Printf("HandleServiceRequest response buffer: ")
@@ -68,11 +67,11 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 	serverProgramData *taosupport.TaoProgramData) {
 
 	for {
-		req, err :=  taosupport.GetRequest(ms)
+		req, err := taosupport.GetRequest(ms)
 		if err != nil {
 			return
 		}
-		log.Printf("serviceThread, got message: ");
+		log.Printf("serviceThread, got message: ")
 		taosupport.PrintMessage(req)
 
 		terminate, _ := HandleServiceRequest(ms, serverProgramData,
@@ -127,7 +126,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		log.Printf("server: at accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
-fmt.Printf("simpleserver: can't accept connection: %s\n", err.Error())
+			fmt.Printf("simpleserver: can't accept connection: %s\n", err.Error())
 			log.Printf("server: can't accept connection: %s\n", err.Error())
 			continue
 		}
@@ -174,9 +173,9 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	if taosupport.TaoParadigm(simpleCfg, simpleServerPath, &serverProgramData) !=
-			nil {
-		log.Fatalln("simpleserver: Can't establish Tao")
+	err := taosupport.TaoParadigm(simpleCfg, simpleServerPath, &serverProgramData)
+	if err != nil {
+		log.Fatalln("simpleserver: Can't establish Tao", err)
 	}
 	log.Printf("simpleserver name is %s\n", serverProgramData.TaoName)
 

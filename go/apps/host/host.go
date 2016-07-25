@@ -17,6 +17,8 @@
 package host
 
 import (
+	"crypto/x509/pkix"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -40,6 +42,7 @@ var opts = []options.Option{
 	{"tao_domain", "", "<dir>", "Tao domain configuration directory", "all"},
 	{"host", "", "<dir>", "Host configuration, relative to domain directory or absolute", "all"},
 	{"quiet", false, "", "Be more quiet", "all"},
+	{"domain_pass", "", "<password>", "Password for domain policy key", "all"},
 
 	// Flags for init (and start) command
 	{"root", false, "", "Create a root host, not backed by any parent Tao", "init,start"},
@@ -129,10 +132,8 @@ func Main() {
 	if !*options.Bool["quiet"] {
 		noise = os.Stdout
 	}
-
 	// Load the domain.
 	domain, err := tao.LoadDomain(domainConfigPath(), nil)
-	options.FailIf(err, "Can't load domain")
 
 	// Set $TAO_DOMAIN so it will be inherited by hosted programs
 	os.Unsetenv("TAO_DOMAIN")
@@ -382,7 +383,36 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 
 	if tc.HostType == tao.Root {
 		pwd := getKey("root host key password", "pass")
-		return tao.NewRootLinuxHost(hostPath(), domain.Guard, pwd, childFactory)
+		lh, err := tao.NewRootLinuxHost(hostPath(), domain.Guard, pwd, childFactory)
+		if err != nil {
+			return nil, err
+		}
+		// Create cert signed by policy key
+		pwd = getKey("Password for domain policy key", "domain_pass")
+		// Load the domain.
+		domain, err := tao.LoadDomain(domainConfigPath(), pwd)
+		options.FailIf(err, "Can't load domain")
+
+		if domain.Keys.SigningKey == nil {
+			options.Fail(errors.New("No signing key in policy key"), "")
+		}
+
+		keyName := "Root Key"
+		subject := pkix.Name{
+			Organization: []string{keyName},
+			CommonName:   keyName,
+		}
+		rootHost, ok := lh.Host.(*tao.RootHost)
+		if !ok {
+			return nil, errors.New("Type assertion on newly created root host fails")
+		}
+		cert, err := domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 0,
+			rootHost.GetVerifier(), &subject)
+		if err != nil {
+			return nil, err
+		}
+		rootHost.LoadCert(cert)
+		return lh, nil
 	} else {
 		parent := tao.ParentFromConfig(tc)
 		if parent == nil {

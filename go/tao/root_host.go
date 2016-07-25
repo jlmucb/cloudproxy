@@ -16,6 +16,7 @@ package tao
 
 import (
 	"crypto/rand"
+	"crypto/x509"
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
@@ -49,6 +50,15 @@ func NewTaoRootHost() (*RootHost, error) {
 	}
 
 	return NewTaoRootHostFromKeys(k)
+}
+
+// LoadCert loads a given cert into the root host key.
+func (t *RootHost) LoadCert(cert *x509.Certificate) {
+	t.keys.Cert = cert
+}
+
+func (t *RootHost) GetVerifier() *Verifier {
+	return t.keys.VerifyingKey
 }
 
 // GetRandomBytes returns a slice of n random bytes.
@@ -92,7 +102,14 @@ func (t *RootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 
 	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
-	return GenerateAttestation(t.keys.SigningKey, nil /* delegation */, stmt)
+	att, err := GenerateAttestation(t.keys.SigningKey, nil /* delegation */, stmt)
+	if err != nil {
+		return nil, err
+	}
+	if t.keys.Cert != nil {
+		att.HardwareEndorsement = t.keys.Cert.Raw
+	}
+	return att, nil
 }
 
 // Encrypt data so that only this host can access it.

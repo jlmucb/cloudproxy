@@ -227,6 +227,12 @@ message Attestation {
   // TODO(kwalsh) remove this -- as for tpm1.2, the quote structure should be
   // recoverable from the principal names in the serialized statement.
   optional bytes tpm2_quote_structure = 7;
+
+  // This is a DER encoded X509 certificate certifying the TPM signing key,
+  // that is, the AIK for TPM 1.2 and the quote key for TPM 2.0.
+  // The certificate is signed by the policy key, and is included in TPM
+  // signed attestations (including delegations).
+  optional bytes hardware_endorsement = 8;
 }
 
 // TODO(kwalsh) Consider moving issuer (and expiration times) out of serialized

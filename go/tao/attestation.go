@@ -210,7 +210,6 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attesta
 	}
 
 	ser := auth.Marshal(stmt)
-
 	sig, err := s.Sign(ser, AttestationSigningContext)
 	if err != nil {
 		return nil, err

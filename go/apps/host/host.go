@@ -17,6 +17,9 @@
 package host
 
 import (
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -40,6 +43,7 @@ var opts = []options.Option{
 	{"tao_domain", "", "<dir>", "Tao domain configuration directory", "all"},
 	{"host", "", "<dir>", "Host configuration, relative to domain directory or absolute", "all"},
 	{"quiet", false, "", "Be more quiet", "all"},
+	{"domain_pass", "", "<password>", "Password for domain policy key", "all"},
 
 	// Flags for init (and start) command
 	{"root", false, "", "Create a root host, not backed by any parent Tao", "init,start"},
@@ -129,10 +133,8 @@ func Main() {
 	if !*options.Bool["quiet"] {
 		noise = os.Stdout
 	}
-
 	// Load the domain.
 	domain, err := tao.LoadDomain(domainConfigPath(), nil)
-	options.FailIf(err, "Can't load domain")
 
 	// Set $TAO_DOMAIN so it will be inherited by hosted programs
 	os.Unsetenv("TAO_DOMAIN")
@@ -382,7 +384,50 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 
 	if tc.HostType == tao.Root {
 		pwd := getKey("root host key password", "pass")
-		return tao.NewRootLinuxHost(hostPath(), domain.Guard, pwd, childFactory)
+		lh, err := tao.NewRootLinuxHost(hostPath(), domain.Guard, pwd, childFactory)
+		if err != nil {
+			return nil, err
+		}
+		// Load cert
+		rootHost, ok := lh.Host.(*tao.RootHost)
+		if !ok {
+			return nil, errors.New("Type assertion on newly created root host fails")
+		}
+		var cert *x509.Certificate
+		rawCert, err := ioutil.ReadFile(path.Join(hostPath(), "soft_tao_cert"))
+		if err != nil {
+			// Create cert signed by policy key
+			pwd = getKey("Password for domain policy key", "domain_pass")
+			// Load the domain.
+			domain, err := tao.LoadDomain(domainConfigPath(), pwd)
+			if err != nil {
+				return nil, err
+			}
+			if domain.Keys.SigningKey == nil {
+				return nil, errors.New("Domain policy key missing signing key")
+			}
+			keyName := "Soft Tao Key"
+			subject := pkix.Name{
+				Organization: []string{keyName},
+				CommonName:   keyName,
+			}
+			cert, err = domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 0,
+				rootHost.GetVerifier(), &subject)
+			if err != nil {
+				return nil, err
+			}
+			if err = ioutil.WriteFile(path.Join(hostPath(), "soft_tao_cert"),
+				cert.Raw, os.ModePerm); err != nil {
+				return nil, err
+			}
+		} else {
+			cert, err = x509.ParseCertificate(rawCert)
+			if err != nil {
+				return nil, err
+			}
+		}
+		rootHost.LoadCert(cert)
+		return lh, nil
 	} else {
 		parent := tao.ParentFromConfig(tc)
 		if parent == nil {

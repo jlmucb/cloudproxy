@@ -227,6 +227,12 @@ message Attestation {
   // TODO(kwalsh) remove this -- as for tpm1.2, the quote structure should be
   // recoverable from the principal names in the serialized statement.
   optional bytes tpm2_quote_structure = 7;
+
+  // This is a DER encoded X509 certificate certifying the key signing the
+  // attestation. This is included in attestations signed by a root Tao
+  // i.e. a TPM (1.2 or 2.0) Tao or a soft Tao, and forms the root of the
+  // attestation chain. This certificate is signed by the policy key.
+  optional bytes root_endorsement = 8;
 }
 
 // TODO(kwalsh) Consider moving issuer (and expiration times) out of serialized

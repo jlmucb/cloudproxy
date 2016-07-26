@@ -15,42 +15,65 @@ package main
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
+	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"
 )
 
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
-var domainPass = flag.String("password", "xxx", "The domain password")
-var configPath = flag.String("config", "./tao.config", "The Tao domain config")
-var trustedEntitiesPath = flag.String("trusted entities", "./TrustedEntities", "File containing trusted entities.")
-var createDomainFlag = flag.Bool("createDomain", false, "To create new domain from specified config.")
+var domainPass = flag.String("pass", "", "The domain password")
+var configTemplate = flag.String("config_template", "./domain_template", "The Tao domain template")
+var configPath = flag.String("domain_config", "./tao.config", "The Tao domain config file")
+var trustedEntitiesPath = flag.String("trusted_entities", "./TrustedEntities", "File containing trusted entities.")
+var createDomainFlag = flag.Bool("create_domain", false, "To create new domain from specified config.")
 
 var serialNumber = 0
 var revokedCertificates []pkix.RevokedCertificate
 
+func getPass() []byte {
+	if domainPass == nil || *domainPass == "" {
+		// Get the password from the user.
+		fmt.Print("Policy key password: ")
+		pwd, err := terminal.ReadPassword(syscall.Stdin)
+		if err != nil {
+			log.Fatalln("Can't get password", err)
+		}
+		fmt.Println()
+		return pwd
+	} else {
+		fmt.Println("Warning: Passwords on the command line are not secure." +
+			"Use -pass option only for testing.")
+		return []byte(*domainPass)
+	}
+}
+
 func createDomain() (*tao.Domain, *x509.CertPool, error) {
-	var cfg tao.DomainConfig
-	d, err := ioutil.ReadFile(*configPath)
+	var cfg tao.DomainTemplate
+	d, err := ioutil.ReadFile(*configTemplate)
 	if err != nil {
 		return nil, nil, err
 	}
 	if err := proto.UnmarshalText(string(d), &cfg); err != nil {
 		return nil, nil, err
 	}
-	domain, err := tao.CreateDomain(cfg, *configPath, []byte(*domainPass))
+	pwd := getPass()
+	domain, err := tao.CreateDomain(*cfg.Config, *configPath, pwd)
 	if domain == nil {
 		log.Printf("domainserver: no domain path - %s, pass - %s, err - %s\n",
-			*configPath, *domainPass, err)
+			*configPath, pwd, err)
 		return nil, nil, err
 	} else if err != nil {
 		log.Printf("domainserver: Couldn't load the config path %s: %s\n",
@@ -58,10 +81,6 @@ func createDomain() (*tao.Domain, *x509.CertPool, error) {
 		return nil, nil, err
 	}
 	log.Printf("domainserver: Created domain\n")
-	err = domain_service.InitAcls(domain, *trustedEntitiesPath)
-	if err != nil {
-		return nil, nil, err
-	}
 	err = domain.Save()
 	if err != nil {
 		return nil, nil, err
@@ -72,10 +91,11 @@ func createDomain() (*tao.Domain, *x509.CertPool, error) {
 }
 
 func loadDomain() (*tao.Domain, *x509.CertPool, error) {
-	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
+	pwd := getPass()
+	domain, err := tao.LoadDomain(*configPath, pwd)
 	if domain == nil {
 		log.Printf("domainserver: no domain path - %s, pass - %s, err - %s\n",
-			*configPath, *domainPass, err)
+			*configPath, pwd, err)
 		return nil, nil, err
 	} else if err != nil {
 		log.Printf("domainserver: Couldn't load the config path %s: %s\n",
@@ -91,14 +111,22 @@ func loadDomain() (*tao.Domain, *x509.CertPool, error) {
 func main() {
 	flag.Parse()
 	var domain *tao.Domain
-	var rootCerts *x509.CertPool
 	var err error
 	if *createDomainFlag {
 		log.Println("Creating new domain...")
-		domain, rootCerts, err = createDomain()
+		domain, _, err = createDomain()
 	} else {
 		log.Println("Loading domain info...")
-		domain, rootCerts, err = loadDomain()
+		domain, _, err = loadDomain()
+	}
+	text, err := ioutil.ReadFile(*trustedEntitiesPath)
+	if err != nil {
+		log.Fatalf("Can't open trusted entities file: %s", *trustedEntitiesPath)
+	}
+	trustedEntities := domain_service.TrustedEntities{}
+	err = proto.UnmarshalText(string(text), &trustedEntities)
+	if err != nil {
+		log.Fatalf("Can't parse trusted entities file: %s", *trustedEntitiesPath)
 	}
 	if err != nil {
 		log.Fatalln("domain_server: could not load domain:", err)
@@ -121,8 +149,9 @@ func main() {
 		}
 		switch *request.Type {
 		case domain_service.DomainServiceRequest_DOMAIN_CERT_REQUEST:
-			_, kPrin, prog, err := domain_service.VerifyHostAttestation(
-				request.GetSerializedHostAttestation(), domain, rootCerts)
+			log.Println("Got Program cert request")
+			_, kPrin, prog, err := domain_service.VerifyAttestation(request.GetSerializedHostAttestation(),
+				domain)
 			if err != nil {
 				log.Printf("domain_server: Error verifying host att: %s\n", err)
 				sendError(err, ms)
@@ -136,10 +165,24 @@ func main() {
 				continue
 			}
 			if !verifier.ToPrincipal().Identical(kPrin) {
-				log.Printf("domain_server: Program key in request does not match key being attested to.")
-				sendError(err, ms)
+				errStr := "domain_server: Program key in request does not match key being attested to."
+				log.Println(errStr)
+				sendError(errors.New(errStr), ms)
 				continue
 			}
+			prog_is_trusted := false
+			for _, trusted_prog := range trustedEntities.TrustedProgramTaoNames {
+				if trusted_prog == prog.String() {
+					prog_is_trusted = true
+				}
+			}
+			if !prog_is_trusted {
+				errStr := "domain_server: ProgramTaoName in request is not authorized to execute"
+				log.Println(errStr)
+				sendError(errors.New(errStr), ms)
+				continue
+			}
+			log.Println("domain_server: attestation passes verification checks, creating program cert")
 			cert, err := domain_service.GenerateProgramCert(domain, serialNumber, prog,
 				verifier, time.Now(), time.Now().AddDate(1, 0, 0))
 			if err != nil {
@@ -149,6 +192,7 @@ func main() {
 			}
 			resp := &domain_service.DomainServiceResponse{
 				DerProgramCert: cert.Raw}
+			log.Println("domain_server: program cert created. Sending response back to program.")
 			if _, err := ms.WriteMessage(resp); err != nil {
 				log.Printf("domain_server: Error sending cert on the channel: %s\n ",
 					err)

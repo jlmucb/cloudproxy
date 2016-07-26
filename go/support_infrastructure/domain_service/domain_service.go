@@ -30,6 +30,137 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
+func VerifyAttestation(serializedHostAttestation []byte, domain *tao.Domain) (*auth.Prin,
+	*auth.Prin, *auth.Prin, error) {
+	var hostAttestation tao.Attestation
+	err := proto.Unmarshal(serializedHostAttestation, &hostAttestation)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	signer, err := hostAttestation.ValidSigner()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	f, err := auth.UnmarshalForm(hostAttestation.SerializedStatement)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var stmt *auth.Says
+	if ptr, ok := f.(*auth.Says); ok {
+		stmt = ptr
+	} else if val, ok := f.(auth.Says); ok {
+		stmt = &val
+	} else {
+		return nil, nil, nil, errors.New(fmt.Sprintf(
+			"tao: attestation statement has wrong type: %T", f))
+	}
+	speaker, key, program, err := parseSaysStatement(stmt)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// Validate signer
+	if auth.SubprinOrIdentical(speaker, signer) {
+		// Case 1: speaker is identical or subprincipal of signing principal.
+		// Check if signer is either
+		// - policy key
+		// - TPM key with valid hardware endorsement cert signed by policy key.
+		if signer.Identical(domain.Keys.SigningKey.ToPrincipal()) {
+			return speaker, key, program, nil
+		}
+		if *hostAttestation.SignerType == "tpm" || *hostAttestation.SignerType == "tpm2" {
+			if hostAttestation.RootEndorsement == nil {
+				return nil, nil, nil, errors.New("TPM attestation is missing HW endorsement cert")
+			}
+			cert, err := x509.ParseCertificate(hostAttestation.RootEndorsement)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			certPool := x509.NewCertPool()
+			certPool.AddCert(domain.Keys.Cert)
+			verifyOptions := x509.VerifyOptions{Roots: certPool}
+			_, err = cert.Verify(verifyOptions)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			hwPublicKey, ok := cert.PublicKey.(*rsa.PublicKey)
+			if !ok {
+				key, ok := cert.PublicKey.(rsa.PublicKey)
+				if !ok {
+					return nil, nil, nil,
+						errors.New("endorsement cert does not contain a valid RSA public key")
+				}
+				hwPublicKey = &key
+			}
+			tpmKey, err := x509.MarshalPKIXPublicKey(hwPublicKey)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			if !bytes.Equal(hostAttestation.SignerKey, tpmKey) {
+				return nil, nil, nil, errors.New("HW endorsement cert public key does not match signer key")
+			}
+			return speaker, key, program, nil
+		}
+		// SignerType is a Tao key principal. Check if the key is endorsed by the policy key.
+		if hostAttestation.RootEndorsement != nil {
+			cert, err := x509.ParseCertificate(hostAttestation.RootEndorsement)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			certPool := x509.NewCertPool()
+			certPool.AddCert(domain.Keys.Cert)
+			verifyOptions := x509.VerifyOptions{Roots: certPool}
+			_, err = cert.Verify(verifyOptions)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			verifier, err := tao.UnmarshalKey(hostAttestation.SignerKey)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			if !verifier.Equals(cert) {
+				return nil, nil, nil, errors.New("Endorsement cert is irrelevant to attestation signer")
+			}
+			return speaker, key, program, nil
+		}
+		return nil, nil, nil, errors.New("attestation signer is not endorsed by policy key")
+	} else {
+		// Case 2: speaker is not a subprincipal of the signing principal.
+		// Look for delegation and require that:
+		// - delegation conveys delegator says delegate speaksfor delegator,
+		// - a.signer speaks for delegate
+		// - and delegator speaks for s.Speaker
+		if hostAttestation.SerializedDelegation == nil {
+			return nil, nil, nil, errors.New("attestation missing delegation")
+		}
+		var da tao.Attestation
+		if err := proto.Unmarshal(hostAttestation.SerializedDelegation, &da); err != nil {
+			return nil, nil, nil, err
+		}
+		delegationStatement, err := da.Validate()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		var delegation *auth.Speaksfor
+		if ptr, ok := delegationStatement.Message.(*auth.Speaksfor); ok {
+			delegation = ptr
+		} else if val, ok := delegationStatement.Message.(auth.Speaksfor); ok {
+			delegation = &val
+		} else {
+			return nil, nil, nil, errors.New("tao: attestation delegation is wrong type")
+		}
+		if !delegationStatement.Speaker.Identical(delegation.Delegator) {
+			return nil, nil, nil, errors.New("tao: attestation delegation is invalid")
+		}
+		if !auth.SubprinOrIdentical(delegation.Delegate, signer) {
+			return nil, nil, nil, errors.New("tao: attestation delegation irrelevant to signer")
+		}
+		if !auth.SubprinOrIdentical(stmt.Speaker, delegation.Delegator) {
+			return nil, nil, nil, errors.New("tao: attestation delegation irrelevant to issuer")
+		}
+		return speaker, key, program, nil
+	}
+}
+
 // This function makes the following checks
 // (1) Checks if the attestation signature is valid and the statement is of the form
 //     'Speaker says Key speaks for Program'.
@@ -251,7 +382,8 @@ func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth
 	policyCert := domain.Keys.Cert
 	x509Info := domain.Config.GetX509Info()
 	programName := programPrin.String()
-	x509Info.CommonName = &programName
+	localhost := "localhost"
+	x509Info.CommonName = &localhost
 	x509Info.OrganizationalUnit = &programName
 	subjectName := tao.NewX509Name(x509Info)
 	clientCert, err := domain.Keys.SigningKey.CreateSignedX509(

@@ -2,31 +2,16 @@
 // source: attestation.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	attestation.proto
-
-It has these top-level messages:
-	Attestation
-*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
+import json "encoding/json"
 import math "math"
 
-// Reference imports to suppress errors if they are not otherwise used.
+// Reference proto, json, and math imports to suppress error if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
+var _ = &json.SyntaxError{}
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // An Attestation is a key, a signature, and a statement, and it conveys:
 //   signer says statement
@@ -188,18 +173,17 @@ type Attestation struct {
 	// TODO(kwalsh) remove this -- as for tpm1.2, the quote structure should be
 	// recoverable from the principal names in the serialized statement.
 	Tpm2QuoteStructure []byte `protobuf:"bytes,7,opt,name=tpm2_quote_structure" json:"tpm2_quote_structure,omitempty"`
-	// This is a DER encoded X509 certificate certifying the TPM signing key,
-	// that is, the AIK for TPM 1.2 and the quote key for TPM 2.0.
-	// The certificate is signed by the policy key, and is included in TPM
-	// signed delegations.
-	HardwareEndorsement []byte `protobuf:"bytes,8,opt,name=hardware_endorsement" json:"hardware_endorsement,omitempty"`
-	XXX_unrecognized    []byte `json:"-"`
+	// This is a DER encoded X509 certificate certifying the key signing the
+	// attestation. This is included in attestations signed by a root Tao
+	// i.e. a TPM (1.2 or 2.0) Tao or a soft Tao, and forms the root of the
+	// attestation chain. This certificate is signed by the policy key.
+	RootEndorsement  []byte `protobuf:"bytes,8,opt,name=root_endorsement" json:"root_endorsement,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *Attestation) Reset()                    { *m = Attestation{} }
-func (m *Attestation) String() string            { return proto.CompactTextString(m) }
-func (*Attestation) ProtoMessage()               {}
-func (*Attestation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *Attestation) Reset()         { *m = Attestation{} }
+func (m *Attestation) String() string { return proto.CompactTextString(m) }
+func (*Attestation) ProtoMessage()    {}
 
 func (m *Attestation) GetSerializedStatement() []byte {
 	if m != nil {
@@ -250,15 +234,12 @@ func (m *Attestation) GetTpm2QuoteStructure() []byte {
 	return nil
 }
 
-func (m *Attestation) GetHardwareEndorsement() []byte {
+func (m *Attestation) GetRootEndorsement() []byte {
 	if m != nil {
-		return m.HardwareEndorsement
+		return m.RootEndorsement
 	}
 	return nil
 }
 
 func init() {
-	proto.RegisterType((*Attestation)(nil), "tao.Attestation")
 }
-
-func init() { proto.RegisterFile("attestation.proto", fileDescriptor0) }

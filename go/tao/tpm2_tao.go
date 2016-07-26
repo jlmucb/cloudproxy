@@ -527,7 +527,7 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 		SignerType:          proto.String("tpm2"),
 		SignerKey:           quoteKey,
 		Tpm2QuoteStructure:  quote_struct,
-		HardwareEndorsement: tt.quoteCert,
+		RootEndorsement:     tt.quoteCert,
 	}
 
 	return a, nil

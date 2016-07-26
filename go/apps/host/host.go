@@ -17,6 +17,7 @@
 package host
 
 import (
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
 	"flag"
@@ -387,29 +388,43 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 		if err != nil {
 			return nil, err
 		}
-		// Create cert signed by policy key
-		pwd = getKey("Password for domain policy key", "domain_pass")
-		// Load the domain.
-		domain, err := tao.LoadDomain(domainConfigPath(), pwd)
-		options.FailIf(err, "Can't load domain")
-
-		if domain.Keys.SigningKey == nil {
-			options.Fail(errors.New("No signing key in policy key"), "")
-		}
-
-		keyName := "Root Key"
-		subject := pkix.Name{
-			Organization: []string{keyName},
-			CommonName:   keyName,
-		}
+		// Load cert
 		rootHost, ok := lh.Host.(*tao.RootHost)
 		if !ok {
 			return nil, errors.New("Type assertion on newly created root host fails")
 		}
-		cert, err := domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 0,
-			rootHost.GetVerifier(), &subject)
+		var cert *x509.Certificate
+		rawCert, err := ioutil.ReadFile(path.Join(hostPath(), "soft_tao_cert"))
 		if err != nil {
-			return nil, err
+			// Create cert signed by policy key
+			pwd = getKey("Password for domain policy key", "domain_pass")
+			// Load the domain.
+			domain, err := tao.LoadDomain(domainConfigPath(), pwd)
+			if err != nil {
+				return nil, err
+			}
+			if domain.Keys.SigningKey == nil {
+				return nil, errors.New("Domain policy key missing signing key")
+			}
+			keyName := "Soft Tao Key"
+			subject := pkix.Name{
+				Organization: []string{keyName},
+				CommonName:   keyName,
+			}
+			cert, err = domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 0,
+				rootHost.GetVerifier(), &subject)
+			if err != nil {
+				return nil, err
+			}
+			if err = ioutil.WriteFile(path.Join(hostPath(), "soft_tao_cert"),
+				cert.Raw, os.ModePerm); err != nil {
+				return nil, err
+			}
+		} else {
+			cert, err = x509.ParseCertificate(rawCert)
+			if err != nil {
+				return nil, err
+			}
 		}
 		rootHost.LoadCert(cert)
 		return lh, nil

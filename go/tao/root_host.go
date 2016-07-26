@@ -107,7 +107,7 @@ func (t *RootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 		return nil, err
 	}
 	if t.keys.Cert != nil {
-		att.HardwareEndorsement = t.keys.Cert.Raw
+		att.RootEndorsement = t.keys.Cert.Raw
 	}
 	return att, nil
 }

@@ -68,10 +68,10 @@ func VerifyAttestation(serializedHostAttestation []byte, domain *tao.Domain) (*a
 			return speaker, key, program, nil
 		}
 		if *hostAttestation.SignerType == "tpm" || *hostAttestation.SignerType == "tpm2" {
-			if hostAttestation.HardwareEndorsement == nil {
+			if hostAttestation.RootEndorsement == nil {
 				return nil, nil, nil, errors.New("TPM attestation is missing HW endorsement cert")
 			}
-			cert, err := x509.ParseCertificate(hostAttestation.HardwareEndorsement)
+			cert, err := x509.ParseCertificate(hostAttestation.RootEndorsement)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -101,8 +101,8 @@ func VerifyAttestation(serializedHostAttestation []byte, domain *tao.Domain) (*a
 			return speaker, key, program, nil
 		}
 		// SignerType is a Tao key principal. Check if the key is endorsed by the policy key.
-		if hostAttestation.HardwareEndorsement != nil {
-			cert, err := x509.ParseCertificate(hostAttestation.HardwareEndorsement)
+		if hostAttestation.RootEndorsement != nil {
+			cert, err := x509.ParseCertificate(hostAttestation.RootEndorsement)
 			if err != nil {
 				return nil, nil, nil, err
 			}

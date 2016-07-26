@@ -218,7 +218,7 @@ func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message au
 		Signature:           sig,
 		SignerType:          proto.String("tpm"),
 		SignerKey:           aik,
-		HardwareEndorsement: tt.aikCert,
+		RootEndorsement:     tt.aikCert,
 	}
 	return a, nil
 }

@@ -44,6 +44,8 @@ import (
 var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
+var useSimpleDomainService = flag.Bool("use_simpledomainservice", true,
+	"whether to use simple domain service")
 
 const SizeofSymmetricKeys = 64
 
@@ -172,19 +174,31 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	}
 
 	// Get program cert.
-	cert, err := domain_service.RequestProgramCert(k.Delegation, k.VerifyingKey, "tcp", *caAddr)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	/*
+	var programCert []byte
+	var certChain [][]byte
+	if *useSimpleDomainService {
 		domain_response, err := RequestDomainServiceCert("tcp", *caAddr, k,
 			domain.Keys.VerifyingKey)
 		if err != nil || domain_response == nil {
 			log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
 			return nil, nil, nil, err
 		}
-	*/
-	k.Cert = cert
+		programCert = domain_response.SignedCert
+		certChain = domain_response.CertChain
+		k.Cert, err = x509.ParseCertificate(programCert)
+		if err != nil {
+			log.Printf("InitializeSealedProgramKey: Can't parse certificate\n")
+			return nil, nil, nil, err
+		}
+		k.Cert.Raw = programCert
+	} else {
+		cert, err := domain_service.RequestProgramCert(k.Delegation, k.VerifyingKey, "tcp", *caAddr)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		k.Cert = cert
+		programCert = cert.Raw
+	}
 
 	// Serialize and save key blob
 	programKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
@@ -200,7 +214,7 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), cert.Raw, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), programCert, os.ModePerm)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -215,7 +229,7 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 			}
 		}
 	*/
-	return k, cert.Raw, nil, nil
+	return k, programCert, certChain, nil
 }
 
 func (pp *TaoProgramData) FillTaoProgramData(policyCert []byte, taoName string,

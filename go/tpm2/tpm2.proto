@@ -5,6 +5,8 @@ syntax = "proto2";
 
 package tpm2;
 
+// TODO(jlm): MOre comments to describe fields needed.
+
 message private_key_blob_message {
   required string key_type                    = 1;
   optional string key_name                    = 2;

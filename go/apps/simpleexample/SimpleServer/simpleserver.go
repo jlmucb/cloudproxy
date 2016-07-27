@@ -168,7 +168,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
 func main() {
 
-	// main is very similar to the initial parts on main in simpleclient.
+	// main is very similar to the initial parts of main in simpleclient.
 	// see the comments there.
 	var serverProgramData taosupport.TaoProgramData
 	defer taosupport.ClearTaoProgramData(&serverProgramData)

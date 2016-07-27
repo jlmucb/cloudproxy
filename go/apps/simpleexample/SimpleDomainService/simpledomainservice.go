@@ -94,6 +94,7 @@ fmt.Printf("DomainRequest\n")
 	subjectKeyHash := domain_policy.GetKeyHash(serializedKey)
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+	// TODO(jlm): Change this.
 	err = tao.ValidatePeerAttestation(&a, peerCert, guard)
 /*
 	if err != nil {

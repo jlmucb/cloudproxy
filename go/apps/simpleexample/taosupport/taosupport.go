@@ -41,6 +41,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+// TODO(jlm): Should all the logs be Printf's here?
+
 var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")

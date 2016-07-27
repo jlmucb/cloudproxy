@@ -15,6 +15,8 @@
 syntax = "proto2";
 package taosupport;
 
+// TODO(jlm): Comments describing the fields needed.
+
 enum MessageType {
    REQUEST = 1;
    RESPONSE = 2;

@@ -15,6 +15,7 @@ syntax = "proto2";
 
 package tao;
 
+// TODO(jlm): Comments for these args.
 message LinuxHostSealedBundle {
   required string policy = 1;
   optional string policy_info = 2;

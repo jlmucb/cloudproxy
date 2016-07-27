@@ -15,6 +15,7 @@ syntax = "proto2";
 
 package tao;
 
+// TODO(jlm): Comments for arguments.
 message DomainDetails {
   optional string name = 1;
   optional string policy_keys_path = 2;

@@ -90,6 +90,11 @@ func main() {
 		}
 	})
 
+	// TODO(sid):  This does not pass application arguments like -domain_config
+	// or path to the called program (like tao_lauch).  I don't see why all the
+	// arguments to tao_launch, for example, should be checked by tao.  We should
+	// sure that tao_launch also passes the arguments to the launched program as
+	// should linux_host.  --- jlm
 	var args []string
 	cmd := "help"
 	for i := 1; i < len(os.Args); i++ {

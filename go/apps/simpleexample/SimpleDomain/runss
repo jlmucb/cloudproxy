@@ -1,5 +1,4 @@
 #
 source ./defines
-#sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleServer –pass xxx --domain_config="/Domains/domain.simpleexample/tao.config" --path="/Domains/domain.simpleexample/SimpleServer" &
-sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleServer –pass xxx -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleServer" &
+sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleServer -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleServer" &
 

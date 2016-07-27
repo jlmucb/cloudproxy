@@ -1,7 +1,4 @@
 #
 source ./defines
-# $BINPATH/tao run $BINPATH/simpleclient &
-sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/simpleclient_cc.exe \
--domain_config /Domains/domain.simpleexample/tao.config \
--path /Domains/domain.simpleexample/SimpleClientCpp &
+sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/simpleclient_cc.exe -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleClientCpp" &
 

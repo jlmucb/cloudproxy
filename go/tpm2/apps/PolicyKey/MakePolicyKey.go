@@ -31,11 +31,16 @@ import (
 // primary key, and quoting key for cloudproxy
 // and makes their handles permanent.
 func main() {
+	// TODO(jlm): Policy key is always ECDSA for now but the key type should be
+	// specified and we should support other types.
 	keySize := flag.Int("modulus size",  2048, "Modulus size for keys")
+	// TODO(jlm): The default value here is probably wrong.
 	policyKeyFile := flag.String("Policy save file", "policy.go.bin",
 		"policy save file")
+	// TODO(jlm): Should this be "xxx" to be consistent with other examples?
 	policyKeyPassword := flag.String("Policy key password", "xxzzy",
 		"policy key password")
+	// TODO(jlm): The default value here is probably wrong.
 	policyCertFile := flag.String("Policy cert save file", "policy.cert.go.der",
 		"policy cert save file")
 	flag.Parse()

@@ -30,6 +30,9 @@ import (
 
 // This program makes the endorsement certificate given the Policy key.
 func main() {
+	// TODO(jlm): The assumption here is that the endorsement key is always an RSA key.
+	// This is OK for now since TPM 1.2 can only have RSA keys and tao_tpm2 only supports
+	// RSA keys but this should be specified by a flag.
 	keySize := flag.Int("modulus_size", 2048, "Modulus size for keys")
 	keyName := flag.String("endorsement_key_name",
 		"JohnsHw", "endorsement key name")
@@ -39,14 +42,19 @@ func main() {
 		"policy.cert.go.der", "cert file")
 	policyKeyFile := flag.String("policy_key_file", "policy.go.bin",
 		"policy save file")
+	// TODO(jlm): Should default be "xxx" below?
 	policyKeyPassword := flag.String("policy_key_password", "xxzzy",
 		"policy key password")
+	// TODO(jlm): This should be policy key type.  Since we have a key file, we can actually tell
+	//	without this flag.
 	policyKeyIsEcdsa := flag.Bool("policy_key_is_ecdsa", false, "Whether the policy key is a ECDSA key")
+	// TODO(jlm): Should this be "./policy_keys/"?
 	policyKeyDir := flag.String("policy_key_dir", "./keys/", "Path to policy keys")
 	flag.Parse()
 	fmt.Printf("Policy key password: %s\n", *policyKeyPassword)
 
-	// TODO
+	// TODO(jlm): Should this be the pcr's measured by the tpm (17, 18) or should it be empty?
+	// In any case, {7} is wrong.
 	pcrs := []int{7}
 
 	// Open tpm
@@ -64,6 +72,8 @@ func main() {
 		return
 	}
 
+	// TODO(jlm): Currently a year.  This should be specified in a flag witht the
+	//	default being a year.
 	var notBefore time.Time
 	notBefore = time.Now()
 	validFor := 365 * 24 * time.Hour

@@ -26,9 +26,12 @@ import (
 )
 
 var simpleCfg = flag.String("domain_config",
-	"./tao.config",
+	// "./tao.config",
+	"/Domains/domain.simpleexample/tao.config",
 	"path to tao configuration")
-var simpleClientPath = flag.String("path", "./SimpleClient", "path to SimpleClient files")
+var simpleClientPath = flag.String("path",
+	"/Domains/domain.simpleexample/SimpleClient",
+	"path to SimpleClient files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string

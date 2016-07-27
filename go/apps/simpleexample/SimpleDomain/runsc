@@ -1,5 +1,5 @@
 #
 source ./defines
 # $BINPATH/tao run $BINPATH/simpleclient &
-sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleClient &
+sudo $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleClient --domain_config="/Domains/domain.simpleexample/tao.config" --path="/Domains/domain.simpleexample/SimpleClient" &
 

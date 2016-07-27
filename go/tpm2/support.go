@@ -37,6 +37,8 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// TODO(jlm): Remove Printfs (most should be logs).
+
 func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 	cert, err := x509.ParseCertificate(derCert)
 	if err != nil {

@@ -27,6 +27,8 @@ import (
 	"time"
 )
 
+// TODO(jlm): Remove Printf's.
+
 const (
 	RootKeyHandle uint32 = 0x810003e8
 	QuoteKeyHandle uint32 =  0x810003e9

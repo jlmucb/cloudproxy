@@ -39,6 +39,10 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// TODO(jlm): Most of the remaining Printf's in this file should change to log
+//	messages.  There are still some debug prints that should be removed.  Do
+//	this as soon as all the tpm2 tests are working.
+
 func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	// in should just be a sequence of digest values
 	return ComputeHashValue(alg, in)
@@ -50,6 +54,8 @@ func GetSerialNumber() (*big.Int) {
 	return sn
 }
 
+// TODO(jlm), ValidPcr: All calling functions should
+//	provide a function to be called in place of this.
 func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
 	return true
 }
@@ -2048,6 +2054,7 @@ func VerifyRsaQuote(to_quote []byte, rsaQuoteKey *rsa.PublicKey,
 	}
 
 	// PCR's valid?
+	// TODO(jlm): See ValidPcr note above.
 	if !ValidPcr(attest.PcrSelect, attest.PcrDigest) {
 		return false
 	}
@@ -2091,6 +2098,7 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	}
 
 	// PCR's valid?
+	// TODO(jlm): See ValidPcr note above.
 	if !ValidPcr(attest.PcrSelect, attest.PcrDigest) {
 		return false
 	}

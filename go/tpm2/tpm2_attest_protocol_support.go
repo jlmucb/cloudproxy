@@ -35,6 +35,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+// TODO(jlm): Remove Printf's.
+
 func CreateTemporaryChannelKey() (*rsa.PrivateKey, []byte, error) {
 	requestingKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

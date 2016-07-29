@@ -15,22 +15,21 @@ package main
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/tls"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"math/big"
 	"net"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/domain_policy"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/domain_policy"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -39,13 +38,12 @@ var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "xxx", "The domain password")
 var configPath = flag.String("config",
 	"/Domains/domain.simpleexample/tao.config", "The Tao domain config")
-var servicePath = flag.String("service path",
+var servicePath = flag.String("service_path",
 	"/Domains/domain.simpleexample/SimpleDomainService", "The Tao domain config")
 
 var SerialNumber int64
 
 func IsAuthenticationValid(name *string) bool {
-fmt.Printf("IsAuthenticationValid\n")
 	log.Printf("simpledomainservice, IsAuthenticationValid name is %s\n", *name)
 	if name == nil {
 		return false
@@ -56,7 +54,6 @@ fmt.Printf("IsAuthenticationValid\n")
 
 // First return is terminate flag.
 func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, error) {
-fmt.Printf("DomainRequest\n")
 	log.Printf("DomainRequest\n")
 
 	// Expect a request with attestation from client.
@@ -64,18 +61,18 @@ fmt.Printf("DomainRequest\n")
 	var request domain_policy.DomainCertRequest
 	err := ms.ReadMessage(&request)
 	if err != nil {
-		log.Printf("DomainRequest: Couldn't read attestation from channel:", err)
+		log.Printf("DomainRequest: Couldn't read attestation from channel. Error : %v", err)
 		log.Printf("\n")
 		return false, err
 	}
 
 	var a tao.Attestation
 	err = proto.Unmarshal(request.Attestation, &a)
-	if request.KeyType == nil  {
+	if request.KeyType == nil {
 		log.Printf("Domain: Empty key type")
 		return false, errors.New("Empty key type")
 	}
-	if *request.KeyType != "ECDSA"  {
+	if *request.KeyType != "ECDSA" {
 		log.Printf("Domain: bad key type")
 		return false, errors.New("Domain: bad key type")
 	}
@@ -87,7 +84,7 @@ fmt.Printf("DomainRequest\n")
 
 	// Get hash of the public key subject.
 	serializedKey, err := domain_policy.SerializeEcdsaKeyToInternalName(subjectPublicKey.(*ecdsa.PublicKey))
-	if err!= nil || serializedKey == nil {
+	if err != nil || serializedKey == nil {
 		log.Printf("DomainRequest: Can't serialize key to internal format\n")
 		return false, errors.New("DomainRequest: Can't serialize key to internal format")
 	}
@@ -96,13 +93,13 @@ fmt.Printf("DomainRequest\n")
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	// TODO(jlm): Change this.
 	err = tao.ValidatePeerAttestation(&a, peerCert, guard)
-/*
-	if err != nil {
-		log.Printf("Domain: RequestCouldn't validate peer attestation:", err)
-		return false, err
-	}
-fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
-*/
+	/*
+	   if err != nil {
+	       log.Printf("Domain: RequestCouldn't validate peer attestation:", err)
+	   		 return false, err
+	   }
+	   fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
+	*/
 
 	// Sign cert
 
@@ -136,78 +133,76 @@ fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 		log.Printf("DomainRequest: Can't get subject principal\n")
 		return false, errors.New("Can't get principal name from verifier")
 	}
-	programPrincipalName:= programPrincipal.String()
+	programPrincipalName := programPrincipal.String()
 	verified := IsAuthenticationValid(&programPrincipalName)
 	if !verified {
 		log.Printf("DomainRequest: name verification failed\n")
 		return false, err
 	}
-fmt.Printf("\nSimpleDomainService: key principal: %s, program principal: %s\n", clientKeyPrincipal, programPrincipalName)
+	log.Printf("SimpleDomainService: key principal: %s, program principal: %s\n", clientKeyPrincipal, programPrincipalName)
 
 	// Is the delegate the same key as was presented in the name in the request?
 	namedHash := clientKeyPrincipal.KeyHash.(auth.Bytes)
-fmt.Printf("\nkeyhash: %x\n", namedHash)
+	log.Printf("keyhash: %x\n", namedHash)
 	if bytes.Compare(subjectKeyHash[:], namedHash) != 0 {
-		log.Printf("DomainRequest: named hash is wrong\n")
-fmt.Printf("DomainRequest: named hash is wrong, named: %x, computed: %x\n",
+		log.Printf("DomainRequest: named hash is wrong, named: %x, computed: %x\n",
 			namedHash, subjectKeyHash)
-		return false, errors.New("DomainRequest: named hash is wrong") 
+		return false, errors.New("DomainRequest: named hash is wrong")
 	}
 
 	// Sign program certificate.
 
 	notBefore := time.Now()
-	validFor := 365*24*time.Hour
-        notAfter := notBefore.Add(validFor)
+	validFor := 365 * 24 * time.Hour
+	notAfter := notBefore.Add(validFor)
 
 	us := "US"
 	issuerName := "Google"
 	localhost := "localhost"
-	x509SubjectName :=  &pkix.Name {
+	x509SubjectName := &pkix.Name{
 		Organization:       []string{programPrincipalName},
 		OrganizationalUnit: []string{programPrincipalName},
-		CommonName:	    localhost,
-		Country:	    []string{us},
+		CommonName:         localhost,
+		Country:            []string{us},
 	}
-	x509IssuerName :=  &pkix.Name {
-		Organization:       []string {issuerName},
-		OrganizationalUnit: []string {issuerName},
-		CommonName:	    localhost,
-		Country:	    []string{us},
+	x509IssuerName := &pkix.Name{
+		Organization:       []string{issuerName},
+		OrganizationalUnit: []string{issuerName},
+		CommonName:         localhost,
+		Country:            []string{us},
 	}
 
 	// issuerName := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
 	var sn big.Int
-	certificateTemplate := x509.Certificate {
-		SerialNumber:		&sn,
-		Issuer:			*x509IssuerName,
-		Subject:		*x509SubjectName,
-		NotBefore:		notBefore,
-		NotAfter:		notAfter,
-		KeyUsage:		x509.KeyUsageCertSign |
-		x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
+	certificateTemplate := x509.Certificate{
+		SerialNumber: &sn,
+		Issuer:       *x509IssuerName,
+		Subject:      *x509SubjectName,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
+		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
 	}
 
 	clientCert, err := x509.CreateCertificate(rand.Reader, &certificateTemplate,
-                            policyKey.Cert, subjectPublicKey,
-                            policyKey.SigningKey.GetSigner())
+		policyKey.Cert, subjectPublicKey,
+		policyKey.SigningKey.GetSigner())
 	if err != nil {
-		fmt.Printf("Can't create client certificate: ", err, "\n")
+		log.Printf("Can't create client certificate. Error: %v\n", err)
 		return false, err
 	}
 
 	zero := int32(0)
-	var ra domain_policy.DomainCertResponse;
-        ra.Error = &zero
-        ra.SignedCert= clientCert
+	var ra domain_policy.DomainCertResponse
+	ra.Error = &zero
+	ra.SignedCert = clientCert
 
 	// Add cert chain (just policy cert for now).
-	ra.CertChain= append(ra.CertChain, policyKey.Cert.Raw)
+	ra.CertChain = append(ra.CertChain, policyKey.Cert.Raw)
 
 	_, err = ms.WriteMessage(&ra)
 	if err != nil {
-		log.Printf("DomainRequest: Couldn't return the attestation on the channel: ", err)
+		log.Printf("DomainRequest: Couldn't return the attestation on the channel. Error: %v", err)
 		log.Printf("\n")
 		return false, err
 	}
@@ -250,7 +245,7 @@ func main() {
 	}
 	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
 	policyKey := domain.Keys
-fmt.Printf("\nSimpleDomainService: policyKey: %x\n", policyKey)
+	log.Printf("SimpleDomainService: policyKey: %v\n", policyKey)
 
 	tlsc, err := tao.EncodeTLSCert(keys)
 	if err != nil {
@@ -273,19 +268,16 @@ fmt.Printf("\nSimpleDomainService: policyKey: %x\n", policyKey)
 	defer sock.Close()
 
 	log.Printf("simpledomainservice: accepting connections\n")
-fmt.Printf("\n\nsimpledomainservice: accepting connections\n")
 	for {
 		conn, err := sock.Accept()
 		if conn == nil {
-fmt.Printf("simpledomainservice: Empty connection\n")
 			log.Printf("simpledomainservice: Empty connection\n")
 			return
 		} else if err != nil {
-fmt.Printf("simpledomainservice: Couldn't accept a connection on %s: %s\n", *addr, err)
 			log.Printf("simpledomainservice: Couldn't accept a connection on %s: %s\n", *addr, err)
 			return
 		}
 		go DomainRequest(conn, policyKey, domain.Guard)
 	}
-	log.Printf("simpledomainservice: finishing\n")
+	log.Println("simpledomainservice: finishing")
 }

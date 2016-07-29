@@ -30,15 +30,15 @@ import (
 // TODO(jlm): Remove Printf's.
 
 const (
-	RootKeyHandle uint32 = 0x810003e8
-	QuoteKeyHandle uint32 =  0x810003e9
-	RollbackKeyHandle uint32 =  0
+	RootKeyHandle     uint32 = 0x810003e8
+	QuoteKeyHandle    uint32 = 0x810003e9
+	RollbackKeyHandle uint32 = 0
 )
 
 // return handle, policy digest
 func AssistCreateSession(rw io.ReadWriter, hash_alg uint16,
-		pcrs []int) (Handle, []byte, error) {
-	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	pcrs []int) (Handle, []byte, error) {
+	nonceCaller := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	var secret []byte
 	sym := uint16(AlgTPM_ALG_NULL)
 
@@ -81,7 +81,7 @@ func AssistSeal(rw io.ReadWriter, parentHandle Handle, toSeal []byte,
 		policy_digest, parentPassword, ownerPassword, toSeal,
 		pcrs, keyedhashparms)
 	if err != nil {
-		return nil, nil, errors.New("CreateSealed fails") 
+		return nil, nil, errors.New("CreateSealed fails")
 	}
 	return private_blob, public_blob, nil
 }
@@ -125,14 +125,14 @@ func GetRsaKeyFromHandle(rw io.ReadWriter, handle Handle) (*rsa.PublicKey, error
 }
 
 func GenerateHWCert(rw io.ReadWriter, handle Handle, hardwareName string,
-		notBefore time.Time, notAfter time.Time, serialNumber *big.Int,
-		derPolicyCert []byte, policyKey *rsa.PrivateKey) ([]byte, error) {
-	hwPublic, err := GetRsaKeyFromHandle(rw, handle) 
+	notBefore time.Time, notAfter time.Time, serialNumber *big.Int,
+	derPolicyCert []byte, policyKey *rsa.PrivateKey) ([]byte, error) {
+	hwPublic, err := GetRsaKeyFromHandle(rw, handle)
 	if err != nil {
 		return nil, errors.New("Can't get endorsement public key")
 	}
 	return GenerateCertFromKeys(policyKey, derPolicyCert, hwPublic,
-		hardwareName, hardwareName, serialNumber, notBefore,notAfter)
+		hardwareName, hardwareName, serialNumber, notBefore, notAfter)
 }
 
 func CreateEndorsement(rw io.ReadWriter, modSize uint16, pcrs []int) (Handle, []byte, error) {
@@ -143,7 +143,7 @@ func CreateEndorsement(rw io.ReadWriter, modSize uint16, pcrs []int) (Handle, []
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
 	return CreatePrimary(rw, uint32(OrdTPM_RH_ENDORSEMENT), pcrs,
-			"", "", primaryparms)
+		"", "", primaryparms)
 }
 
 func FormatTpm2Quote(stmt []byte, pcrs []int, pcrVals [][]byte) ([]byte, error) {
@@ -185,8 +185,8 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVal []byte,
 
 	// decrypt signature
 	var E *big.Int
-	E  = new(big.Int)
-	E.SetBytes([]byte{0,1,0,1})
+	E = new(big.Int)
+	E.SetBytes([]byte{0, 1, 0, 1})
 	x := new(big.Int)
 	x.SetBytes(sig)
 	z := new(big.Int)
@@ -205,8 +205,8 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVal []byte,
 // This program creates a key hierarchy consisting of a
 // primary key and quoting key for cloudproxy.
 func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
-		keySize uint16, hash_alg_id uint16,
-		quotePassword string) (Handle, Handle, Handle, error) {
+	keySize uint16, hash_alg_id uint16,
+	quotePassword string) (Handle, Handle, Handle, error) {
 
 	// CreatePrimary
 	var empty []byte
@@ -219,7 +219,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
 	if err != nil {
 		return Handle(0), Handle(0), Handle(0),
-				errors.New("CreatePrimary failed")
+			errors.New("CreatePrimary failed")
 	}
 
 	// CreateKey (Quote Key)
@@ -231,7 +231,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		uint32(rootHandle), pcrs, "", quotePassword, keyparms)
 	if err != nil {
 		return Handle(0), Handle(0), Handle(0),
-				errors.New("Can't create quote key")
+			errors.New("Can't create quote key")
 	}
 
 	// Load
@@ -239,7 +239,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		"", quote_public, quote_private)
 	if err != nil {
 		return Handle(0), Handle(0), Handle(0),
-				errors.New("Load failed")
+			errors.New("Load failed")
 	}
 
 	// CreateKey
@@ -252,14 +252,14 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		uint32(rootHandle), pcrs, "", quotePassword, storeparms)
 	if err != nil {
 		return Handle(0), Handle(0), Handle(0),
-				errors.New("Can't create store key")
+			errors.New("Can't create store key")
 	}
 
 	// Load
 	storeHandle, _, err := Load(rw, rootHandle, "", "", store_public, store_private)
 	if err != nil {
 		return Handle(0), Handle(0), Handle(0),
-				errors.New("Load failed")
+			errors.New("Load failed")
 	}
 
 	return rootHandle, quoteHandle, storeHandle, nil
@@ -267,12 +267,12 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 
 // and makes their handles permanent.
 func PersistTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
-		hash_alg_id uint16, rootHandle uint32, quoteHandle uint32,
-		quotePassword string) (error) {
+	hash_alg_id uint16, rootHandle uint32, quoteHandle uint32,
+	quotePassword string) error {
 
 	// Remove old permanent handles
 	err := EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(rootHandle),
-			Handle(rootHandle))
+		Handle(rootHandle))
 	if err != nil {
 		fmt.Printf("Evict existing permanant primary handle failed (OK)\n")
 	}
@@ -283,19 +283,19 @@ func PersistTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 	}
 
 	/*
-	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpQuoteHandle,
-			Handle(quoteHandle))
-	if err != nil {
-		FlushContext(rw, tmpQuoteHandle)
-		return errors.New("Install new quote handle failed")
-	}
+		err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpQuoteHandle,
+				Handle(quoteHandle))
+		if err != nil {
+			FlushContext(rw, tmpQuoteHandle)
+			return errors.New("Install new quote handle failed")
+		}
 	*/
 	return nil
 }
 
 func InitTpm2Keys(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16,
-		quotePassword string, rootFileName string, quoteFileName string,
-		storeFileName string) (error) {
+	quotePassword string, rootFileName string, quoteFileName string,
+	storeFileName string) error {
 
 	rootHandle, quoteHandle, storeHandle, err := CreateTpm2KeyHierarchy(rw, pcrs,
 		keySize, hash_alg_id, quotePassword)
@@ -328,7 +328,7 @@ func InitTpm2Keys(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint
 }
 
 func RestoreTpm2Keys(rw io.ReadWriter, quotePassword string, rootFileName string,
-		quoteFileName string, storeFileName string) (Handle, Handle, Handle, error) {
+	quoteFileName string, storeFileName string) (Handle, Handle, Handle, error) {
 
 	rootSaveArea, err := ioutil.ReadFile(rootFileName)
 	if err != nil {

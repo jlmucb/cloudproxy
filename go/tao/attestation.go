@@ -95,12 +95,17 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract TPM PCRs from attestation: %s", err)
 		}
-
+		// Note: Hash algorithm used below must match hash algorithm in the signing scheme
+		// used for the quote key.
+		expectedPcrDigest, err := tpm2.ComputePcrDigest(tpm2.AlgTPM_ALG_SHA1, pcrVal)
+		if err != nil {
+			return auth.Prin{}, newError("tao: Error computing PCR digest: %s", err)
+		}
 		ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement,
-			pcrNums, pcrVal, a.Tpm2QuoteStructure, a.Signature,
+			pcrNums, expectedPcrDigest, a.Tpm2QuoteStructure, a.Signature,
 			key)
 		if err != nil {
-			return auth.Prin{}, newError("tao: TPM quote verification error")
+			return auth.Prin{}, newError("tao: TPM quote verification error: %s", err)
 		}
 		if !ok {
 			return auth.Prin{}, newError("tao: TPM quote failed verification")

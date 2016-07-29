@@ -649,7 +649,6 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 
 // extractPCRs gets the PCRs from a tpm principal.
 func extractTpm2PCRs(p auth.Prin) ([]int, []byte, error) {
-	return nil, nil, nil
 	if p.Type != "tpm2" {
 		return nil, nil, errors.New("can only extract PCRs from a TPM principal")
 	}

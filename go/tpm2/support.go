@@ -34,10 +34,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 )
-
-// TODO(jlm): Remove Printfs (most should be logs).
 
 func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 	cert, err := x509.ParseCertificate(derCert)
@@ -90,8 +89,8 @@ func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte
 		return nil, errors.New("Can't parse signer certificate")
 	}
 
-	fmt.Printf("Serial: %x\n", serialNumber)
-	fmt.Printf("notBefore: %s, notAfter: %s\n", notBefore, notAfter)
+	// fmt.Printf("Serial: %x\n", serialNumber)
+	// fmt.Printf("notBefore: %s, notAfter: %s\n", notBefore, notAfter)
 	signTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name {
@@ -109,6 +108,7 @@ func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte
 	derSignedCert, err := x509.CreateCertificate(rand.Reader, &signTemplate, signingCert,
 		subjectKey, signingKey)
 	if err != nil {
+		glog.Infof("GenerateCertFromKeys: %s", err)
 		fmt.Printf("%s\n", err)
 		return nil, errors.New("Can't CreateCertificate")
 	}
@@ -248,6 +248,7 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 		"PROTECT", contextV, contextV, 512)
 	if err != nil {
 		fmt.Printf("EncryptDataWithCredential can't derive keys\n")
+		glog.Infof("EncryptDataWithCredential: can't derive keys")
 		return nil, nil, errors.New("KDFA failed")
 	}
 	var calculatedHmac []byte
@@ -275,6 +276,7 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 		calculatedHmac = hm.Sum(nil)
 	} else {
 		fmt.Printf("EncryptDataWithCredential unrecognized hmac alg\n")
+		glog.Infof("EncryptDataWithCredential: unrecognized hmac alg")
 		return nil, nil, errors.New("Unsupported Hash alg")
 	}
 
@@ -339,7 +341,7 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool, error) {
 		return false, errors.New("Signing ParseCertificate fails")
 	}
 	roots.AddCert(policy_cert)
-	fmt.Printf("Root cert: %x\n", der_signing_cert)
+	// fmt.Printf("Root cert: %x\n", der_signing_cert)
 
 	// Verify key
 	cert, err := x509.ParseCertificate(der_cert)

@@ -301,7 +301,7 @@ func ProcessQuoteDomainRequest(request AttestCertRequest, policyKey *ecdsa.Priva
 	}
 	rsaQuoteKey := subjectKey.(*rsa.PublicKey)
 	if !VerifyRsaQuote(hashedQuoteKey, rsaQuoteKey,
-		hashAlgId, request.AttestBlob, request.SigBlob) {
+		hashAlgId, request.AttestBlob, request.SigBlob, ValidPcr) {
 		return nil, errors.New("Can't verify quote")
 	}
 

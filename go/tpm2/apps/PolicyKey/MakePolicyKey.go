@@ -38,7 +38,7 @@ func main() {
 	policyKeyFile := flag.String("Policy save file", "policy.go.bin",
 		"policy save file")
 	// TODO(jlm): Should this be "xxx" to be consistent with other examples?
-	policyKeyPassword := flag.String("Policy key password", "xxzzy",
+	policyKeyPassword := flag.String("Policy key password", "xxx",
 		"policy key password")
 	// TODO(jlm): The default value here is probably wrong.
 	policyCertFile := flag.String("Policy cert save file", "policy.cert.go.der",

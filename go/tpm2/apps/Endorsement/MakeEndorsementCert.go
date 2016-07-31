@@ -43,7 +43,7 @@ func main() {
 	policyKeyFile := flag.String("policy_key_file", "policy.go.bin",
 		"policy save file")
 	// TODO(jlm): Should default be "xxx" below?
-	policyKeyPassword := flag.String("policy_key_password", "xxzzy",
+	policyKeyPassword := flag.String("policy_key_password", "xxx",
 		"policy key password")
 	// TODO(jlm): This should be policy key type.  Since we have a key file, we can actually tell
 	//	without this flag.

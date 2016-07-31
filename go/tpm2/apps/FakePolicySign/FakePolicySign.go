@@ -37,7 +37,7 @@ import (
 func main() {
 	policyKeyFile := flag.String("policyKeyFile", "policy_private.bin",
 		"policy save file")
-	policyKeyPassword := flag.String("policyKeyPassword", "xxzzy",
+	policyKeyPassword := flag.String("policyKeyPassword", "xxx",
 		"policy key password")
 	policyCertFile := flag.String("policyCertFile", "policy_cert.der",
 		"policy cert save file")

@@ -1,0 +1,22 @@
+#
+source ./defines
+if [[ -e $DOMAINTPM1/SimpleClient ]]
+then
+  echo "$DOMAINTPM1/SimpleClient exists"
+  rm $DOMAINTPM1/SimpleClient/*
+else
+  sudo mkdir $DOMAINTPM1/SimpleClient
+  echo "$DOMAINTPM1/SimpleClient created"
+fi
+if [[ -e $DOMAINTPM1/SimpleServer ]]
+then
+  echo "$DOMAINTPM1/SimpleServer exists"
+  rm $DOMAINTPM1/SimpleServer/*
+else
+  sudo mkdir $DOMAINTPM1/SimpleServer
+  echo "$DOMAINTPM1/SimpleServer created"
+fi
+sudo $BINPATH/tao domain init -tao_domain $DOMAINTPM1 -config_template $TEMPLATETPM1 -pub_domain_address "127.0.0.1" -pass xxx
+sudo $BINPATH/tao domain policy -add_host -add_programs -add_linux_host -add_guard -tao_domain \
+      $DOMAINTPM1 -pass xxx -config_template $TEMPLATETPM1
+sudo $BINPATH/Endorsement -policy_key_file ./policy_keys/signer -policy_key_dir ./policy_keys -policy_key_password xxx -policy_key_is_ecdsa

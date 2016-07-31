@@ -1,0 +1,18 @@
+#
+source ./defines
+./inittpm2domain
+sleep 1
+sudo $BINPATH/tao host init -tao_domain .  -stacked -parent_type TPM2 -hosting proces
+sleep 1
+sudo $BINPATH/tao host start -tao_domain . &
+sleep 1
+$BINPATH/domain_server -pass xxx
+sleep 1
+$BINPATH/tao run -tao_domain . -domain_config "$DOMAINTPM2/tao.config" \
+-path "/$DOMAINTPM2/SimpleServer" $BINPATH/SimpleServer \
+-use_simpledomainservice=false &
+sleep 1
+$BINPATH/tao run -tao_domain . -domain_config "$DOMAINTPM2/tao.config" \
+-path "/$DOMAINTPM2/SimpleServer" $BINPATH/SimpleClient \
+-use_simpledomainservice=false &
+

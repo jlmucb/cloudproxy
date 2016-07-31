@@ -4,4 +4,7 @@ DOMAINROOT=/Domain
 DOMAIN=/Domains/domain.simpleexample
 TEMPLATE=/Domains/domain_template.simpleexample
 BINPATH=~/bin
+OLD_TEMPLATETPM2=$TAO_HOST_DOMAIN_DIR/domain_template.simpleexampletpm2
+DOMAINTPM2=/Domains/domain.simpleexampletpm2
+TEMPLATETPM2=/Domains/domain_template.simpleexampletpm2
 

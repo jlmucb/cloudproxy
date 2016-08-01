@@ -17,4 +17,5 @@ rm $DOMAINTPM2/SimpleServer/*
 rm $DOMAINTPM2/SimpleClientCpp/*
 
 ps aux | fgrep "simple"
+ps aux | fgrep "Simple"
 

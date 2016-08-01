@@ -1,15 +1,15 @@
 #
 source ./defines
-sudo $BINPATH/tao host init -tao_domain . -stacked -parent_type TPM2 -hosting process
+sudo $BINPATH/tao host init -tao_domain $DOMAINTPM2 -stacked -parent_type TPM2 -hosting process
 sleep 1
-sudo $BINPATH/tao host start -tao_domain . &
+sudo $BINPATH/tao host start -tao_domain $DOMAINTPM2 &
 sleep 1
-sudo $BINPATH/tao run -tao_domain . $BINPATH/SimpleDomainService \
+sudo $BINPATH/tao run -tao_domain $DOMAINTPM2 $BINPATH/SimpleDomainService \
 -config tao.config -service_path $DOMAINTPM2/SimpleDomainService &
 sleep 1
-sudo $BINPATH/tao run -tao_domain . -domain_config "$DOMAINTPM2/tao.config" \
+sudo $BINPATH/tao run -tao_domain $DOMAINTPM2 -domain_config "$DOMAINTPM2/tao.config" \
 -path "/$DOMAINTPM2/SimpleServer" -service_path $DOMAINTPM2/SimpleServer &
 sleep 1
-sudo $BINPATH/tao run -tao_domain .  -domain_config "$DOMAINTPM2/tao.config" \
+sudo $BINPATH/tao run -tao_domain $DOMAINTPM2  -domain_config "$DOMAINTPM2/tao.config" \
 -path "/$DOMAINTPM2/SimpleClient" -service_path $DOMAINTPM2/SimpleClient &
 

@@ -1,5 +1,22 @@
 #
 source ./defines
+
+if [[ -e $DOMAINTPM2 ]]
+then
+  echo "$DOMAINTPM2 exists"
+else
+  mkdir $DOMAINTPM2
+  echo "$DOMAINTPM2 created"
+fi
+
+if [[ -e $TEMPLATETPM2]]
+then
+  echo "$DOMAINTPM2/domain_template.simpleexampletpm2 exists"
+else
+  cp $OLD_TEMPLATETPM2 $TEMPLATETPM2
+  echo "$DOMAINTPM2/domain_template.simpleexampletpm2 copied"
+fi
+
 if [[ -e $DOMAINTPM2/SimpleClient ]]
 then
   echo "$DOMAINTPM2/SimpleClient exists"
@@ -8,6 +25,7 @@ else
   mkdir $DOMAINTPM2/SimpleClient
   echo "$DOMAINTPM2/SimpleClient created"
 fi
+
 if [[ -e $DOMAINTPM2/SimpleServer ]]
 then
   echo "$DOMAINTPM2/SimpleServer exists"
@@ -16,6 +34,7 @@ else
   mkdir $DOMAINTPM2/SimpleServer
   echo "$DOMAINTPM2/SimpleServer created"
 fi
+
 sudo $BINPATH/tao domain init -tao_domain $DOMAINTPM2 -config_template $TEMPLATETPM2 -pub_domain_address "127.0.0.1" -pass xxx
 sudo $BINPATH/tao domain policy -add_host -add_programs -add_linux_host -add_guard -tao_domain \
       $DOMAINTPM2 -pass xxx -config_template $TEMPLATETPM2

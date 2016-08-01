@@ -1,5 +1,21 @@
 #
 source ./defines
+if [[ -e $DOMAINTPM1 ]]
+then
+  echo "$DOMAINTPM1 exists"
+else
+  mkdir $DOMAINTPM1
+  echo "$DOMAINTPM1 created"
+fi
+
+if [[ -e $TEMPLATETPM1]]
+then
+  echo "$DOMAINTPM1/domain_template.simpleexampletpm1 exists"
+else
+  cp $OLD_TEMPLATETPM1 $TEMPLATETPM1
+  echo "$DOMAINTPM1/domain_template.simpleexampletpm1 copied"
+fi
+
 if [[ -e $DOMAINTPM1/SimpleClient ]]
 then
   echo "$DOMAINTPM1/SimpleClient exists"
@@ -8,6 +24,7 @@ else
   mkdir $DOMAINTPM1/SimpleClient
   echo "$DOMAINTPM1/SimpleClient created"
 fi
+
 if [[ -e $DOMAINTPM1/SimpleServer ]]
 then
   echo "$DOMAINTPM1/SimpleServer exists"

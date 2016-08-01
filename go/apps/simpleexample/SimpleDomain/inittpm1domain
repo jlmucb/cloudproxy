@@ -8,7 +8,7 @@ else
   echo "$DOMAINTPM1 created"
 fi
 
-if [[ -e $TEMPLATETPM1]]
+if [[ -e $TEMPLATETPM1 ]]
 then
   echo "$DOMAINTPM1/domain_template.simpleexampletpm1 exists"
 else

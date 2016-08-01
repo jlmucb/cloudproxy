@@ -1,9 +1,17 @@
 #
 source ./defines
-sudo $BINPATH/tao host init -tao_domain $DOMAINTPM1 -stacked -parent_type TPM1 -hosting process
-sleep 1
-sudo $BINPATH/tao host start -tao_domain $DOMAINTPM1 &
-sleep 1
+
+# These should be run as root
+$BINPATH/tao host init -tao_domain $DOMAINTPM1 -stacked -parent_type TPM1 -hosting process
+sleep 5
+$BINPATH/tao host start -tao_domain $DOMAINTPM1 &
+sleep 5
+
+#
+# Starting the programs should be done as the unprivileged user it runs for
+# to provide isolation.
+# We run as root for conveniencea to avoid script clutter.
+#
 $BINPATH/domain_server -pass xxx
 sleep 1
 $BINPATH/tao run -tao_domain $DOMAINTPM1 -domain_config "$DOMAINTPM1/tao.config" \

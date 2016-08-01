@@ -23,6 +23,7 @@ config: {
   tpm_info: {
     tpm_path: "/dev/tpm0"
     aik_path: "aikblob"
+    aik_cert_path: "aik_cert"
     pcrs: "17,18"
   }
 }

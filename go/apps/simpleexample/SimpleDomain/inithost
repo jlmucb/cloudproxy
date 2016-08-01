@@ -1,4 +1,0 @@
-#
-source ./defines
-sudo $BINPATH/tao host init -tao_domain $DOMAIN -hosting process -root -pass xxx
-

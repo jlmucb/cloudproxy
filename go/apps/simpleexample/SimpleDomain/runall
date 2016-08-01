@@ -1,17 +1,20 @@
 #
-./initdomain
-sleep 1
-./inithost
-sleep 1
-./runhost
-sleep 1
+source ./defines
+
+# These should be run as root.
+$BINPATH/tao host init -tao_domain $DOMAIN -hosting process -root -pass xxx
+sleep 5
+$BINPATH/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass xxx &
+sleep 5
+
 #
-# runss and runsc should be called as different unprivileged users for isolation,
-# we run as root for convenience.  runds could also be run as third user.
+# Starting the programs should be done as the unprivileged user it runs for
+# to provide isolation.
+# We run as root for conveniencea to avoid script clutter.
 #
-./runds
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleDomainService -password xxx &
 sleep 1
-./runss
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleServer -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleServer" &
 sleep 1
-./runsc
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleClient -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleClient" &
 

@@ -1,23 +1,6 @@
 #
 source ./defines
 
-if [[ -e $DOMAINTPM2 ]]
-then
-  echo "$DOMAINTPM2 exists"
-else
-  mkdir $DOMAINTPM2
-  mkdir $DOMAINTPM2/policy_keys
-  echo "$DOMAINTPM2 created"
-fi
-
-if [[ -e $TEMPLATETPM2 ]]
-then
-  echo "$DOMAINTPM2/domain_template.simpleexampletpm2 exists"
-else
-  cp $OLD_TEMPLATETPM2 $TEMPLATETPM2
-  echo "$DOMAINTPM2/domain_template.simpleexampletpm2 copied"
-fi
-
 if [[ -e $DOMAINTPM2/SimpleDomainService ]]
 then
   echo "$DOMAINTPM2/SimpleDomainService exists"
@@ -36,6 +19,15 @@ else
   echo "$DOMAINTPM2/SimpleClient created"
 fi
 
+if [[ -e $DOMAINTPM2/SimpleClientCpp ]]
+then
+  echo "$DOMAINTPM2/SimpleClientCpp exists"
+  rm $DOMAINTPM2/SimpleClientCpp/*
+else
+  mkdir $DOMAINTPM2/SimpleClientCpp
+  echo "$DOMAINTPM2/SimpleClientCpp created"
+fi
+
 if [[ -e $DOMAINTPM2/SimpleServer ]]
 then
   echo "$DOMAINTPM2/SimpleServer exists"
@@ -46,9 +38,11 @@ else
 fi
 
 $BINPATH/tao domain init -tao_domain $DOMAINTPM2 -config_template $TEMPLATETPM2 -pass xxx
-sudo $BINPATH/Endorsement -policy_key_dir $DOMAINTPM2/policy_keys \
+
+$BINPATH/Endorsement -policy_key_dir $DOMAINTPM2/policy_keys \
     -policy_key_password xxx -policy_key_is_ecdsa -endorsement_save_file $DOMAINTPM2/endorsement_cert
 $BINPATH/QuoteServer -pass xxx -path $DOMAINTPM2/policy_keys &
 echo -e "\nQuoteServer up and running\n"
+
 sleep 1
-sudo $BINPATH/tao host init -tao_domain $DOMAINTPM2 -stacked -parent_type TPM2 -hosting process
+$BINPATH/tao host init -tao_domain $DOMAINTPM2 -stacked -parent_type TPM2 -hosting process

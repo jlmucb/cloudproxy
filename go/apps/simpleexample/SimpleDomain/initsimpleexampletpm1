@@ -1,0 +1,28 @@
+#
+source ./defines
+
+if [[ -e $DOMAINTPM1 ]]
+then
+  echo "$DOMAINTPM1 exists"
+else
+  mkdir $DOMAINTPM1
+  mkdir $DOMAINTPM1/policy_keys
+  echo "$DOMAIN created"
+fi
+
+if [[ -e $TEMPLATETPM1 ]]
+then
+  echo "$TEMPLATETPM1 exists"
+else
+  cp $OLD_TEMPLATETPM1 $TEMPLATETPM1
+  echo "$OLDTEMPLATETPM1 copied to $TEMPLATETPM1"
+fi
+
+if [[ -e $DOMAINTPM1/linux_tao_host ]]
+then
+  echo "$DOMAINTPM1/linux_tao_host exists"
+else
+  mkdir $DOMAINTPM1/linux_tao_host
+  echo "$DOMAINTPM1/linux_tao_host created"
+fi
+

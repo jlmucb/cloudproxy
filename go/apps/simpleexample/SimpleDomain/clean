@@ -1,7 +1,20 @@
 #
-rm linux_tao_host/admin_socket
-rm ./SimpleClient/*
-rm ./SimpleServer/*
-rm ./SimpleClientCpp/*
+source ./defines
+
+rm $DOMAIN/linux_tao_host/admin_socket
+rm $DOMAIN/SimpleClient/*
+rm $DOMAIN/SimpleServer/*
+rm $DOMAIN/SimpleClientCpp/*
+
+rm $DOMAINTPM1/linux_tao_host/admin_socket
+rm $DOMAINTPM1/SimpleClient/*
+rm $DOMAINTPM1/SimpleServer/*
+rm $DOMAINTPM1/SimpleClientCpp/*
+
+rm $DOMAINTPM2/linux_tao_host/admin_socket
+rm $DOMAINTPM2/SimpleClient/*
+rm $DOMAINTPM2/SimpleServer/*
+rm $DOMAINTPM2/SimpleClientCpp/*
+
 ps aux | fgrep "simple"
 

@@ -1,20 +1,5 @@
 #
 source ./defines
-if [[ -e $DOMAINTPM1 ]]
-then
-  echo "$DOMAINTPM1 exists"
-else
-  mkdir $DOMAINTPM1
-  echo "$DOMAINTPM1 created"
-fi
-
-if [[ -e $TEMPLATETPM1 ]]
-then
-  echo "$DOMAINTPM1/domain_template.simpleexampletpm1 exists"
-else
-  cp $OLD_TEMPLATETPM1 $TEMPLATETPM1
-  echo "$DOMAINTPM1/domain_template.simpleexampletpm1 copied"
-fi
 
 if [[ -e $DOMAINTPM1/SimpleClient ]]
 then
@@ -25,6 +10,15 @@ else
   echo "$DOMAINTPM1/SimpleClient created"
 fi
 
+if [[ -e $DOMAINTPM1/SimpleClientCpp ]]
+then
+  echo "$DOMAINTPM1/SimpleClientCpp exists"
+  rm $DOMAINTPM1/SimpleClientCpp/*
+else
+  mkdir $DOMAINTPM1/SimpleClientCpp
+  echo "$DOMAINTPM1/SimpleClientCpp created"
+fi
+
 if [[ -e $DOMAINTPM1/SimpleServer ]]
 then
   echo "$DOMAINTPM1/SimpleServer exists"
@@ -33,8 +27,10 @@ else
   mkdir $DOMAINTPM1/SimpleServer
   echo "$DOMAINTPM1/SimpleServer created"
 fi
-sudo $BINPATH/tao domain init -tao_domain $DOMAINTPM1 -config_template $TEMPLATETPM1 -pub_domain_address "127.0.0.1" -pass xxx
-sudo $BINPATH/tao domain policy -add_host -add_programs -add_linux_host -add_guard -tao_domain \
-      $DOMAINTPM1 -pass xxx -config_template $TEMPLATETPM1
+
+$BINPATH/tao domain init -tao_domain $DOMAINTPM1 -config_template $TEMPLATETPM1 -pub_domain_address "127.0.0.1" -pass xxx
+
 # Replace with aiksigner?
-# sudo $BINPATH/Endorsement -policy_key_file ./policy_keys/signer -policy_key_dir ./policy_keys -policy_key_password xxx -policy_key_is_ecdsa
+genaik -blob $DOMAINTPM1/aikblob
+$BINPATH/aiksigner -aik_path $DOMAINTPM1/aikblob -policy_key_path $DOMAINTPM1/policy_keys \
+-password xxx -output_file $DOMAINTPM1/aik_cert

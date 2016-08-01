@@ -13,4 +13,5 @@ TEMPLATETPM2=$DOMAINTPM2/domain_template.simpleexampletpm2
 OLD_TEMPLATETPM1=$TAO_HOST_DOMAIN_DIR/domain_template.simpleexampletpm1
 DOMAINTPM1=/Domains/domain.simpleexampletpm1
 TEMPLATETPM1=/Domains/domain_template.simpleexampletpm1
+AIKBLOB=$DOMAINTPM1/aikblob
 

@@ -8,7 +8,7 @@ TEMPLATE=/Domains/domain_template.simpleexample
 #
 OLD_TEMPLATETPM2=$TAO_HOST_DOMAIN_DIR/domain_template.simpleexampletpm2
 DOMAINTPM2=/Domains/domain.simpleexampletpm2
-TEMPLATETPM2=/Domains/domain_template.simpleexampletpm2
+TEMPLATETPM2=$DOMAINTPM2/domain_template.simpleexampletpm2
 #
 OLD_TEMPLATETPM1=$TAO_HOST_DOMAIN_DIR/domain_template.simpleexampletpm1
 DOMAINTPM1=/Domains/domain.simpleexampletpm1

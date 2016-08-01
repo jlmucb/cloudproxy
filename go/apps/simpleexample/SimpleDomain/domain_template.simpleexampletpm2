@@ -25,6 +25,11 @@ config: {
     aik_path: "aikblob"
     pcrs: "17,18"
   }
+
+  tpm2_info: {
+    tpm2_device: "/dev/tpm0"
+    tpm2_pcrs: "17,18"
+  }
 }
 
 datalog_rules: "(forall P: forall Host: forall Hash: TrustedHost(Host) and TrustedProgramHash(Hash) and Subprin(P, Host, Hash) implies MemberProgram(P))"

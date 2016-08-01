@@ -5,7 +5,7 @@ syntax = "proto2";
 
 package tpm2;
 
-// TODO(jlm): MOre comments to describe fields needed.
+// TODO(jlm): More comments to describe fields needed.
 
 message private_key_blob_message {
   required string key_type                    = 1;
@@ -93,6 +93,7 @@ message quote_key_info_message {
   optional int32  properties                  = 3;
 }
 
+// TODO(jlm): note this is just RSA parameters.  NOT USED.
 message program_key_parameters {
   optional string program_name                = 1;
   optional string program_key_type            = 2;
@@ -177,6 +178,7 @@ message AttestCertRequest {
 // This is the response from the domain service with the encrypted attest cert.
 message AttestCertResponse {
   required int32 error = 1;
+  // "hmacsha1"  Is this used now?
   optional string integrity_alg = 2;
   optional bytes integrity_hmac= 3;
   optional bytes enc_identity = 4;

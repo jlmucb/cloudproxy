@@ -36,12 +36,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 )
-
-// TODO(jlm): Most of the remaining Printf's in this file should change to log
-//	messages.  There are still some debug prints that should be removed.  Do
-//	this as soon as all the tpm2 tests are working.
 
 func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	// in should just be a sequence of digest values
@@ -54,8 +51,7 @@ func GetSerialNumber() *big.Int {
 	return sn
 }
 
-// TODO(jlm), ValidPcr: All calling functions should
-//	provide a function to be called in place of this.
+type ValidPcrCheck func([]byte, []byte) bool
 func ValidPcr(pcrSelect []byte, digest []byte) bool {
 	return true
 }
@@ -100,6 +96,8 @@ func reportCommand(name string, cmd []byte, resp []byte,
 	if errOnly && status == ErrSuccess {
 		return
 	}
+	glog.Infof("reportCommand, %s, cmd: %x,\n\terr code: %x, resp: %x\n", name, cmd, status, resp)
+	// TODO: remove?
 	fmt.Printf("%s, cmd: %x,\n\terr code: %x, resp: %x\n", name, cmd, status, resp)
 }
 
@@ -1553,7 +1551,7 @@ func ConstructQuote(signing_handle Handle, parent_password, owner_password strin
 	if err != nil {
 		return nil, errors.New("ConstructQuote failed")
 	}
-	// TODO: no scheme or sig_alg
+	// TODO: no scheme or sig_alg?
 	// handle
 	var empty []byte
 	b1 := SetHandle(signing_handle)
@@ -1566,7 +1564,6 @@ func ConstructQuote(signing_handle Handle, parent_password, owner_password strin
 	arg_bytes = append(arg_bytes, b4...)
 	// Scheme info?
 	arg_bytes = append(arg_bytes, b5...)
-	// arg_bytes = append(arg_bytes, b6...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }
@@ -2039,7 +2036,7 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 
 func VerifyRsaQuote(to_quote []byte, rsaQuoteKey *rsa.PublicKey,
 	hash_alg_id uint16, quote_struct_blob []byte,
-	signature []byte) bool {
+	signature []byte, checkPcrFunc ValidPcrCheck) bool {
 	// Decode attest
 	attest, err := UnmarshalCertifyInfo(quote_struct_blob)
 	if err != nil {
@@ -2048,20 +2045,19 @@ func VerifyRsaQuote(to_quote []byte, rsaQuoteKey *rsa.PublicKey,
 	PrintAttestData(attest)
 
 	if attest.Magic_number != ordTpmMagic {
-		fmt.Printf("Bad magic number\n")
+		glog.Infof("VerifyRsaQuote: Bad magic number")
 		return false
 	}
 
 	// PCR's valid?
-	// TODO(jlm): See ValidPcr note above.
-	if !ValidPcr(attest.PcrSelect, attest.PcrDigest) {
+	if !checkPcrFunc(attest.PcrSelect, attest.PcrDigest) {
 		return false
 	}
 
 	// Compute quote
 	quote_hash, err := ComputeHashValue(hash_alg_id, quote_struct_blob)
 	if err != nil {
-		fmt.Printf("ComputeHashValue fails")
+		glog.Infof("VerifyRsaQuote: ComputeHashValue fails")
 		return false
 	}
 
@@ -2075,7 +2071,7 @@ func VerifyRsaQuote(to_quote []byte, rsaQuoteKey *rsa.PublicKey,
 	decrypted_quote := z.Bytes()
 	start_quote_blob := len(decrypted_quote) - SizeHash(hash_alg_id)
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
-		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
+		glog.Infof("VerifyRsaQuote: Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
 		return false
 	}
 	return true
@@ -2083,7 +2079,7 @@ func VerifyRsaQuote(to_quote []byte, rsaQuoteKey *rsa.PublicKey,
 
 func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	hash_alg_id uint16, quote_struct_blob []byte,
-	signature []byte) bool {
+	signature []byte, checkPcrFunc ValidPcrCheck) bool {
 	// Decode attest
 	attest, err := UnmarshalCertifyInfo(quote_struct_blob)
 	if err != nil {
@@ -2092,26 +2088,25 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	PrintAttestData(attest)
 
 	if attest.Magic_number != ordTpmMagic {
-		fmt.Printf("Bad magic number\n")
+		glog.Infof("VerifyQuote: Bad magic number")
 		return false
 	}
 
 	// PCR's valid?
-	// TODO(jlm): See ValidPcr note above.
-	if !ValidPcr(attest.PcrSelect, attest.PcrDigest) {
+	if !checkPcrFunc(attest.PcrSelect, attest.PcrDigest) {
 		return false
 	}
 
 	// Compute quote
 	quote_hash, err := ComputeHashValue(hash_alg_id, quote_struct_blob)
 	if err != nil {
-		fmt.Printf("ComputeHashValue fails")
+		glog.Infof("VerifyQuote: ComputeHashValue fails")
 		return false
 	}
 
 	// Get quote key from quote_key_info
 	if *quote_key_info.PublicKey.KeyType != "rsa" {
-		fmt.Printf("Bad key type %s\n", quote_key_info.PublicKey.KeyType)
+		glog.Infof("VerifyQuote: Bad key type %s\n", quote_key_info.PublicKey.KeyType)
 		return false
 	}
 
@@ -2129,7 +2124,7 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	decrypted_quote := z.Bytes()
 	start_quote_blob := len(decrypted_quote) - SizeHash(hash_alg_id)
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
-		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
+		glog.Infof("VerifyQuote: Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
 		return false
 	}
 	return true
@@ -2308,7 +2303,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
 
 	if request.ProgramKey == nil {
-		fmt.Printf("program key is nil\n")
+		glog.Infof("ConstructServerResponse: program key is nil")
 	}
 	// hash program key
 	serialized_program_key := proto.CompactTextString(request.ProgramKey)
@@ -2323,7 +2318,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 		hash_alg_id = uint16(AlgTPM_ALG_SHA1)
 	}
 	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo, hash_alg_id,
-		request.QuotedBlob, request.QuoteSignature) {
+		request.QuotedBlob, request.QuoteSignature, ValidPcr) {
 		return nil, errors.New("Can't verify quote")
 	}
 
@@ -2381,8 +2376,8 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	// Generate credential
 	var credential [16]byte
 	rand.Read(credential[0:16])
-	fmt.Printf("Credential: %x, hashid: %x\n", credential, hash_alg_id)
-	fmt.Printf("Name: %x\n", request.QuoteKeyInfo.Name)
+	// fmt.Printf("Credential: %x, hashid: %x\n", credential, hash_alg_id)
+	// fmt.Printf("Name: %x\n", request.QuoteKeyInfo.Name)
 	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
 		protectorPublic, hash_alg_id,
 		credential[0:16], request.QuoteKeyInfo.Name)
@@ -2421,7 +2416,7 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("certInfo: %x\n", certInfo)
+	// fmt.Printf("certInfo: %x\n", certInfo)
 
 	// Decrypt cert.
 	_, out, err := EncryptDataWithCredential(false, uint16(AlgTPM_ALG_SHA1),

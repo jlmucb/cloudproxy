@@ -5,7 +5,7 @@ then
   echo "$DOMAINTPM2/SimpleClient exists"
   rm $DOMAINTPM2/SimpleClient/*
 else
-  sudo mkdir $DOMAINTPM2/SimpleClient
+  mkdir $DOMAINTPM2/SimpleClient
   echo "$DOMAINTPM2/SimpleClient created"
 fi
 if [[ -e $DOMAINTPM2/SimpleServer ]]
@@ -13,7 +13,7 @@ then
   echo "$DOMAINTPM2/SimpleServer exists"
   rm $DOMAINTPM2/SimpleServer/*
 else
-  sudo mkdir $DOMAINTPM2/SimpleServer
+  mkdir $DOMAINTPM2/SimpleServer
   echo "$DOMAINTPM2/SimpleServer created"
 fi
 sudo $BINPATH/tao domain init -tao_domain $DOMAINTPM2 -config_template $TEMPLATETPM2 -pub_domain_address "127.0.0.1" -pass xxx

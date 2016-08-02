@@ -13,7 +13,7 @@ sleep 5
 # We run as root for conveniencea to avoid script clutter.
 #
 sleep 1
-$BINPATH/domain_server -pass xxx
+$BINPATH/domain_server -pass xxx -domain_config $DOMAINTPM2/tao.config -trusted_entities $DOMAINTPM2/TrustedEntities
 sleep 1
 $BINPATH/tao run -tao_domain $DOMAINTPM2 $BINPATH/SimpleServer \
 -domain_config $DOMAINTPM2/tao.config -path $DOMAINTPM2/SimpleServer \

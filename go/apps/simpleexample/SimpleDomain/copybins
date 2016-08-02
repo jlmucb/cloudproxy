@@ -1,0 +1,9 @@
+#
+
+cp ~/bin/SimpleDomainService /Domains
+cp ~/bin/SimpleClient /Domains
+cp ~/bin/linux_host /Domains
+cp ~/bin/QuoteServer /Domains
+cp ~/bin/SimpleServer /Domains
+cp ~/bin/domain_server /Domains
+cp ~/bin/simpleclient_cc.exe /Domains

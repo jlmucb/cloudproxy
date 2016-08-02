@@ -1,6 +1,15 @@
 #
 source ./defines
 
+if [[ -e $DOMAINTPM1/SimpleDomainService ]]
+then
+  echo "$DOMAINTPM1/SimpleDomainService exists"
+  rm $DOMAINTPM1/SimpleDomainService/*
+else
+  mkdir $DOMAINTPM1/SimpleDomainService
+  echo "$DOMAINTPM1/SimpleDomainService created"
+fi
+
 if [[ -e $DOMAINTPM1/SimpleClient ]]
 then
   echo "$DOMAINTPM1/SimpleClient exists"

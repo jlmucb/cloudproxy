@@ -10,9 +10,9 @@ sleep 5
 #
 # Starting the programs should be done as the unprivileged user it runs for
 # to provide isolation.
-# We run as root for conveniencea to avoid script clutter.
+# We run as root for convenience to avoid script clutter.
 #
-$BINPATH/domain_server -pass xxx -domain_config $DOMAINTPM1/tao.config -trusted_entities $DOMAINTPM1/TrustedEntities
+$BINPATH/domain_server -pass xxx -domain_config $DOMAINTPM1/tao.config -trusted_entities $DOMAINTPM1/TrustedEntities &
 sleep 1
 $BINPATH/tao run -tao_domain $DOMAINTPM1 $BINPATH/SimpleServer -domain_config "$DOMAINTPM1/tao.config" \
 -path "/$DOMAINTPM1/SimpleServer" \

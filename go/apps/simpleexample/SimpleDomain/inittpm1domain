@@ -40,6 +40,6 @@ fi
 $BINPATH/tao domain init -tao_domain $DOMAINTPM1 -config_template $TEMPLATETPM1 -pub_domain_address "127.0.0.1" -pass xxx
 
 # Replace with aiksigner?
-genaik -blob $DOMAINTPM1/aikblob
+$BINPATH/genaik -blob $DOMAINTPM1/aikblob
 $BINPATH/aiksigner -aik_path $DOMAINTPM1/aikblob -policy_key_path $DOMAINTPM1/policy_keys \
 -password xxx -output_file $DOMAINTPM1/aik_cert

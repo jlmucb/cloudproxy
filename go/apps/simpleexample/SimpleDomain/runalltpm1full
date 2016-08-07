@@ -14,11 +14,11 @@ sleep 5
 #
 $BINPATH/domain_server -pass xxx -domain_config $DOMAINTPM1/tao.config -trusted_entities $DOMAINTPM1/TrustedEntities &
 sleep 1
-$BINPATH/tao run -tao_domain $DOMAINTPM1 $BINPATH/SimpleServer -domain_config "$DOMAINTPM1/tao.config" \
--path "/$DOMAINTPM1/SimpleServer" \
+$BINPATH/tao run -tao_domain $DOMAINTPM1 $BINPATH/SimpleServer \
+-domain_config $DOMAINTPM1/tao.config -path $DOMAINTPM1/SimpleServer \
 -use_simpledomainservice=false &
 sleep 1
-$BINPATH/tao run -tao_domain $DOMAINTPM1 $BINPATH/SimpleClient -domain_config "$DOMAINTPM1/tao.config" \
--path "/$DOMAINTPM1/SimpleClient " \
+$BINPATH/tao run -tao_domain $DOMAINTPM1 $BINPATH/SimpleClient \
+-domain_config $DOMAINTPM1/tao.config -path $DOMAINTPM1/SimpleClient \
 -use_simpledomainservice=false &
 

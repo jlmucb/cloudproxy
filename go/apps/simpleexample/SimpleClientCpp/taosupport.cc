@@ -61,7 +61,7 @@ void SerializeTermToString(tao::Term* term, string* name) {
   if (dynamic_cast<tao::Prin*> (term)) {
     tao::Prin* prin = dynamic_cast<tao::Prin*>(term);
     *name += prin->type_ + "("; 
-    SerializeTermToString(prin->key_.get(), name);
+    SerializeTermToString(prin->keyhash_.get(), name);
     *name += ")";
     tao::SubPrin* w = prin->ext_.get();
     for (std::vector<std::unique_ptr<tao::PrinExt>>::iterator

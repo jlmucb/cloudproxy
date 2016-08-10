@@ -23,7 +23,7 @@ PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
 
-dobj_alib=$(O)/.o 
+dobj_alib=$(O)/auth.o 
 
 all: $(LIBDEST)/libauth.a
 
@@ -33,10 +33,11 @@ clean:
 	@echo "removing libauth.a"
 	rm $(LIBDEST)/libauth.a
 
-$(LIBDEST)/libauth.o: $(dobj_tlib)
+$(LIBDEST)/libauth.a: $(dobj_alib)
 	@echo "linking libauth.a"
-	$(AR) -o $(LIBDEST)/libauth.a $(dobj_alib) 
+	$(AR) -r $(LIBDEST)/libauth.a $(dobj_alib) 
 
-$(O)/xxx.o: $(AS)/xxx.cc
-	@echo "compiling xxx.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/xxx.o $(AS)/xxx.cc
+$(O)/auth.o: $(AS)/auth.cc
+	@echo "compiling auth.cc"
+	@echo "$O"
+	$(CC) $(CFLAGS) -c -o $(O)/auth.o $(AS)/auth.cc

@@ -63,7 +63,7 @@ cp $S/third_party/modp/include/modp/*.h $INCLUDEDEST
 
 # make each library
 make -f standalone/amake.mak
-# make -f standalone/mmake.mak
+make -f standalone/mmake.mak
 # make -f standalone/cmake.mak
 # make -f standalone/tmake.mak
 

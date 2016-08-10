@@ -24,7 +24,7 @@ PROTO=protoc
 AR=ar
 
 dobj_tlib=$(O)/message_channel.o $(O)/tao_rpc.o $(O)/fd_message_channel.o \
-$(O)/util.o $(O)/tao_rpc.pb.o
+$(O)/util.o $(O)/tao_rpc.pb.o $(TS)/$(TS)/tao_rpc.pb.o
 
 all: $(LIBDEST)/libtao.a
 
@@ -48,7 +48,7 @@ $(O)/tao_rpc.pb.o: $(TS)/tao_rpc.pb.cc
 
 $(TS)/tao_rpc.pb.cc: $(TS)/tao_rpc.proto
 	@echo "proto"
-	$(PROTOC) =cpp_out=$(TS) $(TS)/tao_rpc.proto
+	$(PROTOC) --cpp_out=$(TS) $(TS)/tao_rpc.proto
 
 $(O)/tao_rpc.o: $(TS)/tao_rpc.cc
 	@echo "compiling tao_rpc.cc"

@@ -9,11 +9,11 @@ GOOGLE_INCLUDE=/usr/local/include/google
 LOCAL_LIB=/usr/local/lib
 #endif
 
-INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(INCLUDEDEST) -I/usr/local/ssl/include
 TS= $(SRC_DIR)/src/tao
 LIBDEST=/Domains
 INCLUDEDEST= $(LIBDEST)/include
 LD_LIBRARY_PATH=/usr/local/lib
+INCLUDE= -I$(SRC_DIR)/src -I$(TS) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(INCLUDEDEST) -I/usr/local/ssl/include
 
 CFLAGS=$(INCLUDE) -DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
 CFLAGS1=$(INCLUDE) -DOS_POSIX -O1 -g -Wall -std=c++11
@@ -40,11 +40,11 @@ $(LIBDEST)/libtao.a: $(dobj_tlib)
 
 $(O)/message_channel.o: $(TS)/message_channel.cc
 	@echo "compiling message_channel.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/message_channel.o $(TS)/message_channel.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/message_channel.o $(TS)/message_channel.cc
 
 $(O)/tao_rpc.pb.o: $(TS)/tao_rpc.pb.cc
 	@echo "proto"
-	$(CC) $(CFLAGS) -c -o $(O)/tao_rpc.pb.o $(TS)/tao_rpc.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/tao_rpc.pb.o $(TS)/tao_rpc.pb.cc
 
 $(TS)/tao_rpc.pb.cc: $(TS)/tao_rpc.proto
 	@echo "proto"
@@ -52,13 +52,13 @@ $(TS)/tao_rpc.pb.cc: $(TS)/tao_rpc.proto
 
 $(O)/tao_rpc.o: $(TS)/tao_rpc.cc
 	@echo "compiling tao_rpc.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/tao_rpc.o $(TS)/tao_rpc.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/tao_rpc.o $(TS)/tao_rpc.cc
 
 $(O)/fd_message_channel.o: $(TS)/fd_message_channel.cc
 	@echo "compiling fd_message_channel.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/fd_message_channel.o $(TS)/fd_message_channel.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/fd_message_channel.o $(TS)/fd_message_channel.cc
 
 $(O)/util.o: $(TS)/util.cc
 	@echo "compiling util.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/util.o $(TS)/util.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/util.o $(TS)/util.cc
 

@@ -51,6 +51,13 @@ else
   mkdir $INCLUDEDEST/chromium/base
 fi
 
+if [[ -e $INCLUDEDEST/modp ]]
+then
+  echo "$INCLUDEDEST/modp exists"
+else
+  mkdir $INCLUDEDEST/modp
+fi
+
 $BINPATH/genauth -ast_file $SRC_DIR/go/tao/auth/ast.go \
 -binary_file $SRC_DIR/go/tao/auth/binary.go \
 -header_file $S/auth.h -impl_file $S/auth.cc
@@ -59,7 +66,7 @@ $BINPATH/genauth -ast_file $SRC_DIR/go/tao/auth/ast.go \
 cp $S/tao/*.h $INCLUDEDEST
 cp $S/auth.h $INCLUDEDEST
 cp $S/third_party/chromium/include/chromium/base/*.h $INCLUDEDEST/chromium/base
-cp $S/third_party/modp/include/modp/*.h $INCLUDEDEST
+cp $S/third_party/modp/include/modp/*.h $INCLUDEDEST/modp
 
 # make each library
 make -f standalone/amake.mak

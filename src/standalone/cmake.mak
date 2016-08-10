@@ -39,7 +39,7 @@ clean:
 
 $(LIBDEST)/libchromium.a: $(dobj_clib)
 	@echo "linking libchromium.a"
-	$(AR) -r $(LIBDEST)/libchromium.a $(dobj_alib) 
+	$(AR) -r $(LIBDEST)/libchromium.a $(dobj_clib) 
 
 $(O)/file_path_constants.o: $(CS)/file_path_constants.cc
 	@echo "compiling file_path_constants.cc"

@@ -9,7 +9,7 @@ GOOGLE_INCLUDE=/usr/local/include/google
 LOCAL_LIB=/usr/local/lib
 #endif
 
-INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(INCLUDEDEST)
+INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(INCLUDEDEST) -I/usr/local/ssl/include
 TS= $(SRC_DIR)/src/tao
 LIBDEST=/Domains
 INCLUDEDEST= $(LIBDEST)/include

@@ -34,10 +34,10 @@ TARGET_MACHINE_TYPE= x64
 S= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleClientCpp
 SL= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src
 O= $(OBJ_DIR)/simpleclient_obj
-INCLUDE= -I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(SL) -I/usr/local/ssl/include
+INCLUDE=-I$(S) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I$(SL) -I/usr/local/ssl/include -I/Domains/include
 
-CFLAGS=$(INCLUDE) -DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated # -DGFLAGS_NS=google
-CFLAGS1=$(INCLUDE) -DOS_POSIX -O1 -g -Wall -std=c++11
+CFLAGS=-DOS_POSIX -O3 -g -Wall -std=c++11 -Wno-strict-aliasing -Wno-deprecated
+CFLAGS1=-DOS_POSIX -O1 -g -Wall -std=c++11
 
 CC=g++
 LINK=g++
@@ -106,69 +106,69 @@ $(EXE_DIR)/gen_keys.exe: $(dobj_gen_keys)
 
 $(O)/helpers.o: $(S)/helpers.cc
 	@echo "compiling helpers.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/helpers.o $(S)/helpers.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/helpers.o $(S)/helpers.cc
 
 $(O)/domain_policy.pb.o: $(S)/domain_policy.pb.cc
 	@echo "compiling domain_policy.pb.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/domain_policy.pb.o $(S)/domain_policy.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/domain_policy.pb.o $(S)/domain_policy.pb.cc
 
 $(O)/keys.pb.o: $(S)/keys.pb.cc
 	@echo "compiling keys.pb.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/keys.pb.o $(S)/keys.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/keys.pb.o $(S)/keys.pb.cc
 
 $(O)/ca.pb.o: $(S)/ca.pb.cc
 	@echo "compiling ca.pb.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/ca.pb.o $(S)/ca.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/ca.pb.o $(S)/ca.pb.cc
 
 $(O)/taosupport.pb.o: $(S)/taosupport.pb.cc
 	@echo "compiling taosupport.pb.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/taosupport.pb.o $(S)/taosupport.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/taosupport.pb.o $(S)/taosupport.pb.cc
 
 $(O)/attestation.pb.o: $(S)/attestation.pb.cc
 	@echo "compiling attestation.pb.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/attestation.pb.o $(S)/attestation.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/attestation.pb.o $(S)/attestation.pb.cc
 
 $(O)/datalog_guard.pb.o: $(S)/datalog_guard.pb.cc
 	@echo "compiling datalog_guard.pb.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/datalog_guard.pb.o $(S)/datalog_guard.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/datalog_guard.pb.o $(S)/datalog_guard.pb.cc
 
 $(O)/acl_guard.pb.o: $(S)/acl_guard.pb.cc
 	@echo "compiling acl_guard.pb.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/acl_guard.pb.o $(S)/acl_guard.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/acl_guard.pb.o $(S)/acl_guard.pb.cc
 
 $(O)/taosupport.o: $(S)/taosupport.cc
 	@echo "compiling taosupport.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/taosupport.o $(S)/taosupport.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/taosupport.o $(S)/taosupport.cc
 
 $(O)/simpleclient_cc.o: $(S)/simpleclient_cc.cc
 	@echo "compiling simpleclient_cc.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/simpleclient_cc.o $(S)/simpleclient_cc.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/simpleclient_cc.o $(S)/simpleclient_cc.cc
 
 $(O)/helpers_test.o: $(S)/helpers_test.cc
 	@echo "compiling helpers_test.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/helpers_test.o $(S)/helpers_test.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/helpers_test.o $(S)/helpers_test.cc
 
 $(O)/simple_server_test.o: $(S)/simple_server_test.cc
 	@echo "compiling simple_server_test.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/simple_server_test.o $(S)/simple_server_test.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/simple_server_test.o $(S)/simple_server_test.cc
 
 $(O)/simple_client_test.o: $(S)/simple_client_test.cc
 	@echo "compiling simple_client_test.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/simple_client_test.o $(S)/simple_client_test.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/simple_client_test.o $(S)/simple_client_test.cc
 
 $(O)/server_test.o: $(S)/server_test.cc
 	@echo "compiling server_test.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/server_test.o $(S)/server_test.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/server_test.o $(S)/server_test.cc
 
 $(O)/client_test.o: $(S)/client_test.cc
 	@echo "compiling client_test.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/client_test.o $(S)/client_test.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/client_test.o $(S)/client_test.cc
 
 $(O)/gen_keys.o: $(S)/gen_keys.cc
 	@echo "compiling gen_keys.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/gen_keys.o $(S)/gen_keys.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/gen_keys.o $(S)/gen_keys.cc
 
 $(O)/gen_keys_test.o: $(S)/gen_keys_test.cc
 	@echo "compiling gen_keys_test.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/gen_keys_test.o $(S)/gen_keys_test.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/gen_keys_test.o $(S)/gen_keys_test.cc
 

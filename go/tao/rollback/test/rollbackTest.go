@@ -13,12 +13,8 @@
 package main
 
 import (
-	// "bytes"
-	// "errors"
-	// "crypto/rand"
 	"flag"
 	"fmt"
-	// "log"
 
   	".."
 )
@@ -47,9 +43,20 @@ func main() {
 	}
 	fmt.Printf("\nNumber of initial table entries: %d\n", len(table.Entries))
 
+	fmt.Printf("\n")
 	secret1Name := "secret1_name"
 	secretData := []byte{0,1,2,3,4,5,6,7,8}
 	b := rollback.RollBackSeal(table, secret1Name, secretData)
+	if b == nil {
+		fmt.Printf("rollback.RollBackSeal failed\n")
+		return
+	}
+
+	rollback.PrintTable(table)
+	fmt.Printf("\n")
+
+	// Do it again, this should bump counter
+	b = rollback.RollBackSeal(table, secret1Name, secretData)
 	if b == nil {
 		fmt.Printf("rollback.RollBackSeal failed\n")
 		return
@@ -67,13 +74,15 @@ func main() {
 	}
 	fmt.Printf("Initial secret: %x, Recovered secret: %x\n", secretData, c.ProtectedData)
 	rollback.PrintTable(table)
+	fmt.Printf("\n")
 
 	table = rollback.InitHostRollbackCounterTable(*tablePath, *sealedHostKeyFileName)
 	if table == nil {
 		fmt.Printf("InitHostRollbackCounterTable fails\n")
 		return
 	}
-	fmt.Printf("\nNumber table entries after recovery: %d\n", len(table.Entries))
+	fmt.Printf("Number table entries after recovery: %d\n", len(table.Entries))
+	rollback.PrintTable(table)
 	nc := rollback.RollBackUnseal(table, b)
 	if nc == nil {
 		fmt.Printf("rollback.RollBackUnseal 2 failed\n")

@@ -170,31 +170,60 @@ func SetFakeSealedHostKey(key []byte, fileName string) bool {
 	return true
 }
 
+// Replace these with host call to it's host for a RollBackBrotectedUnseal
+//	if this is a stacked tao.  For a root tao, this must call custom
+//	functions to handle hardware based counter.
 func unsealRollBackProtectedTableSealingKey(blob []byte) []byte {
-	b := unseal(blob)
-	if b == nil {
-		log.Printf("unsealRollBackProtectedTableSealingKey: unseal fails\n")
+	hostRoot := hostRootType()
+	if hostRoot == nil {
+		b := unseal(blob)
+		if b == nil {
+			log.Printf("unsealRollBackProtectedTableSealingKey: unseal fails\n")
+			return nil
+		}
+		if *b.Entry.EntryLabel != "Host_secret" {
+			log.Printf("unsealRollBackProtectedTableSealingKey: entry label is wrong\n")
+			return nil
+		}
+		return b.ProtectedData
+	} else if *hostRoot == "tpm" {
+		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm counter yet\n")
+		return nil
+	} else if *hostRoot == "tpm2" {
+		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm2 counter yet\n")
+		return nil
+	} else {
+		log.Printf("unsealRollBackProtectedTableSealingKey: bad host type\n")
 		return nil
 	}
-	if *b.Entry.EntryLabel != "Host_secret" {
-		fmt.Printf("unsealRollBackProtectedTableSealingKey: entry label is wrong\n")
-		return nil
-	}
-	return b.ProtectedData
 }
 
+// Replace these with host call to it's host for a RollBackBrotectedSeal.
+//	if this is a stacked tao.  For a root tao, this must call custom
+//	functions to handle hardware based counter.
 func sealRollBackProtectedTableSealingKey(key []byte) []byte {
-	e := new(RollbackSealedData)
-	e.Entry = new(RollbackEntry)
-	entryLabel := "Host_secret"
-	e.Entry.HostedProgramName = getHostedProgramName()
-	e.Entry.EntryLabel = &entryLabel
-	BumpMyHostCounter()
-	c := hostCounter()
-	e.Entry.Counter = &c
-	e.ProtectedData = key
-	s := seal(*e)
-	return s
+	hostRoot := hostRootType()
+	if hostRoot == nil {
+		e := new(RollbackSealedData)
+		e.Entry = new(RollbackEntry)
+		entryLabel := "Host_secret"
+		e.Entry.HostedProgramName = getHostedProgramName()
+		e.Entry.EntryLabel = &entryLabel
+		BumpMyHostCounter()
+		c := hostCounter()
+		e.Entry.Counter = &c
+		e.ProtectedData = key
+		return seal(*e)
+	} else if *hostRoot == "tpm" {
+		log.Printf("sealRollBackProtectedTableSealingKey: doesn't support tpm counter yet\n")
+		return nil
+	} else if *hostRoot == "tpm2" {
+		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm2 counter yet\n")
+		return nil
+	} else {
+		log.Printf("sealRollBackProtectedTableSealingKey: bad host type\n")
+		return nil
+	}
 }
 
 // End of dummy routines.

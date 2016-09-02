@@ -90,63 +90,6 @@ func Unprotect(keys []byte, in []byte) ([]byte, error) {
 // Fake host counter for testing.
 var myCounter int64
 
-
-// Replace with Host's seal for the HostedProgram.
-func seal(entry RollbackSealedData) []byte {
-	a, err := proto.Marshal(&entry)
-	if err != nil {
-		log.Printf("seal: Marshal fails\n")
-		return nil 
-	}
-	return a 
-}
-
-// Replace with Host's unseal for the HostedProgram.
-func unseal(data []byte) *RollbackSealedData {
-	var a RollbackSealedData 
-	err := proto.Unmarshal(data, &a)
-	if err != nil {
-		log.Printf("unseal: Unmarshal fails %s\n", err)
-		return nil
-	}
-	return &a
-}
-
-// Replace with Host lookup of HostedProgramName.
-func getHostedProgramName() *string {
-	var name string
-	name = "ProgramName"
-	return &name
-}
-
-// Returns root type for this host.  nil for stacked host.
-//	Options: tpm1.2, tpm2.0, key
-func hostRootType() *string {
-	return nil
-}
-
-// hostCounter
-func hostCounter() int64 {
-	return myCounter
-}
-
-// Bump current host counter via call to Host's host or the tpm.
-func BumpMyHostCounter() int64 {
-	myCounter = myCounter + 1
-	return myCounter
-}
-
-// Get current Host counter via call to Host's host or the tpm.
-func GetMyHostCounter() int64 {
-	return hostCounter()
-}
-
-// For testing only.
-func SetMyHostCounter(c int64) int64 {
-	myCounter = c
-	return myCounter
-}
-
 // For testing only.
 func SetFakeSealedHostKey(key []byte, fileName string) bool {
 	e := new(RollbackSealedData)
@@ -170,63 +113,218 @@ func SetFakeSealedHostKey(key []byte, fileName string) bool {
 	return true
 }
 
-// Replace these with host call to it's host for a RollBackBrotectedUnseal
+// End of dummy routines.
+
+
+// Replace with Host's seal for the HostedProgram.
+func seal(entry RollbackSealedData) []byte {
+	a, err := proto.Marshal(&entry)
+	if err != nil {
+		log.Printf("seal: Marshal fails\n")
+		return nil 
+	}
+	return a 
+}
+
+// Replace with Host's unseal for the HostedProgram.
+func unseal(data []byte) *RollbackSealedData {
+	var a RollbackSealedData 
+	err := proto.Unmarshal(data, &a)
+	if err != nil {
+		log.Printf("unseal: Unmarshal fails %s\n", err)
+		return nil
+	}
+	return &a
+}
+
+// Seal Tpm blob.
+func sealTpmBlob(entry RollbackSealedData) []byte {
+	return nil
+}
+
+// Unseal Tpm blob.
+func unsealTpmBlob(d []byte)  *RollbackSealedData {
+	return nil
+}
+
+// Seal Tpm2 blob.
+func sealTpm2Blob(entry RollbackSealedData) []byte {
+	return nil
+}
+
+// Unseal Tpm2 blob.
+func unsealTpm2Blob(d []byte)  *RollbackSealedData {
+	return nil
+}
+
+// Replace with Host lookup of HostedProgramName.
+func getHostedProgramName() *string {
+	var name string
+	name = "ProgramName"
+	return &name
+}
+
+// Returns root type for this host.  nil for stacked host.
+//	Options: tpm1.2, tpm2.0, key
+func hostRootType() *string {
+	return nil
+}
+
+// hostCounter
+func hostCounter() int64 {
+	return myCounter
+}
+
+// Bump TPM counter.
+func BumpTpmHostCounter() int64 {
+	return 1
+}
+
+// Bump TPM2 counter.
+func BumpTpm2HostCounter() int64 {
+	return 1
+}
+
+// Bump current host counter via call to Host's host or the tpm.
+func BumpMyHostCounter() int64 {
+	myCounter = myCounter + 1
+	return myCounter
+}
+
+// Init TPM Counter
+func InitTpmCounter() int64 {
+	return myCounter
+}
+
+// Init TPM2 Counter
+func InitTpm2Counter() int64 {
+	return myCounter
+}
+
+// Get TPM Counter
+func GetTpmCounter() int64 {
+	return hostCounter()
+}
+
+// Get TPM2 Counter
+func GetTpm2Counter() int64 {
+	return hostCounter()
+}
+
+// Get current Host counter via call to Host's host or the tpm.
+func GetMyHostCounter() int64 {
+	return hostCounter()
+}
+
+// For testing only.
+func SetHostCounter(c int64) int64 {
+	myCounter = c
+	return myCounter
+}
+
+// Replace these with host call to it's host for a Unseal
 //	if this is a stacked tao.  For a root tao, this must call custom
 //	functions to handle hardware based counter.
 func unsealRollBackProtectedTableSealingKey(blob []byte) []byte {
 	hostRoot := hostRootType()
+	var b *RollbackSealedData
+	var c int64
 	if hostRoot == nil {
-		b := unseal(blob)
+		c = hostCounter()
+		b = unseal(blob)
 		if b == nil {
 			log.Printf("unsealRollBackProtectedTableSealingKey: unseal fails\n")
 			return nil
 		}
-		if *b.Entry.EntryLabel != "Host_secret" {
-			log.Printf("unsealRollBackProtectedTableSealingKey: entry label is wrong\n")
+		/*
+		if b == nil || b.Entry.Counter== nil || c != *b.Entry.Counter {
+			log.Printf("unsealRollBackProtectedTableSealingKey: counter doesn't match\n")
 			return nil
 		}
-		return b.ProtectedData
+		 */
 	} else if *hostRoot == "tpm" {
 		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm counter yet\n")
 		return nil
+		if InitTpmCounter() < 0 {
+			log.Printf("unsealRollBackProtectedTableSealingKey: can't init Tpm counter\n")
+			return nil
+		}
+		c = GetTpmCounter()
+		b = unsealTpmBlob(blob)
+		// Check counter.
+		if b == nil || b.Entry.Counter== nil || c != *b.Entry.Counter {
+			log.Printf("unsealRollBackProtectedTableSealingKey: counter doesn't match\n")
+			return nil
+		}
 	} else if *hostRoot == "tpm2" {
 		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm2 counter yet\n")
 		return nil
+		if InitTpm2Counter() < 0 {
+			log.Printf("unsealRollBackProtectedTableSealingKey: can't init tpm2 counter\n")
+			return nil
+		}
+		c = GetTpm2Counter()
+		b = unsealTpm2Blob(blob)
+		// Check counter.
+		if b == nil || b.Entry.Counter== nil || c != *b.Entry.Counter {
+			log.Printf("unsealRollBackProtectedTableSealingKey: counter doesn't match\n")
+			return nil
+		}
 	} else {
 		log.Printf("unsealRollBackProtectedTableSealingKey: bad host type\n")
 		return nil
 	}
+	// Check the label
+	if *b.Entry.EntryLabel != "Host_secret" {
+		log.Printf("unsealRollBackProtectedTableSealingKey: entry label is wrong\n")
+		return nil
+	}
+	return b.ProtectedData
 }
 
 // Replace these with host call to it's host for a RollBackBrotectedSeal.
 //	if this is a stacked tao.  For a root tao, this must call custom
 //	functions to handle hardware based counter.
 func sealRollBackProtectedTableSealingKey(key []byte) []byte {
+
 	hostRoot := hostRootType()
+	e := new(RollbackSealedData)
+	e.Entry = new(RollbackEntry)
+	entryLabel := "Host_secret"
+	e.Entry.HostedProgramName = getHostedProgramName()
+	e.Entry.EntryLabel = &entryLabel
+	e.ProtectedData = key
+
 	if hostRoot == nil {
-		e := new(RollbackSealedData)
-		e.Entry = new(RollbackEntry)
-		entryLabel := "Host_secret"
-		e.Entry.HostedProgramName = getHostedProgramName()
-		e.Entry.EntryLabel = &entryLabel
 		BumpMyHostCounter()
 		c := hostCounter()
 		e.Entry.Counter = &c
-		e.ProtectedData = key
 		return seal(*e)
 	} else if *hostRoot == "tpm" {
 		log.Printf("sealRollBackProtectedTableSealingKey: doesn't support tpm counter yet\n")
 		return nil
+		if InitTpmCounter() < 0 {
+			log.Printf("unsealRollBackProtectedTableSealingKey: can't init tpm counter\n")
+			return nil
+		}
+		c := BumpTpmHostCounter()
+		e.Entry.Counter = &c
+		return sealTpmBlob(*e)
 	} else if *hostRoot == "tpm2" {
 		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm2 counter yet\n")
 		return nil
+		if InitTpm2Counter() < 0 {
+			log.Printf("unsealRollBackProtectedTableSealingKey: can't init tpm2 counter\n")
+			return nil
+		}
+		c := BumpTpm2HostCounter()
+		e.Entry.Counter = &c
+		return sealTpm2Blob(*e)
 	} else {
 		log.Printf("sealRollBackProtectedTableSealingKey: bad host type\n")
 		return nil
 	}
 }
-
-// End of dummy routines.
 
 // Read the counter table.
 func ReadCounterTable(fileName string, tableKey []byte) *RollbackCounterTable {

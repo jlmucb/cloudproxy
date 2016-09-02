@@ -186,7 +186,7 @@ func BumpTpm2HostCounter() int64 {
 }
 
 // Bump current host counter via call to Host's host or the tpm.
-func BumpMyHostCounter() int64 {
+func BumpHostCounter() int64 {
 	myCounter = myCounter + 1
 	return myCounter
 }
@@ -211,12 +211,12 @@ func GetTpm2Counter() int64 {
 	return hostCounter()
 }
 
-// Get current Host counter via call to Host's host or the tpm.
-func GetMyHostCounter() int64 {
+// Get current Host counter via call to Host's host.
+func GetHostCounter() int64 {
 	return hostCounter()
 }
 
-// For testing only.
+// Set current Host counter via call to Host's host.
 func SetHostCounter(c int64) int64 {
 	myCounter = c
 	return myCounter
@@ -296,7 +296,7 @@ func sealRollBackProtectedTableSealingKey(key []byte) []byte {
 	e.ProtectedData = key
 
 	if hostRoot == nil {
-		BumpMyHostCounter()
+		BumpHostCounter()
 		c := hostCounter()
 		e.Entry.Counter = &c
 		return seal(*e)

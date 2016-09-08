@@ -16,7 +16,7 @@ import (
 	"flag"
 	"fmt"
 
-  	".."
+  	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 func main() {
@@ -27,16 +27,16 @@ func main() {
 	flag.Parse()
 	fmt.Printf("\nrollbacktest.  ctr: %d, table_path: %s\n", *currentCtr, *tablePath)
 
-	var table *rollback.RollbackCounterTable
+	var table *tao.RollbackCounterTable
 
-	rollback.SetHostCounter(*currentCtr)
+	tao.SetHostCounter(*currentCtr)
 	hostKey := []byte {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
 			   0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
 	                   0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7,
 			   0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf }
-	rollback.SetFakeSealedHostKey(hostKey, *sealedHostKeyFileName)
+	tao.SetFakeSealedHostKey(hostKey, *sealedHostKeyFileName)
 
-	table = rollback.InitHostRollbackCounterTable(*tablePath, *sealedHostKeyFileName)
+	table = tao.InitHostRollbackCounterTable(*tablePath, *sealedHostKeyFileName)
 	if table == nil {
 		fmt.Printf("InitHostRollbackCounterTable fails\n")
 		return
@@ -46,46 +46,46 @@ func main() {
 	fmt.Printf("\n")
 	secret1Name := "secret1_name"
 	secretData := []byte{0,1,2,3,4,5,6,7,8}
-	b := rollback.RollBackSeal(table, secret1Name, secretData)
+	b := tao.RollBackSeal(table, secret1Name, secretData)
 	if b == nil {
-		fmt.Printf("rollback.RollBackSeal failed\n")
+		fmt.Printf("tao.RollBackSeal failed\n")
 		return
 	}
 
-	rollback.PrintTable(table)
+	tao.PrintTable(table)
 	fmt.Printf("\n")
 
 	// Do it again, this should bump counter
-	b = rollback.RollBackSeal(table, secret1Name, secretData)
+	b = tao.RollBackSeal(table, secret1Name, secretData)
 	if b == nil {
-		fmt.Printf("rollback.RollBackSeal failed\n")
+		fmt.Printf("tao.RollBackSeal failed\n")
 		return
 	}
 
-	fmt.Printf("Number table entries after rollback.RollBackSeal: %d\n", len(table.Entries))
-	if !rollback.SaveHostCounterTableWithNewKeys(*sealedHostKeyFileName, *tablePath, table) {
+	fmt.Printf("Number table entries after tao.RollBackSeal: %d\n", len(table.Entries))
+	if !tao.SaveHostCounterTableWithNewKeys(*sealedHostKeyFileName, *tablePath, table) {
 		fmt.Printf("SaveHostCounterTableWithNewKeys failed\n")
 	}
 
-	c := rollback.RollBackUnseal(table, b)
+	c := tao.RollBackUnseal(table, b)
 	if c == nil {
-		fmt.Printf("rollback.RollBackUnseal failed\n")
+		fmt.Printf("tao.RollBackUnseal failed\n")
 		return
 	}
 	fmt.Printf("Initial secret: %x, Recovered secret: %x\n", secretData, c.ProtectedData)
-	rollback.PrintTable(table)
+	tao.PrintTable(table)
 	fmt.Printf("\n")
 
-	table = rollback.InitHostRollbackCounterTable(*tablePath, *sealedHostKeyFileName)
+	table = tao.InitHostRollbackCounterTable(*tablePath, *sealedHostKeyFileName)
 	if table == nil {
 		fmt.Printf("InitHostRollbackCounterTable fails\n")
 		return
 	}
 	fmt.Printf("Number table entries after recovery: %d\n", len(table.Entries))
-	rollback.PrintTable(table)
-	nc := rollback.RollBackUnseal(table, b)
+	tao.PrintTable(table)
+	nc := tao.RollBackUnseal(table, b)
 	if nc == nil {
-		fmt.Printf("rollback.RollBackUnseal 2 failed\n")
+		fmt.Printf("tao.RollBackUnseal 2 failed\n")
 		return
 	}
 	fmt.Printf("\nStored secret: %x, New recovered secret: %x\n", secretData, nc.ProtectedData)

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rollback 
+package tao
 
 import (
 	"bytes"
@@ -27,14 +27,16 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+/*
 func ZeroBytes(buf []byte) {
 	n := len(buf)
 	for i := 0; i < n; i++ {
 		buf[i] = 0
 	}
 }
+ */
 
-func Protect(keys []byte, in []byte) ([]byte, error) {
+func protect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
@@ -59,7 +61,7 @@ func Protect(keys []byte, in []byte) ([]byte, error) {
 	return append(calculatedHmac, append(iv, out...)...), nil
 }
 
-func Unprotect(keys []byte, in []byte) ([]byte, error) {
+func unprotect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
@@ -70,7 +72,7 @@ func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	macKey := keys[16:32]
 	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
-		return nil, errors.New("Unprotect: Can't make crypter")
+		return nil, errors.New("unprotect: Can't make crypter")
 	}
 	ctr := cipher.NewCTR(crypter, iv)
 	ctr.XORKeyStream(out, in[48:])
@@ -79,7 +81,7 @@ func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	hm.Write(in[32:])
 	calculatedHmac := hm.Sum(nil)
 	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
-		return nil, errors.New("Unprotect: Bad mac")
+		return nil, errors.New("unprotect: Bad mac")
 	}
 	return out, nil
 }
@@ -115,6 +117,25 @@ func SetFakeSealedHostKey(key []byte, fileName string) bool {
 
 // End of dummy routines.
 
+// Host table or tpm counter has been initialized.
+var counterTableInitialized bool
+
+// Number of seals that trigger a host table save.
+var numSealsBeforeSave int
+
+// Number of seal's since last save of host counter table.
+var numSeals int
+
+// File name of host counter table.
+var hostCounterTableName *string
+
+// Initialize rollback data.
+func InitRollbackState(tableName string, sealsBeforeSave int) {
+	counterTableInitialized = false
+	numSealsBeforeSave = sealsBeforeSave
+	numSeals = 0
+	hostCounterTableName = &tableName
+}
 
 // Replace with Host's seal for the HostedProgram.
 func seal(entry RollbackSealedData) []byte {
@@ -334,9 +355,9 @@ func ReadCounterTable(fileName string, tableKey []byte) *RollbackCounterTable {
 	}
 
 	// Decrypt and deserialize table.
-	b, err := Unprotect(tableKey, blob)
+	b, err := unprotect(tableKey, blob)
 	if err != nil {
-		log.Printf("ReadCounterTable: Unprotect failed\n")
+		log.Printf("ReadCounterTable: unprotect failed\n")
 		return nil
 	}
 
@@ -358,9 +379,9 @@ func WriteCounterTable(rollBackTable *RollbackCounterTable, fileName string, tab
 		log.Printf("WriteCounterTable: Marshal failed\n")
 		return false
 	}
-	b, err := Protect(tableKey, blob)
+	b, err := protect(tableKey, blob)
 	if err != nil {
-		log.Printf("WriteCounterTable: Protect failed\n")
+		log.Printf("WriteCounterTable: protect failed\n")
 		return false
 	}
 	err = ioutil.WriteFile(fileName, b, 0644)

@@ -13,7 +13,7 @@
 // limitations under the License.
 syntax = "proto2";
 
-package rollback;
+package tao;
 
 // This is the entry used by the host to track the stored counter value.
 message rollback_entry {

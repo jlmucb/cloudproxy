@@ -220,3 +220,20 @@ func (t *RPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	data, policy, err = t.call(t.serviceName+".Unseal", r, wantData|wantPolicy)
 	return
 }
+
+func (t *RPC) InitCounter(label string) (err error) {
+	return
+}
+
+func (t *RPC) GetCounter(label string) (c int64, err error) {
+	return
+}
+
+func (t *RPC) RollbackProtectedSeal(label string, data []byte) (sealed []byte, err error) {
+	return
+}
+
+func (t *RPC) RollbackProtectedUnseal(label string, sealed []byte) (data []byte, err error) {
+	return
+}
+

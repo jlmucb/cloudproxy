@@ -89,20 +89,21 @@ func InitRollbackState(tableName string, sealsBeforeSave int) {
 func ReadRollbackTable(fileName string, tableKey []byte) *RollbackCounterTable {
 	blob, err := ioutil.ReadFile(fileName)
 	if blob == nil || err != nil {
+		// In either case we need a new table.
 		return new(RollbackCounterTable)
 	}
 
 	// Decrypt and deserialize table.
 	b, err := unprotect(tableKey, blob)
 	if err != nil {
-		log.Printf("ReadRollbackTable: unprotect failed\n")
+		log.Printf("ReadRollbackTable: unprotect failed %s", err)
 		return nil
 	}
 
 	var t RollbackCounterTable
 	err = proto.Unmarshal(b, &t)
 	if err != nil {
-		log.Printf("ReadRollbackTable: Unmarshal failed\n")
+		log.Printf("ReadRollbackTable: Unmarshal failed %s", err)
 		return nil
 	}
 	return &t

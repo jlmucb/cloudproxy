@@ -229,11 +229,11 @@ func (t *RPC) GetCounter(label string) (c int64, err error) {
 	return
 }
 
-func (t *RPC) RollbackProtectedSeal(label string, data []byte) (sealed []byte, err error) {
+func (t *RPC) RollbackProtectedSeal(label string, data []byte, policy string) (sealed []byte, err error) {
 	return
 }
 
-func (t *RPC) RollbackProtectedUnseal(label string, sealed []byte) (data []byte, err error) {
+func (t *RPC) RollbackProtectedUnseal(label string, sealed []byte) (data []byte, policy string, err error) {
 	return
 }
 

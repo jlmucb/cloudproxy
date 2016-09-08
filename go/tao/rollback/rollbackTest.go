@@ -36,9 +36,9 @@ func main() {
 			   0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf }
 	tao.SetFakeSealedHostKey(hostKey, *sealedHostKeyFileName)
 
-	table = tao.InitHostRollbackCounterTable(*tablePath, *sealedHostKeyFileName)
+	table = tao.InitHostRollbackTable(*tablePath, *sealedHostKeyFileName)
 	if table == nil {
-		fmt.Printf("InitHostRollbackCounterTable fails\n")
+		fmt.Printf("InitHostRollbackTable fails\n")
 		return
 	}
 	fmt.Printf("\nNumber of initial table entries: %d\n", len(table.Entries))
@@ -52,7 +52,7 @@ func main() {
 		return
 	}
 
-	tao.PrintTable(table)
+	tao.PrintRollbackTable(table)
 	fmt.Printf("\n")
 
 	// Do it again, this should bump counter
@@ -63,8 +63,8 @@ func main() {
 	}
 
 	fmt.Printf("Number table entries after tao.RollBackSeal: %d\n", len(table.Entries))
-	if !tao.SaveHostCounterTableWithNewKeys(*sealedHostKeyFileName, *tablePath, table) {
-		fmt.Printf("SaveHostCounterTableWithNewKeys failed\n")
+	if !tao.SaveHostRollbackTableWithNewKeys(*sealedHostKeyFileName, *tablePath, table) {
+		fmt.Printf("SaveHostRollbackTableWithNewKeys failed\n")
 	}
 
 	c := tao.RollBackUnseal(table, b)
@@ -73,16 +73,16 @@ func main() {
 		return
 	}
 	fmt.Printf("Initial secret: %x, Recovered secret: %x\n", secretData, c.ProtectedData)
-	tao.PrintTable(table)
+	tao.PrintRollbackTable(table)
 	fmt.Printf("\n")
 
-	table = tao.InitHostRollbackCounterTable(*tablePath, *sealedHostKeyFileName)
+	table = tao.InitHostRollbackTable(*tablePath, *sealedHostKeyFileName)
 	if table == nil {
-		fmt.Printf("InitHostRollbackCounterTable fails\n")
+		fmt.Printf("InitHostRollbackTable fails\n")
 		return
 	}
 	fmt.Printf("Number table entries after recovery: %d\n", len(table.Entries))
-	tao.PrintTable(table)
+	tao.PrintRollbackTable(table)
 	nc := tao.RollBackUnseal(table, b)
 	if nc == nil {
 		fmt.Printf("tao.RollBackUnseal 2 failed\n")

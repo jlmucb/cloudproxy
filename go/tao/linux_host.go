@@ -385,3 +385,24 @@ func (lh *LinuxHost) Shutdown() error {
 	lh.hpm.Unlock()
 	return nil
 }
+
+// InitCounter initializes the child's counter for the given label.
+func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string) (error) {
+	return nil
+}
+
+// GetCounter gets the child's counter for the given label.
+func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, error) {
+	return int64(0), nil
+}
+
+// RollbackProtectedSeal seals the data associated with the given label with rollback protection.
+func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, data []byte, policy string) ([]byte, error) {
+	return nil, nil
+}
+
+// RollbackProtectedUnseal unseals the data associated with the given label with rollback protection.
+func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, label string, sealed []byte) ([]byte, string, error) {
+	return nil, "", nil
+}
+

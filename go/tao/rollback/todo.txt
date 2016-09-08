@@ -1,0 +1,55 @@
+Add DeleteRollbackEntry
+
+Add methods to host.go and each tao
+
+Tests in linux_host_test.go, tpm_tao_test.go, soft_tao_test.go and linux_host_tao_rpc_test.go
+
+HostChannel gives host type
+
+var testChild = auth.SubPrin{auth.PrinExt{Name: "TestChild"}}
+
+Add domain policy element for saving tables
+
+func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string) (error)
+func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, error)
+RollbackProtectedSeal(child *LinuxHostChild, label string, data []byte, policy string) ([]byte, error)
+RollbackProtectedUnseal(child *LinuxHostChild, label string, sealed []byte) (data []byte, policy string, error)
+
+func (s *SoftTao) InitCounter(label string) (err error) 
+func (s *SoftTao) GetCounter(label string) (counter int64, ett error) 
+func (s *SoftTao) RollbackProtectedSeal(label string, data []byte, policy string) (data []byte, err error)
+func (s *SoftTao) RollbackProtectedUnseal(sealed []byte) (data []byte, policy string error)
+
+func (s *TPM2Tao) InitCounter(label string) (err error) 
+func (s *TPM2Tao) GetCounter(label string) (counter int64, ett error) 
+func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) (data []byte, err error)
+func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) (data []byte, policy string error)
+
+func (s *TPMTao) InitCounter(label string) (err error) 
+func (s *TPMTao) GetCounter(label string) (counter int64, ett error) 
+func (s *TPMTao) RollbackProtectedSeal(label string, data []byte, policy string) (data []byte, err error)
+func (s *TPMTao) RollbackProtectedUnseal(sealed []byte) (data []byte, policy string error)
+
+func (server linuxHostTaoServerStub) InitCounter(r *RPCRequest, s *RPCResponse) error {
+func (server linuxHostTaoServerStub) GetCounter(r *RPCRequest, s *RPCResponse) error {
+func (server linuxHostTaoServerStub) RollbackProtectedSeal(r *RPCRequest, s *RPCResponse) error {
+func (server linuxHostTaoServerStub) RollbackProtectedUnseal(r *RPCRequest, s *RPCResponse) error {
+
+lh.Host.Attest(child.ChildSubprin, issuer, time, expiration, stmt)
+
+child.ChildSubprin.String()
+
+	// InitCounter initializes a counter with given label.
+	InitCounter(label string) (err error)
+
+	// GetCounter retrieves a counter with given label.
+	GetCounter(label string) (counter int64, err error)
+
+	// RollbackProtectedSeal encrypts data under rollback protection
+	// so only certain hosted programs can unseal it.
+	RollbackProtectedSeal(label string, data []byte, policy string) (sealed []byte, err error)
+
+	// RollbackProtectedUnseal decrypts data under rollback protection.
+	RollbackProtectedUnseal(label string, sealed []byte) (data []byte, policy string, err error)
+
+

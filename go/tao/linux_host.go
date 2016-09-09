@@ -402,7 +402,7 @@ func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, 
 }
 
 // RollbackProtectedUnseal unseals the data associated with the given label with rollback protection.
-func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, label string, sealed []byte) ([]byte, string, error) {
+func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, sealed []byte) ([]byte, string, error) {
 	return nil, "", nil
 }
 

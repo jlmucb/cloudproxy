@@ -17,6 +17,7 @@ package tao
 import (
 	"crypto/rand"
 	"crypto/x509"
+	"fmt" // REMOVE
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
@@ -139,4 +140,14 @@ func (t *RootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 // Tao hosts, to this hosted Tao host.
 func (t *RootHost) HostName() auth.Prin {
 	return t.taoHostName
+}
+
+func (s *RootHost) InitCounter(label string, c int64) (error) {
+	fmt.Printf("RootHost.GetCounter %d\n", softtao_counter)
+	return nil
+}
+
+func (s *RootHost) GetCounter(label string) (int64, error) {
+	fmt.Printf("RootHost.GetCounter %d\n", softtao_counter)
+	return int64(0), nil
 }

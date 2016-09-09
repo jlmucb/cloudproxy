@@ -109,7 +109,8 @@ var ErrMalformedResponse = errors.New("taorpc: malformed response")
 
 // call issues an rpc request, obtains the response, checks the response for
 // errors, and checks that the response contains exactly the expected values.
-func (t *RPC) call(method string, r *RPCRequest, e expectedResponse) (data []byte, policy string, err error) {
+func (t *RPC) call(method string, r *RPCRequest, e expectedResponse) (data []byte, policy string,
+		counter int64, err error) {
 	s := new(RPCResponse)
 	err = t.rpc.Call(method, r, s)
 	if err != nil {
@@ -126,13 +127,16 @@ func (t *RPC) call(method string, r *RPCRequest, e expectedResponse) (data []byt
 	if s.Policy != nil {
 		policy = *s.Policy
 	}
+	if s.Counter!= nil {
+		counter = *s.Counter
+	}
 	return
 }
 
 // GetTaoName implements part of the Tao interface.
 func (t *RPC) GetTaoName() (auth.Prin, error) {
 	r := &RPCRequest{}
-	data, _, err := t.call(t.serviceName+".GetTaoName", r, wantData)
+	data, _, _, err := t.call(t.serviceName+".GetTaoName", r, wantData)
 	if err != nil {
 		return auth.Prin{}, err
 	}
@@ -142,7 +146,7 @@ func (t *RPC) GetTaoName() (auth.Prin, error) {
 // ExtendTaoName implements part of the Tao interface.
 func (t *RPC) ExtendTaoName(subprin auth.SubPrin) error {
 	r := &RPCRequest{Data: auth.Marshal(subprin)}
-	_, _, err := t.call(t.serviceName+".ExtendTaoName", r, wantNothing)
+	_, _, _, err := t.call(t.serviceName+".ExtendTaoName", r, wantNothing)
 	return err
 }
 
@@ -172,7 +176,7 @@ func (t *RPC) GetRandomBytes(n int) ([]byte, error) {
 		return nil, newError("taorpc: request for too many random bytes")
 	}
 	r := &RPCRequest{Size: proto.Int32(int32(n))}
-	bytes, _, err := t.call(t.serviceName+".GetRandomBytes", r, wantData)
+	bytes, _, _, err := t.call(t.serviceName+".GetRandomBytes", r, wantData)
 	return bytes, err
 }
 
@@ -182,7 +186,7 @@ func (t *RPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 		return nil, newError("taorpc: request for too many secret bytes")
 	}
 	r := &RPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
-	bytes, _, err := t.call(t.serviceName+".GetSharedSecret", r, wantData)
+	bytes, _, _, err := t.call(t.serviceName+".GetSharedSecret", r, wantData)
 	return bytes, err
 }
 
@@ -198,7 +202,7 @@ func (t *RPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Fo
 		Expiration: expiration,
 		Data:       auth.Marshal(message),
 	}
-	bytes, _, err := t.call(t.serviceName+".Attest", r, wantData)
+	bytes, _, _, err := t.call(t.serviceName+".Attest", r, wantData)
 	if err != nil {
 		return nil, err
 	}
@@ -213,27 +217,27 @@ func (t *RPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Fo
 // Seal implements part of the Tao interface.
 func (t *RPC) Seal(data []byte, policy string) (sealed []byte, err error) {
 	r := &RPCRequest{Data: data, Policy: proto.String(policy)}
-	sealed, _, err = t.call(t.serviceName+".Seal", r, wantData)
+	sealed, _, _, err = t.call(t.serviceName+".Seal", r, wantData)
 	return
 }
 
 // Unseal implements part of the Tao interface.
 func (t *RPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	r := &RPCRequest{Data: sealed}
-	data, policy, err = t.call(t.serviceName+".Unseal", r, wantData|wantPolicy)
+	data, policy, _, err = t.call(t.serviceName+".Unseal", r, wantData|wantPolicy)
 	return
 }
 
 func (t *RPC) InitCounter(label string, c int64) (err error) {
 	r := &RPCRequest{Label: &label, Counter: &c}
-	fmt.Printf("RPC.InitCounter %d\n", c)
-	// Fix
-	_, _, err = t.call(t.serviceName+".InitCounter", r, wantNothing)
+	_, _, _, err = t.call(t.serviceName+".InitCounter", r, wantNothing)
 	return
 }
 
 func (t *RPC) GetCounter(label string) (c int64, err error) {
+	r := &RPCRequest{Label: &label}
 	fmt.Printf("RPC.GetCounter\n")
+	_, _, c, err = t.call(t.serviceName+".GetCounter", r, wantCounter)
 	return
 }
 

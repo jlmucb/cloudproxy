@@ -16,6 +16,7 @@ package tao
 
 import (
 	"crypto/rand"
+	"fmt"
 	"io"
 
 	"github.com/golang/protobuf/proto"
@@ -155,6 +156,7 @@ func (s *SoftTao) InitCounter(label string, c int64) (error) {
 }
 
 func (s *SoftTao) GetCounter(label string) (int64, error) {
+	fmt.Printf("SoftTao.GetCounter %d\n", softtao_counter)
 	return softtao_counter, nil
 }
 
@@ -162,7 +164,7 @@ func (s *SoftTao) RollbackProtectedSeal(label string, data []byte, policy string
 	return nil, nil
 }
 
-func (s *SoftTao) RollbackProtectedUnseal(sealed []byte) ([]byte, string,  error) {
+func (s *SoftTao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
 	return nil, "", nil
 }
 

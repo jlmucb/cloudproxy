@@ -56,4 +56,10 @@ type Host interface {
 	// name encodes the full path from the root Tao, through all
 	// intermediary Tao hosts, to this hosted Tao host.
 	HostName() auth.Prin
+
+	// InitCounter initializes a counter with given label.
+	InitCounter(label string, c int64) (error)
+
+	// GetCounter retrieves a counter with given label.
+	GetCounter(label string) (int64, error)
 }

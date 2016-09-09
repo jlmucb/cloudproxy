@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"fmt"	// REMOVE
 	"io"
 	"sync"
 	"time"
@@ -38,6 +39,8 @@ type LinuxHost struct {
 	hpm            sync.RWMutex
 	nextChildID    uint
 	idm            sync.Mutex
+	rbTable	       *RollbackCounterTable
+	rbdm           sync.Mutex
 }
 
 // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
@@ -388,12 +391,26 @@ func (lh *LinuxHost) Shutdown() error {
 
 // InitCounter initializes the child's counter for the given label.
 func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (error) {
+	fmt.Printf("LinuxHost.InitCounter\n")
+	// read in table if unread
+	// initialize counter if not already set
+	if lh.rbTable == nil {
+		fmt.Printf("Rollback table is nil\n")
+		// Replace later with: InitRollbackTable(fileName string, tableKey []byte)
+		lh.rbTable = new(RollbackCounterTable)
+	}
+	lh.rbdm.Lock()
+	// Counter present?
+	// Initialize
+	// e := lh.rbTable.UpdateRollbackEntry(programName string, label, &c)
+	lh.rbdm.Unlock()
 	return nil
 }
 
 // GetCounter gets the child's counter for the given label.
 func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, error) {
-	return int64(0), nil
+	fmt.Printf("LinuxHost.GetCounter\n")
+	return int64(1), nil
 }
 
 // RollbackProtectedSeal seals the data associated with the given label with rollback protection.

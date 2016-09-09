@@ -20,6 +20,7 @@ package tao
 // connection, and pass that as a parameter to each server function.
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/rpc"
@@ -135,7 +136,11 @@ func (server linuxHostTaoServerStub) Attest(r *RPCRequest, s *RPCResponse) error
 // InitCounter initializes counter.
 func (server linuxHostTaoServerStub) InitCounter(r *RPCRequest, s *RPCResponse) error {
 	fmt.Printf("linuxHostTaoServerStub.InitCounter called %s\n", server.child.ChildSubprin.String())
-	return nil
+	if r.Label == nil ||  r.Counter == nil {
+		return errors.New("Label or counter unspecified")
+	}
+	err := server.lh.InitCounter(server.child, *r.Label, *r.Counter)
+	return err
 }
 
 // GetCounter gets counter

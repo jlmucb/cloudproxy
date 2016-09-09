@@ -100,6 +100,8 @@ const (
 	wantNothing expectedResponse = 0
 	wantData    expectedResponse = 1 << iota
 	wantPolicy
+	wantLabel
+	wantCounter
 )
 
 // An ErrMalformedResponse is returned as an error for an invalid response.
@@ -222,8 +224,11 @@ func (t *RPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	return
 }
 
-func (t *RPC) InitCounter(label string) (err error) {
-	fmt.Printf("RPC.InitCounter\n")
+func (t *RPC) InitCounter(label string, c int64) (err error) {
+	r := &RPCRequest{Label: &label, Counter: &c}
+	fmt.Printf("RPC.InitCounter %d\n", c)
+	// Fix
+	_, _, err = t.call(t.serviceName+".InitCounter", r, wantNothing)
 	return
 }
 

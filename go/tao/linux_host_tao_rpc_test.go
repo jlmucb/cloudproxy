@@ -175,7 +175,7 @@ func TestLinuxHostTaoServerInitCounter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = host.InitCounter("label")
+	err = host.InitCounter("label", int64(1))
 	if err != nil {
 		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer: ", err)
 	}

@@ -306,7 +306,7 @@ func (tt *TPMTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 	return m, SealPolicyDefault, nil
 }
 
-func (s *TPMTao) InitCounter(label string) (error) {
+func (s *TPMTao) InitCounter(label string, c int64) (error) {
 	return nil
 }
 

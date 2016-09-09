@@ -23,6 +23,7 @@ message RPCRequest {
   optional int64 expiration = 5;
   optional bytes issuer = 6;
   optional string label = 7;
+  optional int64 counter = 8;
 }
 
 message RPCResponse {

@@ -147,12 +147,15 @@ func (s *SoftTao) Attest(issuer *auth.Prin, time, expiration *int64, message aut
 	return GenerateAttestation(s.keys.SigningKey, delegation, stmt)
 }
 
-func (s *SoftTao) InitCounter(label string) (error) {
+var softtao_counter int64
+
+func (s *SoftTao) InitCounter(label string, c int64) (error) {
+	softtao_counter = c
 	return nil
 }
 
 func (s *SoftTao) GetCounter(label string) (int64, error) {
-	return int64(0), nil
+	return softtao_counter, nil
 }
 
 func (s *SoftTao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {

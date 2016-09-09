@@ -387,7 +387,7 @@ func (lh *LinuxHost) Shutdown() error {
 }
 
 // InitCounter initializes the child's counter for the given label.
-func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string) (error) {
+func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (error) {
 	return nil
 }
 

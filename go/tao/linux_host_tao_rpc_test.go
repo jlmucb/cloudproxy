@@ -179,18 +179,10 @@ func TestLinuxHostTaoServerInitCounter(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer: ", err)
 	}
-}
-
-func TestLinuxHostTaoServerGetCounter(t *testing.T) {
-	host, err := testNewLinuxHostTaoServer(t)
-	if err != nil {
-		t.Fatal(err)
+	c, err := host.GetCounter("label")
+	if c != int64(1) {
+		t.Fatal("Counter should be 1")
 	}
-	counter, err := host.GetCounter("label")
-	if err != nil {
-		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer:", err)
-	}
-	fmt.Printf("Counter: %d\n", counter)
 }
 
 func TestLinuxHostTaoServerRollbackProtectedSeal(t *testing.T) {

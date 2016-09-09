@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"errors"
 	"fmt"	// REMOVE
 	"io"
 	"sync"
@@ -400,17 +401,31 @@ func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (
 		lh.rbTable = new(RollbackCounterTable)
 	}
 	lh.rbdm.Lock()
-	// Counter present?
-	// Initialize
-	// e := lh.rbTable.UpdateRollbackEntry(programName string, label, &c)
+	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
+	e := lh.rbTable.LookupRollbackEntry(programName, label)
 	lh.rbdm.Unlock()
+	if e == nil || e.Counter == nil || *e.Counter <= c {
+		lh.rbdm.Lock()
+		_ = lh.rbTable.UpdateRollbackEntry(programName, label, &c)
+		lh.rbdm.Unlock()
+	}
 	return nil
 }
 
 // GetCounter gets the child's counter for the given label.
 func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, error) {
-	fmt.Printf("LinuxHost.GetCounter\n")
-	return int64(1), nil
+	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
+	fmt.Printf("LinuxHost.GetCounter %s %s\n", programName, label)
+	if lh.rbTable == nil {
+		return int64(0), errors.New("Counter not initialized") 
+	}
+	lh.rbdm.Lock()
+	e := lh.rbTable.LookupRollbackEntry(programName, label)
+	lh.rbdm.Unlock()
+	if e == nil  || e.Counter == nil {
+		return int64(0), errors.New("No such counter")
+	}
+	return *e.Counter, nil
 }
 
 // RollbackProtectedSeal seals the data associated with the given label with rollback protection.

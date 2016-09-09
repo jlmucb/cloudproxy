@@ -236,7 +236,6 @@ func (t *RPC) InitCounter(label string, c int64) (err error) {
 
 func (t *RPC) GetCounter(label string) (c int64, err error) {
 	r := &RPCRequest{Label: &label}
-	fmt.Printf("RPC.GetCounter\n")
 	_, _, c, err = t.call(t.serviceName+".GetCounter", r, wantCounter)
 	return
 }

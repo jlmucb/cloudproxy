@@ -19,6 +19,7 @@ package tao
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/rpc"
@@ -222,18 +223,22 @@ func (t *RPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 }
 
 func (t *RPC) InitCounter(label string) (err error) {
+	fmt.Printf("RPC.InitCounter\n")
 	return
 }
 
 func (t *RPC) GetCounter(label string) (c int64, err error) {
+	fmt.Printf("RPC.GetCounter\n")
 	return
 }
 
 func (t *RPC) RollbackProtectedSeal(label string, data []byte, policy string) (sealed []byte, err error) {
+	fmt.Printf("RPC.RollbackProtectedSeal\n")
 	return
 }
 
-func (t *RPC) RollbackProtectedUnseal(label string, sealed []byte) (data []byte, policy string, err error) {
+func (t *RPC) RollbackProtectedUnseal(sealed []byte) (data []byte, policy string, err error) {
+	fmt.Printf("RPC.RollbackProtectedUnseal\n")
 	return
 }
 

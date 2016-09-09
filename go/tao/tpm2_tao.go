@@ -647,6 +647,22 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 	return m, SealPolicyDefault, nil
 }
 
+func (s *TPM2Tao) InitCounter(label string) (error) {
+	return nil
+}
+
+func (s *TPM2Tao) GetCounter(label string) (int64, error) {
+	return int64(0), nil
+}
+
+func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
+	return nil, nil
+}
+
+func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) ([]byte, string,  error) {
+	return nil, "", nil
+}
+
 // extractPCRs gets the PCRs from a tpm principal.
 func extractTpm2PCRs(p auth.Prin) ([]int, []byte, error) {
 	if p.Type != "tpm2" {

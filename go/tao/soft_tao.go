@@ -147,6 +147,22 @@ func (s *SoftTao) Attest(issuer *auth.Prin, time, expiration *int64, message aut
 	return GenerateAttestation(s.keys.SigningKey, delegation, stmt)
 }
 
+func (s *SoftTao) InitCounter(label string) (error) {
+	return nil
+}
+
+func (s *SoftTao) GetCounter(label string) (int64, error) {
+	return int64(0), nil
+}
+
+func (s *SoftTao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
+	return nil, nil
+}
+
+func (s *SoftTao) RollbackProtectedUnseal(sealed []byte) ([]byte, string,  error) {
+	return nil, "", nil
+}
+
 // GetVerifier returns the verifying key for this Tao.
 func (s *SoftTao) GetVerifier() *Verifier {
 	return s.keys.VerifyingKey

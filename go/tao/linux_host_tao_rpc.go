@@ -20,6 +20,7 @@ package tao
 // connection, and pass that as a parameter to each server function.
 
 import (
+	"fmt"
 	"io"
 	"net/rpc"
 
@@ -130,3 +131,28 @@ func (server linuxHostTaoServerStub) Attest(r *RPCRequest, s *RPCResponse) error
 	s.Data, err = proto.Marshal(a)
 	return err
 }
+
+// InitCounter initializes counter.
+func (server linuxHostTaoServerStub) InitCounter(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.InitCounter called %s\n", server.child.ChildSubprin.String())
+	return nil
+}
+
+// GetCounter gets counter
+func (server linuxHostTaoServerStub) GetCounter(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.GetCounter called %s\n", server.child.ChildSubprin.String())
+	return nil
+}
+
+// RollbackProtectedSeal does a rollback protected seal
+func (server linuxHostTaoServerStub) RollbackProtectedSeal(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedSeal called %s\n", server.child.ChildSubprin.String())
+	return nil
+}
+
+// RollbackProtectedUnseal does a rollback protected Unseal
+func (server linuxHostTaoServerStub) RollbackProtectedUnseal(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedUnseal called %s\n", server.child.ChildSubprin.String())
+	return nil
+}
+

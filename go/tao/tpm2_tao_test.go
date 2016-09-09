@@ -75,7 +75,7 @@ func TestTPM2TaoSeal(t *testing.T) {
 	fmt.Printf("sealed: %x\n", sealed)
 
 	// Fix this hack
-	tpmtao.(*TPM2Tao).TmpRm()
+	// tpmtao.(*TPM2Tao).TmpRm()
 
 	unsealed, policy, err := tpmtao.Unseal(sealed)
 	if err != nil {
@@ -154,7 +154,7 @@ func TestTPM2TaoAttest(t *testing.T) {
 		t.Fatal("Couldn't attest to a key delegation:", err)
 	}
 
-	digests, err := tt.ReadPcrs([]int{17, 18}) // tt.pcrs
+	digests, err := ReadTPM2PCRs(tt.rw, []int{17, 18})
 	if err != nil {
 		t.Fatal("ReadPcrs failed\n")
 	}

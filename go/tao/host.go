@@ -62,4 +62,11 @@ type Host interface {
 
 	// GetCounter retrieves a counter with given label.
 	GetCounter(label string) (int64, error)
+
+	// RollbackProtectedSeal encrypts data under rollback protection
+	// so only certain hosted programs can unseal it.
+	RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error)
+
+	// RollbackProtectedUnseal decrypts data under rollback protection.
+	RollbackProtectedUnseal(sealed []byte) ([]byte, string, error)
 }

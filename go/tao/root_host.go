@@ -143,11 +143,12 @@ func (t *RootHost) HostName() auth.Prin {
 }
 
 func (s *RootHost) InitCounter(label string, c int64) (error) {
-	fmt.Printf("RootHost.GetCounter %d\n", softtao_counter)
+	fmt.Printf("RootHost.InitCounter %d\n", softtao_counter)
+	softtao_counter = c
 	return nil
 }
 
 func (s *RootHost) GetCounter(label string) (int64, error) {
 	fmt.Printf("RootHost.GetCounter %d\n", softtao_counter)
-	return int64(0), nil
+	return softtao_counter, nil
 }

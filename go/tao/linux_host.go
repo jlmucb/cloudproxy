@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"	// REMOVE
 	"io"
+	"reflect"
 	"sync"
 	"time"
 
@@ -399,6 +400,24 @@ func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (
 		fmt.Printf("Rollback table is nil\n")
 		// Replace later with: InitRollbackTable(fileName string, tableKey []byte)
 		lh.rbTable = new(RollbackCounterTable)
+		// Stacked host will have a hostTao
+		fmt.Printf("Parent type: %s\n", reflect.TypeOf(lh.Host))
+		if reflect.TypeOf(lh.Host).String() == "*tao.StackedHost" {
+		} else {
+			fmt.Printf("Roothost match\n")
+		}
+		// This is my parent's InitCounter
+		_ = lh.Host.InitCounter(label, int64(1))
+		c1, _ :=lh.Host.GetCounter(label)
+		fmt.Printf("Parent's counter is %d\n", c1)
+		/*
+		_ = lh.Host.RollbackProtectedUnseal(sealed)
+		decrypted, err := lh.Host.Decrypt(sealed)
+		if err != nil {
+			return nil, "", err
+		}
+		InitRollbackTable(fileName string, tableKey []byte)
+		*/
 	}
 	lh.rbdm.Lock()
 	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()

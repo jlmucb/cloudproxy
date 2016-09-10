@@ -131,7 +131,7 @@ func WriteRollbackTable(rollBackTable *RollbackCounterTable, fileName string, ta
 	return true
 }
 
-func PrintRollbackEntry(e *RollbackEntry) {
+func (e *RollbackEntry) PrintRollbackEntry() {
 	if e.HostedProgramName == nil {
 		fmt.Printf("HostedProgramName: empty, ")
 	} else {
@@ -153,7 +153,7 @@ func PrintSealedData(d *RollbackSealedData) {
 	if d.Entry == nil {
 		fmt.Printf("Rollback entry empty\n")
 	} else {
-		PrintRollbackEntry(d.Entry)
+		d.Entry.PrintRollbackEntry()
 	}
 	if d.ProtectedData == nil {
 		fmt.Printf("Protected data: empty\n")
@@ -162,18 +162,18 @@ func PrintSealedData(d *RollbackSealedData) {
 	}
 }
 
-func PrintRollbackTable(t *RollbackCounterTable) {
+func (t *RollbackCounterTable) PrintRollbackTable() {
 	if t == nil {
 		fmt.Printf("No rollback table\n")
 		return
 	}
 	fmt.Printf("Rollback table %d entries\n", len(t.Entries))
 	for i := 0; i < len(t.Entries); i++ {
-		PrintRollbackEntry(t.Entries[i])
+		t.Entries[i].PrintRollbackEntry()
 	}
 }
 
-func SaveHostRollbackTableWithNewKeys(sealedKeyFileName string, tableFileName string, t *RollbackCounterTable) bool {
+func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(sealedKeyFileName string, tableFileName string) bool {
 
 	// Generate new rollback table sealing keys
 	var newKeys [32]byte
@@ -187,7 +187,7 @@ func SaveHostRollbackTableWithNewKeys(sealedKeyFileName string, tableFileName st
 	}
 	err := ioutil.WriteFile(sealedKeyFileName, b, 0644)
 	if err != nil {
-		log.Printf("InitHostRollbackTable: Can't write sealedKeyFile\n")
+		log.Printf("SaveHostRollbackTable: Can't write sealedKeyFile\n")
 		return false
 	}
 
@@ -223,27 +223,27 @@ func InitHostRollbackTable(tableFileName string, sealedKeyFileName string) *Roll
 }
 
 // Lookup Rollback entry for programName, entryName).
-func LookupRollbackEntry(table RollbackCounterTable, programName string, entryName string) *RollbackEntry {
-	for i := 0; i < len(table.Entries) ; i++ {
-		if table.Entries[i].HostedProgramName != nil && *table.Entries[i].HostedProgramName == programName &&
-				table.Entries[i].EntryLabel != nil && *table.Entries[i].EntryLabel == entryName {
-			return table.Entries[i]
+func (t *RollbackCounterTable) LookupRollbackEntry(programName string, entryName string) *RollbackEntry {
+	for i := 0; i < len(t.Entries) ; i++ {
+		if t.Entries[i].HostedProgramName != nil && *t.Entries[i].HostedProgramName == programName &&
+				t.Entries[i].EntryLabel != nil && *t.Entries[i].EntryLabel == entryName {
+			return t.Entries[i]
 		}
 	}
 	return nil
 }
 
 // Update Rollback entry for programName, entryName).
-func UpdateRollbackEntry(table *RollbackCounterTable, programName string, entryName string,
+func (t *RollbackCounterTable) UpdateRollbackEntry(programName string, entryName string,
 		 c *int64) *RollbackEntry {
-	ent := LookupRollbackEntry(*table, programName, entryName)
+	ent := t.LookupRollbackEntry(programName, entryName)
 	if ent == nil {
 		ent = new(RollbackEntry)
 		ent.HostedProgramName = &programName
 		ent.EntryLabel = &entryName
 		zero := int64(0)
 		ent.Counter = &zero
-		table.Entries = append(table.Entries, ent)
+		t.Entries = append(t.Entries, ent)
 	}
 	if c != nil {
 		ent.Counter = c
@@ -509,8 +509,8 @@ func SetHostCounter(c int64) int64 {
 }
 
 // Host implementation of rollback protected seal.
-func RollBackSeal(table *RollbackCounterTable, labelName string, data []byte) []byte {
-	tableEnt := UpdateRollbackEntry(table, *getHostedProgramName(), labelName, nil)
+func RollBackSeal(t *RollbackCounterTable, labelName string, data []byte) []byte {
+	tableEnt := t.UpdateRollbackEntry(*getHostedProgramName(), labelName, nil)
 	if tableEnt == nil {
 		return nil
 	}
@@ -518,7 +518,7 @@ func RollBackSeal(table *RollbackCounterTable, labelName string, data []byte) []
 	c := tableEnt.Counter
 	*c = *c + 1
 	tableEnt.Counter = c
-	tableEnt = UpdateRollbackEntry(table, *getHostedProgramName(), labelName, c)
+	tableEnt = t.UpdateRollbackEntry(*getHostedProgramName(), labelName, c)
 	if tableEnt == nil {
 		log.Printf("RollBackSeal: Can't update\n")
 		return nil
@@ -534,13 +534,13 @@ func RollBackSeal(table *RollbackCounterTable, labelName string, data []byte) []
 }
 
 // Host implementation of rollback protected unseal.
-func RollBackUnseal(table *RollbackCounterTable, sealed []byte) *RollbackSealedData {
+func RollBackUnseal(t *RollbackCounterTable, sealed []byte) *RollbackSealedData {
 	e := unseal(sealed)
 	if e == nil  || e.Entry.HostedProgramName == nil || e.Entry.EntryLabel == nil {
 		log.Printf("RollBackUnseal: bad arguments\n")
 		return nil
 	}
-	tableEnt := LookupRollbackEntry(*table, *e.Entry.HostedProgramName, *e.Entry.EntryLabel)
+	tableEnt := t.LookupRollbackEntry(*e.Entry.HostedProgramName, *e.Entry.EntryLabel)
 	if tableEnt == nil {
 		log.Printf("RollBackUnseal: %s doesn't exist\n")
 		return nil

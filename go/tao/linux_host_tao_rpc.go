@@ -20,6 +20,8 @@ package tao
 // connection, and pass that as a parameter to each server function.
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"net/rpc"
 
@@ -130,3 +132,58 @@ func (server linuxHostTaoServerStub) Attest(r *RPCRequest, s *RPCResponse) error
 	s.Data, err = proto.Marshal(a)
 	return err
 }
+
+// InitCounter initializes counter.
+func (server linuxHostTaoServerStub) InitCounter(r *RPCRequest, s *RPCResponse) error {
+	if r.Label == nil ||  r.Counter == nil {
+		return errors.New("Label or counter unspecified")
+	}
+	err := server.lh.InitCounter(server.child, *r.Label, *r.Counter)
+	return err
+}
+
+// GetCounter gets counter
+func (server linuxHostTaoServerStub) GetCounter(r *RPCRequest, s *RPCResponse) error {
+	if r.Label == nil {
+		return errors.New("Label unspecified")
+	}
+	c, err := server.lh.GetCounter(server.child, *r.Label)
+	if err != nil {
+		return err
+	}
+	s.Counter = &c
+	return err
+}
+
+// RollbackProtectedSeal does a rollback protected seal
+func (server linuxHostTaoServerStub) RollbackProtectedSeal(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedSeal called %s\n", server.child.ChildSubprin.String())
+	if r.Label == nil {
+		return errors.New("Label unspecified")
+	}
+	if r.Policy == nil {
+		return errors.New("Policy unspecified")
+	}
+	sealed, err := server.lh.RollbackProtectedSeal(server.child, *r.Label, r.Data, *r.Policy)
+	if err != nil {
+		return err
+	}
+	s.Data = sealed
+	return err
+}
+
+// RollbackProtectedUnseal does a rollback protected Unseal
+func (server linuxHostTaoServerStub) RollbackProtectedUnseal(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedUnseal called %s\n", server.child.ChildSubprin.String())
+	if r.Data == nil {
+		return errors.New("Data unspecified")
+	}
+	data, policy, err := server.lh.RollbackProtectedUnseal(server.child, r.Data)
+	if err != nil {
+		return err
+	}
+	s.Data = data
+	s.Policy = &policy
+	return nil
+}
+

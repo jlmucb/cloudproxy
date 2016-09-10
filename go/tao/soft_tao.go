@@ -16,6 +16,7 @@ package tao
 
 import (
 	"crypto/rand"
+	"fmt"
 	"io"
 
 	"github.com/golang/protobuf/proto"
@@ -145,6 +146,26 @@ func (s *SoftTao) Attest(issuer *auth.Prin, time, expiration *int64, message aut
 	}
 
 	return GenerateAttestation(s.keys.SigningKey, delegation, stmt)
+}
+
+var softtao_counter int64
+
+func (s *SoftTao) InitCounter(label string, c int64) (error) {
+	softtao_counter = c
+	return nil
+}
+
+func (s *SoftTao) GetCounter(label string) (int64, error) {
+	fmt.Printf("SoftTao.GetCounter %d\n", softtao_counter)
+	return softtao_counter, nil
+}
+
+func (s *SoftTao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
+	return nil, nil
+}
+
+func (s *SoftTao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
+	return nil, "", nil
 }
 
 // GetVerifier returns the verifying key for this Tao.

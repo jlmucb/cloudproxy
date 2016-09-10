@@ -56,4 +56,17 @@ type Host interface {
 	// name encodes the full path from the root Tao, through all
 	// intermediary Tao hosts, to this hosted Tao host.
 	HostName() auth.Prin
+
+	// InitCounter initializes a counter with given label.
+	InitCounter(label string, c int64) (error)
+
+	// GetCounter retrieves a counter with given label.
+	GetCounter(label string) (int64, error)
+
+	// RollbackProtectedSeal encrypts data under rollback protection
+	// so only certain hosted programs can unseal it.
+	RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error)
+
+	// RollbackProtectedUnseal decrypts data under rollback protection.
+	RollbackProtectedUnseal(sealed []byte) ([]byte, string, error)
 }

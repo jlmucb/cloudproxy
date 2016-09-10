@@ -242,11 +242,15 @@ func (t *RPC) GetCounter(label string) (c int64, err error) {
 
 func (t *RPC) RollbackProtectedSeal(label string, data []byte, policy string) (sealed []byte, err error) {
 	fmt.Printf("RPC.RollbackProtectedSeal\n")
+	r := &RPCRequest{Label: &label, Data: data, Policy: &policy}
+	sealed, _, _, err = t.call(t.serviceName+".RollbackProtectedSeal", r, wantData)
 	return
 }
 
 func (t *RPC) RollbackProtectedUnseal(sealed []byte) (data []byte, policy string, err error) {
 	fmt.Printf("RPC.RollbackProtectedUnseal\n")
+	r := &RPCRequest{Data: sealed}
+	data, policy, _, err = t.call(t.serviceName+".RollbackProtectedUnseal", r, wantData|wantPolicy)
 	return
 }
 

@@ -307,19 +307,19 @@ func (tt *TPMTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 }
 
 func (s *TPMTao) InitCounter(label string, c int64) (error) {
-	return nil
+	return errors.New("InitCounter for tpm not implemented")
 }
 
 func (s *TPMTao) GetCounter(label string) (int64, error) {
-	return int64(0), nil
+	return int64(0), errors.New("GetCounter for tpm not implemented")
 }
 
 func (s *TPMTao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("RollbackProtectedSeal for tpm not implemented")
 }
 
 func (s *TPMTao) RollbackProtectedUnseal(sealed []byte) ([]byte, string,  error) {
-	return nil, "", nil
+	return nil, "", errors.New("RollbackProtectedUnseal for tpm not implemented")
 }
 
 // extractPCRs gets the PCRs from a tpm principal.

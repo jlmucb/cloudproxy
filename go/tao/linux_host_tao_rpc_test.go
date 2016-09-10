@@ -190,23 +190,17 @@ func TestLinuxHostTaoServerRollbackProtectedSeal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = host.InitCounter("label", int64(1))
 	data := []byte{0,1,2,3}
 	sealed, err := host.RollbackProtectedSeal("label", data, SealPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer:", err)
 	}
 	fmt.Printf("Sealed: %x\n", sealed)
-}
-
-func TestLinuxHostTaoServerRollbackProtectedUnseal(t *testing.T) {
-	host, err := testNewLinuxHostTaoServer(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sealed := []byte{0,1,2,3}
-	data, policy, err := host.RollbackProtectedUnseal(sealed)
+	newData, policy, err := host.RollbackProtectedUnseal(sealed)
 	if err != nil {
 		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer: ", err)
 	}
-	fmt.Printf("Data: %x, policy: %s\n", data, policy)
+	fmt.Printf("Data: %x, policy: %s\n", newData, policy)
 }
+

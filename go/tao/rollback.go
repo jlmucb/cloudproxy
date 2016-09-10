@@ -187,7 +187,7 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(sealedKeyFileNam
 	}
 	err := ioutil.WriteFile(sealedKeyFileName, b, 0644)
 	if err != nil {
-		log.Printf("InitHostRollbackTable: Can't write sealedKeyFile\n")
+		log.Printf("SaveHostRollbackTable: Can't write sealedKeyFile\n")
 		return false
 	}
 

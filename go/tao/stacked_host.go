@@ -160,11 +160,21 @@ func (t *StackedHost) HostName() auth.Prin {
 }
 
 func (s *StackedHost) InitCounter(label string, c int64) (error) {
-	fmt.Printf("StackedHost.GetCounter %d\n", softtao_counter)
-	return nil
+	fmt.Printf("StackedHost.InitCounter\n")
+	return s.hostTao.InitCounter(label, c)
 }
 
 func (s *StackedHost) GetCounter(label string) (int64, error) {
-	fmt.Printf("StackedHost.GetCounter %d\n", softtao_counter)
-	return int64(0), nil
+	fmt.Printf("StackedHost.GetCounter\n")
+	return s.hostTao.GetCounter(label)
+}
+
+func (s *StackedHost) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
+	fmt.Printf("StackedHost.RollbackProtectedSeal\n")
+	return s.hostTao.RollbackProtectedSeal(label, data, policy)
+}
+
+func (s *StackedHost) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
+	fmt.Printf("StackedHost.RollbackProtectedUnseal\n")
+	return s.hostTao.RollbackProtectedUnseal(sealed)
 }

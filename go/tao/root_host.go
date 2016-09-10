@@ -17,9 +17,11 @@ package tao
 import (
 	"crypto/rand"
 	"crypto/x509"
+	"errors"
 	"fmt" // REMOVE
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/golang/protobuf/proto"
 )
 
 // A RootHost is a standalone implementation of Host.
@@ -151,4 +153,46 @@ func (s *RootHost) InitCounter(label string, c int64) (error) {
 func (s *RootHost) GetCounter(label string) (int64, error) {
 	fmt.Printf("RootHost.GetCounter %d\n", softtao_counter)
 	return softtao_counter, nil
+}
+
+func (s *RootHost) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
+	fmt.Printf("RootHost.RollbackProtectedSeal\n")
+	softtao_counter = softtao_counter + 1
+	sd := new(RollbackSealedData)
+	sd.Entry = new(RollbackEntry)
+	programName := ""
+	sd.Entry.HostedProgramName = &programName
+	sd.Entry.EntryLabel = &label
+	sd.Entry.Counter = &softtao_counter
+	sd.ProtectedData = data
+	toSeal, err := proto.Marshal(sd)
+	if err != nil {
+		return nil, errors.New("Can't marshall roothost rollback data")
+	}
+	sealed, err := s.Encrypt(toSeal)
+	if err != nil {
+		return nil, errors.New("Can't encrypt roothost rollback data")
+	}
+	return sealed, nil
+}
+
+func (s *RootHost) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
+	fmt.Printf("RootHost.RollbackProtectedUnseal\n")
+	c, err := s.GetCounter("label")
+	if err != nil {
+		c = int64(0)
+	}
+	b, err := s.Decrypt(sealed)
+	if err != nil {
+		return nil, "", errors.New("Can't decrypt roothost rollback data")
+	}
+	var sd RollbackSealedData
+	err = proto.Unmarshal(b, &sd)
+	if err != nil {
+		return nil, "", errors.New("RollbackProtectedUnseal can't Unmarshal")
+	}
+	if sd.Entry == nil || sd.Entry.Counter == nil || *sd.Entry.Counter != c {
+		return nil, "", errors.New("RollbackProtectedUnseal bad counter")
+	}
+	return sd.ProtectedData, "", nil
 }

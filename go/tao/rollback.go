@@ -254,6 +254,8 @@ func (t *RollbackCounterTable) UpdateRollbackEntry(programName string, entryName
 
 // ------------------------------------------------------------------------------------
 
+// Everything below this should go away for final version
+
 
 // The following are dummy routines.  Implementations will be replaced when integrated.
 

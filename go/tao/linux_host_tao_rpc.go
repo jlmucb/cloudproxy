@@ -135,6 +135,7 @@ func (server linuxHostTaoServerStub) Attest(r *RPCRequest, s *RPCResponse) error
 
 // InitCounter initializes counter.
 func (server linuxHostTaoServerStub) InitCounter(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.InitCounter called %s\n", server.child.ChildSubprin.String()) // REMOVE
 	if r.Label == nil ||  r.Counter == nil {
 		return errors.New("Label or counter unspecified")
 	}
@@ -144,6 +145,7 @@ func (server linuxHostTaoServerStub) InitCounter(r *RPCRequest, s *RPCResponse) 
 
 // GetCounter gets counter
 func (server linuxHostTaoServerStub) GetCounter(r *RPCRequest, s *RPCResponse) error {
+	fmt.Printf("linuxHostTaoServerStub.GetCounter called %s\n", server.child.ChildSubprin.String()) // REMOVE
 	if r.Label == nil {
 		return errors.New("Label unspecified")
 	}

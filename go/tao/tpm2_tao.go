@@ -511,9 +511,9 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("toQuote: %x\n", toQuote)
-	fmt.Printf("Quote: %x\n", quote_struct)
-	fmt.Printf("sig: %x\n", sig)
+	fmt.Printf("toQuote: %x\n", toQuote) // REMOVE
+	fmt.Printf("Quote: %x\n", quote_struct) // REMOVE
+	fmt.Printf("sig: %x\n", sig) // REMOVE
 
 	quoteKey, err := x509.MarshalPKIXPublicKey(tt.verifier)
 	if err != nil {

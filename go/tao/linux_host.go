@@ -396,11 +396,12 @@ func (lh *LinuxHost) Shutdown() error {
 }
 
 // InitCounter initializes the child's counter for the given label.
+// If label is empty string, just read in the table
 func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (error) {
-	fmt.Printf("LinuxHost.InitCounter %s\n", lh.path)
+	fmt.Printf("LinuxHost.InitCounter %s %s %d\n", lh.path, label, c) // REMOVE
 	sealedRollbackKeysFile := path.Join(lh.path, "SealedRollbackTableKeys.bin")
 	encryptedRollbackTableFile := path.Join(lh.path, "EncryptedRollbackTable.bin")
-	fmt.Printf("SealedKeysFile: %s, EncryptedRollbackFile: %s\n", sealedRollbackKeysFile, encryptedRollbackTableFile)
+	fmt.Printf("SealedKeysFile: %s, EncryptedRollbackFile: %s\n", sealedRollbackKeysFile, encryptedRollbackTableFile) // REMOVE
 	// initialize counter if not already set
 	if lh.rbTable == nil {
 		// Read rollback protected sealed keys
@@ -413,11 +414,15 @@ func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (
 			if err == nil {
 				// Init rollback table
 				lh.rbTable = ReadRollbackTable(encryptedRollbackTableFile, tableKeys)
+				if label == ""{
+					// Init was called just to read table
+					return nil
+				}
 			}
 		}
 	}
 	if lh.rbTable == nil {
-		fmt.Printf("Rollback table is nil (2)\n")
+		fmt.Printf("Rollback table is nil (2)\n") // REMOVE
 		lh.rbTable = new(RollbackCounterTable)
 	}
 	lh.rbdm.Lock()
@@ -435,9 +440,12 @@ func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (
 // GetCounter gets the child's counter for the given label.
 func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, error) {
 	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
-	fmt.Printf("LinuxHost.GetCounter %s %s\n", programName, label)
+	fmt.Printf("LinuxHost.GetCounter %s %s\n", programName, label) // REMOVE
 	if lh.rbTable == nil {
-		return int64(0), errors.New("Counter not initialized") 
+		err := lh.InitCounter(child, "", int64(0))
+		if err != nil {
+			return int64(0), errors.New("Counter not initialized") 
+		}
 	}
 	lh.rbdm.Lock()
 	e := lh.rbTable.LookupRollbackEntry(programName, label)
@@ -450,18 +458,17 @@ func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, err
 
 // RollbackProtectedSeal seals the data associated with the given label with rollback protection.
 func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("LinuxHost.RollbackProtectedSeal, path: %s\n", lh.path)
+	fmt.Printf("LinuxHost.RollbackProtectedSeal, path: %s %s\n", lh.path, label) // REMOVE
 	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
-	if lh.rbTable == nil {
-		return nil, errors.New("Counter table not initialized") 
+	c, err := lh.GetCounter(child, label)
+	if err != nil {
+		return nil, errors.New("Can't get current counter") 
 	}
-	lh.InitCounter(child, label, int64(1))
-	e := lh.rbTable.LookupRollbackEntry(programName, label)
-	if e == nil {
-	}
-	c := *e.Counter
 	c = c + 1
-	e = lh.rbTable.UpdateRollbackEntry(programName, label, &c)
+	e := lh.rbTable.UpdateRollbackEntry(programName, label, &c)
+	if e== nil {
+		return nil, errors.New("Can't update rollback entry") 
+	}
 		
 	sd := new(RollbackSealedData)
 	sd.Entry = new(RollbackEntry)
@@ -494,7 +501,7 @@ func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, 
 
 // RollbackProtectedUnseal unseals the data associated with the given label with rollback protection.
 func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, sealed []byte) ([]byte, string, error) {
-	fmt.Printf("LinuxHost.RollbackProtectedUnseal %s\n", lh.path)
+	fmt.Printf("LinuxHost.RollbackProtectedUnseal %s\n", lh.path) // REMOVE
 	b, policy, err := lh.Unseal(child, sealed)
 	if err != nil {
 	}
@@ -513,6 +520,8 @@ func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, sealed []byt
 	if *sd.Entry.Counter != c {
 		return nil, "", errors.New("RollbackProtectedUnseal bad counter")
 	}
+	fmt.Printf("LinuxHost.RollbackProtectedUnseal, recorded counter: %d, retrieved counter: %d\n",
+		*sd.Entry.Counter, c)  // REMOVE
 	return sd.ProtectedData, policy, nil
 }
 

@@ -145,18 +145,18 @@ func (t *RootHost) HostName() auth.Prin {
 }
 
 func (s *RootHost) InitCounter(label string, c int64) (error) {
-	fmt.Printf("RootHost.InitCounter %d\n", softtao_counter)
+	fmt.Printf("RootHost.InitCounter %d\n", softtao_counter) //REMOVE
 	softtao_counter = c
 	return nil
 }
 
 func (s *RootHost) GetCounter(label string) (int64, error) {
-	fmt.Printf("RootHost.GetCounter %d\n", softtao_counter)
+	fmt.Printf("RootHost.GetCounter %d\n", softtao_counter) //REMOVE
 	return softtao_counter, nil
 }
 
 func (s *RootHost) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("RootHost.RollbackProtectedSeal\n")
+	fmt.Printf("RootHost.RollbackProtectedSeal\n") //REMOVE
 	softtao_counter = softtao_counter + 1
 	sd := new(RollbackSealedData)
 	sd.Entry = new(RollbackEntry)
@@ -177,7 +177,7 @@ func (s *RootHost) RollbackProtectedSeal(label string, data []byte, policy strin
 }
 
 func (s *RootHost) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
-	fmt.Printf("RootHost.RollbackProtectedUnseal\n")
+	fmt.Printf("RootHost.RollbackProtectedUnseal\n") //REMOVE
 	c, err := s.GetCounter("label")
 	if err != nil {
 		c = int64(0)

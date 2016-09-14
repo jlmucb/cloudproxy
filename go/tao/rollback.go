@@ -77,14 +77,6 @@ func unprotect(keys []byte, in []byte) ([]byte, error) {
 	return out, nil
 }
 
-// Initialize rollback data.
-func InitRollbackState(tableName string, sealsBeforeSave int) {
-	counterTableInitialized = false
-	numSealsBeforeSave = sealsBeforeSave
-	numSeals = 0
-	hostRollbackTableFileName = &tableName
-}
-
 // Read the counter table.
 func ReadRollbackTable(fileName string, tableKey []byte) *RollbackCounterTable {
 	blob, err := ioutil.ReadFile(fileName)
@@ -167,13 +159,15 @@ func (t *RollbackCounterTable) PrintRollbackTable() {
 		fmt.Printf("No rollback table\n")
 		return
 	}
-	fmt.Printf("Rollback table %d entries\n", len(t.Entries))
+	fmt.Printf("Rollback table %d entries\n", len(t.Entries)) //REMOVE
 	for i := 0; i < len(t.Entries); i++ {
 		t.Entries[i].PrintRollbackEntry()
 	}
 }
 
 func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(sealedKeyFileName string, tableFileName string) bool {
+	fmt.Printf("SaveHostRollbackTableWithNewKeys %s %s\n", sealedKeyFileName, tableFileName) //REMOVE
+	
 
 	// Generate new rollback table sealing keys
 	var newKeys [32]byte
@@ -253,6 +247,8 @@ func (t *RollbackCounterTable) UpdateRollbackEntry(programName string, entryName
 
 
 // ------------------------------------------------------------------------------------
+
+// Everything below this should go away for final version
 
 
 // The following are dummy routines.  Implementations will be replaced when integrated.
@@ -412,6 +408,14 @@ func unsealRollBackProtectedTableSealingKey(blob []byte) []byte {
 	return b.ProtectedData
 }
 
+// Initialize rollback data.
+func InitRollbackState(tableName string, sealsBeforeSave int) {
+	counterTableInitialized = false
+	numSealsBeforeSave = sealsBeforeSave
+	numSeals = 0
+	hostRollbackTableFileName = &tableName
+}
+
 // Replace these with host call to it's host for a RollBackBrotectedSeal.
 //	if this is a stacked tao.  For a root tao, this must call custom
 //	functions to handle hardware based counter.
@@ -546,7 +550,7 @@ func RollBackUnseal(t *RollbackCounterTable, sealed []byte) *RollbackSealedData 
 		return nil
 	}
 	if tableEnt.Counter == nil || *tableEnt.Counter != *e.Entry.Counter {
-		fmt.Printf("RollBackUnseal: counter mismatch\n")
+		log.Printf("RollBackUnseal: counter mismatch\n")
 		return nil
 	}
 	return e

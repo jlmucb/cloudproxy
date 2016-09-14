@@ -157,7 +157,7 @@ func (server linuxHostTaoServerStub) GetCounter(r *RPCRequest, s *RPCResponse) e
 
 // RollbackProtectedSeal does a rollback protected seal
 func (server linuxHostTaoServerStub) RollbackProtectedSeal(r *RPCRequest, s *RPCResponse) error {
-	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedSeal called %s\n", server.child.ChildSubprin.String())
+	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedSeal called %s\n", server.child.ChildSubprin.String()) // REMOVE
 	if r.Label == nil {
 		return errors.New("Label unspecified")
 	}
@@ -174,7 +174,7 @@ func (server linuxHostTaoServerStub) RollbackProtectedSeal(r *RPCRequest, s *RPC
 
 // RollbackProtectedUnseal does a rollback protected Unseal
 func (server linuxHostTaoServerStub) RollbackProtectedUnseal(r *RPCRequest, s *RPCResponse) error {
-	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedUnseal called %s\n", server.child.ChildSubprin.String())
+	fmt.Printf("linuxHostTaoServerStub.RollbackProtectedUnseal called %s\n", server.child.ChildSubprin.String()) // REMOVE
 	if r.Data == nil {
 		return errors.New("Data unspecified")
 	}

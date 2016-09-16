@@ -491,7 +491,7 @@ func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, 
 	if lh.rbTable != nil && lh.sealsSinceSave >= lh.saveTableThreshold {
 		sealedRollbackKeysFile := path.Join(lh.path, "SealedRollbackTableKeys.bin")
 		encryptedRollbackTableFile := path.Join(lh.path, "EncryptedRollbackTable.bin")
-		ok :=  lh.rbTable.SaveHostRollbackTableWithNewKeys(sealedRollbackKeysFile, encryptedRollbackTableFile)
+		ok :=  lh.rbTable.SaveHostRollbackTableWithNewKeys(lh, child, sealedRollbackKeysFile, encryptedRollbackTableFile)
 		if ok {
 			lh.sealsSinceSave = 1
 		}

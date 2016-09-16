@@ -20,14 +20,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
-	"fmt"
+	"fmt"	// REMOVE
 	"io/ioutil"
 	"log"
 
 	"github.com/golang/protobuf/proto"
 )
 
-func protect(keys []byte, in []byte) ([]byte, error) {
+func Protect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
@@ -52,7 +52,7 @@ func protect(keys []byte, in []byte) ([]byte, error) {
 	return append(calculatedHmac, append(iv, out...)...), nil
 }
 
-func unprotect(keys []byte, in []byte) ([]byte, error) {
+func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
@@ -63,7 +63,7 @@ func unprotect(keys []byte, in []byte) ([]byte, error) {
 	macKey := keys[16:32]
 	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
-		return nil, errors.New("unprotect: Can't make crypter")
+		return nil, errors.New("Unprotect: Can't make crypter")
 	}
 	ctr := cipher.NewCTR(crypter, iv)
 	ctr.XORKeyStream(out, in[48:])
@@ -72,7 +72,7 @@ func unprotect(keys []byte, in []byte) ([]byte, error) {
 	hm.Write(in[32:])
 	calculatedHmac := hm.Sum(nil)
 	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
-		return nil, errors.New("unprotect: Bad mac")
+		return nil, errors.New("Unprotect: Bad mac")
 	}
 	return out, nil
 }
@@ -86,9 +86,9 @@ func ReadRollbackTable(fileName string, tableKey []byte) *RollbackCounterTable {
 	}
 
 	// Decrypt and deserialize table.
-	b, err := unprotect(tableKey, blob)
+	b, err := Unprotect(tableKey, blob)
 	if err != nil {
-		log.Printf("ReadRollbackTable: unprotect failed %s", err)
+		log.Printf("ReadRollbackTable: Unprotect failed %s", err)
 		return nil
 	}
 
@@ -110,9 +110,9 @@ func WriteRollbackTable(rollBackTable *RollbackCounterTable, fileName string, ta
 		log.Printf("WriteRollbackTable: Marshal failed\n")
 		return false
 	}
-	b, err := protect(tableKey, blob)
+	b, err := Protect(tableKey, blob)
 	if err != nil {
-		log.Printf("WriteRollbackTable: protect failed\n")
+		log.Printf("WriteRollbackTable: Protect failed\n")
 		return false
 	}
 	err = ioutil.WriteFile(fileName, b, 0644)

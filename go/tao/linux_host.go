@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path"
-	// "reflect"
+	// "reflect"  REMOVE
 	"sync"
 	"time"
 
@@ -399,10 +399,11 @@ func (lh *LinuxHost) Shutdown() error {
 // If label is empty string, just read in the table
 func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) (error) {
 	fmt.Printf("LinuxHost.InitCounter %s %s %d\n", lh.path, label, c) // REMOVE
+	// TODO: Make sure lh.path is ser properly.
 	sealedRollbackKeysFile := path.Join(lh.path, "SealedRollbackTableKeys.bin")
 	encryptedRollbackTableFile := path.Join(lh.path, "EncryptedRollbackTable.bin")
 	fmt.Printf("SealedKeysFile: %s, EncryptedRollbackFile: %s\n", sealedRollbackKeysFile, encryptedRollbackTableFile) // REMOVE
-	// initialize counter if not already set
+	// Initialize counter, if not already set.
 	if lh.rbTable == nil {
 		// Read rollback protected sealed keys
 		sealedKeys, err := ioutil.ReadFile(sealedRollbackKeysFile)
@@ -485,8 +486,10 @@ func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, 
 		return nil, errors.New("Can't encrypt roothost rollback data")
 	}
 
-	lh.saveTableThreshold = 1	// should be initialized from domain
+	// TODO(jlm): Should be initialized from domain.
+	lh.saveTableThreshold = 1
 	lh.sealsSinceSave = lh.sealsSinceSave + 1
+
 	// Encrypt and save rollback table if necessary
 	if lh.rbTable != nil && lh.sealsSinceSave >= lh.saveTableThreshold {
 		sealedRollbackKeysFile := path.Join(lh.path, "SealedRollbackTableKeys.bin")
@@ -515,13 +518,13 @@ func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, sealed []byt
 	}
 	c, err := lh.GetCounter(child, *sd.Entry.EntryLabel)
 	if err != nil {
-		c = int64(0)
+		return nil, "", errors.New("RollbackProtectedUnseal: Can't get counter")
 	}
 	if *sd.Entry.Counter != c {
 		return nil, "", errors.New("RollbackProtectedUnseal bad counter")
 	}
-	fmt.Printf("LinuxHost.RollbackProtectedUnseal, recorded counter: %d, retrieved counter: %d\n",
-		*sd.Entry.Counter, c)  // REMOVE
+
+	fmt.Printf("LinuxHost.RollbackProtectedUnseal, recorded counter: %d, retrieved counter: %d\n", *sd.Entry.Counter, c)  // REMOVE
 	return sd.ProtectedData, policy, nil
 }
 

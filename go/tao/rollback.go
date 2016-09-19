@@ -20,7 +20,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
-	"fmt"	// REMOVE
+	"fmt"
 	"io/ioutil"
 	"log"
 
@@ -129,12 +129,12 @@ func (e *RollbackEntry) PrintRollbackEntry() {
 	} else {
 		fmt.Printf("HostedProgramName: %s, ", *e.HostedProgramName)
 	}
-	if  e.EntryLabel == nil {
+	if e.EntryLabel == nil {
 		fmt.Printf("EntryLabel: empty, ")
 	} else {
 		fmt.Printf("EntryLabel: %s, ", *e.EntryLabel)
 	}
-	if  e.Counter == nil {
+	if e.Counter == nil {
 		fmt.Printf("Counter: empty\n")
 	} else {
 		fmt.Printf("Counter: %d\n", *e.Counter)
@@ -159,16 +159,14 @@ func (t *RollbackCounterTable) PrintRollbackTable() {
 		fmt.Printf("No rollback table\n")
 		return
 	}
-	fmt.Printf("Rollback table %d entries\n", len(t.Entries)) //REMOVE
 	for i := 0; i < len(t.Entries); i++ {
 		t.Entries[i].PrintRollbackEntry()
 	}
 }
 
 func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, child *LinuxHostChild,
-		sealedKeyFileName string, tableFileName string) bool {
-	fmt.Printf("SaveHostRollbackTableWithNewKeys %s %s\n", sealedKeyFileName, tableFileName) //REMOVE
-	
+	sealedKeyFileName string, tableFileName string) bool {
+	// TODO(jlm): child argument not used, remove?
 	// Generate new rollback table sealing keys
 	var newKeys [32]byte
 	rand.Read(newKeys[0:32])
@@ -195,9 +193,9 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 
 // Lookup Rollback entry for programName, entryName).
 func (t *RollbackCounterTable) LookupRollbackEntry(programName string, entryName string) *RollbackEntry {
-	for i := 0; i < len(t.Entries) ; i++ {
+	for i := 0; i < len(t.Entries); i++ {
 		if t.Entries[i].HostedProgramName != nil && *t.Entries[i].HostedProgramName == programName &&
-				t.Entries[i].EntryLabel != nil && *t.Entries[i].EntryLabel == entryName {
+			t.Entries[i].EntryLabel != nil && *t.Entries[i].EntryLabel == entryName {
 			return t.Entries[i]
 		}
 	}
@@ -206,7 +204,7 @@ func (t *RollbackCounterTable) LookupRollbackEntry(programName string, entryName
 
 // Update Rollback entry for programName, entryName).
 func (t *RollbackCounterTable) UpdateRollbackEntry(programName string, entryName string,
-		 c *int64) *RollbackEntry {
+	c *int64) *RollbackEntry {
 	ent := t.LookupRollbackEntry(programName, entryName)
 	if ent == nil {
 		ent = new(RollbackEntry)
@@ -221,4 +219,3 @@ func (t *RollbackCounterTable) UpdateRollbackEntry(programName string, entryName
 	}
 	return ent
 }
-

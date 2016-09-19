@@ -19,7 +19,6 @@ package tao
 
 import (
 	"errors"
-	"fmt" // REMOVE
 	"io"
 	"math"
 	"net/rpc"
@@ -110,7 +109,7 @@ var ErrMalformedResponse = errors.New("taorpc: malformed response")
 // call issues an rpc request, obtains the response, checks the response for
 // errors, and checks that the response contains exactly the expected values.
 func (t *RPC) call(method string, r *RPCRequest, e expectedResponse) (data []byte, policy string,
-		counter int64, err error) {
+	counter int64, err error) {
 	s := new(RPCResponse)
 	err = t.rpc.Call(method, r, s)
 	if err != nil {
@@ -127,7 +126,7 @@ func (t *RPC) call(method string, r *RPCRequest, e expectedResponse) (data []byt
 	if s.Policy != nil {
 		policy = *s.Policy
 	}
-	if s.Counter!= nil {
+	if s.Counter != nil {
 		counter = *s.Counter
 	}
 	return
@@ -241,16 +240,13 @@ func (t *RPC) GetCounter(label string) (c int64, err error) {
 }
 
 func (t *RPC) RollbackProtectedSeal(label string, data []byte, policy string) (sealed []byte, err error) {
-	fmt.Printf("RPC.RollbackProtectedSeal\n") // REMOVE
 	r := &RPCRequest{Label: &label, Data: data, Policy: &policy}
 	sealed, _, _, err = t.call(t.serviceName+".RollbackProtectedSeal", r, wantData)
 	return
 }
 
 func (t *RPC) RollbackProtectedUnseal(sealed []byte) (data []byte, policy string, err error) {
-	fmt.Printf("RPC.RollbackProtectedUnseal\n") // REMOVE
 	r := &RPCRequest{Data: sealed}
 	data, policy, _, err = t.call(t.serviceName+".RollbackProtectedUnseal", r, wantData|wantPolicy)
 	return
 }
-

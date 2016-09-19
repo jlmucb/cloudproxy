@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"fmt" // REMOVE
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
@@ -159,22 +158,18 @@ func (t *StackedHost) HostName() auth.Prin {
 	return t.taoHostName
 }
 
-func (s *StackedHost) InitCounter(label string, c int64) (error) {
-	fmt.Printf("StackedHost.InitCounter\n") //REMOVE
+func (s *StackedHost) InitCounter(label string, c int64) error {
 	return s.hostTao.InitCounter(label, c)
 }
 
 func (s *StackedHost) GetCounter(label string) (int64, error) {
-	fmt.Printf("StackedHost.GetCounter\n") // REMOVE
 	return s.hostTao.GetCounter(label)
 }
 
 func (s *StackedHost) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("StackedHost.RollbackProtectedSeal\n") // REMOVE
 	return s.hostTao.RollbackProtectedSeal(label, data, policy)
 }
 
 func (s *StackedHost) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
-	fmt.Printf("StackedHost.RollbackProtectedUnseal\n") // REMOVE
 	return s.hostTao.RollbackProtectedUnseal(sealed)
 }

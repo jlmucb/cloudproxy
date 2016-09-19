@@ -58,7 +58,7 @@ type Host interface {
 	HostName() auth.Prin
 
 	// InitCounter initializes a counter with given label.
-	InitCounter(label string, c int64) (error)
+	InitCounter(label string, c int64) error
 
 	// GetCounter retrieves a counter with given label.
 	GetCounter(label string) (int64, error)

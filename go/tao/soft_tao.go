@@ -150,7 +150,7 @@ func (s *SoftTao) Attest(issuer *auth.Prin, time, expiration *int64, message aut
 
 var softtao_counter int64
 
-func (s *SoftTao) InitCounter(label string, c int64) (error) {
+func (s *SoftTao) InitCounter(label string, c int64) error {
 	softtao_counter = c
 	return nil
 }

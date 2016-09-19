@@ -177,7 +177,7 @@ func TestLinuxHostTaoServerInitCounter(t *testing.T) {
 	}
 	err = host.InitCounter("label", int64(1))
 	if err != nil {
-		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer: ", err)
+		t.Fatal("Couldn't InitCounter: %s: ", err)
 	}
 	c, err := host.GetCounter("label")
 	if c != int64(1) {
@@ -191,7 +191,7 @@ func TestLinuxHostTaoServerRollbackProtectedSeal(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = host.InitCounter("label", int64(1))
-	data := []byte{0,1,2,3}
+	data := []byte{0, 1, 2, 3}
 	sealed, err := host.RollbackProtectedSeal("label", data, SealPolicyDefault)
 	if err != nil {
 		t.Fatal("LinuxHostTaoServer failed in RollbackProtectedSeal: ", err)
@@ -208,8 +208,7 @@ func TestLinuxHostTaoServerRollbackProtectedSeal(t *testing.T) {
 	// This should fail because sealed has old counter.
 	_, policy, err = host.RollbackProtectedUnseal(sealed)
 	if err == nil {
-		t.Fatal("LinuxHostTaoServer succeeded in RollbackProtectedUnseal and it shouldn't: ", err)
+		t.Fatal("LinuxHostTaoServer succeeded in RollbackProtectedUnseal and it shouldn't.")
 	}
 	fmt.Printf("Data: %x, policy: %s\n", newData, policy)
 }
-

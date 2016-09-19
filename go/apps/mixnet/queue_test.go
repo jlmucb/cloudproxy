@@ -82,7 +82,9 @@ func runDummyServer(clientCt, msgCt int, ch chan<- testResult, addr chan<- strin
 					if err != nil {
 						ch <- testResult{err, nil}
 					} else {
-						ch <- testResult{nil, buf[:bytes]}
+						bufCopy := make([]byte, bytes)
+						copy(bufCopy, buf[:bytes])
+						ch <- testResult{nil, bufCopy}
 					}
 				}
 				done <- true

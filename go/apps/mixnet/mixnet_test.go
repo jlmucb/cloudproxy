@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-        "github.com/golang/protobuf/proto"
-        "github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 var password = make([]byte, 32)
@@ -150,7 +150,7 @@ func runRouterHandleOneProxy(router *RouterContext, requestCount int, ch chan<- 
 	defer c.Close()
 
 	for i := 0; i < requestCount; i++ {
-		if err = router.HandleProxy(c); err != nil {
+		if err = router.HandleConn(c); err != nil {
 			ch <- testResult{err, nil}
 			return
 		}
@@ -173,7 +173,7 @@ func runRouterHandleProxy(router *RouterContext, clientCt, requestCt int, ch cha
 		go func(c *Conn) {
 			defer func() { done <- true }()
 			for i := 0; i < requestCt; i++ {
-				if err = router.HandleProxy(c); err != nil {
+				if err = router.HandleConn(c); err != nil {
 					ch <- testResult{err, nil}
 					return
 				}
@@ -452,7 +452,7 @@ func TestCreateTimeout(t *testing.T) {
 
 	// The proxy should get a timeout if it's the only connecting client.
 	go runRouterHandleProxy(router, 1, 1, ch)
-	hostAddr := genHostname()+":80"
+	hostAddr := genHostname() + ":80"
 	_, err = proxy.CreateCircuit(routerAddr, hostAddr)
 	if err == nil {
 		t.Errorf("proxy.CreateCircuit(%s, %s) incorrectly succeeded when it should have timed out", routerAddr, hostAddr)
@@ -533,7 +533,7 @@ func TestMixnet(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		go func(pid int, ch chan<- testResult) {
 			pa := "127.0.0.1:0"
-			proxy, err = makeProxyContext(pa, domain)
+			proxy, err := makeProxyContext(pa, domain)
 			if err != nil {
 				ch <- testResult{err, nil}
 				return

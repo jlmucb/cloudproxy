@@ -51,8 +51,8 @@ type RouterContext struct {
 }
 
 // NewRouterContext generates new keys, loads a local domain configuration from
-// path and binds an anonymous listener socket to addr on network
-// network. A delegation is requested from the Tao t which is  nominally
+// path and binds an anonymous listener socket to addr on network.
+// A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
 func NewRouterContext(path, network, addr string, batchSize int, timeout time.Duration,
 	x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
@@ -129,7 +129,7 @@ func (hp *RouterContext) Close() {
 }
 
 // HandleProxy reads a directive or a message from a proxy.
-func (hp *RouterContext) HandleProxy(c *Conn) error {
+func (hp *RouterContext) HandleConn(c *Conn) error {
 	var err error
 	cell := make([]byte, CellBytes)
 	if _, err = c.Read(cell); err != nil && err != io.EOF {

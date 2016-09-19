@@ -190,10 +190,12 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 		}
 
 	} else if cell[0] == dirCell { // Handle a directive.
-		dirBytes, n := binary.Uvarint(cell[1:])
 		var d Directive
-		if err := proto.Unmarshal(cell[1+n:1+n+int(dirBytes)], &d); err != nil {
+		if err = unmarshalDirective(cell, &d); err != nil {
 			return err
+		}
+		if *d.Type == DirectiveType_ERROR {
+			return errors.New("router error: " + (*d.Error))
 		}
 
 		if *d.Type == DirectiveType_CREATE {

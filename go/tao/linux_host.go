@@ -463,14 +463,14 @@ func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, 
 	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
 	c, err := lh.GetCounter(child, label)
 	if err != nil {
-		return nil, errors.New("Can't get current counter") 
+		return nil, errors.New("Can't get current counter")
 	}
 	c = c + 1
 	e := lh.rbTable.UpdateRollbackEntry(programName, label, &c)
 	if e== nil {
-		return nil, errors.New("Can't update rollback entry") 
+		return nil, errors.New("Can't update rollback entry")
 	}
-		
+
 	sd := new(RollbackSealedData)
 	sd.Entry = new(RollbackEntry)
 	sd.Entry.HostedProgramName = &programName

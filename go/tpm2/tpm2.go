@@ -2427,28 +2427,68 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 	return out, nil
 }
 
-// WARNING:  The code from here down has not been reviewed by Sid.  Nothing calls it yet.
-// Tpm2 Counter access
-
 // Make an NvHandle
 func GetNvHandle(slot uint32) (Handle, error) {
 	return Handle((OrdTPM_HT_NV_INDEX << OrdHR_SHIFT) + slot), nil
 }
 
 func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
-	var empty []byte
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdUndefineSpace)
 	if err != nil {
 		return nil, errors.New("ConstructUndefineSpace failed")
 	}
-	// OwnerHandle, handle, empty string
-	num_bytes := []interface{}{uint32(owner), uint32(handle), empty}
+	// OwnerHandle, handle, empty auth password auth
+	auth := CreatePasswordAuthArea("", owner)
+	num_bytes := []interface{}{uint32(owner), uint32(handle), auth}
 	cmd, _ := packWithHeader(cmdHdr, num_bytes)
 	return cmd, nil
 }
 
-func DecodeUndefineSpace(in []byte) (error) {
+// UndefineSpace
+func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
+	cmd, err := ConstructUndefineSpace(owner, handle)
+	if err != nil {
+		return errors.New("UndefineSpace: Can't construct UndefineSpace command")
+	}
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return errors.New("UndefineSpace: Write Tpm fails")
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return errors.New("UndefineSpace: Read Tpm fails")
+	}
+
+	// Decode Response
+	if read < 10 {
+		return errors.New("Read buffer too small")
+	}
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return errors.New("UndefineSpace: DecodeCommandResponse fails")
+	}
+	reportCommand("UndefineSpace", cmd, resp[0:size], status, true)
+	if status != ErrSuccess {
+		return errors.New("UndefineSpace: Can't decode response")
+	}
+	return nil
+}
+
+func ConstructDefineSpace(owner Handle, handle Handle, authString string, policy []byte) ([]byte, error) {
+	// owner, 0(16), emptypassword auth, passworddata, TPM2B_NV_Public size (2*unt32+size(hashalg)+2uint16+authsize
+	// index hashalg (SHA1), attributes, policysize, policy, datasize
+	// SetPasswordData(password string)
+	return nil, nil
+}
+
+func DecodeDefineSpace(in []byte) (error) {
 	/*
+	CreatePasswordAuthArea(password string, owner Handle) []byte
 	var rand_bytes []byte
 
 	out := []interface{}{&rand_bytes}
@@ -2461,15 +2501,13 @@ func DecodeUndefineSpace(in []byte) (error) {
 	return nil
 }
 
-func ConstructDefineSpace(owner Handle, handle Handle, authString string, policy []byte) ([]byte, error) {
-	return nil, nil
-}
-
-func DecodeDefineSpace(in []byte) (error) {
-	return nil
+// DefineSpace
+func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle, policy []byte, size int) (Handle, error) {
+	return Handle(0), nil
 }
 
 func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
+	// handle, handle, 0(16), passwordautharea
 	return nil, nil
 }
 
@@ -2477,59 +2515,30 @@ func DecodeIncrementNv(in []byte) (error) {
 	return nil
 }
 
-func DecodeReadNv(in []byte) (uint64, error) {
-	return uint64(0), nil
-}
-
-func ConstructReadNv(handle Handle, authString string, size int) ([]byte, error) {
-	return nil, nil
-}
-
-// UndefineSpace
-func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
-/*
-	// Send command
-	_, err = rw.Write(cmd)
-	if err != nil {
-		return errors.New("Write Tpm fails")
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-	if err != nil {
-		return errors.New("Read Tpm fails")
-	}
-
-	// Decode Response
-	if read < 10 {
-		return errors.New("Read buffer too small")
-	}
-	_, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		return errors.New("DecodeCommandResponse fails")
-	}
-	reportCommand("GetRandom", cmd, resp[0:size], status, true)
-	if status != ErrSuccess {
-		return nil, errors.New("Can't decode response")
-	}
-	rand, err := DecodeGetRandom(resp[10:read])
-	if err != nil {
-		return nil, err
-	}
- */
-	return nil
-}
-
-// DefineSpace
-func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle, policy []byte, size int) (Handle, error) {
-	return Handle(0), nil
-}
-
 // IncrementNv
 func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
 	return nil
+}
+
+func DecodeReadNv(in []byte) (uint64, error) {
+	// size(16), out
+	var byteCounter []byte
+	out := []interface{}{&byteCounter}
+	err := unpack(in, out)
+	if err != nil {
+		return uint64(0), err
+	}
+	// Convert byteCounter to uint64
+	var c uint64
+	for i := 0; i < len(byteCounter); i++ {
+		c = c * 256 + uint64(byteCounter[i])
+	}
+	return c, nil
+}
+
+func ConstructReadNv(handle Handle, authString string, size int) ([]byte, error) {
+	// handle, handle, 0(16), pw-autharea, size(16), offset(16)
+	return nil, nil
 }
 
 // ReadNv

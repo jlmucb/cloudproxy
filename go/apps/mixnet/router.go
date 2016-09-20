@@ -22,6 +22,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -30,11 +31,14 @@ import (
 
 // RouterContext stores the runtime environment for a Tao-delegated router.
 type RouterContext struct {
-	keys          *tao.Keys    // Signing keys of this hosted program.
-	domain        *tao.Domain  // Policy guard and public key.
-	proxyListener net.Listener // Socket where server listens for proxies.
+	keys           *tao.Keys    // Signing keys of this hosted program.
+	domain         *tao.Domain  // Policy guard and public key.
+	proxyListener  net.Listener // Socket where server listens for proxies.
+	routerListener net.Listener // Socket where server listens for proxies.
 
 	id uint64 // Next serial identifier that will be assigned to a connection.
+
+	idLock *sync.Mutex // Mutex to ensure id is unique for each connection
 
 	// Data structures for queueing and batching messages from sender to
 	// recipient and recipient to sender respectively.
@@ -51,7 +55,8 @@ type RouterContext struct {
 }
 
 // NewRouterContext generates new keys, loads a local domain configuration from
-// path and binds an anonymous listener socket to addr on network.
+// path and binds an anonymous listener socket to addr using network protocol.
+// It also creates a regular listener socket for other routers to connect to.
 // A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
 func NewRouterContext(path, network, addr string, batchSize int, timeout time.Duration,
@@ -60,6 +65,8 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 	hp = new(RouterContext)
 	hp.network = network
 	hp.timeout = timeout
+
+	hp.idLock = new(sync.Mutex)
 
 	// Generate keys and get attestation from parent.
 	if hp.keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, t); err != nil {
@@ -82,15 +89,26 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 		return nil, err
 	}
 
-	tlsConfig := &tls.Config{
+	tlsConfigProxy := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		Certificates:       []tls.Certificate{*cert},
 		InsecureSkipVerify: true,
-		ClientAuth:         tls.NoClientCert,
+	}
+
+	tlsConfigRouter := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{*cert},
+		InsecureSkipVerify: true,
 	}
 
 	// Bind address to socket.
-	if hp.proxyListener, err = tao.ListenAnonymous(network, addr, tlsConfig,
+	if hp.proxyListener, err = tao.ListenAnonymous(network, addr, tlsConfigProxy,
+		hp.domain.Guard, hp.domain.Keys.VerifyingKey, hp.keys.Delegation); err != nil {
+		return nil, err
+	}
+
+	// Bind address to socket.
+	if hp.routerListener, err = tao.Listen(network, addr, tlsConfigRouter,
 		hp.domain.Guard, hp.domain.Keys.VerifyingKey, hp.keys.Delegation); err != nil {
 		return nil, err
 	}
@@ -117,6 +135,15 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 	return &Conn{c, hp.nextID(), hp.timeout}, nil
 }
 
+// AcceptRouter Waits for connectons from other routers.
+func (hp *RouterContext) AcceptRouter() (*Conn, error) {
+	c, err := hp.routerListener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	return &Conn{c, hp.nextID(), hp.timeout}, nil
+}
+
 // Close releases any resources held by the hosted program.
 func (hp *RouterContext) Close() {
 	hp.killQueue <- true
@@ -125,6 +152,9 @@ func (hp *RouterContext) Close() {
 	hp.killQueueErrorHandler <- true
 	if hp.proxyListener != nil {
 		hp.proxyListener.Close()
+	}
+	if hp.routerListener != nil {
+		hp.routerListener.Close()
 	}
 }
 
@@ -200,28 +230,37 @@ func (hp *RouterContext) HandleConn(c *Conn) error {
 
 		if *d.Type == DirectiveType_CREATE {
 			// Add next hop for this circuit to sendQueue and send a CREATED
-			// directive to sender to inform the sender. TODO(cjpatton) For
-			// now, only single hop circuits are supported.
+			// directive to sender to inform the sender.
 			if len(d.Addrs) == 0 {
 				if err = hp.SendError(c, errBadDirective); err != nil {
 					return err
 				}
 				return nil
 			}
+
+			// Relay the CREATE message
+			// Since we assume Tao routers, this router can recreate the message
+			// without worrying about security
+			hp.sendQueue.SetAddr(c.id, d.Addrs[0])
+
 			if len(d.Addrs) > 1 {
-				if err = hp.SendError(c, errors.New("multi-hop circuits not implemented")); err != nil {
+				dir := &Directive{
+					Type:  DirectiveType_CREATE.Enum(),
+					Addrs: d.Addrs[1:],
+				}
+				nextCell, err := marshalDirective(dir)
+				if err != nil {
 					return err
 				}
-				return nil
+				hp.sendQueue.EnqueueMsg(c.id, nextCell)
 			}
 
-			hp.sendQueue.SetAddr(c.id, d.Addrs[0])
+			// Tell the previous hop (proxy or router) it's created
 			cell, err = marshalDirective(dirCreated)
 			if err != nil {
 				return err
 			}
 			hp.replyQueue.EnqueueMsg(c.id, cell)
-
 		} else if *d.Type == DirectiveType_DESTROY {
 			// TODO(cjpatton) when multi-hop circuits are implemented, send
 			// a DESTROY directive to the next hop and wait for DESTROYED in
@@ -264,11 +303,10 @@ func (hp *RouterContext) SendError(c *Conn, err error) error {
 }
 
 // Get the next Id to assign and increment counter.
-// TODO(cjpatton) AcceptRouter() will wait for connections from other mixnet
-// routers when multi-hop circuits are implemented. This will need mutual
-// exclusion when that happens.
 func (hp *RouterContext) nextID() (id uint64) {
+	hp.idLock.Lock()
 	id = hp.id
 	hp.id++
+	hp.idLock.Unlock()
 	return id
 }

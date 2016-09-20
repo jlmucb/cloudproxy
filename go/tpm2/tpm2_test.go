@@ -729,17 +729,44 @@ func TestCombinedNvTest(t *testing.T) {
 		t.Fatal("Flushall failed\n")
 	}
 
-	// handle, err := GetNvHandle(1000)
-	// owner := 
-	// err = UndefineSpace(rw, owner Handle, handle Handle) (error)
-	// dataSize :=
-	// offset :=
-	// policy :=
-	// attributes :=
-	// authString :=
-	// err = DefineSpace(rw, owner, handle, authString, policy, attributes, dataSize)
-	// c1, err := ReadNv(rw, handle, authString, offset, dataSize)
-	// err = IncrementNv(rw, handle, authString)
-	// c2, err := ReadNv(rw, handle, authString, offset, dataSize)
-	// if c2 != (c1 +1) { error }
+	/*
+	handle, err := GetNvHandle(1000)
+	if err != nil {
+		t.Fatal("Can't get nv handle")
+	}
+	fmt.Printf("nvHandle: %x\n", uint32(handle));
+	owner := Handle(OrdTPM_RH_OWNER)
+	err = UndefineSpace(rw, owner Handle, handle Handle) (error)
+	if err != nil {
+		fmt.Printf("UndefineSpace failed (ok) %s\n", err)
+	} else {
+		fmt.Printf("UndefineSpace succeeded\n")
+	}
+	dataSize := 8
+	offset := 0
+	var policy []byte // empty
+	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
+	authString := ""
+	err = DefineSpace(rw, owner, handle, authString, policy, attributes, dataSize)
+	if err != nil {
+		t.Fatal("DefineSpace fails")
+	}
+	c1, err := ReadNv(rw, handle, authString, offset, dataSize)
+	if err != nil {
+		t.Fatal("ReadNv (1) failed ", err)
+	}
+	fmt.Printf("Counter before increment: %d\n", c1)
+	err = IncrementNv(rw, handle, authString)
+	if err != nil {
+		t.Fatal("IncrementNv failed ", err)
+	}
+	c2, err := ReadNv(rw, handle, authString, offset, dataSize)
+	if err != nil {
+		t.Fatal("ReadNv (2) failed ", err)
+	}
+	fmt.Printf("Counter after increment: %d\n", c2)
+	if c2 <= c1 {
+		t.Fatal("Error: Counter did not advance")
+	}
+	*/
 }

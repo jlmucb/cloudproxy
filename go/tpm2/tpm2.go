@@ -2537,16 +2537,50 @@ func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle, authString strin
 }
 
 func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
-	// handle, handle, 0(16), passwordautharea
-	return nil, nil
-}
-
-func DecodeIncrementNv(in []byte) (error) {
-	return nil
+	// handle, handle, 0(16), autharea
+	auth := CreatePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+	var empty []byte
+	num_bytes := []interface{}{uint32(handle), int32(handle), empty, auth}
+	out, err := pack(num_bytes)
+	if err != nil {
+	}
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdIncrementNvCounter)
+	if err != nil {
+	}
+	cmd := packWithBytes(cmdHdr, out)
+	return cmd, nil
 }
 
 // IncrementNv
 func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
+	cmd, err := ConstructIncrementNv(handle, authString)
+	if err != nil {
+		return errors.New("IncrementNv: Can't construct UndefineSpace command")
+	}
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return errors.New("IncrementNv: Write Tpm fails")
+	}
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return errors.New("IncrementNv: Read Tpm fails")
+	}
+	// Decode Response
+	if read < 10 {
+		return errors.New("Read buffer too small")
+	}
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return errors.New("IncrementNv: DecodeCommandResponse fails")
+	}
+	reportCommand("IncrementNv", cmd, resp[0:size], status, true)
+	if status != ErrSuccess {
+		return errors.New("IncrementNv: Can't decode response")
+	}
 	return nil
 }
 
@@ -2566,14 +2600,52 @@ func DecodeReadNv(in []byte) (uint64, error) {
 	return c, nil
 }
 
-func ConstructReadNv(handle Handle, authString string, size int) ([]byte, error) {
+func ConstructReadNv(handle Handle, authString string, offset uint16, dataSize uint16) ([]byte, error) {
 	// handle, handle, 0(16), pw-autharea, size(16), offset(16)
-	return nil, nil
+	auth := CreatePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+	var empty []byte
+	num_bytes := []interface{}{uint32(handle), int32(handle), empty, auth, dataSize, offset}
+	out, err := pack(num_bytes)
+	if err != nil {
+	}
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdReadNv)
+	if err != nil {
+	}
+	cmd := packWithBytes(cmdHdr, out)
+	return cmd, nil
 }
 
 // ReadNv
-func ReadNv(rw io.ReadWriter, handle Handle, authString string, size int) (uint64, error) {
-	return uint64(0), nil
+func ReadNv(rw io.ReadWriter, handle Handle, authString string, offset uint16, dataSize uint16) (uint64, error) {
+	cmd, err := ConstructReadNv(handle, authString, offset, dataSize)
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: Can't construct ReadNv command")
+	}
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: Write Tpm fails")
+	}
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: Read Tpm fails")
+	}
+	// Decode Response
+	if read < 10 {
+		return uint64(0), errors.New("Read buffer too small")
+	}
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: DecodeCommandResponse fails")
+	}
+	reportCommand("ReadNv", cmd, resp[0:size], status, true)
+	if status != ErrSuccess {
+		return uint64(0), errors.New("ReadNv: Can't decode response")
+	}
+	return DecodeReadNv(resp[10:])
 }
 
 // Tpm2GetCounter

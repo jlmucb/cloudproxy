@@ -22,6 +22,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/jlmucb/cloudproxy/go/tao" // REMOVE
 	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
@@ -57,9 +58,23 @@ func main() {
 	fmt.Printf("simpleclient: TaoParadigm complete, name: %s\n",
 		clientProgramData.TaoName)
 
-	// Open the Tao Channel using the Program key.  This program does all the
-	// standard channel negotiation and presents the secure server name after
-	// negotiation is complete.
+	// TODO(jlm): The commented out code hasn't been reviewed
+	// it will be restored later.
+/*
+	err = tao.Parent().InitCounter("label", 0)  // REMOVE
+	fmt.Printf("Return from InitCounter %s\n", err)
+	_,  err = tao.Parent().GetCounter("label")  // REMOVE
+	fmt.Printf("Return from GetCounter %s\n", err)
+	data := []byte {
+		0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
+		0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5, }
+	_,  err = tao.Parent().RollbackProtectedSeal("label", data, tao.SealPolicyDefault)  // REMOVE
+	fmt.Printf("Return from .RollBackProtectedSeal: %s\n", err)
+*/
+
+	// Open the Tao Channel using the Program key. This program does all the
+	// standard channel negotiation and presents the secure server name
+	// after negotiation is complete.
 	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData,
 		&serverAddr)
 	if err != nil {

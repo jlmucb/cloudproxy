@@ -76,7 +76,7 @@ func makeContext(batchSize int) (*RouterContext, *ProxyContext, *tao.Domain, err
 
 	// Create router context. This loads the domain and binds a
 	// socket and an anddress.
-	router, err := NewRouterContext(d.ConfigPath, network, localAddr,
+	router, err := NewRouterContext(d.ConfigPath, network, localAddr, localAddr,
 		batchSize, timeout, &id, st)
 	if err != nil {
 		return nil, nil, nil, err

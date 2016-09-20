@@ -15,6 +15,8 @@
 package mixnet
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"io"
 	"net"
@@ -30,8 +32,11 @@ type ProxyContext struct {
 	domain   *tao.Domain  // Policy guard and public key.
 	listener net.Listener // SOCKS5 server for listening to clients.
 
-	// Next serial identifier that will be assigned to a new connection.
-	id uint64
+	// Mapping circuit id to a connection,
+	// and mapping address to connection for multiplexing
+	clients  map[uint64]net.Conn
+	circuits map[uint64]*Conn
+	conns    map[string]*Conn
 
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on read/write.
@@ -53,6 +58,10 @@ func NewProxyContext(path, network, addr string, timeout time.Duration) (p *Prox
 		return nil, err
 	}
 
+	p.clients = make(map[uint64]net.Conn)
+	p.circuits = make(map[uint64]*Conn)
+	p.conns = make(map[string]*Conn)
+
 	return p, nil
 }
 
@@ -69,17 +78,28 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c, p.nextID(), p.timeout}, nil
+	return &Conn{c, p.timeout}, nil
 }
 
 // CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
-func (p *ProxyContext) CreateCircuit(addrs ...string) (*Conn, error) {
-	c, err := p.DialRouter(p.network, addrs[0])
+func (p *ProxyContext) CreateCircuit(addrs ...string) (uint64, error) {
+	id, err := p.nextID()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
+
+	var c *Conn
+	if _, ok := p.conns[addrs[0]]; !ok {
+		c, err = p.DialRouter(p.network, addrs[0])
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		c = p.conns[addrs[0]]
+	}
+	p.circuits[id] = c
 
 	d := &Directive{
 		Type:  DirectiveType_CREATE.Enum(),
@@ -87,38 +107,43 @@ func (p *ProxyContext) CreateCircuit(addrs ...string) (*Conn, error) {
 	}
 
 	// Send CREATE directive to router.
-	if _, err := c.SendDirective(d); err != nil {
-		return c, err
+	if _, err := c.SendDirective(id, d); err != nil {
+		return 0, err
 	}
 
 	// Wait for CREATED directive from router.
-	if _, err := c.ReceiveDirective(d); err != nil {
-		return c, err
+	if _, err := c.ReceiveDirective(&id, d); err != nil {
+		return 0, err
 	} else if *d.Type != DirectiveType_CREATED {
-		return c, errors.New("could not create circuit")
+		return 0, errors.New("could not create circuit")
 	}
 
-	return c, nil
+	return id, nil
 }
 
 // DestroyCircuit directs the router to close the connection to the destination
 // and destroy the circuit then closes the connection. TODO(cjpatton) in order
 // to support multi-hop circuits, this code will need to wait for a DESTROYED
 // directive from the first hop.
-func (p *ProxyContext) DestroyCircuit(c *Conn) error {
+func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	// Send DESTROY directive to router.
-	if _, err := c.SendDirective(dirDestroy); err != nil {
+	c := p.circuits[id]
+	if _, err := c.SendDirective(id, dirDestroy); err != nil {
 		return err
 	}
 	c.Close()
 	return nil
 }
 
-// Return the next serial identifier.
-func (p *ProxyContext) nextID() (id uint64) {
-	id = p.id
-	p.id++
-	return id
+// Return a random circuit ID
+// TODO(kwonalbert): probably won't happen, but should check for duplicates
+func (p *ProxyContext) nextID() (uint64, error) {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return 0, err
+	}
+	id, _ := binary.Uvarint(b)
+	return id, nil
 }
 
 // Accept waits for clients running the SOCKS5 protocol.
@@ -132,14 +157,14 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
 func (p *ProxyContext) ServeClient(c net.Conn, addrs ...string) error {
-
-	d, err := p.CreateCircuit(addrs...)
+	id, err := p.CreateCircuit(addrs...)
 	if err != nil {
 		return err
 	}
+	p.clients[id] = c
 
 	for {
-		err = p.HandleClient(c, d)
+		err = p.HandleClient(id)
 		if err == io.EOF {
 			glog.Info("proxy: encountered EOF while serving")
 			break
@@ -149,30 +174,32 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs ...string) error {
 		}
 	}
 
-	return p.DestroyCircuit(d)
+	return p.DestroyCircuit(id)
 }
 
 // HandleClient relays a message read from client connection c to mixnet
 // connection  d and relay reply.
-func (p *ProxyContext) HandleClient(c net.Conn, d *Conn) error {
+func (p *ProxyContext) HandleClient(id uint64) error {
+	c := p.clients[id]
+	d := p.circuits[id]
 
 	msg := make([]byte, MaxMsgBytes)
-	c.SetDeadline(time.Now().Add(p.timeout))
 	bytes, err := c.Read(msg)
 	if err != nil {
 		return err
 	}
 
-	if err = d.SendMessage(msg[:bytes]); err != nil {
+	if err = d.SendMessage(id, msg[:bytes]); err != nil {
 		return err
 	}
 
-	reply, err := d.ReceiveMessage()
+	replyID, reply, err := d.ReceiveMessage()
 	if err != nil {
 		return err
 	}
 
-	c.SetDeadline(time.Now().Add(p.timeout))
+	replyc := p.clients[replyID]
+	replyc.SetDeadline(time.Now().Add(p.timeout))
 	if _, err = c.Write(reply); err != nil {
 		return err
 	}

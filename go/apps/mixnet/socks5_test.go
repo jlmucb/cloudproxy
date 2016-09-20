@@ -33,18 +33,20 @@ func runSocksServerOne(proxy *ProxyContext, rAddr string, ch chan<- testResult) 
 	defer c.Close()
 	addr := c.(*SocksConn).dstAddr
 
-	d, err := proxy.CreateCircuit(rAddr, addr)
+	id, err := proxy.CreateCircuit(rAddr, addr)
 	if err != nil {
 		ch <- testResult{err, nil}
 		return
 	}
 
-	if err = proxy.HandleClient(c, d); err != nil {
+	proxy.clients[id] = c
+
+	if err = proxy.HandleClient(id); err != nil {
 		ch <- testResult{err, nil}
 		return
 	}
 
-	if err = proxy.DestroyCircuit(d); err != nil {
+	if err = proxy.DestroyCircuit(id); err != nil {
 		ch <- testResult{err, nil}
 		return
 	}

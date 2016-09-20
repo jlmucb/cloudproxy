@@ -191,19 +191,21 @@ func runRouterHandleProxy(router *RouterContext, clientCt, requestCt int, ch cha
 // Proxy dials a router, creates a circuit, and sends a message over
 // the circuit.
 func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) ([]byte, error) {
-	c, err := proxy.CreateCircuit(rAddr, dAddr)
+	id, err := proxy.CreateCircuit(rAddr, dAddr)
 	if err != nil {
 		return nil, err
 	}
+	c := proxy.circuits[id]
 	defer c.Close()
 
-	if err = c.SendMessage(msg); err != nil {
+	if err = c.SendMessage(id, msg); err != nil {
 		return nil, err
 	}
 
 	// dummyServer receives one message and replies. Without this line,
 	// the router will report a broken pipe.
-	return c.ReceiveMessage()
+	_, msg, err = c.ReceiveMessage()
+	return msg, err
 }
 
 // Test connection set up.
@@ -252,16 +254,17 @@ func TestCreateDestroy(t *testing.T) {
 	ch := make(chan testResult)
 	go runRouterHandleOneProxy(router, 3, ch)
 
-	c, err := proxy.CreateCircuit(rAddr, fakeAddr)
+	id, err := proxy.CreateCircuit(rAddr, fakeAddr)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if err = c.SendMessage([]byte("hola!")); err != nil {
+	c := proxy.circuits[id]
+	if err = c.SendMessage(id, []byte("hola!")); err != nil {
 		t.Error(err)
 	}
 
-	if err = proxy.DestroyCircuit(c); err != nil {
+	if err = proxy.DestroyCircuit(id); err != nil {
 		t.Error(err)
 	}
 
@@ -288,26 +291,26 @@ func TestProxyRouterCell(t *testing.T) {
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
 	ch := make(chan testResult)
 
-	msg := make([]byte, CellBytes+1)
-	for i := 0; i < len(msg); i++ {
-		msg[i] = byte(i)
+	cell := make([]byte, CellBytes+1)
+	for i := 0; i < len(cell); i++ {
+		cell[i] = byte(i)
 	}
 
 	// This cell is just right.
 	go runRouterReadCell(router, ch)
-	if err = runProxyWriteCell(proxy, router.proxyListener.Addr().String(), msg[:CellBytes]); err != nil {
+	if err = runProxyWriteCell(proxy, router.proxyListener.Addr().String(), cell[:CellBytes]); err != nil {
 		t.Error(err)
 	}
 	res := <-ch
 	if res.err != nil && res.err != io.EOF {
 		t.Error(res.err)
-	} else if bytes.Compare(res.msg, msg[:CellBytes]) != 0 {
+	} else if bytes.Compare(res.msg, cell[:CellBytes]) != 0 {
 		t.Errorf("Server got: %s", res.msg)
 	}
 
 	// This cell is too big.
 	go runRouterReadCell(router, ch)
-	if err = runProxyWriteCell(proxy, router.proxyListener.Addr().String(), msg); err != errCellLength {
+	if err = runProxyWriteCell(proxy, router.proxyListener.Addr().String(), cell); err != errCellLength {
 		t.Error("runProxyWriteCell(): should have returned errCellLength")
 	}
 	res = <-ch
@@ -390,22 +393,22 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	}
 
 	// Unrecognized cell type.
-	cell[0] = 0xff
+	cell[TYPE] = 0xff
 	if _, err = c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = c.ReceiveMessage()
+	_, _, err = c.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
 
 	// Message too long.
-	cell[0] = msgCell
-	binary.PutUvarint(cell[1:], uint64(MaxMsgBytes+1))
+	cell[TYPE] = msgCell
+	binary.PutUvarint(cell[BODY:], uint64(MaxMsgBytes+1))
 	if _, err := c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = c.ReceiveMessage()
+	_, _, err = c.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
@@ -414,14 +417,15 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 
 	// Bogus destination.
 	go runRouterHandleOneProxy(router, 2, ch)
-	c, err = proxy.CreateCircuit(routerAddr, "127.0.0.1:9999")
+	id, err := proxy.CreateCircuit(routerAddr, "127.0.0.1:9999")
 	if err != nil {
 		t.Error(err)
 	}
-	if err = c.SendMessage([]byte("Are you there?")); err != nil {
+	c = proxy.circuits[id]
+	if err = c.SendMessage(id, []byte("Are you there?")); err != nil {
 		t.Error(err)
 	}
-	_, err = c.ReceiveMessage()
+	_, _, err = c.ReceiveMessage()
 	if err == nil {
 		t.Error("Receive message incorrectly succeeded")
 	}
@@ -480,14 +484,15 @@ func TestSendMessageTimeout(t *testing.T) {
 
 	// Proxy 1 creates a circuit, sends a message and awaits a reply.
 	go func() {
-		c, err := proxy.CreateCircuit(routerAddr, genHostname()+":80")
+		id, err := proxy.CreateCircuit(routerAddr, genHostname()+":80")
 		if err != nil {
 			t.Error(err)
 		}
-		if err = c.SendMessage([]byte("hello")); err != nil {
+		c := proxy.circuits[id]
+		if err = c.SendMessage(id, []byte("hello")); err != nil {
 			t.Error(err)
 		}
-		if _, err = c.ReceiveMessage(); err == nil {
+		if _, _, err = c.ReceiveMessage(); err == nil {
 			t.Error("receiveMessage incorrectly succeeded")
 		}
 		done <- true

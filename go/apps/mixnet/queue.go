@@ -30,7 +30,7 @@ import (
 // adddress or connection of a sender, add a message or request for reply
 // to the queue, or destroy any resources associated with the connection.
 type Queueable struct {
-	id      uint64 // Serial identififer of associated connection.
+	id      uint64 // circuit id
 	addr    string
 	msg     []byte
 	conn    net.Conn
@@ -39,7 +39,7 @@ type Queueable struct {
 }
 
 type sendQueueError struct {
-	id uint64 // Serial identifier of sender to which error pertains.
+	id uint64 // circuit id
 	error
 }
 
@@ -58,9 +58,9 @@ type Queue struct {
 	nextConn   map[uint64]net.Conn   // Connection to destination.
 	sendBuffer map[uint64]*list.List // Message buffer of sender.
 
-	queue	  chan *Queueable     // Channel for queueing messages/directives.
+	queue     chan *Queueable     // Channel for queueing messages/directives.
 	err       chan sendQueueError // Channel for handling errors.
-	destroyed chan uint64 // Channel for waiting for circuit destruction, which happens asynchronously.
+	destroyed chan uint64         // Channel for waiting for circuit destruction, which happens asynchronously.
 }
 
 // NewQueue creates a new Queue structure.
@@ -233,7 +233,7 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 			var d Directive
 			d.Type = DirectiveType_ERROR.Enum()
 			d.Error = proto.String(err.Error())
-			cell, e := marshalDirective(&d)
+			cell, e := marshalDirective(err.id, &d)
 			if e != nil {
 				glog.Errorf("queue: %s\n", e)
 				return

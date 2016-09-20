@@ -197,13 +197,13 @@ func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) (
 	}
 	defer c.Close()
 
-	if err = proxy.SendMessage(c, msg); err != nil {
+	if err = c.SendMessage(msg); err != nil {
 		return nil, err
 	}
 
 	// dummyServer receives one message and replies. Without this line,
 	// the router will report a broken pipe.
-	return proxy.ReceiveMessage(c)
+	return c.ReceiveMessage()
 }
 
 // Test connection set up.
@@ -257,7 +257,7 @@ func TestCreateDestroy(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err = proxy.SendMessage(c, []byte("hola!")); err != nil {
+	if err = c.SendMessage([]byte("hola!")); err != nil {
 		t.Error(err)
 	}
 
@@ -394,7 +394,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if _, err = c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = proxy.ReceiveMessage(c)
+	_, err = c.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
@@ -405,7 +405,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if _, err := c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = proxy.ReceiveMessage(c)
+	_, err = c.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
@@ -418,10 +418,10 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if err = proxy.SendMessage(c, []byte("Are you there?")); err != nil {
+	if err = c.SendMessage([]byte("Are you there?")); err != nil {
 		t.Error(err)
 	}
-	_, err = proxy.ReceiveMessage(c)
+	_, err = c.ReceiveMessage()
 	if err == nil {
 		t.Error("Receive message incorrectly succeeded")
 	}
@@ -429,13 +429,13 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	c.Close()
 
 	// Multihop circuits not supported yet.
-	go runRouterHandleOneProxy(router, 1, ch)
-	c, err = proxy.CreateCircuit(routerAddr, "one:234", "two:34", "three:4")
-	if err == nil {
-		t.Error("should have gotten \"multi-hop circuits not implemented\" from router")
-	}
-	<-ch
-	c.Close()
+	// go runRouterHandleOneProxy(router, 1, ch)
+	// c, err = proxy.CreateCircuit(routerAddr, "one:234", "two:34", "three:4")
+	// if err == nil {
+	// 	t.Error("should have gotten \"multi-hop circuits not implemented\" from router")
+	// }
+	// <-ch
+	// c.Close()
 }
 
 // Test timeout on CreateMessage().
@@ -484,11 +484,11 @@ func TestSendMessageTimeout(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if err = proxy.SendMessage(c, []byte("hello")); err != nil {
+		if err = c.SendMessage([]byte("hello")); err != nil {
 			t.Error(err)
 		}
-		if _, err = proxy.ReceiveMessage(c); err == nil {
-			t.Error("proxy.ReceiveMessage incorrectly succeeded")
+		if _, err = c.ReceiveMessage(); err == nil {
+			t.Error("receiveMessage incorrectly succeeded")
 		}
 		done <- true
 	}()

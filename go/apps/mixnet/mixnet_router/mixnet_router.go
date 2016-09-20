@@ -54,7 +54,8 @@ func serveMixnetProxies(hp *mixnet.RouterContext) error {
 }
 
 // Command line arguments.
-var routerAddr = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
+var routerAddr1 = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router facing proxies.")
+var routerAddr2 = flag.String("addr", "127.0.0.1:8124", "Address and port for the Tao-delegated mixnet router facing other routers.")
 var routerNetwork = flag.String("network", "tcp", "Network protocol for the Tao-delegated mixnet router.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
 var batchSize = flag.Int("batch", 1, "Number of senders in a batch.")
@@ -73,8 +74,8 @@ func main() {
 		glog.Fatalf("router: failed to parse timeout duration: %s", err)
 	}
 
-	hp, err := mixnet.NewRouterContext(*configPath, *routerNetwork, *routerAddr, *batchSize,
-		timeout, &x509Identity, tao.Parent())
+	hp, err := mixnet.NewRouterContext(*configPath, *routerNetwork, *routerAddr1, *routerAddr2,
+		*batchSize, timeout, &x509Identity, tao.Parent())
 	if err != nil {
 		glog.Fatalf("failed to configure router: %s", err)
 	}

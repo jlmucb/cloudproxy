@@ -29,6 +29,8 @@ func stringsCompare(strs1, strs2 []string) bool {
 }
 
 func TestMarshalDirective(t *testing.T) {
+	id := uint64(7654321)
+
 	d := &Directive{
 		Type:             DirectiveType_CREATE.Enum(),
 		Addrs:            []string{"192,168.1.1:2002", "192,168.1.2:9001", "192,168.1.3:8002"},
@@ -36,18 +38,20 @@ func TestMarshalDirective(t *testing.T) {
 		XXX_unrecognized: nil,
 	}
 
-	dBytes, err := marshalDirective(d)
+	dBytes, err := marshalDirective(id, d)
 	if err != nil {
 		t.Error(err)
 	}
 
 	res := new(Directive)
-	err = unmarshalDirective(dBytes, res)
+	var resId uint64
+	err = unmarshalDirective(dBytes, &resId, res)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if *d.Type != *res.Type || !stringsCompare(d.Addrs, res.Addrs) || d.Error != res.Error {
+	if id != resId || *d.Type != *res.Type ||
+		!stringsCompare(d.Addrs, res.Addrs) || d.Error != res.Error {
 		t.Error("Marshalling failed")
 	}
 }

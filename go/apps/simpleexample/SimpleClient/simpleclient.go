@@ -22,7 +22,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/jlmucb/cloudproxy/go/tao" // REMOVE
+	// "github.com/jlmucb/cloudproxy/go/tao" // REMOVE
 	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 

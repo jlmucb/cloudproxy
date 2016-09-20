@@ -87,6 +87,19 @@ type Tao interface {
 	// Unseal decrypts data that has been sealed by the Seal() operation, but only
 	// if the policy specified during the Seal() operation is satisfied.
 	Unseal(sealed []byte) (data []byte, policy string, err error)
+
+	// InitCounter initializes a counter with given label.
+	InitCounter(label string, c int64) error
+
+	// GetCounter retrieves a counter with given label.
+	GetCounter(label string) (int64, error)
+
+	// RollbackProtectedSeal encrypts data under rollback protection
+	// so only certain hosted programs can unseal it.
+	RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error)
+
+	// RollbackProtectedUnseal decrypts data under rollback protection.
+	RollbackProtectedUnseal(sealed []byte) ([]byte, string, error)
 }
 
 // The following variables are accessible within the tao package so they can be

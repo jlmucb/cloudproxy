@@ -511,9 +511,9 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("toQuote: %x\n", toQuote)
-	fmt.Printf("Quote: %x\n", quote_struct)
-	fmt.Printf("sig: %x\n", sig)
+	// fmt.Printf("toQuote: %x\n", toQuote)    // REMOVE
+	// fmt.Printf("Quote: %x\n", quote_struct) // REMOVE
+	// fmt.Printf("sig: %x\n", sig)            // REMOVE
 
 	quoteKey, err := x509.MarshalPKIXPublicKey(tt.verifier)
 	if err != nil {
@@ -645,6 +645,26 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 	}
 
 	return m, SealPolicyDefault, nil
+}
+
+func (s *TPM2Tao) InitCounter(label string, c int64) error {
+	fmt.Printf("tpm2.InitCounter\n") // REMOVE
+	return errors.New("InitCounter for tpm2 not implemented")
+}
+
+func (s *TPM2Tao) GetCounter(label string) (int64, error) {
+	fmt.Printf("tpm2.GetCounter\n") // REMOVE
+	return int64(0), errors.New("GetCounter for tpm2 not implemented")
+}
+
+func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
+	fmt.Printf("tpm2.RollbackProtectedSeal\n") // REMOVE
+	return nil, errors.New("RollbackProtectedSeal for tpm2 not implemented")
+}
+
+func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
+	fmt.Printf("tpm2.RollbackProtectedUnseal\n") // REMOVE
+	return nil, "", errors.New("RollbackProtectedUnseal for tpm2 not implemented")
 }
 
 // extractPCRs gets the PCRs from a tpm principal.

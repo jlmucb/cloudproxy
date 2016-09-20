@@ -15,7 +15,10 @@
 package tao
 
 import (
+	"errors"
 	"io"
+	"io/ioutil"
+	"path"
 	"sync"
 	"time"
 
@@ -30,14 +33,18 @@ import (
 // processes, or shutting down the host. A LinuxTao can be run in stacked mode
 // (on top of a host Tao) or in root mode (without an underlying host Tao).
 type LinuxHost struct {
-	Host           Host
-	path           string
-	guard          Guard
-	childFactory   HostedProgramFactory
-	hostedPrograms []*LinuxHostChild
-	hpm            sync.RWMutex
-	nextChildID    uint
-	idm            sync.Mutex
+	Host               Host
+	path               string
+	guard              Guard
+	childFactory       HostedProgramFactory
+	hostedPrograms     []*LinuxHostChild
+	hpm                sync.RWMutex
+	nextChildID        uint
+	idm                sync.Mutex
+	saveTableThreshold int
+	sealsSinceSave     int
+	rbTable            *RollbackCounterTable
+	rbdm               sync.Mutex
 }
 
 // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
@@ -387,22 +394,131 @@ func (lh *LinuxHost) Shutdown() error {
 }
 
 // InitCounter initializes the child's counter for the given label.
-func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string) (error) {
+// If label is empty string, just read in the table
+func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) error {
+	sealedRollbackKeysFile := path.Join(lh.path, "SealedRollbackTableKeys.bin")
+	encryptedRollbackTableFile := path.Join(lh.path, "EncryptedRollbackTable.bin")
+
+	// Initialize counter, if not already set.
+	if lh.rbTable == nil {
+		// Read rollback protected sealed keys
+		sealedKeys, err := ioutil.ReadFile(sealedRollbackKeysFile)
+		if err == nil {
+			// Stacked host will have a hostTao
+			// reflect.TypeOf(lh.Host).String() == "*tao.StackedHost"
+			// Unseal table keys
+			tableKeys, _, err := lh.Host.RollbackProtectedUnseal(sealedKeys)
+			if err == nil {
+				// Init rollback table
+				lh.rbTable = ReadRollbackTable(encryptedRollbackTableFile, tableKeys)
+				if label == "" {
+					// Init was called just to read table
+					return nil
+				}
+			}
+		}
+	}
+	if lh.rbTable == nil {
+		lh.rbTable = new(RollbackCounterTable)
+	}
+	if label == "" {
+		return nil
+	}
+	lh.rbdm.Lock()
+	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
+	e := lh.rbTable.LookupRollbackEntry(programName, label)
+	lh.rbdm.Unlock()
+	if e == nil || e.Counter == nil || *e.Counter <= c {
+		lh.rbdm.Lock()
+		_ = lh.rbTable.UpdateRollbackEntry(programName, label, &c)
+		lh.rbdm.Unlock()
+	}
 	return nil
 }
 
 // GetCounter gets the child's counter for the given label.
 func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, error) {
-	return int64(0), nil
+	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
+	if lh.rbTable == nil {
+		err := lh.InitCounter(child, "", int64(0))
+		if err != nil {
+			return int64(0), errors.New("Counter not initialized")
+		}
+	}
+	lh.rbdm.Lock()
+	e := lh.rbTable.LookupRollbackEntry(programName, label)
+	lh.rbdm.Unlock()
+	if e == nil || e.Counter == nil {
+		return int64(0), errors.New("No such counter")
+	}
+	return *e.Counter, nil
 }
 
 // RollbackProtectedSeal seals the data associated with the given label with rollback protection.
 func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, data []byte, policy string) ([]byte, error) {
-	return nil, nil
+	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
+	c, err := lh.GetCounter(child, label)
+	if err != nil {
+		return nil, errors.New("Can't get current counter")
+	}
+	c = c + 1
+	e := lh.rbTable.UpdateRollbackEntry(programName, label, &c)
+	if e == nil {
+		return nil, errors.New("Can't update rollback entry")
+	}
+
+	sd := new(RollbackSealedData)
+	sd.Entry = new(RollbackEntry)
+	sd.Entry.HostedProgramName = &programName
+	sd.Entry.EntryLabel = &label
+	sd.Entry.Counter = &c
+	sd.ProtectedData = data
+	toSeal, err := proto.Marshal(sd)
+	if err != nil {
+		return nil, errors.New("Can't marshal rollback data")
+	}
+	sealed, err := lh.Seal(child, toSeal, policy)
+	if err != nil {
+		return nil, errors.New("Can't seal rollback data")
+	}
+
+	// TODO(jlm): Should be initialized from domain.
+	lh.saveTableThreshold = 1
+	lh.sealsSinceSave = lh.sealsSinceSave + 1
+
+	// Encrypt and save rollback table if necessary
+	if lh.rbTable != nil && lh.sealsSinceSave >= lh.saveTableThreshold {
+		sealedRollbackKeysFile := path.Join(lh.path, "SealedRollbackTableKeys.bin")
+		encryptedRollbackTableFile := path.Join(lh.path, "EncryptedRollbackTable.bin")
+		ok := lh.rbTable.SaveHostRollbackTableWithNewKeys(lh, child, sealedRollbackKeysFile, encryptedRollbackTableFile)
+		if ok {
+			lh.sealsSinceSave = 0
+		}
+	}
+	return sealed, nil
 }
 
 // RollbackProtectedUnseal unseals the data associated with the given label with rollback protection.
-func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, label string, sealed []byte) ([]byte, string, error) {
-	return nil, "", nil
-}
+func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, sealed []byte) ([]byte, string, error) {
+	b, policy, err := lh.Unseal(child, sealed)
+	if err != nil {
+		return nil, "", errors.New("RollbackProtectedUnseal can't unseal")
+	}
+	var sd RollbackSealedData
+	err = proto.Unmarshal(b, &sd)
+	if err != nil {
+		return nil, "", errors.New("RollbackProtectedUnseal can't Unmarshal")
+	}
+	if sd.Entry == nil || sd.Entry.EntryLabel == nil {
+		return nil, "", errors.New("RollbackProtectedUnseal bad entry")
+	}
+	c, err := lh.GetCounter(child, *sd.Entry.EntryLabel)
+	if err != nil {
+		return nil, "", errors.New("RollbackProtectedUnseal: Can't get counter")
+	}
+	if *sd.Entry.Counter != c {
+		return nil, "", errors.New("RollbackProtectedUnseal bad counter")
+	}
 
+	return sd.ProtectedData, policy, nil
+}

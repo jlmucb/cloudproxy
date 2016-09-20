@@ -27,7 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func protect(keys []byte, in []byte) ([]byte, error) {
+func Protect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
@@ -52,7 +52,7 @@ func protect(keys []byte, in []byte) ([]byte, error) {
 	return append(calculatedHmac, append(iv, out...)...), nil
 }
 
-func unprotect(keys []byte, in []byte) ([]byte, error) {
+func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
@@ -63,7 +63,7 @@ func unprotect(keys []byte, in []byte) ([]byte, error) {
 	macKey := keys[16:32]
 	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
-		return nil, errors.New("unprotect: Can't make crypter")
+		return nil, errors.New("Unprotect: Can't make crypter")
 	}
 	ctr := cipher.NewCTR(crypter, iv)
 	ctr.XORKeyStream(out, in[48:])
@@ -72,17 +72,9 @@ func unprotect(keys []byte, in []byte) ([]byte, error) {
 	hm.Write(in[32:])
 	calculatedHmac := hm.Sum(nil)
 	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
-		return nil, errors.New("unprotect: Bad mac")
+		return nil, errors.New("Unprotect: Bad mac")
 	}
 	return out, nil
-}
-
-// Initialize rollback data.
-func InitRollbackState(tableName string, sealsBeforeSave int) {
-	counterTableInitialized = false
-	numSealsBeforeSave = sealsBeforeSave
-	numSeals = 0
-	hostRollbackTableFileName = &tableName
 }
 
 // Read the counter table.
@@ -94,9 +86,9 @@ func ReadRollbackTable(fileName string, tableKey []byte) *RollbackCounterTable {
 	}
 
 	// Decrypt and deserialize table.
-	b, err := unprotect(tableKey, blob)
+	b, err := Unprotect(tableKey, blob)
 	if err != nil {
-		log.Printf("ReadRollbackTable: unprotect failed %s", err)
+		log.Printf("ReadRollbackTable: Unprotect failed %s", err)
 		return nil
 	}
 
@@ -118,9 +110,9 @@ func WriteRollbackTable(rollBackTable *RollbackCounterTable, fileName string, ta
 		log.Printf("WriteRollbackTable: Marshal failed\n")
 		return false
 	}
-	b, err := protect(tableKey, blob)
+	b, err := Protect(tableKey, blob)
 	if err != nil {
-		log.Printf("WriteRollbackTable: protect failed\n")
+		log.Printf("WriteRollbackTable: Protect failed\n")
 		return false
 	}
 	err = ioutil.WriteFile(fileName, b, 0644)
@@ -131,18 +123,18 @@ func WriteRollbackTable(rollBackTable *RollbackCounterTable, fileName string, ta
 	return true
 }
 
-func PrintRollbackEntry(e *RollbackEntry) {
+func (e *RollbackEntry) PrintRollbackEntry() {
 	if e.HostedProgramName == nil {
 		fmt.Printf("HostedProgramName: empty, ")
 	} else {
 		fmt.Printf("HostedProgramName: %s, ", *e.HostedProgramName)
 	}
-	if  e.EntryLabel == nil {
+	if e.EntryLabel == nil {
 		fmt.Printf("EntryLabel: empty, ")
 	} else {
 		fmt.Printf("EntryLabel: %s, ", *e.EntryLabel)
 	}
-	if  e.Counter == nil {
+	if e.Counter == nil {
 		fmt.Printf("Counter: empty\n")
 	} else {
 		fmt.Printf("Counter: %d\n", *e.Counter)
@@ -153,7 +145,7 @@ func PrintSealedData(d *RollbackSealedData) {
 	if d.Entry == nil {
 		fmt.Printf("Rollback entry empty\n")
 	} else {
-		PrintRollbackEntry(d.Entry)
+		d.Entry.PrintRollbackEntry()
 	}
 	if d.ProtectedData == nil {
 		fmt.Printf("Protected data: empty\n")
@@ -162,32 +154,31 @@ func PrintSealedData(d *RollbackSealedData) {
 	}
 }
 
-func PrintRollbackTable(t *RollbackCounterTable) {
+func (t *RollbackCounterTable) PrintRollbackTable() {
 	if t == nil {
 		fmt.Printf("No rollback table\n")
 		return
 	}
-	fmt.Printf("Rollback table %d entries\n", len(t.Entries))
 	for i := 0; i < len(t.Entries); i++ {
-		PrintRollbackEntry(t.Entries[i])
+		t.Entries[i].PrintRollbackEntry()
 	}
 }
 
-func SaveHostRollbackTableWithNewKeys(sealedKeyFileName string, tableFileName string, t *RollbackCounterTable) bool {
-
+func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, child *LinuxHostChild,
+	sealedKeyFileName string, tableFileName string) bool {
+	// TODO(jlm): child argument not used, remove?
 	// Generate new rollback table sealing keys
 	var newKeys [32]byte
 	rand.Read(newKeys[0:32])
 
-	// Save sealed rollback table sealing keys
-	b := sealRollBackProtectedTableSealingKey(newKeys[0:32])
-	if b == nil {
-		log.Printf("SaveTableWithNewKeys: sealRollBackProtectedTableSealingKey fails\n")
+	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:32], "self")
+	if err != nil {
+		log.Printf("SaveHostRollbackTable: Can't do RollbackProtectedSeal\n")
 		return false
 	}
-	err := ioutil.WriteFile(sealedKeyFileName, b, 0644)
+	err = ioutil.WriteFile(sealedKeyFileName, b, 0644)
 	if err != nil {
-		log.Printf("InitHostRollbackTable: Can't write sealedKeyFile\n")
+		log.Printf("SaveHostRollbackTable: Can't write sealedKeyFile\n")
 		return false
 	}
 
@@ -200,354 +191,31 @@ func SaveHostRollbackTableWithNewKeys(sealedKeyFileName string, tableFileName st
 	return true
 }
 
-// Read existing table if it exists.
-func InitHostRollbackTable(tableFileName string, sealedKeyFileName string) *RollbackCounterTable {
-	// Read sealed keys and unseal them.
-	blob, err := ioutil.ReadFile(sealedKeyFileName)
-	if err != nil  || blob == nil {
-		return new(RollbackCounterTable)
-	}
-	key := unsealRollBackProtectedTableSealingKey(blob)
-	if key == nil {
-		log.Printf("InitHostRollbackTable: Can't unsealRollBackProtectedTableSealingKey\n")
-		return nil
-	}
-
-	// Get counter table.
-	t := ReadRollbackTable(tableFileName, key)
-	if t== nil {
-		log.Printf("InitHostRollbackTable: Can't ReadRollbackTable\n")
-		return nil
-	}
-	return t
-}
-
 // Lookup Rollback entry for programName, entryName).
-func LookupRollbackEntry(table RollbackCounterTable, programName string, entryName string) *RollbackEntry {
-	for i := 0; i < len(table.Entries) ; i++ {
-		if table.Entries[i].HostedProgramName != nil && *table.Entries[i].HostedProgramName == programName &&
-				table.Entries[i].EntryLabel != nil && *table.Entries[i].EntryLabel == entryName {
-			return table.Entries[i]
+func (t *RollbackCounterTable) LookupRollbackEntry(programName string, entryName string) *RollbackEntry {
+	for i := 0; i < len(t.Entries); i++ {
+		if t.Entries[i].HostedProgramName != nil && *t.Entries[i].HostedProgramName == programName &&
+			t.Entries[i].EntryLabel != nil && *t.Entries[i].EntryLabel == entryName {
+			return t.Entries[i]
 		}
 	}
 	return nil
 }
 
 // Update Rollback entry for programName, entryName).
-func UpdateRollbackEntry(table *RollbackCounterTable, programName string, entryName string,
-		 c *int64) *RollbackEntry {
-	ent := LookupRollbackEntry(*table, programName, entryName)
+func (t *RollbackCounterTable) UpdateRollbackEntry(programName string, entryName string,
+	c *int64) *RollbackEntry {
+	ent := t.LookupRollbackEntry(programName, entryName)
 	if ent == nil {
 		ent = new(RollbackEntry)
 		ent.HostedProgramName = &programName
 		ent.EntryLabel = &entryName
 		zero := int64(0)
 		ent.Counter = &zero
-		table.Entries = append(table.Entries, ent)
+		t.Entries = append(t.Entries, ent)
 	}
 	if c != nil {
 		ent.Counter = c
 	}
 	return ent
-}
-
-
-// ------------------------------------------------------------------------------------
-
-
-// The following are dummy routines.  Implementations will be replaced when integrated.
-
-// Fake host counter for testing.
-var myCounter int64
-
-// For testing only.
-func SetFakeSealedHostKey(key []byte, fileName string) bool {
-	e := new(RollbackSealedData)
-	e.Entry = new(RollbackEntry)
-	e.Entry.HostedProgramName = getHostedProgramName()
-	secret := "Host_secret"
-	e.Entry.EntryLabel = &secret
-	c := hostCounter()
-	e.Entry.Counter =  &c
-	e.ProtectedData = key
-	b := seal(*e)
-	if b == nil {
-		log.Printf("SetFakeSealedHostKey: seal failed\n")
-		return false
-	}
-	err := ioutil.WriteFile(fileName, b, 0644)
-	if err != nil {
-		log.Printf("SetFakeSealedHostKey: can't write %s\n", fileName)
-		return false
-	}
-	return true
-}
-
-// End of dummy routines.
-
-// Host table or tpm counter has been initialized.
-var counterTableInitialized bool
-
-// File name of host counter table.
-var hostRollbackTableFileName *string
-
-// Number of seals that trigger a host table save.
-var numSealsBeforeSave int
-
-// Number of seal's since last save of host counter table.
-var numSeals int
-
-// Replace with Host's seal for the HostedProgram.
-func seal(entry RollbackSealedData) []byte {
-	a, err := proto.Marshal(&entry)
-	if err != nil {
-		log.Printf("seal: Marshal fails\n")
-		return nil 
-	}
-	return a 
-}
-
-// Replace with Host's unseal for the HostedProgram.
-func unseal(data []byte) *RollbackSealedData {
-	var a RollbackSealedData 
-	err := proto.Unmarshal(data, &a)
-	if err != nil {
-		log.Printf("unseal: Unmarshal fails %s\n", err)
-		return nil
-	}
-	return &a
-}
-
-// Seal Tpm blob.
-func sealTpmBlob(entry RollbackSealedData) []byte {
-	return nil
-}
-
-// Unseal Tpm blob.
-func unsealTpmBlob(d []byte)  *RollbackSealedData {
-	return nil
-}
-
-// Seal Tpm2 blob.
-func sealTpm2Blob(entry RollbackSealedData) []byte {
-	return nil
-}
-
-// Unseal Tpm2 blob.
-func unsealTpm2Blob(d []byte)  *RollbackSealedData {
-	return nil
-}
-
-// Replace with Host lookup of HostedProgramName.
-func getHostedProgramName() *string {
-	var name string
-	name = "ProgramName"
-	// lh.Host.HostName().MakeSubprincipal(child.ChildSubprin)
-	return &name
-}
-
-// Returns root type for this host.  nil for stacked host.
-//	Options: tpm1.2, tpm2.0, key
-func hostRootType() *string {
-	return nil
-}
-
-// Replace these with host call to it's host for a Unseal
-//	if this is a stacked tao.  For a root tao, this must call custom
-//	functions to handle hardware based counter.
-func unsealRollBackProtectedTableSealingKey(blob []byte) []byte {
-	hostRoot := hostRootType()
-	var b *RollbackSealedData
-	var c int64
-	if hostRoot == nil {
-		c = hostCounter()
-		b = unseal(blob)
-		if b == nil {
-			log.Printf("unsealRollBackProtectedTableSealingKey: unseal fails\n")
-			return nil
-		}
-		/*
-		if b == nil || b.Entry.Counter== nil || c != *b.Entry.Counter {
-			log.Printf("unsealRollBackProtectedTableSealingKey: counter doesn't match\n")
-			return nil
-		}
-		 */
-	} else if *hostRoot == "tpm" {
-		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm counter yet\n")
-		return nil
-		if InitTpmCounter() < 0 {
-			log.Printf("unsealRollBackProtectedTableSealingKey: can't init Tpm counter\n")
-			return nil
-		}
-		c = GetTpmCounter()
-		b = unsealTpmBlob(blob)
-		// Check counter.
-		if b == nil || b.Entry.Counter== nil || c != *b.Entry.Counter {
-			log.Printf("unsealRollBackProtectedTableSealingKey: counter doesn't match\n")
-			return nil
-		}
-	} else if *hostRoot == "tpm2" {
-		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm2 counter yet\n")
-		return nil
-		if InitTpm2Counter() < 0 {
-			log.Printf("unsealRollBackProtectedTableSealingKey: can't init tpm2 counter\n")
-			return nil
-		}
-		c = GetTpm2Counter()
-		b = unsealTpm2Blob(blob)
-		// Check counter.
-		if b == nil || b.Entry.Counter== nil || c != *b.Entry.Counter {
-			log.Printf("unsealRollBackProtectedTableSealingKey: counter doesn't match\n")
-			return nil
-		}
-	} else {
-		log.Printf("unsealRollBackProtectedTableSealingKey: bad host type\n")
-		return nil
-	}
-	// Check the label
-	if *b.Entry.EntryLabel != "Host_secret" {
-		log.Printf("unsealRollBackProtectedTableSealingKey: entry label is wrong\n")
-		return nil
-	}
-	return b.ProtectedData
-}
-
-// Replace these with host call to it's host for a RollBackBrotectedSeal.
-//	if this is a stacked tao.  For a root tao, this must call custom
-//	functions to handle hardware based counter.
-func sealRollBackProtectedTableSealingKey(key []byte) []byte {
-
-	hostRoot := hostRootType()
-	e := new(RollbackSealedData)
-	e.Entry = new(RollbackEntry)
-	entryLabel := "Host_secret"
-	e.Entry.HostedProgramName = getHostedProgramName()
-	e.Entry.EntryLabel = &entryLabel
-	e.ProtectedData = key
-
-	if hostRoot == nil {
-		BumpHostCounter()
-		c := hostCounter()
-		e.Entry.Counter = &c
-		return seal(*e)
-	} else if *hostRoot == "tpm" {
-		log.Printf("sealRollBackProtectedTableSealingKey: doesn't support tpm counter yet\n")
-		return nil
-		if InitTpmCounter() < 0 {
-			log.Printf("unsealRollBackProtectedTableSealingKey: can't init tpm counter\n")
-			return nil
-		}
-		c := BumpTpmHostCounter()
-		e.Entry.Counter = &c
-		return sealTpmBlob(*e)
-	} else if *hostRoot == "tpm2" {
-		log.Printf("unsealRollBackProtectedTableSealingKey: doesn't support tpm2 counter yet\n")
-		return nil
-		if InitTpm2Counter() < 0 {
-			log.Printf("unsealRollBackProtectedTableSealingKey: can't init tpm2 counter\n")
-			return nil
-		}
-		c := BumpTpm2HostCounter()
-		e.Entry.Counter = &c
-		return sealTpm2Blob(*e)
-	} else {
-		log.Printf("sealRollBackProtectedTableSealingKey: bad host type\n")
-		return nil
-	}
-}
-
-// hostCounter
-func hostCounter() int64 {
-	return myCounter
-}
-
-// Bump TPM counter.
-func BumpTpmHostCounter() int64 {
-	return 1
-}
-
-// Bump TPM2 counter.
-func BumpTpm2HostCounter() int64 {
-	return 1
-}
-
-// Bump current host counter via call to Host's host or the tpm.
-func BumpHostCounter() int64 {
-	myCounter = myCounter + 1
-	return myCounter
-}
-
-// Init TPM Counter
-func InitTpmCounter() int64 {
-	return myCounter
-}
-
-// Init TPM2 Counter
-func InitTpm2Counter() int64 {
-	return myCounter
-}
-
-// Get TPM Counter
-func GetTpmCounter() int64 {
-	return hostCounter()
-}
-
-// Get TPM2 Counter
-func GetTpm2Counter() int64 {
-	return hostCounter()
-}
-
-// Get current Host counter via call to Host's host.
-func GetHostCounter() int64 {
-	return hostCounter()
-}
-
-// Set current Host counter via call to Host's host.
-func SetHostCounter(c int64) int64 {
-	myCounter = c
-	return myCounter
-}
-
-// Host implementation of rollback protected seal.
-func RollBackSeal(table *RollbackCounterTable, labelName string, data []byte) []byte {
-	tableEnt := UpdateRollbackEntry(table, *getHostedProgramName(), labelName, nil)
-	if tableEnt == nil {
-		return nil
-	}
-
-	c := tableEnt.Counter
-	*c = *c + 1
-	tableEnt.Counter = c
-	tableEnt = UpdateRollbackEntry(table, *getHostedProgramName(), labelName, c)
-	if tableEnt == nil {
-		log.Printf("RollBackSeal: Can't update\n")
-		return nil
-	}
-
-	e := new(RollbackSealedData)
-	e.Entry = new(RollbackEntry)
-	e.Entry.HostedProgramName = getHostedProgramName()
-	e.Entry.EntryLabel = &labelName
-	e.Entry.Counter = c
-	e.ProtectedData = data
-	return seal(*e)
-}
-
-// Host implementation of rollback protected unseal.
-func RollBackUnseal(table *RollbackCounterTable, sealed []byte) *RollbackSealedData {
-	e := unseal(sealed)
-	if e == nil  || e.Entry.HostedProgramName == nil || e.Entry.EntryLabel == nil {
-		log.Printf("RollBackUnseal: bad arguments\n")
-		return nil
-	}
-	tableEnt := LookupRollbackEntry(*table, *e.Entry.HostedProgramName, *e.Entry.EntryLabel)
-	if tableEnt == nil {
-		log.Printf("RollBackUnseal: %s doesn't exist\n")
-		return nil
-	}
-	if tableEnt.Counter == nil || *tableEnt.Counter != *e.Entry.Counter {
-		fmt.Printf("RollBackUnseal: counter mismatch\n")
-		return nil
-	}
-	return e
 }

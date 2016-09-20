@@ -169,3 +169,46 @@ func TestLinuxHostTaoServerAttest(t *testing.T) {
 
 	// TODO(tmroeder): verify the attestation
 }
+
+func TestLinuxHostTaoServerInitCounter(t *testing.T) {
+	host, err := testNewLinuxHostTaoServer(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = host.InitCounter("label", int64(1))
+	if err != nil {
+		t.Fatal("Couldn't InitCounter: %s: ", err)
+	}
+	c, err := host.GetCounter("label")
+	if c != int64(1) {
+		t.Fatal("Counter should be 1")
+	}
+}
+
+func TestLinuxHostTaoServerRollbackProtectedSeal(t *testing.T) {
+	host, err := testNewLinuxHostTaoServer(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = host.InitCounter("label", int64(1))
+	data := []byte{0, 1, 2, 3}
+	sealed, err := host.RollbackProtectedSeal("label", data, SealPolicyDefault)
+	if err != nil {
+		t.Fatal("LinuxHostTaoServer failed in RollbackProtectedSeal: ", err)
+	}
+	fmt.Printf("Sealed: %x\n", sealed)
+	newData, policy, err := host.RollbackProtectedUnseal(sealed)
+	if err != nil {
+		t.Fatal("LinuxHostTaoServer failed in RollbackProtectedUnseal: ", err)
+	}
+	_, err = host.RollbackProtectedSeal("label", data, SealPolicyDefault)
+	if err != nil {
+		t.Fatal("LinuxHostTaoServer failed in RollbackProtectedSeal (2): ", err)
+	}
+	// This should fail because sealed has old counter.
+	_, policy, err = host.RollbackProtectedUnseal(sealed)
+	if err == nil {
+		t.Fatal("LinuxHostTaoServer succeeded in RollbackProtectedUnseal and it shouldn't.")
+	}
+	fmt.Printf("Data: %x, policy: %s\n", newData, policy)
+}

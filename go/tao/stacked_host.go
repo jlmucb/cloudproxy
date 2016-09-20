@@ -157,3 +157,19 @@ func (t *StackedHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 func (t *StackedHost) HostName() auth.Prin {
 	return t.taoHostName
 }
+
+func (s *StackedHost) InitCounter(label string, c int64) error {
+	return s.hostTao.InitCounter(label, c)
+}
+
+func (s *StackedHost) GetCounter(label string) (int64, error) {
+	return s.hostTao.GetCounter(label)
+}
+
+func (s *StackedHost) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
+	return s.hostTao.RollbackProtectedSeal(label, data, policy)
+}
+
+func (s *StackedHost) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
+	return s.hostTao.RollbackProtectedUnseal(sealed)
+}

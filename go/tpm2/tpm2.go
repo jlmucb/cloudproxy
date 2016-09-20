@@ -2426,3 +2426,106 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 	}
 	return out, nil
 }
+
+// WARNING:  The code from here down has not been reviewed by Sid.  Nothing calls it yet.
+// Tpm2 Counter access
+
+// Make an NvHandle
+func GetNvHandle(slot int) (Handle, error) {
+	return Handle(0), nil
+}
+
+func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
+	return nil, nil
+}
+
+func DecodeUndefineSpace(in []byte) (error) {
+	return nil
+}
+
+func ConstructDefineSpace(owner Handle, handle Handle, authString string, policy []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func DecodeDefineSpace(in []byte) (error) {
+	return nil
+}
+
+func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
+	return nil, nil
+}
+
+func DecodeIncrementNv(in []byte) (error) {
+	return nil
+}
+
+func DecodeReadNv(in []byte) (uint64, error) {
+	return uint64(0), nil
+}
+
+func ConstructReadNv(handle Handle, authString string, size int) ([]byte, error) {
+	return nil, nil
+}
+
+// UndefineSpace
+func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
+/*
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return errors.New("Write Tpm fails")
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return errors.New("Read Tpm fails")
+	}
+
+	// Decode Response
+	if read < 10 {
+		return errors.New("Read buffer too small")
+	}
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return errors.New("DecodeCommandResponse fails")
+	}
+	reportCommand("GetRandom", cmd, resp[0:size], status, true)
+	if status != ErrSuccess {
+		return nil, errors.New("Can't decode response")
+	}
+	rand, err := DecodeGetRandom(resp[10:read])
+	if err != nil {
+		return nil, err
+	}
+ */
+	return nil
+}
+
+// DefineSpace
+func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle, policy []byte, size int) (Handle, error) {
+	return Handle(0), nil
+}
+
+// IncrementNv
+func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
+	return nil
+}
+
+// ReadNv
+func ReadNv(rw io.ReadWriter, handle Handle, authString string, size int) (uint64, error) {
+	return uint64(0), nil
+}
+
+// Tpm2GetCounter
+func GetCounter(rw io.ReadWriter, slot int) (uint64, error) {
+	return uint64(0), nil
+}
+
+// Tpm2InitCounter
+func InitCounter(rw io.ReadWriter, slot int) (error) {
+	// DefineSpace, map slot
+	return nil
+}

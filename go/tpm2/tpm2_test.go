@@ -311,6 +311,10 @@ func TestCombinedSealTest(t *testing.T) {
 	}
 }
 
+func checkQ(b1 []byte, b2 []byte) bool {
+	return true;
+}
+
 // Combined Quote test
 func TestCombinedQuoteTest(t *testing.T) {
 
@@ -423,7 +427,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	quote_key_info.PublicKey.RsaKey.Exponent = []byte{0, 1, 0, 1}
 	quote_key_info.PublicKey.RsaKey.Modulus = rsaParams.Modulus
 	if !VerifyQuote(to_quote, quote_key_info,
-		uint16(AlgTPM_ALG_SHA1), attest, sig) {
+		uint16(AlgTPM_ALG_SHA1), attest, sig, checkQ) {
 		t.Fatal("VerifyQuote fails")
 	}
 	fmt.Printf("VerifyQuote succeeds\n")
@@ -706,4 +710,36 @@ func TestCombinedContextTest(t *testing.T) {
 
 	// FlushContext
 	defer FlushContext(rw, quoteHandle)
+}
+
+// Combined Nv test
+func TestCombinedNvTest(t *testing.T) {
+
+	// Open tpm
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return
+	}
+	defer rw.Close()
+
+	// Flushall
+	err = Flushall(rw)
+	if err != nil {
+		t.Fatal("Flushall failed\n")
+	}
+
+	// handle, err := GetNvHandle(1000)
+	// owner := 
+	// err = UndefineSpace(rw, owner Handle, handle Handle) (error)
+	// dataSize :=
+	// offset :=
+	// policy :=
+	// attributes :=
+	// authString :=
+	// err = DefineSpace(rw, owner, handle, authString, policy, attributes, dataSize)
+	// c1, err := ReadNv(rw, handle, authString, offset, dataSize)
+	// err = IncrementNv(rw, handle, authString)
+	// c2, err := ReadNv(rw, handle, authString, offset, dataSize)
+	// if c2 != (c1 +1) { error }
 }

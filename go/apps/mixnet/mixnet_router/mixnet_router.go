@@ -42,10 +42,10 @@ func serveMixnetProxies(hp *mixnet.RouterContext) error {
 			defer c.Close()
 			for {
 				if err := hp.HandleConn(c); err == io.EOF {
-					glog.Infof("connection no. %d closed by peer.", c.GetID())
+					glog.Infof("connection %s closed by peer.", c.RemoteAddr())
 					break
 				} else if err != nil {
-					glog.Errorf("error while serving client no. %d: %s", c.GetID(), err)
+					glog.Errorf("error while serving client %s: %s", c.RemoteAddr(), err)
 					break
 				}
 			}

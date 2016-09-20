@@ -57,7 +57,7 @@ type RouterContext struct {
 // It also creates a regular listener socket for other routers to connect to.
 // A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
-func NewRouterContext(path, network, addr string, batchSize int, timeout time.Duration,
+func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout time.Duration,
 	x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 
 	hp = new(RouterContext)
@@ -100,13 +100,13 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 	}
 
 	// Bind address to socket.
-	if hp.proxyListener, err = tao.ListenAnonymous(network, addr, tlsConfigProxy,
+	if hp.proxyListener, err = tao.ListenAnonymous(network, addr1, tlsConfigProxy,
 		hp.domain.Guard, hp.domain.Keys.VerifyingKey, hp.keys.Delegation); err != nil {
 		return nil, err
 	}
 
-	// Bind address to socket.
-	if hp.routerListener, err = tao.Listen(network, addr, tlsConfigRouter,
+	// Different listener, since mixes should be authenticated
+	if hp.routerListener, err = tao.Listen(network, addr2, tlsConfigRouter,
 		hp.domain.Guard, hp.domain.Keys.VerifyingKey, hp.keys.Delegation); err != nil {
 		return nil, err
 	}
@@ -242,8 +242,6 @@ func (hp *RouterContext) HandleConn(c *Conn) error {
 			// Relay the CREATE message
 			// Since we assume Tao routers, this router can recreate the message
 			// without worrying about security
-			// TODO(kwonalbert): We just use the same circuit number right now
-			// We could change this to a different value
 			hp.sendQueue.SetAddr(id, d.Addrs[0])
 
 			if len(d.Addrs) > 1 {

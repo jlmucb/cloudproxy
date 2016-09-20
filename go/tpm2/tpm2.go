@@ -2431,15 +2431,33 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 // Tpm2 Counter access
 
 // Make an NvHandle
-func GetNvHandle(slot int) (Handle, error) {
-	return Handle(0), nil
+func GetNvHandle(slot uint32) (Handle, error) {
+	return Handle((OrdTPM_HT_NV_INDEX << OrdHR_SHIFT) + slot), nil
 }
 
 func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
-	return nil, nil
+	var empty []byte
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdUndefineSpace)
+	if err != nil {
+		return nil, errors.New("ConstructUndefineSpace failed")
+	}
+	// OwnerHandle, handle, empty string
+	num_bytes := []interface{}{uint32(owner), uint32(handle), empty}
+	cmd, _ := packWithHeader(cmdHdr, num_bytes)
+	return cmd, nil
 }
 
 func DecodeUndefineSpace(in []byte) (error) {
+	/*
+	var rand_bytes []byte
+
+	out := []interface{}{&rand_bytes}
+	err := unpack(in, out)
+	if err != nil {
+		return nil, errors.New("Can't decode GetRandom response")
+	}
+	return rand_bytes, nil
+	*/
 	return nil
 }
 

@@ -90,7 +90,7 @@ const(
 	OrdNV_AUTHREAD		   uint32 = 0x00040000
 	OrdNV_COUNTER		   uint32 = 0x00000010
 	OrdHR_SHIFT		   uint32 = 24
-	OrdTPM_HT_NV_INDEX	   uint32 = 1 << OrdHR_SHIFT
+	OrdTPM_HT_NV_INDEX	   uint32 = 1
 	OrdNV_EXTEND		   uint32 = 0x00000040
 	OrdNV_POLICY_DELETE	   uint32 = 0x00000400
 	OrdNV_WRITTEN		   uint32 = 0x20000000
@@ -136,6 +136,11 @@ const (
 	cmdPolicyGetDigest         uint32 = 0x00000189
 	cmdPolicyPassword          uint32 = 0x0000018C
 	cmdPcrEvent                uint32 = 0x0000013C
+	cmdDefineSpace		   uint32 = 0x0000012A
+	cmdUndefineSpace	   uint32 = 0x00000122
+	cmdReadNv		   uint32 = 0x0000014E
+	cmdWriteNv		   uint32 = 0x00000137
+	cmdIncrementNvCounter	   uint32 = 0x00000134
 )
 
 const maxTPMResponse = 4096

@@ -729,21 +729,20 @@ func TestCombinedNvTest(t *testing.T) {
 		t.Fatal("Flushall failed\n")
 	}
 
-	/*
 	handle, err := GetNvHandle(1000)
 	if err != nil {
 		t.Fatal("Can't get nv handle")
 	}
 	fmt.Printf("nvHandle: %x\n", uint32(handle));
 	owner := Handle(OrdTPM_RH_OWNER)
-	err = UndefineSpace(rw, owner Handle, handle Handle) (error)
+	err = UndefineSpace(rw, owner, handle)
 	if err != nil {
 		fmt.Printf("UndefineSpace failed (ok) %s\n", err)
 	} else {
 		fmt.Printf("UndefineSpace succeeded\n")
 	}
-	dataSize := 8
-	offset := 0
+	dataSize := uint16(8)
+	offset := uint16(0)
 	var policy []byte // empty
 	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
 	authString := ""
@@ -768,5 +767,4 @@ func TestCombinedNvTest(t *testing.T) {
 	if c2 <= c1 {
 		t.Fatal("Error: Counter did not advance")
 	}
-	*/
 }

@@ -2491,24 +2491,26 @@ func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
 // 80020000001300000000000000000000010000
 
 func ConstructDefineSpace(owner Handle, handle Handle, authString string,
-		attributes uint32, policy []byte,
-		dataSize uint16) ([]byte, error) {
+		attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
 	pw := SetPasswordData(authString)
 	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	var empty []byte
 	num_bytes := []interface{}{uint32(owner), empty}
 	out1, err := pack(num_bytes)
 	if err != nil {
+		return nil, errors.New("DefineSpace: pack error")
 	}
 	hashAlg := uint16(AlgTPM_ALG_SHA1)
-	sizeNvArea := 2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy);
+	sizeNvArea := uint16(2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy))
 	out1 = append(append(out1, auth...), pw...)
-	num_bytes2 := []interface{}{uint32(sizeNvArea), uint32(handle), hashAlg, attributes, policy, dataSize}
+	num_bytes2 := []interface{}{sizeNvArea, uint32(handle), hashAlg, attributes, policy, dataSize}
 	out2, err := pack(num_bytes2)
 	if err != nil {
+		return nil, errors.New("DefineSpace: pack error")
 	}
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdDefineSpace)
 	if err != nil {
+		return nil, errors.New("DefineSpace: MakeCommandHeader error")
 	}
 	cmd := packWithBytes(cmdHdr, append(out1, out2...))
 	return cmd, nil

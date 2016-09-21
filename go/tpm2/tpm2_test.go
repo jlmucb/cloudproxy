@@ -748,19 +748,32 @@ fmt.Printf("TestCombinedNvTest\n")
 		attributes, dataSize)
 	if err != nil {
 		t.Fatal("DefineSpace fails")
+	} else {
+		fmt.Printf("DefineSpace succeeded\n")
+	}
+/*
+	c1, err := ReadNv(rw, handle, authString, offset, dataSize)
+	if err != nil {
+		fmt.Printf("ReadNv (1) failed %s", err)
+		// t.Fatal("ReadNv (1) failed %s", err)
+	}
+*/
+	err = IncrementNv(rw, handle, authString)
+	if err != nil {
+		t.Fatal("IncrementNv failed ", err)
 	}
 	c1, err := ReadNv(rw, handle, authString, offset, dataSize)
 	if err != nil {
-		t.Fatal("ReadNv (1) failed ", err)
+		t.Fatal("ReadNv (2) failed %s", err)
 	}
-	fmt.Printf("Counter before increment: %d\n", c1)
+	fmt.Printf("Counter before second increment: %d\n", c1)
 	err = IncrementNv(rw, handle, authString)
 	if err != nil {
 		t.Fatal("IncrementNv failed ", err)
 	}
 	c2, err := ReadNv(rw, handle, authString, offset, dataSize)
 	if err != nil {
-		t.Fatal("ReadNv (2) failed ", err)
+		t.Fatal("ReadNv (3) failed %s", err)
 	}
 	fmt.Printf("Counter after increment: %d\n", c2)
 	if c2 <= c1 {

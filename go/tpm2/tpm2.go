@@ -2613,17 +2613,15 @@ func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
 // Counter value: 00000000000000cf
 
 func DecodeReadNv(in []byte) (uint64, error) {
-	// size(16), out
+	var respSize uint32
 	var byteCounter []byte
-	out := []interface{}{&byteCounter}
-	err := unpack(in, out)
+	err :=  unpack(in, []interface{}{&respSize, &byteCounter})
 	if err != nil {
-		return uint64(0), err
+		return uint64(0), errors.New("ReadNv: unpack failed")
 	}
-	// Convert byteCounter to uint64
-	var c uint64
+	c := uint64(0)
 	for i := 0; i < len(byteCounter); i++ {
-		c = c * 256 + uint64(byteCounter[i])
+		c = c * 256 +  uint64(byteCounter[i])
 	}
 	return c, nil
 }
@@ -2652,7 +2650,8 @@ func ConstructReadNv(handle Handle, authString string, offset uint16, dataSize u
 }
 
 // ReadNv
-func ReadNv(rw io.ReadWriter, handle Handle, authString string, offset uint16, dataSize uint16) (uint64, error) {
+func ReadNv(rw io.ReadWriter, handle Handle, authString string,
+		offset uint16, dataSize uint16) (uint64, error) {
 	cmd, err := ConstructReadNv(handle, authString, offset, dataSize)
 	if err != nil {
 		return uint64(0), errors.New("ReadNv: Can't construct ReadNv command")
@@ -2679,7 +2678,7 @@ func ReadNv(rw io.ReadWriter, handle Handle, authString string, offset uint16, d
 	}
 	reportCommand("ReadNv", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
-		return uint64(0), errors.New("ReadNv: Can't decode response")
+		return uint64(0), errors.New("ReadNv: error from command")
 	}
 	return DecodeReadNv(resp[10:])
 }

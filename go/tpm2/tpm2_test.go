@@ -714,6 +714,7 @@ func TestCombinedContextTest(t *testing.T) {
 
 // Combined Nv test
 func TestCombinedNvTest(t *testing.T) {
+fmt.Printf("TestCombinedNvTest\n")
 
 	// Open tpm
 	rw, err := OpenTPM("/dev/tpm0")
@@ -734,6 +735,7 @@ func TestCombinedNvTest(t *testing.T) {
 		t.Fatal("Can't get nv handle")
 	}
 	fmt.Printf("nvHandle: %x\n", uint32(handle));
+	// authMethod := Handle(OrdTPM_RS_PW)
 	owner := Handle(OrdTPM_RH_OWNER)
 	err = UndefineSpace(rw, owner, handle)
 	if err != nil {
@@ -741,12 +743,14 @@ func TestCombinedNvTest(t *testing.T) {
 	} else {
 		fmt.Printf("UndefineSpace succeeded\n")
 	}
+return
 	dataSize := uint16(8)
 	offset := uint16(0)
 	var policy []byte // empty
 	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
 	authString := ""
-	err = DefineSpace(rw, owner, handle, authString, policy, attributes, dataSize)
+	err = DefineSpace(rw, owner, handle, authString, policy,
+		attributes, dataSize)
 	if err != nil {
 		t.Fatal("DefineSpace fails")
 	}

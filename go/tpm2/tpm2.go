@@ -2438,10 +2438,14 @@ func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("ConstructUndefineSpace failed")
 	}
-	// OwnerHandle, handle, empty auth password auth
-	auth := CreatePasswordAuthArea("", owner)
-	num_bytes := []interface{}{uint32(owner), uint32(handle), auth}
-	cmd, _ := packWithHeader(cmdHdr, num_bytes)
+	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	zero := uint16(0)
+	num_bytes := []interface{}{uint32(owner), uint32(handle), zero}
+	out, err := pack(num_bytes)
+	if err != nil {
+	}
+	out = append(out, auth...)
+	cmd := packWithBytes(cmdHdr, out)
 	return cmd, nil
 }
 
@@ -2473,18 +2477,17 @@ func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
 	}
 	reportCommand("UndefineSpace", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
-		return errors.New("UndefineSpace: Can't decode response")
+		return errors.New("UndefineSpace: error")
 	}
 	return nil
 }
 
 func ConstructDefineSpace(owner Handle, handle Handle, authString string, attributes uint32, policy []byte,
 		dataSize uint16) ([]byte, error) {
-	// owner, 0(16), emptypassword auth, passworddata, TPM2B_NV_Public size (2*unt32+size(hashalg)+2uint16+authsize
-	// index hashalg (SHA1), attributes, policysize, policy, datasize
 	pw := SetPasswordData(authString)
-	auth := CreatePasswordAuthArea("", owner)
-	hashAlg := uint16(AlgTPM_ALG_SHA1)
+	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	// hashAlg := uint16(AlgTPM_ALG_SHA1)
+	hashAlg := uint16(0)
 	var empty []byte
 	sizeNvArea := 2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy);
 	num_bytes := []interface{}{uint32(owner), empty, auth, pw}
@@ -2507,7 +2510,7 @@ func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle, authString strin
 		attributes uint32, dataSize uint16) (error) {
 	cmd, err := ConstructDefineSpace(owner, handle, authString, attributes, policy, dataSize)
 	if err != nil {
-		return errors.New("DefineSpace: Can't construct UndefineSpace command")
+		return errors.New("DefineSpace: Can't construct DefineSpace command")
 	}
 	// Send command
 	_, err = rw.Write(cmd)

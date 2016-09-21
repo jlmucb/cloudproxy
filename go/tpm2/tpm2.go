@@ -2433,6 +2433,10 @@ func GetNvHandle(slot uint32) (Handle, error) {
 	return Handle((OrdTPM_HT_NV_INDEX << OrdHR_SHIFT) + slot), nil
 }
 
+// UndefineSpace command: 80020000001f0000012240000001010003e800000009400000090000010000
+// UndefineSpace response, cap: 8002, size: 00000013, error code: 00000000
+// 80020000001300000000000000000000010000
+
 func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdUndefineSpace)
 	if err != nil {
@@ -2481,6 +2485,10 @@ func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
 	}
 	return nil
 }
+
+// DefineSpace command: 8002000000310000012a4000000100000009400000090000010000000401020304000e010003e800040004001400000008
+// Definespace response, cap: 8002, size: 00000013, error code: 00000000
+// 80020000001300000000000000000000010000
 
 func ConstructDefineSpace(owner Handle, handle Handle, authString string,
 		attributes uint32, policy []byte,
@@ -2540,6 +2548,10 @@ func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle,
 	return nil
 }
 
+// IncrementNv command: 80020000002300000134010003e8010003e80000000d40000009000001000401020304
+// IncrementNv response, cap: 8002, size: 00000013, error code: 00000000
+// 80020000001300000000000000000000010000
+
 func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
 	// handle, handle, 0(16), autharea
 	auth := CreatePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
@@ -2587,6 +2599,12 @@ func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
 	}
 	return nil
 }
+
+// ReadNv command: 8002000000270000014e010003e8010003e80000000d4000000900000100040102030400080000
+// ReadNv response, cap: 8002, size: 0000001d, error code: 00000000
+// 80020000001d000000000000000a000800000000000000cf0000010000
+// Tpm2_ReadNv succeeds
+// Counter value: 00000000000000cf
 
 func DecodeReadNv(in []byte) (uint64, error) {
 	// size(16), out

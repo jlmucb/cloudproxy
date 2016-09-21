@@ -2482,18 +2482,18 @@ func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
 	return nil
 }
 
-func ConstructDefineSpace(owner Handle, handle Handle, authString string, attributes uint32, policy []byte,
+func ConstructDefineSpace(owner Handle, handle Handle, authString string,
+		attributes uint32, policy []byte,
 		dataSize uint16) ([]byte, error) {
 	pw := SetPasswordData(authString)
 	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
-	// hashAlg := uint16(AlgTPM_ALG_SHA1)
-	hashAlg := uint16(0)
-	var empty []byte
+	hashAlg := uint16(AlgTPM_ALG_SHA1)
 	sizeNvArea := 2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy);
-	num_bytes := []interface{}{uint32(owner), empty, auth, pw}
+	num_bytes := []interface{}{uint32(owner)}
 	out1, err := pack(num_bytes)
 	if err != nil {
 	}
+	out1 = append(append(out1, auth...), pw...)
 	num_bytes2 := []interface{}{uint32(sizeNvArea), uint32(handle), hashAlg, attributes, policy, dataSize}
 	out2, err := pack(num_bytes2)
 	if err != nil {
@@ -2506,7 +2506,8 @@ func ConstructDefineSpace(owner Handle, handle Handle, authString string, attrib
 }
 
 // DefineSpace
-func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle, authString string, policy []byte,
+func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle,
+		authString string, policy []byte,
 		attributes uint32, dataSize uint16) (error) {
 	cmd, err := ConstructDefineSpace(owner, handle, authString, attributes, policy, dataSize)
 	if err != nil {

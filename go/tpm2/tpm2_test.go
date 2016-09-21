@@ -743,7 +743,6 @@ fmt.Printf("TestCombinedNvTest\n")
 	} else {
 		fmt.Printf("UndefineSpace succeeded\n")
 	}
-return
 	dataSize := uint16(8)
 	offset := uint16(0)
 	var policy []byte // empty
@@ -754,6 +753,7 @@ return
 	if err != nil {
 		t.Fatal("DefineSpace fails")
 	}
+return
 	c1, err := ReadNv(rw, handle, authString, offset, dataSize)
 	if err != nil {
 		t.Fatal("ReadNv (1) failed ", err)

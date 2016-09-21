@@ -2495,12 +2495,13 @@ func ConstructDefineSpace(owner Handle, handle Handle, authString string,
 		dataSize uint16) ([]byte, error) {
 	pw := SetPasswordData(authString)
 	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
-	hashAlg := uint16(AlgTPM_ALG_SHA1)
-	sizeNvArea := 2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy);
-	num_bytes := []interface{}{uint32(owner)}
+	var empty []byte
+	num_bytes := []interface{}{uint32(owner), empty}
 	out1, err := pack(num_bytes)
 	if err != nil {
 	}
+	hashAlg := uint16(AlgTPM_ALG_SHA1)
+	sizeNvArea := 2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy);
 	out1 = append(append(out1, auth...), pw...)
 	num_bytes2 := []interface{}{uint32(sizeNvArea), uint32(handle), hashAlg, attributes, policy, dataSize}
 	out2, err := pack(num_bytes2)
@@ -2556,12 +2557,15 @@ func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
 	// handle, handle, 0(16), autharea
 	auth := CreatePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
 	var empty []byte
-	num_bytes := []interface{}{uint32(handle), int32(handle), empty, auth}
+	num_bytes := []interface{}{uint32(handle), int32(handle), empty}
 	out, err := pack(num_bytes)
 	if err != nil {
+		return nil, errors.New("ConstructIncrementNv: pack failed")
 	}
+	out = append(out, auth...)
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdIncrementNvCounter)
 	if err != nil {
+		return nil, errors.New("ConstructIncrementNv: MakeCommandHeader failed")
 	}
 	cmd := packWithBytes(cmdHdr, out)
 	return cmd, nil
@@ -2626,14 +2630,22 @@ func ConstructReadNv(handle Handle, authString string, offset uint16, dataSize u
 	// handle, handle, 0(16), pw-autharea, size(16), offset(16)
 	auth := CreatePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
 	var empty []byte
-	num_bytes := []interface{}{uint32(handle), int32(handle), empty, auth, dataSize, offset}
+	num_bytes := []interface{}{uint32(handle), int32(handle), empty}
 	out, err := pack(num_bytes)
 	if err != nil {
+		return nil, errors.New("ReadNv: pack failed")
+	}
+	out = append(out, auth...)
+	num_bytes2 := []interface{}{dataSize, offset}
+	out2, err := pack(num_bytes2)
+	if err != nil {
+		return nil, errors.New("ReadNv: pack failed")
 	}
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdReadNv)
 	if err != nil {
+		return nil, errors.New("ReadNv: MakeCommandHeader failed")
 	}
-	cmd := packWithBytes(cmdHdr, out)
+	cmd := packWithBytes(cmdHdr, append(out, out2...))
 	return cmd, nil
 }
 

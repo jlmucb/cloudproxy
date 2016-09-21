@@ -18,10 +18,8 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"fmt"
-	// "io/ioutil"
 	"math/big"
 	"testing"
-	// "github.com/golang/protobuf/proto"
 )
 
 // Test Endian
@@ -715,7 +713,6 @@ func TestCombinedContextTest(t *testing.T) {
 // Combined Nv test
 func TestCombinedNvTest(t *testing.T) {
 fmt.Printf("TestCombinedNvTest\n")
-
 	// Open tpm
 	rw, err := OpenTPM("/dev/tpm0")
 	if err != nil {
@@ -735,7 +732,6 @@ fmt.Printf("TestCombinedNvTest\n")
 		t.Fatal("Can't get nv handle")
 	}
 	fmt.Printf("nvHandle: %x\n", uint32(handle));
-	// authMethod := Handle(OrdTPM_RS_PW)
 	owner := Handle(OrdTPM_RH_OWNER)
 	err = UndefineSpace(rw, owner, handle)
 	if err != nil {
@@ -747,13 +743,12 @@ fmt.Printf("TestCombinedNvTest\n")
 	offset := uint16(0)
 	var policy []byte // empty
 	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
-	authString := ""
+	authString := "01020304"
 	err = DefineSpace(rw, owner, handle, authString, policy,
 		attributes, dataSize)
 	if err != nil {
 		t.Fatal("DefineSpace fails")
 	}
-return
 	c1, err := ReadNv(rw, handle, authString, offset, dataSize)
 	if err != nil {
 		t.Fatal("ReadNv (1) failed ", err)

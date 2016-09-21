@@ -41,8 +41,8 @@ const (
 
 const (
 	ID   = 0
-	TYPE = 7
-	BODY = 8
+	TYPE = 8
+	BODY = 9
 )
 
 var errCellLength = errors.New("incorrect cell length")

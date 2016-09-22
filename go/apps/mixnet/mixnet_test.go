@@ -309,6 +309,62 @@ func TestCreateDestroy(t *testing.T) {
 	}
 }
 
+// Test multiplexing for proxy
+func TestMultiplexProxyCircuit(t *testing.T) {
+	router, proxy, domain, err := makeContext(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer router.Close()
+	defer proxy.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	rAddr := router.proxyListener.Addr().String()
+
+	// The address doesn't matter here because no packets will be sent on
+	// the established circuit.
+	ch := make(chan testResult)
+	clientCt := 2
+	numReqs := make([]int, clientCt)
+	fakeAddrs := make([]string, clientCt)
+	ids := make([]uint64, clientCt)
+	for i := range numReqs {
+		numReqs[i] = 2
+		fakeAddrs[i] = fmt.Sprintf("127.0.0.1:%d", -i)
+	}
+	go runRouterHandleOneProxyMultCircuits(router, clientCt, numReqs, ch)
+
+	for i := range numReqs {
+		ids[i], err = proxy.CreateCircuit(rAddr, fakeAddrs[i])
+		if err != nil {
+			t.Error("Couldn't create circuit:", err)
+		}
+	}
+
+	res := <-ch
+	if res.err != nil {
+		t.Error("Unexpected router error:", res.err)
+	}
+
+	unique := make(map[*Conn]bool)
+	for _, conn := range proxy.circuits {
+		unique[conn] = true
+	}
+	if len(unique) != 1 {
+		t.Error(errors.New("Should only have one connection"))
+	}
+
+	for i := range numReqs {
+		err = proxy.DestroyCircuit(ids[i])
+		if err != nil {
+			t.Error("Couldn't destroy circuit:", err)
+		}
+	}
+	res = <-ch
+	if res.err != io.EOF {
+		t.Error("Expecting EOF from router but got", res.err)
+	}
+}
+
 // Test sending a cell.
 func TestProxyRouterCell(t *testing.T) {
 	router, proxy, domain, err := makeContext(1)

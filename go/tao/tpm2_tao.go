@@ -672,7 +672,7 @@ func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 // When you seal, // if the current counter is odd, you bump it twice and use the 
 // value (countvalue+1)/2 in the counter slot.  If the counter is even, you bump by 1.
 // You also need to reseal the tpm keys when you startup since you may shutdown
-// before a rollbackseal and your key will bump by two and give the wrong counter value.
+// before a RollbackSeal and your key will bump by two and give the wrong counter value.
 // Programmers need to know that the value returned by GetCounter is thus different from
 // the value in the sealed Rollback blob.
 

@@ -648,23 +648,28 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 }
 
 func (s *TPM2Tao) InitCounter(label string, c int64) error {
-	fmt.Printf("tpm2.InitCounter\n") // REMOVE
-	return errors.New("InitCounter for tpm2 not implemented")
+	// TODO(jlm): Change this?
+	slot := 1000
+	return tpm2.InitCounter(s.rw, slot)
 }
 
 func (s *TPM2Tao) GetCounter(label string) (int64, error) {
-	fmt.Printf("tpm2.GetCounter\n") // REMOVE
-	return int64(0), errors.New("GetCounter for tpm2 not implemented")
+	// TODO(jlm): Change this?
+	slot := 1000
+	return tpm2.GetCounter(s.rw, slot)
 }
 
 func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("tpm2.RollbackProtectedSeal\n") // REMOVE
-	return nil, errors.New("RollbackProtectedSeal for tpm2 not implemented")
+	return tpm2.RollbackSeal(s.rw, data, policy)
 }
 
 func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
-	fmt.Printf("tpm2.RollbackProtectedUnseal\n") // REMOVE
-	return nil, "", errors.New("RollbackProtectedUnseal for tpm2 not implemented")
+	policy := SealPolicyDefault
+	unsealed, err := tpm2.RollbackUnseal(s.rw, sealed)
+	if err != nil {
+		return nil, policy, err
+	}
+	return unsealed, policy, nil
 }
 
 // extractPCRs gets the PCRs from a tpm principal.

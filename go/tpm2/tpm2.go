@@ -2683,13 +2683,25 @@ func ReadNv(rw io.ReadWriter, handle Handle, authString string,
 	return DecodeReadNv(resp[10:])
 }
 
-// Tpm2GetCounter
-func GetCounter(rw io.ReadWriter, slot int) (uint64, error) {
-	return uint64(0), nil
+// Tpm2 GetCounter
+func GetCounter(rw io.ReadWriter, slot int) (int64, error) {
+	return int64(0), nil
 }
 
-// Tpm2InitCounter
+// Tpm2 InitCounter
 func InitCounter(rw io.ReadWriter, slot int) (error) {
-	// DefineSpace, map slot
+	fmt.Printf("tpm2.InitCounter\n") // REMOVE
 	return nil
+}
+
+// Tpm2 RollbackSeal
+func RollbackSeal(rw io.ReadWriter, data []byte, policy string) ([]byte, error) {
+	fmt.Printf("tpm2.RollbackProtectedSeal\n") // REMOVE
+	return nil, nil
+}
+
+// Tpm2 RollbackUnseal
+func RollbackUnseal(rw io.ReadWriter, sealed []byte) ([]byte, error) {
+	fmt.Printf("tpm2.RollbackProtectedUnseal\n") // REMOVE
+	return nil, nil
 }

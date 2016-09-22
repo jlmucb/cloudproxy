@@ -128,6 +128,10 @@ type TPM2Tao struct {
 
 	// The current TPM2Tao code uses only locality 0, so this value is never set.
 	locality byte
+
+	// tpm2 parameters
+	nvHandle    tpm2.Handle
+	authString  string
 }
 
 func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
@@ -649,27 +653,85 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 
 func (s *TPM2Tao) InitCounter(label string, c int64) error {
 	// TODO(jlm): Change this?
-	slot := 1000
-	return tpm2.InitCounter(s.rw, slot)
+	if uint32(s.nvHandle) == 0 {
+		return nil
+	}
+	// TODO: make this more general?
+	s.nvHandle = tpm2.Handle(1000)
+	s.authString = "01020304"
+	return tpm2.InitCounter(s.rw, s.nvHandle, s.authString)
 }
 
 func (s *TPM2Tao) GetCounter(label string) (int64, error) {
-	// TODO(jlm): Change this?
-	slot := 1000
-	return tpm2.GetCounter(s.rw, slot)
+	return tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
 }
 
+// Note:  Tpm2 counters work differently from other counters.  On startup, you
+// can't read a counter value before you initialize it which you do by incrementing
+// it.  What we do is use the (countvalue+1)/2 as the counter in RollbackSeal and Unseal.
+// When you seal, // if the current counter is odd, you bump it twice and use the 
+// value (countvalue+1)/2 in the counter slot.  If the counter is even, you bump by 1.
+// You also need to reseal the tpm keys when you startup since you may shutdown
+// before a rollbackseal and your key will bump by two and give the wrong counter value.
+// Programmers need to know that the value returned by GetCounter is thus different from
+// the value in the sealed Rollback blob.
+
 func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	return tpm2.RollbackSeal(s.rw, data, policy)
+	fmt.Printf("tpm2tao.GetRollbackProtectedSeal\n") // REMOVE
+	c, err := tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
+	if err != nil {
+		return nil, err
+	}
+	err = tpm2.IncrementNv(s.rw, s.nvHandle, s.authString)
+	if err != nil {
+		return nil, err
+	}
+	if c % 2 == 0 {
+		err = tpm2.IncrementNv(s.rw, s.nvHandle, s.authString)
+		if err != nil {
+			return nil, err
+		}
+	}
+	c, err = tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
+	if err != nil {
+		return nil, err
+	}
+	cmp_ctr := (c + 1) / 2
+	sd := new(RollbackSealedData)
+	sd.Entry = new(RollbackEntry)
+	programName := s.name.String()
+	sd.Entry.HostedProgramName = &programName
+	sd.Entry.EntryLabel = &label
+	sd.Entry.Counter = &cmp_ctr
+	sd.ProtectedData = data
+	toSeal, err := proto.Marshal(sd)
+	if err != nil {
+		return nil, errors.New("Can't marshal tpm2 rollback data")
+	}
+	sealed, err := s.Seal(toSeal, policy)
+	return sealed, err
 }
 
 func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
-	policy := SealPolicyDefault
-	unsealed, err := tpm2.RollbackUnseal(s.rw, sealed)
+	fmt.Printf("tpm2tao.GetRollbackProtectedUnseal\n") // REMOVE
+	unsealed, policy, err := s.Unseal(sealed)
 	if err != nil {
 		return nil, policy, err
 	}
-	return unsealed, policy, nil
+	c, err := tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
+	if err != nil {
+		return nil, policy, err
+	}
+	cmp_ctr := (c + 1) / 2
+	var sd RollbackSealedData
+	err = proto.Unmarshal(unsealed, &sd)
+	if err != nil {
+		return nil, policy, err
+	}
+	if sd.Entry == nil || sd.Entry.Counter == nil || *sd.Entry.Counter != cmp_ctr {
+		return nil, policy, errors.New("tpm2tao.RollbackProtectedUnseal bad counter")
+	}
+	return sd.ProtectedData, policy, nil
 }
 
 // extractPCRs gets the PCRs from a tpm principal.

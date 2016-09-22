@@ -2683,25 +2683,26 @@ func ReadNv(rw io.ReadWriter, handle Handle, authString string,
 	return DecodeReadNv(resp[10:])
 }
 
+// See note in tpm2_tao.go about counter values for Rollback support.
+
 // Tpm2 GetCounter
-func GetCounter(rw io.ReadWriter, slot int) (int64, error) {
-	return int64(0), nil
+func GetCounter(rw io.ReadWriter, nvHandle Handle, authString string) (int64, error) {
+	fmt.Printf("tpm2.GetCounter\n") // REMOVE
+	c, err := ReadNv(rw, nvHandle, authString, uint16(0), uint16(8))
+	if err != nil {
+		return int64(0), errors.New("Can't read tpm2 counter")
+	}
+	return int64(c), nil
 }
 
 // Tpm2 InitCounter
-func InitCounter(rw io.ReadWriter, slot int) (error) {
+func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) (error) {
 	fmt.Printf("tpm2.InitCounter\n") // REMOVE
-	return nil
+	owner := Handle(OrdTPM_RH_OWNER)
+	dataSize := uint16(8)
+	var tpmPolicy []byte // empty
+	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
+	err := DefineSpace(rw, owner, nvHandle, authString, tpmPolicy, attributes, dataSize)
+	return err
 }
 
-// Tpm2 RollbackSeal
-func RollbackSeal(rw io.ReadWriter, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("tpm2.RollbackProtectedSeal\n") // REMOVE
-	return nil, nil
-}
-
-// Tpm2 RollbackUnseal
-func RollbackUnseal(rw io.ReadWriter, sealed []byte) ([]byte, error) {
-	fmt.Printf("tpm2.RollbackProtectedUnseal\n") // REMOVE
-	return nil, nil
-}

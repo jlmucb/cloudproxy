@@ -44,14 +44,12 @@ func TestMarshalDirective(t *testing.T) {
 	}
 
 	res := new(Directive)
-	var resId uint64
-	err = unmarshalDirective(dBytes, &resId, res)
+	err = unmarshalDirective(dBytes, res)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if id != resId || *d.Type != *res.Type ||
-		!stringsCompare(d.Addrs, res.Addrs) || d.Error != res.Error {
+	if *d.Type != *res.Type || !stringsCompare(d.Addrs, res.Addrs) || d.Error != res.Error {
 		t.Error("Marshalling failed")
 	}
 }

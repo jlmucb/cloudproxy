@@ -130,7 +130,7 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c, hp.timeout}, nil
+	return &Conn{c, hp.timeout, make(map[uint64]Circuit)}, nil
 }
 
 // AcceptRouter Waits for connectons from other routers.
@@ -139,7 +139,7 @@ func (hp *RouterContext) AcceptRouter() (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c, hp.timeout}, nil
+	return &Conn{c, hp.timeout, make(map[uint64]Circuit)}, nil
 }
 
 // Close releases any resources held by the hosted program.
@@ -222,7 +222,7 @@ func (hp *RouterContext) HandleConn(c *Conn) error {
 		}
 	} else if cell[TYPE] == dirCell { // Handle a directive.
 		var d Directive
-		if err = unmarshalDirective(cell, &id, &d); err != nil {
+		if err = unmarshalDirective(cell, &d); err != nil {
 			return err
 		}
 		if *d.Type == DirectiveType_ERROR {

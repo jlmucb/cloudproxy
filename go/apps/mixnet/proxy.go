@@ -78,7 +78,33 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c, p.timeout}, nil
+	conn := &Conn{c, p.timeout, make(map[uint64]Circuit)}
+	go p.multiplexConn(conn)
+	return conn, nil
+}
+
+// Multiplexes reading from a connection
+// (kwonalbert) No need to multiplex writes;
+// each circuit should be able to write whenever
+func (p *ProxyContext) multiplexConn(c *Conn) {
+	for {
+		cell := make([]byte, CellBytes)
+		_, err := c.Read(cell)
+		if err == io.EOF {
+			return
+		} else if err == nil {
+			id := getID(cell)
+			c.circuits[id].cells <- Cell{cell, err}
+		} else {
+			// Relay other errors (mostly timeout) to all circuits in this connection
+			for circ := range c.circuits {
+				go func() {
+					c.circuits[circ].cells <- Cell{nil, err}
+				}()
+			}
+			return
+		}
+	}
 }
 
 // CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
@@ -87,18 +113,20 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 func (p *ProxyContext) CreateCircuit(addrs ...string) (uint64, error) {
 	id, err := p.nextID()
 	if err != nil {
-		return 0, err
+		return id, err
 	}
 
 	var c *Conn
 	if _, ok := p.conns[addrs[0]]; !ok {
 		c, err = p.DialRouter(p.network, addrs[0])
 		if err != nil {
-			return 0, err
+			return id, err
 		}
+		p.conns[addrs[0]] = c
 	} else {
 		c = p.conns[addrs[0]]
 	}
+	c.circuits[id] = Circuit{make(chan Cell)}
 	p.circuits[id] = c
 
 	d := &Directive{
@@ -108,14 +136,14 @@ func (p *ProxyContext) CreateCircuit(addrs ...string) (uint64, error) {
 
 	// Send CREATE directive to router.
 	if _, err := c.SendDirective(id, d); err != nil {
-		return 0, err
+		return id, err
 	}
 
 	// Wait for CREATED directive from router.
-	if _, err := c.ReceiveDirective(&id, d); err != nil {
-		return 0, err
+	if err := c.ReceiveDirective(id, d); err != nil {
+		return id, err
 	} else if *d.Type != DirectiveType_CREATED {
-		return 0, errors.New("could not create circuit")
+		return id, errors.New("could not create circuit")
 	}
 
 	return id, nil
@@ -131,7 +159,10 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	if _, err := c.SendDirective(id, dirDestroy); err != nil {
 		return err
 	}
-	c.Close()
+	delete(c.circuits, id)
+	if len(c.circuits) == 0 { // no more circuits, close the conn
+		c.Close()
+	}
 	return nil
 }
 
@@ -193,13 +224,12 @@ func (p *ProxyContext) HandleClient(id uint64) error {
 		return err
 	}
 
-	replyID, reply, err := d.ReceiveMessage()
+	reply, err := d.ReceiveMessage(id)
 	if err != nil {
 		return err
 	}
 
-	replyc := p.clients[replyID]
-	replyc.SetDeadline(time.Now().Add(p.timeout))
+	c.SetDeadline(time.Now().Add(p.timeout))
 	if _, err = c.Write(reply); err != nil {
 		return err
 	}

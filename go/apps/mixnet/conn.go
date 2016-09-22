@@ -59,7 +59,19 @@ var dirDestroy = &Directive{Type: DirectiveType_DESTROY.Enum()}
 // protocol.
 type Conn struct {
 	net.Conn
-	timeout time.Duration // timeout on read/write.
+	timeout  time.Duration // timeout on read/write.
+	circuits map[uint64]Circuit
+}
+
+// A cell read from the network connection
+type Cell struct {
+	cell []byte
+	err  error
+}
+
+// A circuit carries cells
+type Circuit struct {
+	cells chan Cell
 }
 
 // Read a cell from the channel. If len(msg) != CellBytes, return an error.
@@ -113,6 +125,7 @@ func (c *Conn) SendMessage(id uint64, msg []byte) error {
 
 	for bytes < msgBytes {
 		tao.ZeroBytes(cell)
+		binary.PutUvarint(cell[ID:], id)
 		cell[TYPE] = msgCell
 		bytes += copy(cell[BODY:], msg[bytes:])
 		if _, err := c.Write(cell); err != nil {
@@ -124,50 +137,49 @@ func (c *Conn) SendMessage(id uint64, msg []byte) error {
 
 // ReceiveMessage reads message cells from the router and assembles them into
 // a messsage.
-func (c *Conn) ReceiveMessage() (uint64, []byte, error) {
-	var err error
-
+func (c *Conn) ReceiveMessage(id uint64) ([]byte, error) {
 	// Receive cells from router.
-	cell := make([]byte, CellBytes)
-	if _, err = c.Read(cell); err != nil && err != io.EOF {
-		return 0, nil, err
+	read := <-c.circuits[id].cells
+	cell := read.cell
+	err := read.err
+	if err != nil {
+		return nil, err
 	}
 
-	id := getID(cell)
-
 	if cell[TYPE] == dirCell {
-		var id uint64
 		var d Directive
-		if err = unmarshalDirective(cell, &id, &d); err != nil {
-			return id, nil, err
+		if err = unmarshalDirective(cell, &d); err != nil {
+			return nil, err
 		}
 		if *d.Type == DirectiveType_ERROR {
-			return id, nil, errors.New("router error: " + (*d.Error))
+			return nil, errors.New("router error: " + (*d.Error))
 		}
-		return id, nil, errCellType
+		return nil, errCellType
 	} else if cell[TYPE] != msgCell {
-		return id, nil, errCellType
+		return nil, errCellType
 	}
 
 	msgBytes, n := binary.Uvarint(cell[BODY:])
 	if msgBytes > MaxMsgBytes {
-		return id, nil, errMsgLength
+		return nil, errMsgLength
 	}
 
 	msg := make([]byte, msgBytes)
 	bytes := copy(msg, cell[BODY+n:])
 
 	for err != io.EOF && uint64(bytes) < msgBytes {
-		if _, err = c.Read(cell); err != nil && err != io.EOF {
-			return id, nil, err
-		}
-		if cell[TYPE] != msgCell {
-			return id, nil, errCellType
+		read = <-c.circuits[id].cells
+		cell = read.cell
+		err = read.err
+		if err != nil && err != io.EOF {
+			return nil, err
+		} else if cell[TYPE] != msgCell {
+			return nil, errCellType
 		}
 		bytes += copy(msg[bytes:], cell[BODY:])
 	}
 
-	return id, msg, nil
+	return msg, nil
 }
 
 // SendDirective serializes and pads a directive to the length of a cell and
@@ -185,22 +197,24 @@ func (c *Conn) SendDirective(id uint64, d *Directive) (int, error) {
 // ReceiveDirective awaits a reply from the peer and returns the directive
 // received, e.g. in response to RouterContext.HandleProxy(). If the directive
 // type is ERROR, return an error.
-func (c *Conn) ReceiveDirective(id *uint64, d *Directive) (int, error) {
-	cell := make([]byte, CellBytes)
-	bytes, err := c.Read(cell)
+func (c *Conn) ReceiveDirective(id uint64, d *Directive) error {
+	read := <-c.circuits[id].cells
+	cell := read.cell
+	err := read.err
+
 	if err != nil && err != io.EOF {
-		return 0, err
+		return err
 	}
 
-	err = unmarshalDirective(cell, id, d)
+	err = unmarshalDirective(cell, d)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	if *d.Type == DirectiveType_ERROR {
-		return bytes, errors.New("router error: " + (*d.Error))
+		return errors.New("router error: " + (*d.Error))
 	}
-	return bytes, nil
+	return nil
 }
 
 // Transform a directive into a cell, encoding its length and padding it to the
@@ -228,10 +242,7 @@ func marshalDirective(id uint64, d *Directive) ([]byte, error) {
 }
 
 // Parse a directive from a cell.
-func unmarshalDirective(cell []byte, id *uint64, d *Directive) error {
-	i, _ := binary.Uvarint(cell[ID:])
-	*id = i
-
+func unmarshalDirective(cell []byte, d *Directive) error {
 	if cell[TYPE] != dirCell {
 		return errCellType
 	}

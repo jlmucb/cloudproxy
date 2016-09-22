@@ -160,6 +160,26 @@ func runRouterHandleOneProxy(router *RouterContext, requestCount int, ch chan<- 
 	ch <- testResult{nil, nil}
 }
 
+// Router accepts a connection from a proxy with multiple circuits
+func runRouterHandleOneProxyMultCircuits(router *RouterContext, numCircuits int, requestCounts []int, ch chan<- testResult) {
+	c, err := router.AcceptProxy()
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
+	defer c.Close()
+
+	for circ := 0; circ < numCircuits; circ++ {
+		for i := 0; i < requestCounts[circ]; i++ {
+			if err = router.HandleConn(c); err != nil {
+				ch <- testResult{err, nil}
+				return
+			}
+		}
+		ch <- testResult{nil, nil}
+	}
+}
+
 func runRouterHandleProxy(router *RouterContext, clientCt, requestCt int, ch chan<- testResult) {
 	done := make(chan bool)
 
@@ -194,10 +214,12 @@ func runRouterHandleProxy(router *RouterContext, clientCt, requestCt int, ch cha
 func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) ([]byte, error) {
 	id, err := proxy.CreateCircuit(rAddr, dAddr)
 	if err != nil {
+		fmt.Println(id, "Circuit error:", err)
 		return nil, err
 	}
+
 	c := proxy.circuits[id]
-	defer c.Close()
+	//defer c.Close()
 
 	if err = c.SendMessage(id, msg); err != nil {
 		return nil, err
@@ -205,7 +227,7 @@ func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) (
 
 	// dummyServer receives one message and replies. Without this line,
 	// the router will report a broken pipe.
-	_, msg, err = c.ReceiveMessage()
+	msg, err = c.ReceiveMessage(id)
 	return msg, err
 }
 
@@ -267,8 +289,8 @@ func TestCreateDestroy(t *testing.T) {
 
 	// (kwonalbert) Actually receive the error message first;
 	// This gets rid of a race condition between error sending and destroying connection
-	if _, _, err = c.ReceiveMessage(); err == nil {
-		t.Error(errors.New("Expecting cannot establish tcp error"))
+	if _, err = c.ReceiveMessage(id); err == nil {
+		t.Error(errors.New("Expecting cannot establish connection error"))
 	}
 
 	if err = proxy.DestroyCircuit(id); err != nil {
@@ -356,10 +378,13 @@ func TestProxyRouterRelay(t *testing.T) {
 	go runDummyServer(len(trials), 1, dstCh, dstAddrCh)
 	dstAddr := <-dstAddrCh
 	rAddr := router.proxyListener.Addr().String()
+	reqCts := make([]int, len(trials))
+	for i := range reqCts {
+		reqCts[i] = 2
+	}
+	go runRouterHandleOneProxyMultCircuits(router, len(trials), reqCts, routerCh)
 
 	for _, l := range trials {
-
-		go runRouterHandleOneProxy(router, 2, routerCh)
 		reply, err := runProxySendMessage(proxy, rAddr, dstAddr, msg[:l])
 		if err != nil {
 			t.Errorf("relay (length=%d): %s", l, err)
@@ -390,21 +415,24 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
 	routerAddr := router.proxyListener.Addr().String()
-	cell := make([]byte, CellBytes)
 	ch := make(chan testResult)
 
-	go runRouterHandleOneProxy(router, 2, ch)
-	c, err := proxy.DialRouter(network, routerAddr)
+	go runRouterHandleOneProxyMultCircuits(router, 2, []int{3, 2}, ch)
+	fakeAddr := "127.0.0.1:0"
+	id, err := proxy.CreateCircuit(routerAddr, fakeAddr)
 	if err != nil {
 		t.Error(err)
 	}
+	cell := make([]byte, CellBytes)
+	binary.PutUvarint(cell[ID:], id)
+	c := proxy.circuits[id]
 
 	// Unrecognized cell type.
 	cell[TYPE] = 0xff
 	if _, err = c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, _, err = c.ReceiveMessage()
+	_, err = c.ReceiveMessage(id)
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
@@ -415,16 +443,17 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if _, err := c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, _, err = c.ReceiveMessage()
+	_, err = c.ReceiveMessage(id)
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
-	<-ch
-	c.Close()
+	res := <-ch
+	if res.err != nil {
+		t.Error(res.err)
+	}
 
 	// Bogus destination.
-	go runRouterHandleOneProxy(router, 2, ch)
-	id, err := proxy.CreateCircuit(routerAddr, "127.0.0.1:9999")
+	id, err = proxy.CreateCircuit(routerAddr, "127.0.0.1:9999")
 	if err != nil {
 		t.Error(err)
 	}
@@ -432,12 +461,14 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if err = c.SendMessage(id, []byte("Are you there?")); err != nil {
 		t.Error(err)
 	}
-	_, _, err = c.ReceiveMessage()
+	_, err = c.ReceiveMessage(id)
 	if err == nil {
 		t.Error("Receive message incorrectly succeeded")
 	}
-	<-ch
-	c.Close()
+	res = <-ch
+	if res.err != nil {
+		t.Error(res.err)
+	}
 
 	// Multihop circuits not supported yet.
 	// go runRouterHandleOneProxy(router, 1, ch)
@@ -499,7 +530,7 @@ func TestSendMessageTimeout(t *testing.T) {
 		if err = c.SendMessage(id, []byte("hello")); err != nil {
 			t.Error(err)
 		}
-		if _, _, err = c.ReceiveMessage(); err == nil {
+		if _, err = c.ReceiveMessage(id); err == nil {
 			t.Error("receiveMessage incorrectly succeeded")
 		}
 		done <- true

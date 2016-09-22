@@ -752,11 +752,14 @@ fmt.Printf("TestCombinedNvTest\n")
 		fmt.Printf("DefineSpace succeeded\n")
 	}
 /*
-	c1, err := ReadNv(rw, handle, authString, offset, dataSize)
+	// Apparently, the counter must be initialized somehow before
+	// first write, so this fails.  Figure out how to initialize
+	// it without bumping it, as we do in this test.
+	c0, err := ReadNv(rw, handle, authString, offset, dataSize)
 	if err != nil {
 		fmt.Printf("ReadNv (1) failed %s", err)
-		// t.Fatal("ReadNv (1) failed %s", err)
 	}
+	fmt.Printf("c0: %d\n", c0)
 */
 	err = IncrementNv(rw, handle, authString)
 	if err != nil {

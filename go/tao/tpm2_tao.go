@@ -665,6 +665,7 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 
 func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 	fmt.Printf("TPM2Tao.GetCounter\n")
+	_ = s.InitCounter(label, int64(0))
 	return tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
 }
 

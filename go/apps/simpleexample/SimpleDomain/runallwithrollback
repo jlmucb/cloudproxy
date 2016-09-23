@@ -1,0 +1,20 @@
+#
+source ./defines
+
+# These should be run as root.
+$BINPATH/tao host init -tao_domain $DOMAIN -hosting process -root -pass xxx
+sleep 5
+$BINPATH/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass xxx &
+sleep 5
+
+#
+# Starting the programs should be done as the unprivileged user it runs for
+# to provide isolation.
+# We run as root for conveniencea to avoid script clutter.
+#
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleDomainService -password xxx &
+sleep 1
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleServer -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleServer" &
+sleep 1
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleClient -test_rollback 1 -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleClient" &
+

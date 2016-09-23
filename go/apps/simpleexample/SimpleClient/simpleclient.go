@@ -32,7 +32,7 @@ var simpleCfg = flag.String("domain_config",
 var simpleClientPath = flag.String("path",
 	"./SimpleClient",
 	"path to SimpleClient files")
-var testRollback= flag.bool("test_rollback", false, "test rollback?")
+var testRollback= flag.Bool("test_rollback", false, "test rollback?")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
@@ -59,7 +59,7 @@ func main() {
 	fmt.Printf("simpleclient: TaoParadigm complete, name: %s\n",
 		clientProgramData.TaoName)
 
-	if testRollback {
+	if *testRollback {
 		err = tao.Parent().InitCounter("label", 0)
 		if err != nil {
 			fmt.Printf("simpleclient: Can't InitCounter: ", err)

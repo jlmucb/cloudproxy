@@ -41,8 +41,10 @@ type RouterContext struct {
 	sendQueue  *Queue
 	replyQueue *Queue
 
+	// Connections to next hop routers
 	conns map[string]*Conn
-	exit  map[uint64]bool
+	// Indicates if this server is an exit or not
+	exit map[uint64]bool
 
 	// The queues and error handlers are instantiated as go routines; these
 	// channels are for tearing them down.
@@ -193,10 +195,15 @@ func (p *RouterContext) newID() (uint64, error) {
 	return id, nil
 }
 
-func (hp *RouterContext) HandleErr(c *Conn) {
-	err := <-hp.errs
-	if err != nil {
-		// TODO(kwonalbert) Handle errors properly
+// Handle errors internal to the router
+// When instantiating a real router (not for testing),
+// one start this function as well to handle the errors
+func (hp *RouterContext) HandleErr() {
+	for {
+		err := <-hp.errs
+		if err != nil {
+			// TODO(kwonalbert) Handle errors properly
+		}
 	}
 }
 
@@ -298,6 +305,9 @@ func (hp *RouterContext) handleConn(c *Conn) {
 				close(c.circuits[id].cells)
 				delete(c.circuits, id)
 
+				// Close the connection if you are an exit for this circuit
+				// TODO(kwonalbert) Also close the conn if there are no more
+				// circuits using this conn
 				hp.sendQueue.Close(id, hp.exit[id])
 				sid := <-hp.sendQueue.destroyed
 				for sid != id {
@@ -305,6 +315,8 @@ func (hp *RouterContext) handleConn(c *Conn) {
 				}
 
 				c.SendDirective(id, dirDestroyed)
+				// TODO(kwonalbert) Closing the connection immediately
+				// after sending back DESTROYED leaves to a race condition..
 				hp.replyQueue.Close(id, len(c.circuits) == 0)
 
 				rid := <-hp.replyQueue.destroyed

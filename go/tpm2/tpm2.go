@@ -2702,7 +2702,8 @@ func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) (error) {
 	dataSize := uint16(8)
 	var tpmPolicy []byte // empty
 	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
-	err := DefineSpace(rw, owner, nvHandle, authString, tpmPolicy, attributes, dataSize)
+	err := DefineSpace(rw, owner, nvHandle, authString,
+		tpmPolicy, attributes, dataSize)
 	return err
 }
 

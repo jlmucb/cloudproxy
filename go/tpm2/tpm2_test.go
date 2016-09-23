@@ -751,16 +751,9 @@ fmt.Printf("TestCombinedNvTest\n")
 	} else {
 		fmt.Printf("DefineSpace succeeded\n")
 	}
-/*
-	// Apparently, the counter must be initialized somehow before
-	// first write, so this fails.  Figure out how to initialize
-	// it without bumping it, as we do in this test.
-	c0, err := ReadNv(rw, handle, authString, offset, dataSize)
-	if err != nil {
-		fmt.Printf("ReadNv (1) failed %s", err)
-	}
-	fmt.Printf("c0: %d\n", c0)
-*/
+	// The counter must be initialized by IncrementNv before
+	// ReadNv is called.  Thus the counter is advanced by 1
+	// no matter what.
 	err = IncrementNv(rw, handle, authString)
 	if err != nil {
 		t.Fatal("IncrementNv failed ", err)
@@ -781,5 +774,12 @@ fmt.Printf("TestCombinedNvTest\n")
 	fmt.Printf("Counter after increment: %d\n", c2)
 	if c2 <= c1 {
 		t.Fatal("Error: Counter did not advance")
+	}
+	// Clean up.
+	err = UndefineSpace(rw, owner, handle)
+	if err != nil {
+		fmt.Printf("UndefineSpace failed (ok) %s\n", err)
+	} else {
+		fmt.Printf("UndefineSpace succeeded\n")
 	}
 }

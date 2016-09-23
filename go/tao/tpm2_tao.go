@@ -660,6 +660,7 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 	// TODO: make this more general?
 	s.nvHandle = tpm2.Handle(1000)
 	s.authString = "01020304"
+
 	return tpm2.InitCounter(s.rw, s.nvHandle, s.authString)
 }
 

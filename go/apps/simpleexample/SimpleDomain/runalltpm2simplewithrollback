@@ -13,5 +13,5 @@ $BINPATH/tao run -tao_domain $DOMAINTPM2 $BINPATH/SimpleServer \
 -domain_config $DOMAINTPM2/tao.config -path $DOMAINTPM2/SimpleServer &
 sleep 1
 $BINPATH/tao run -tao_domain $DOMAINTPM2 $BINPATH/SimpleClient \
--test_rollback 1 -domain_config $DOMAINTPM2/tao.config -path $DOMAINTPM2/SimpleClient &
+-domain_config $DOMAINTPM2/tao.config -path $DOMAINTPM2/SimpleClient -test_rollback 1 &
 

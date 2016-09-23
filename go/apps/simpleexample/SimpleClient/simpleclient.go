@@ -62,13 +62,15 @@ func main() {
 	if *testRollback {
 		err = tao.Parent().InitCounter("label", 0)
 		if err != nil {
-			fmt.Printf("simpleclient: Can't InitCounter: ", err)
+			fmt.Printf("simpleClient: Error return from InitCounter %s\n", err)
+		} else {
+			fmt.Printf("simpleClient: InitCounter, no error\n")
 		}
-		fmt.Printf("Return from InitCounter %s\n", err)
 		c,  err := tao.Parent().GetCounter("label")
-		fmt.Printf("Return from GetCounter %d %s\n", c, err)
 		if err != nil {
-			fmt.Printf("simpleclient: Can't GetCounter: ", err)
+			fmt.Printf("simpleClient: Error Return from GetCounter %d %s\n", c, err)
+		} else {
+			fmt.Printf("simpleclient: GetCounter successful %d\n", c)
 		}
 		data := []byte {
 			0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
@@ -76,12 +78,15 @@ func main() {
 		sealed,  err := tao.Parent().RollbackProtectedSeal("label", data,
 			tao.SealPolicyDefault)  // REMOVE
 		if err != nil {
-			fmt.Printf("simpleclient: Can't GetCounter: ", err)
+			fmt.Printf("simpleClient: Error Return from RollbackProtectedSeal %s\n", err)
+		} else {
+			fmt.Printf("simpleClient: RollbackProtectedSeal successful %x\n", sealed)
 		}
-		fmt.Printf("Return from .RollBackProtectedSeal: %s\n", err)
 		recoveredData,  _, err := tao.Parent().RollbackProtectedUnseal(sealed)
 		if err != nil {
-			fmt.Printf("simpleclient: Can't GetCounter: ", err)
+			fmt.Printf("simpleClient: Error Return from RollbackProtectedUnseal %s\n", err)
+		} else {
+			fmt.Printf("simpleClient: RollbackProtectedUnseal successful %x\n", recoveredData)
 		}
 		fmt.Printf("data: %x, recovered data: %x\n", data, recoveredData)
 	}

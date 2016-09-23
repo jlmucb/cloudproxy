@@ -16,5 +16,5 @@ $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleDomainService -password xxx 
 sleep 1
 $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleServer -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleServer" &
 sleep 1
-$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleClient -test_rollback 1 -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleClient" &
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleClient -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleClient" -test_rollback 1 &
 

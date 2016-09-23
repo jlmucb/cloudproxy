@@ -652,8 +652,9 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 }
 
 func (s *TPM2Tao) InitCounter(label string, c int64) error {
+	fmt.Printf("TPM2Tao.InitCounter\n")
 	// TODO(jlm): Change this?
-	if uint32(s.nvHandle) == 0 {
+	if uint32(s.nvHandle) != 0 {
 		return nil
 	}
 	// TODO: make this more general?
@@ -663,6 +664,7 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 }
 
 func (s *TPM2Tao) GetCounter(label string) (int64, error) {
+	fmt.Printf("TPM2Tao.GetCounter\n")
 	return tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
 }
 
@@ -678,6 +680,7 @@ func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 
 func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
 	fmt.Printf("tpm2tao.GetRollbackProtectedSeal\n") // REMOVE
+	_ = s.InitCounter(label, int64(0))
 	c, err := tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
 	if err != nil {
 		return nil, err
@@ -714,6 +717,7 @@ func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string
 
 func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
 	fmt.Printf("tpm2tao.GetRollbackProtectedUnseal\n") // REMOVE
+	_ = s.InitCounter("", int64(0))
 	unsealed, policy, err := s.Unseal(sealed)
 	if err != nil {
 		return nil, policy, err

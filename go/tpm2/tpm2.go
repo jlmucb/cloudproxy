@@ -2702,8 +2702,18 @@ func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) (error) {
 	dataSize := uint16(8)
 	var tpmPolicy []byte // empty
 	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
-	err := DefineSpace(rw, owner, nvHandle, authString,
+	err := UndefineSpace(rw, owner, nvHandle)
+	if err != nil {
+		fmt.Printf("UndefineSpace failed (ok) %s\n", err)
+	} else {
+		fmt.Printf("UndefineSpace succeeded\n")
+	}
+	err = DefineSpace(rw, owner, nvHandle, authString,
 		tpmPolicy, attributes, dataSize)
+	if err != nil {
+		fmt.Printf("Space already defined?\n")
+	}
+	err =  IncrementNv(rw, nvHandle, authString)
 	return err
 }
 

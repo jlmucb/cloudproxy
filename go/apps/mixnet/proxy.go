@@ -20,6 +20,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -36,7 +37,11 @@ type ProxyContext struct {
 	// and mapping address to connection for multiplexing
 	clients  map[uint64]net.Conn
 	circuits map[uint64]*Conn
-	conns    map[string]*Conn
+	// Because DeleteCircuit could be called at anytime,
+	// we put a global lock around adding/deleting circuits
+	// Should be okay for performance, since it doesn't happen often
+	circuitsLock *sync.Mutex
+	conns        map[string]*Conn
 
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on read/write.
@@ -60,6 +65,7 @@ func NewProxyContext(path, network, addr string, timeout time.Duration) (p *Prox
 
 	p.clients = make(map[uint64]net.Conn)
 	p.circuits = make(map[uint64]*Conn)
+	p.circuitsLock = new(sync.Mutex)
 	p.conns = make(map[string]*Conn)
 
 	return p, nil
@@ -90,18 +96,18 @@ func (p *ProxyContext) multiplexConn(c *Conn) {
 	for {
 		cell := make([]byte, CellBytes)
 		_, err := c.Read(cell)
-		if err == io.EOF {
-			return
-		} else if err == nil {
+		if err == nil {
 			id := getID(cell)
 			c.circuits[id].cells <- Cell{cell, err}
 		} else {
 			// Relay other errors (mostly timeout) to all circuits in this connection
-			for circ := range c.circuits {
-				go func() {
-					c.circuits[circ].cells <- Cell{nil, err}
-				}()
+			p.circuitsLock.Lock()
+			for _, circuit := range c.circuits {
+				go func(circuit Circuit) {
+					circuit.cells <- Cell{nil, err}
+				}(circuit)
 			}
+			p.circuitsLock.Unlock()
 			return
 		}
 	}
@@ -111,7 +117,7 @@ func (p *ProxyContext) multiplexConn(c *Conn) {
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
 func (p *ProxyContext) CreateCircuit(addrs ...string) (uint64, error) {
-	id, err := p.nextID()
+	id, err := p.newID()
 	if err != nil {
 		return id, err
 	}
@@ -159,7 +165,17 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	if _, err := c.SendDirective(id, dirDestroy); err != nil {
 		return err
 	}
+	// Wait for DESTROYED directive from router.
+	var d Directive
+	if err := c.ReceiveDirective(id, &d); err != nil {
+		return err
+	} else if *d.Type != DirectiveType_DESTROYED {
+		return errors.New("could not destroy circuit")
+	}
+
+	p.circuitsLock.Lock()
 	delete(c.circuits, id)
+	p.circuitsLock.Unlock()
 	if len(c.circuits) == 0 { // no more circuits, close the conn
 		c.Close()
 	}
@@ -168,7 +184,7 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 
 // Return a random circuit ID
 // TODO(kwonalbert): probably won't happen, but should check for duplicates
-func (p *ProxyContext) nextID() (uint64, error) {
+func (p *ProxyContext) newID() (uint64, error) {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
 		return 0, err

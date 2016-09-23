@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"path"
 	"testing"
@@ -115,7 +116,6 @@ func runRouterReadCell(router *RouterContext, ch chan<- testResult) {
 		ch <- testResult{err, []byte{}}
 		return
 	}
-	defer c.Close()
 
 	cell := make([]byte, CellBytes)
 	if _, err := c.Read(cell); err != nil {
@@ -131,7 +131,6 @@ func runProxyWriteCell(proxy *ProxyContext, addr string, msg []byte) error {
 	if err != nil {
 		return err
 	}
-	defer c.Close()
 
 	if _, err := c.Write(msg); err != nil {
 		return err
@@ -143,17 +142,15 @@ func runProxyWriteCell(proxy *ProxyContext, addr string, msg []byte) error {
 // Router accepts a connection from a proxy and handles a number of
 // requests.
 func runRouterHandleOneProxy(router *RouterContext, requestCount int, ch chan<- testResult) {
-	c, err := router.AcceptProxy()
+	_, err := router.AcceptProxy()
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
 	}
-	defer c.Close()
 
 	for i := 0; i < requestCount; i++ {
-		if err = router.HandleConn(c); err != nil {
+		if err = <-router.errs; err != nil {
 			ch <- testResult{err, nil}
-			return
 		}
 	}
 
@@ -162,48 +159,35 @@ func runRouterHandleOneProxy(router *RouterContext, requestCount int, ch chan<- 
 
 // Router accepts a connection from a proxy with multiple circuits
 func runRouterHandleOneProxyMultCircuits(router *RouterContext, numCircuits int, requestCounts []int, ch chan<- testResult) {
-	c, err := router.AcceptProxy()
+	_, err := router.AcceptProxy()
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
 	}
-	defer c.Close()
 
 	for circ := 0; circ < numCircuits; circ++ {
 		for i := 0; i < requestCounts[circ]; i++ {
-			if err = router.HandleConn(c); err != nil {
+			if err = <-router.errs; err != nil {
 				ch <- testResult{err, nil}
-				return
 			}
 		}
-		ch <- testResult{nil, nil}
 	}
+	ch <- testResult{nil, nil}
 }
 
 func runRouterHandleProxy(router *RouterContext, clientCt, requestCt int, ch chan<- testResult) {
-	done := make(chan bool)
-
 	for i := 0; i < clientCt; i++ {
-		c, err := router.AcceptProxy()
+		_, err := router.AcceptProxy()
 		if err != nil {
 			ch <- testResult{err, []byte{}}
 			return
 		}
-		defer c.Close()
-
-		go func(c *Conn) {
-			defer func() { done <- true }()
-			for i := 0; i < requestCt; i++ {
-				if err = router.HandleConn(c); err != nil {
-					ch <- testResult{err, nil}
-					return
-				}
-			}
-		}(c)
 	}
 
-	for i := 0; i < clientCt; i++ {
-		<-done
+	for i := 0; i < clientCt*requestCt; i++ {
+		if err := <-router.errs; err != nil {
+			ch <- testResult{err, nil}
+		}
 	}
 
 	ch <- testResult{nil, nil}
@@ -214,12 +198,10 @@ func runRouterHandleProxy(router *RouterContext, clientCt, requestCt int, ch cha
 func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) ([]byte, error) {
 	id, err := proxy.CreateCircuit(rAddr, dAddr)
 	if err != nil {
-		fmt.Println(id, "Circuit error:", err)
 		return nil, err
 	}
 
 	c := proxy.circuits[id]
-	//defer c.Close()
 
 	if err = c.SendMessage(id, msg); err != nil {
 		return nil, err
@@ -340,11 +322,6 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 		}
 	}
 
-	res := <-ch
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
-	}
-
 	unique := make(map[*Conn]bool)
 	for _, conn := range proxy.circuits {
 		unique[conn] = true
@@ -359,7 +336,7 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 			t.Error("Couldn't destroy circuit:", err)
 		}
 	}
-	res = <-ch
+	res := <-ch
 	if res.err != io.EOF {
 		t.Error("Expecting EOF from router but got", res.err)
 	}
@@ -399,8 +376,8 @@ func TestProxyRouterCell(t *testing.T) {
 		t.Error("runProxyWriteCell(): should have returned errCellLength")
 	}
 	res = <-ch
-	if res.err != io.EOF {
-		t.Error("runRouterReadCell(): should have returned EOF.")
+	if err := res.err.(net.Error); !err.Timeout() {
+		t.Error("runRouterReadCell(): should have timed out")
 	}
 }
 
@@ -426,29 +403,26 @@ func TestProxyRouterRelay(t *testing.T) {
 	var res testResult
 
 	trials := []int{
-		37,        // A short message
-		CellBytes, // A cell
-		len(msg),  // A long message
+		37, // A short message
+		CellBytes - (BODY + 8), // A cell
+		len(msg),               // A long message
 	}
 
 	go runDummyServer(len(trials), 1, dstCh, dstAddrCh)
 	dstAddr := <-dstAddrCh
 	rAddr := router.proxyListener.Addr().String()
-	reqCts := make([]int, len(trials))
-	for i := range reqCts {
-		reqCts[i] = 2
-	}
+
+	// First two messages fits in one cell, the last one is over multiple cells
+	// Funky counting, since the cells contain some meta data..
+	longReqCt := 1 + ((len(msg)-(CellBytes-(BODY+8)))/(CellBytes-BODY) + 1)
+	reqCts := []int{2, 2, longReqCt + 1}
+
 	go runRouterHandleOneProxyMultCircuits(router, len(trials), reqCts, routerCh)
 
 	for _, l := range trials {
 		reply, err := runProxySendMessage(proxy, rAddr, dstAddr, msg[:l])
 		if err != nil {
 			t.Errorf("relay (length=%d): %s", l, err)
-		}
-
-		res = <-routerCh
-		if res.err != nil {
-			t.Errorf("relay (length=%d): %s", l, res.err)
 		}
 
 		res = <-dstCh
@@ -458,6 +432,10 @@ func TestProxyRouterRelay(t *testing.T) {
 			t.Errorf("relay (length=%d): received: %v", l, reply)
 			t.Errorf("relay (length=%d): sent: %x", l, msg[:l])
 		}
+	}
+	res = <-routerCh
+	if res.err != nil {
+		t.Errorf("relay error", res.err)
 	}
 }
 
@@ -503,10 +481,6 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
-	res := <-ch
-	if res.err != nil {
-		t.Error(res.err)
-	}
 
 	// Bogus destination.
 	id, err = proxy.CreateCircuit(routerAddr, "127.0.0.1:9999")
@@ -521,9 +495,10 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if err == nil {
 		t.Error("Receive message incorrectly succeeded")
 	}
-	res = <-ch
+
+	res := <-ch
 	if res.err != nil {
-		t.Error(res.err)
+		t.Error("Not expecting any router errors, but got", res.err)
 	}
 
 	// Multihop circuits not supported yet.
@@ -643,7 +618,6 @@ func TestMixnet(t *testing.T) {
 
 			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
 			ch <- runSocksClient(proxyAddr, dstAddr, msg)
-
 		}(i, clientCh)
 	}
 
@@ -676,8 +650,8 @@ func TestMixnet(t *testing.T) {
 	// Wait for router to finish.
 	for i := 0; i < clientCt; i++ {
 		res = <-routerCh
-		if res.err != nil && res.err != io.EOF {
-			t.Error(res.err)
+		if res.err != io.EOF {
+			t.Error("Expecting EOF for all clients, but got", res.err)
 		}
 	}
 }

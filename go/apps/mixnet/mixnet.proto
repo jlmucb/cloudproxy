@@ -17,8 +17,9 @@ package mixnet;
 enum DirectiveType {
   ERROR = 0;     // Signal an error to peer.
   CREATE = 1;    // Create a circuit.
-  CREATED = 2;   // Reply from router confirming the circuit was created.
+  CREATED = 2;   // Reply from router confirming CREATE
   DESTROY = 3;   // Destroy a circuit.
+  DESTROYED = 4;   // Reply from router confirming DESTROY
 }
 
 message Directive {

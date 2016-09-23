@@ -35,6 +35,7 @@ type Queueable struct {
 	msg     []byte
 	conn    net.Conn
 	reply   chan []byte
+	remove  bool
 	destroy bool
 }
 
@@ -137,10 +138,11 @@ func (sq *Queue) SetConn(id uint64, c net.Conn) {
 
 // Close creates a queueable object that closes the connection and deletes all
 // associated resources.
-func (sq *Queue) Close(id uint64) {
+func (sq *Queue) Close(id uint64, destroy bool) {
 	q := new(Queueable)
 	q.id = id
-	q.destroy = true
+	q.remove = true
+	q.destroy = destroy
 	sq.queue <- q
 }
 
@@ -173,11 +175,13 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 				sq.nextConn[q.id] = q.conn
 			}
 
-			if q.destroy {
+			if q.remove {
 				// Close the connection and delete all resources. Any subsequent
 				// messages or reply requests will cause an error.
 				if c, def := sq.nextConn[q.id]; def {
-					c.Close()
+					if q.destroy {
+						c.Close()
+					}
 					delete(sq.nextConn, q.id)
 				}
 				if _, def := sq.nextAddr[q.id]; def {

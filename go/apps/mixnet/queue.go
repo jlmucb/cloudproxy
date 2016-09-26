@@ -136,14 +136,35 @@ func (sq *Queue) SetConn(id uint64, c net.Conn) {
 	sq.queue <- q
 }
 
-// Close creates a queueable object that closes the connection and deletes all
-// associated resources.
-func (sq *Queue) Close(id uint64, destroy bool) {
+// Close creates a queueable object that sends the last msg,
+// closes the connection and deletes all associated resources.
+func (sq *Queue) Close(id uint64, msg []byte, destroy bool) {
 	q := new(Queueable)
 	q.id = id
+	if msg != nil {
+		q.msg = make([]byte, len(msg))
+		copy(q.msg, msg)
+	}
 	q.remove = true
 	q.destroy = destroy
 	sq.queue <- q
+}
+
+func (sq *Queue) delete(q *Queueable) {
+	// Close the connection and delete all resources. Any subsequent
+	// messages or reply requests will cause an error.
+	if c, def := sq.nextConn[q.id]; def {
+		if q.destroy {
+			c.Close()
+		}
+		delete(sq.nextConn, q.id)
+	}
+	if _, def := sq.nextAddr[q.id]; def {
+		delete(sq.nextAddr, q.id)
+	}
+	if _, def := sq.sendBuffer[q.id]; def {
+		delete(sq.sendBuffer, q.id)
+	}
 }
 
 // DoQueue adds messages to a queue and transmits messages in batches. It also
@@ -175,27 +196,8 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 				sq.nextConn[q.id] = q.conn
 			}
 
-			if q.remove {
-				// Close the connection and delete all resources. Any subsequent
-				// messages or reply requests will cause an error.
-				if c, def := sq.nextConn[q.id]; def {
-					if q.destroy {
-						c.Close()
-					}
-					delete(sq.nextConn, q.id)
-				}
-				if _, def := sq.nextAddr[q.id]; def {
-					delete(sq.nextAddr, q.id)
-				}
-				if _, def := sq.sendBuffer[q.id]; def {
-					delete(sq.sendBuffer, q.id)
-				}
-
-				sq.destroyed <- q.id
-
-			} else if q.msg != nil || q.reply != nil {
+			if q.msg != nil || q.reply != nil {
 				// Add message or message request (reply) to the queue.
-
 				if _, def := sq.nextAddr[q.id]; !def {
 					sq.err <- sendQueueError{q.id,
 						errors.New("request to send/receive message without a destination")}
@@ -216,6 +218,8 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 
 				// Add message to send buffer.
 				buf.PushBack(q)
+			} else if q.remove {
+				sq.delete(q)
 			}
 
 			// Transmit batches of messages.
@@ -292,11 +296,21 @@ func (sq *Queue) dequeue() {
 			sq.nextConn[res.id] = res.c
 		}
 
+		// If this was close with a message, then remove q here
+		q := sq.sendBuffer[res.id].Front().Value.(*Queueable)
+		if q.remove {
+			sq.delete(q)
+		}
+
 		// Pop the message from the buffer and decrement the counter
 		// if the buffer is empty.
-		buf := sq.sendBuffer[res.id]
-		buf.Remove(buf.Front())
-		if buf.Len() == 0 {
+		// resource might be removed (circuit destroyed); check first
+		if buf, ok := sq.sendBuffer[res.id]; ok {
+			buf.Remove(buf.Front())
+			if buf.Len() == 0 {
+				sq.ct--
+			}
+		} else {
 			sq.ct--
 		}
 	}

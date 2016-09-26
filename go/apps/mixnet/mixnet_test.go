@@ -302,8 +302,8 @@ func TestCreateDestroy(t *testing.T) {
 		t.Error("Unexpected router error:", res.err)
 	}
 
-	if len(router.conns.m) != 0 {
-		t.Error("Expecting 0 connections, but have", len(router.conns.m))
+	if len(router.conns) != 0 {
+		t.Error("Expecting 0 connections, but have", len(router.conns))
 	}
 }
 

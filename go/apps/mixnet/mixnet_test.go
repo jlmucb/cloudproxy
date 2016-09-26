@@ -157,6 +157,24 @@ func runRouterHandleOneProxy(router *RouterContext, requestCount int, ch chan<- 
 	ch <- testResult{nil, nil}
 }
 
+// Router accepts a connection from a proxy and handles a number of
+// requests.
+func runRouterHandleOneRouter(router *RouterContext, requestCount int, ch chan<- testResult) {
+	_, err := router.AcceptRouter()
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
+
+	for i := 0; i < requestCount; i++ {
+		if err = <-router.errs; err != nil {
+			ch <- testResult{err, nil}
+		}
+	}
+
+	ch <- testResult{nil, nil}
+}
+
 // Router accepts a connection from a proxy with multiple circuits
 func runRouterHandleOneProxyMultCircuits(router *RouterContext, numCircuits int, requestCounts []int, ch chan<- testResult) {
 	_, err := router.AcceptProxy()
@@ -284,8 +302,8 @@ func TestCreateDestroy(t *testing.T) {
 		t.Error("Unexpected router error:", res.err)
 	}
 
-	if len(router.conns) != 0 {
-		t.Error("Expecting 0 connections, but have", len(router.conns))
+	if len(router.conns.m) != 0 {
+		t.Error("Expecting 0 connections, but have", len(router.conns.m))
 	}
 }
 
@@ -579,7 +597,7 @@ func TestSendMessageTimeout(t *testing.T) {
 
 // Test mixnet end-to-end with many clients. Proxy a protocol through mixnet.
 // The client sends the server a message and the server echoes it back.
-func TestMixnet(t *testing.T) {
+func TestMixnetSingleHop(t *testing.T) {
 
 	clientCt := 10
 	router, proxy, domain, err := makeContext(clientCt)

@@ -23,6 +23,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -42,11 +43,27 @@ type RouterContext struct {
 	replyQueue *Queue
 
 	// Connections to next hop routers
-	conns map[string]*Conn
-	nexts map[uint64]*Conn
+	conns struct {
+		sync.RWMutex
+		m map[string]*Conn
+	}
+	nexts struct {
+		sync.RWMutex
+		m map[uint64]*Conn
+	}
+	nextIds struct {
+		sync.RWMutex
+		m map[uint64]uint64
+	}
 	// If this server is an entry or exit for this circuit
-	entry map[uint64]bool
-	exit  map[uint64]bool
+	entry struct {
+		sync.RWMutex
+		m map[uint64]bool
+	}
+	exit struct {
+		sync.RWMutex
+		m map[uint64]bool
+	}
 
 	// The queues and error handlers are instantiated as go routines; these
 	// channels are for tearing them down.
@@ -71,10 +88,26 @@ func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout
 	hp.network = network
 	hp.timeout = timeout
 
-	hp.conns = make(map[string]*Conn)
-	hp.nexts = make(map[uint64]*Conn)
-	hp.entry = make(map[uint64]bool)
-	hp.exit = make(map[uint64]bool)
+	hp.conns = struct {
+		sync.RWMutex
+		m map[string]*Conn
+	}{m: make(map[string]*Conn)}
+	hp.nexts = struct {
+		sync.RWMutex
+		m map[uint64]*Conn
+	}{m: make(map[uint64]*Conn)}
+	hp.nextIds = struct {
+		sync.RWMutex
+		m map[uint64]uint64
+	}{m: make(map[uint64]uint64)}
+	hp.entry = struct {
+		sync.RWMutex
+		m map[uint64]bool
+	}{m: make(map[uint64]bool)}
+	hp.exit = struct {
+		sync.RWMutex
+		m map[uint64]bool
+	}{m: make(map[uint64]bool)}
 
 	hp.errs = make(chan error)
 
@@ -165,7 +198,10 @@ func (hp *RouterContext) DialRouter(network, addr string) (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
-	hp.conns[addr] = conn
+	hp.conns.Lock()
+	hp.conns.m[addr] = conn
+	hp.conns.Unlock()
+
 	return conn, nil
 }
 
@@ -181,12 +217,14 @@ func (hp *RouterContext) Close() {
 	if hp.routerListener != nil {
 		hp.routerListener.Close()
 	}
-	for _, conn := range hp.conns {
+	hp.conns.RLock()
+	for _, conn := range hp.conns.m {
 		for _, circuit := range conn.circuits {
 			close(circuit.cells)
 		}
 		conn.Close()
 	}
+	hp.conns.RUnlock()
 }
 
 // Return a random circuit ID
@@ -262,12 +300,19 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 				// without worrying about security
 				hp.sendQueue.SetAddr(id, d.Addrs[0])
 
-				hp.entry[id] = withProxy
-				hp.exit[id] = true
+				hp.entry.Lock()
+				hp.entry.m[id] = withProxy
+				hp.entry.Unlock()
+				hp.exit.Lock()
+				hp.exit.m[id] = true
+				hp.exit.Unlock()
 				// Relay the CREATE message
 				if len(d.Addrs) > 1 {
 					var nextConn *Conn
-					if _, ok := hp.conns[d.Addrs[0]]; !ok {
+					hp.conns.RLock()
+					_, ok := hp.conns.m[d.Addrs[0]]
+					hp.conns.RUnlock()
+					if !ok {
 						nextConn, err = hp.DialRouter(hp.network, d.Addrs[0])
 						if err != nil {
 							if e := hp.SendError(id, err); e != nil {
@@ -276,10 +321,14 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 							return
 						}
 					} else {
-						nextConn = hp.conns[d.Addrs[0]]
+						hp.conns.Lock()
+						nextConn = hp.conns.m[d.Addrs[0]]
+						hp.conns.Unlock()
 					}
 					nextConn.circuits[id] = Circuit{make(chan Cell)}
-					hp.nexts[id] = nextConn
+					hp.nexts.Lock()
+					hp.nexts.m[id] = nextConn
+					hp.nexts.Unlock()
 					hp.sendQueue.SetConn(id, nextConn)
 
 					dir := &Directive{
@@ -293,7 +342,9 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 					}
 
 					hp.sendQueue.EnqueueMsg(id, nextCell)
-					hp.exit[id] = false
+					hp.exit.Lock()
+					hp.exit.m[id] = false
+					hp.exit.Unlock()
 				}
 
 				// Tell the previous hop (proxy or router) it's created
@@ -305,7 +356,14 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 				hp.replyQueue.EnqueueMsg(id, cell)
 			} else if *d.Type == DirectiveType_DESTROY {
 				// Close the connection if you are an exit for this circuit
-				hp.sendQueue.Close(id, nil, hp.exit[id] || len(hp.nexts[id].circuits) == 0)
+				hp.nexts.RLock()
+				noCircuits := hp.nexts.m[id] != nil && len(hp.nexts.m[id].circuits) == 0
+				hp.nexts.RUnlock()
+				hp.exit.RLock()
+				isExit := hp.exit.m[id]
+				hp.exit.RUnlock()
+				destroy := noCircuits || isExit
+				hp.sendQueue.Close(id, nil, destroy)
 
 				// Send back destroyed msg
 				cell, err = marshalDirective(id, dirDestroyed)
@@ -319,11 +377,19 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 				// actually on this conn
 				close(c.circuits[id].cells)
 				delete(c.circuits, id)
-				delete(hp.entry, id)
-				delete(hp.exit, id)
+				hp.entry.Lock()
+				delete(hp.entry.m, id)
+				hp.entry.Unlock()
+				hp.exit.Lock()
+				delete(hp.exit.m, id)
+				hp.exit.Unlock()
 				if len(c.circuits) == 0 {
-					delete(hp.conns, c.RemoteAddr().String())
-					delete(hp.nexts, id)
+					hp.conns.Lock()
+					delete(hp.conns.m, c.RemoteAddr().String())
+					hp.conns.Unlock()
+					hp.nexts.Lock()
+					delete(hp.nexts.m, id)
+					hp.nexts.Unlock()
 				}
 			}
 		} else { // Unknown cell type, return an error.

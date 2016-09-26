@@ -294,7 +294,7 @@ func TestCreateDestroy(t *testing.T) {
 	}
 
 	if err = proxy.DestroyCircuit(id); err != nil {
-		t.Error(err)
+		t.Error("Error destroying circuit:", err)
 	}
 
 	res := <-ch
@@ -598,7 +598,6 @@ func TestSendMessageTimeout(t *testing.T) {
 // Test mixnet end-to-end with many clients. Proxy a protocol through mixnet.
 // The client sends the server a message and the server echoes it back.
 func TestMixnetSingleHop(t *testing.T) {
-
 	clientCt := 10
 	router, proxy, domain, err := makeContext(clientCt)
 	if err != nil {
@@ -610,10 +609,10 @@ func TestMixnetSingleHop(t *testing.T) {
 	routerAddr := router.proxyListener.Addr().String()
 
 	var res testResult
-	clientCh := make(chan testResult)
-	proxyCh := make(chan testResult)
+	clientCh := make(chan testResult, clientCt)
+	proxyCh := make(chan testResult, clientCt)
 	routerCh := make(chan testResult)
-	dstCh := make(chan testResult)
+	dstCh := make(chan testResult, clientCt)
 	dstAddrCh := make(chan string)
 
 	go runRouterHandleProxy(router, clientCt, 3, routerCh)

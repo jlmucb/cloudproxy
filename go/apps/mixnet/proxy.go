@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -40,8 +41,10 @@ type ProxyContext struct {
 	// Because DeleteCircuit could be called at anytime,
 	// we put a global lock around adding/deleting circuits
 	// Should be okay for performance, since it doesn't happen often
-	circuitsLock *sync.Mutex
-	conns        map[string]*Conn
+	conns struct {
+		sync.Mutex
+		m map[string]*Conn
+	}
 
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on read/write.
@@ -65,8 +68,10 @@ func NewProxyContext(path, network, addr string, timeout time.Duration) (p *Prox
 
 	p.clients = make(map[uint64]net.Conn)
 	p.circuits = make(map[uint64]*Conn)
-	p.circuitsLock = new(sync.Mutex)
-	p.conns = make(map[string]*Conn)
+	p.conns = struct {
+		sync.Mutex
+		m map[string]*Conn
+	}{m: make(map[string]*Conn)}
 
 	return p, nil
 }
@@ -101,13 +106,13 @@ func (p *ProxyContext) multiplexConn(c *Conn) {
 			c.circuits[id].cells <- Cell{cell, err}
 		} else {
 			// Relay other errors (mostly timeout) to all circuits in this connection
-			p.circuitsLock.Lock()
+			p.conns.Lock()
 			for _, circuit := range c.circuits {
 				go func(circuit Circuit) {
 					circuit.cells <- Cell{nil, err}
 				}(circuit)
 			}
-			p.circuitsLock.Unlock()
+			p.conns.Unlock()
 			return
 		}
 	}
@@ -123,14 +128,14 @@ func (p *ProxyContext) CreateCircuit(addrs ...string) (uint64, error) {
 	}
 
 	var c *Conn
-	if _, ok := p.conns[addrs[0]]; !ok {
+	if _, ok := p.conns.m[addrs[0]]; !ok {
 		c, err = p.DialRouter(p.network, addrs[0])
 		if err != nil {
 			return id, err
 		}
-		p.conns[addrs[0]] = c
+		p.conns.m[addrs[0]] = c
 	} else {
-		c = p.conns[addrs[0]]
+		c = p.conns.m[addrs[0]]
 	}
 	c.circuits[id] = Circuit{make(chan Cell)}
 	p.circuits[id] = c
@@ -168,14 +173,13 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	// Wait for DESTROYED directive from router.
 	var d Directive
 	if err := c.ReceiveDirective(id, &d); err != nil {
+		fmt.Println("Circuit destoy err:", id, err)
 		return err
 	} else if *d.Type != DirectiveType_DESTROYED {
 		return errors.New("could not destroy circuit")
 	}
 
-	p.circuitsLock.Lock()
 	delete(c.circuits, id)
-	p.circuitsLock.Unlock()
 	if len(c.circuits) == 0 { // no more circuits, close the conn
 		c.Close()
 	}

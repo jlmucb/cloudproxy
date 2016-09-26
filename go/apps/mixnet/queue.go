@@ -17,6 +17,7 @@ package mixnet
 import (
 	"container/list"
 	"errors"
+	"io"
 	"math/rand"
 	"net"
 	"time"
@@ -161,7 +162,10 @@ func (sq *Queue) delete(q *Queueable) {
 	// messages or reply requests will cause an error.
 	if c, def := sq.nextConn[q.id]; def {
 		if q.destroy {
-			c.Close()
+			_, err := c.Read([]byte{0})
+			if err == io.EOF {
+				c.Close()
+			}
 		}
 		delete(sq.nextConn, q.id)
 	}
@@ -205,7 +209,7 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 			if q.msg != nil || q.reply != nil {
 				// Add message or message request (reply) to the queue.
 				if _, def := sq.nextAddr[q.id]; !def {
-					sq.err <- sendQueueError{q.id,
+					sq.err <- sendQueueError{q.prevId,
 						errors.New("request to send/receive message without a destination")}
 					continue
 				}

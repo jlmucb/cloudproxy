@@ -280,14 +280,12 @@ func TestCreateDestroy(t *testing.T) {
 	}
 
 	res := <-ch
-	if res.err != io.EOF {
-		t.Error("should have gotten EOF from router, but got:", res.err)
+	if res.err != nil {
+		t.Error("Unexpected router error:", res.err)
 	}
 
-	sendCt := len(router.sendQueue.nextConn)
-	replyCt := len(router.replyQueue.nextConn)
-	if sendCt > 0 || replyCt > 0 {
-		t.Errorf("%d send, %d reply connections open, should be 0", sendCt, replyCt)
+	if len(router.conns) != 0 {
+		t.Error("Expecting 0 connections, but have", len(router.conns))
 	}
 }
 
@@ -337,8 +335,8 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 		}
 	}
 	res := <-ch
-	if res.err != io.EOF {
-		t.Error("Expecting EOF from router but got", res.err)
+	if res.err != nil {
+		t.Error("Unexpected router error:", res.err)
 	}
 }
 
@@ -648,10 +646,8 @@ func TestMixnet(t *testing.T) {
 	}
 
 	// Wait for router to finish.
-	for i := 0; i < clientCt; i++ {
-		res = <-routerCh
-		if res.err != io.EOF {
-			t.Error("Expecting EOF for all clients, but got", res.err)
-		}
+	res = <-routerCh
+	if res.err != nil {
+		t.Error("Unexpected router error:", res.err)
 	}
 }

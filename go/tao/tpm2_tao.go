@@ -93,6 +93,8 @@ type TPM2Tao struct {
 	// password is the password.
 	password string
 
+	// TODO(jlm): remove rootHandle, quoteHandle, sealHandle, sealHandle
+	// They should no longer be used.
 	// rootHandle is an integer handle for an root held by the TPM.
 	rootContext []byte
 	rootHandle  tpm2.Handle
@@ -172,6 +174,8 @@ func (tt *TPM2Tao) GetPcrNums() []int {
 	return tt.pcrs
 }
 
+// TODO(jlm): Fix this to provide quoteHandle quoteHandle
+// in structure should no longer be used.
 func (tt *TPM2Tao) GetRsaQuoteKey() (*rsa.PublicKey, error) {
 	return tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle)
 }

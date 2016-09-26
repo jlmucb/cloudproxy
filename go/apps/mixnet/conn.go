@@ -17,7 +17,6 @@ package mixnet
 import (
 	"encoding/binary"
 	"errors"
-	"io"
 	"net"
 	"time"
 
@@ -168,11 +167,11 @@ func (c *Conn) ReceiveMessage(id uint64) ([]byte, error) {
 	msg := make([]byte, msgBytes)
 	bytes := copy(msg, cell[BODY+n:])
 
-	for err != io.EOF && uint64(bytes) < msgBytes {
+	for uint64(bytes) < msgBytes {
 		read = <-c.circuits[id].cells
 		cell = read.cell
 		err = read.err
-		if err != nil && err != io.EOF {
+		if err != nil {
 			return nil, err
 		} else if cell[TYPE] != msgCell {
 			return nil, errCellType
@@ -203,7 +202,7 @@ func (c *Conn) ReceiveDirective(id uint64, d *Directive) error {
 	cell := read.cell
 	err := read.err
 
-	if err != nil && err != io.EOF {
+	if err != nil {
 		return err
 	}
 

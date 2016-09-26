@@ -43,8 +43,10 @@ type RouterContext struct {
 
 	// Connections to next hop routers
 	conns map[string]*Conn
-	// Indicates if this server is an exit or not
-	exit map[uint64]bool
+	nexts map[uint64]*Conn
+	// If this server is an entry or exit for this circuit
+	entry map[uint64]bool
+	exit  map[uint64]bool
 
 	// The queues and error handlers are instantiated as go routines; these
 	// channels are for tearing them down.
@@ -70,7 +72,10 @@ func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout
 	hp.timeout = timeout
 
 	hp.conns = make(map[string]*Conn)
+	hp.nexts = make(map[uint64]*Conn)
+	hp.entry = make(map[uint64]bool)
 	hp.exit = make(map[uint64]bool)
+
 	hp.errs = make(chan error)
 
 	// Generate keys and get attestation from parent.
@@ -138,7 +143,7 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
-	go hp.handleConn(conn)
+	go hp.handleConn(conn, true)
 	return conn, nil
 }
 
@@ -149,7 +154,7 @@ func (hp *RouterContext) AcceptRouter() (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
-	go hp.handleConn(conn)
+	go hp.handleConn(conn, false)
 	return conn, nil
 }
 
@@ -210,7 +215,7 @@ func (hp *RouterContext) HandleErr() {
 // handleConn reads a directive or a message from a proxy.
 // Handling directives is done here, but actually receiving the messages
 // is done in handleCircuit
-func (hp *RouterContext) handleConn(c *Conn) {
+func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 	for {
 		var err error
 		cell := make([]byte, CellBytes)
@@ -253,12 +258,13 @@ func (hp *RouterContext) handleConn(c *Conn) {
 				c.circuits[id] = Circuit{make(chan Cell)}
 				go hp.handleCircuit(c.circuits[id])
 
-				// Relay the CREATE message
 				// Since we assume Tao routers, this router can recreate the message
 				// without worrying about security
 				hp.sendQueue.SetAddr(id, d.Addrs[0])
 
+				hp.entry[id] = withProxy
 				hp.exit[id] = true
+				// Relay the CREATE message
 				if len(d.Addrs) > 1 {
 					var nextConn *Conn
 					if _, ok := hp.conns[d.Addrs[0]]; !ok {
@@ -272,6 +278,8 @@ func (hp *RouterContext) handleConn(c *Conn) {
 					} else {
 						nextConn = hp.conns[d.Addrs[0]]
 					}
+					nextConn.circuits[id] = Circuit{make(chan Cell)}
+					hp.nexts[id] = nextConn
 					hp.sendQueue.SetConn(id, nextConn)
 
 					dir := &Directive{
@@ -296,43 +304,28 @@ func (hp *RouterContext) handleConn(c *Conn) {
 				}
 				hp.replyQueue.EnqueueMsg(id, cell)
 			} else if *d.Type == DirectiveType_DESTROY {
-				// TODO(cjpatton) when multi-hop circuits are implemented, send
-				// a DESTROY directive to the next hop and wait for DESTROYED in
-				// response. For now, just close the connection to the circuit.
+				// Close the connection if you are an exit for this circuit
+				hp.sendQueue.Close(id, nil, hp.exit[id] || len(hp.nexts[id].circuits) == 0)
+
+				// Send back destroyed msg
+				cell, err = marshalDirective(id, dirDestroyed)
+				if err != nil {
+					hp.errs <- err
+					return
+				}
+				hp.replyQueue.Close(id, cell, len(c.circuits) == 0)
 
 				// TODO(kwonalbert) Check that this circuit is
 				// actually on this conn
 				close(c.circuits[id].cells)
 				delete(c.circuits, id)
-
-				// Close the connection if you are an exit for this circuit
-				// TODO(kwonalbert) Also close the conn if there are no more
-				// circuits using this conn
-				hp.sendQueue.Close(id, hp.exit[id])
-				sid := <-hp.sendQueue.destroyed
-				for sid != id {
-					sid = <-hp.sendQueue.destroyed
-				}
-
-				c.SendDirective(id, dirDestroyed)
-				// TODO(kwonalbert) Closing the connection immediately
-				// after sending back DESTROYED leaves to a race condition..
-				hp.replyQueue.Close(id, len(c.circuits) == 0)
-
-				rid := <-hp.replyQueue.destroyed
-				for rid != id {
-					rid = <-hp.replyQueue.destroyed
-				}
-
-				if len(c.circuits) > 0 {
-					hp.errs <- nil
-					continue
-				} else {
-					hp.errs <- io.EOF
-					return
+				delete(hp.entry, id)
+				delete(hp.exit, id)
+				if len(c.circuits) == 0 {
+					delete(hp.conns, c.RemoteAddr().String())
+					delete(hp.nexts, id)
 				}
 			}
-
 		} else { // Unknown cell type, return an error.
 			if err = hp.SendError(id, errBadCellType); err != nil {
 				hp.errs <- err
@@ -343,6 +336,25 @@ func (hp *RouterContext) handleConn(c *Conn) {
 		// Easier to count cells by getting the number of errs
 		hp.errs <- nil
 	}
+}
+
+func (hp *RouterContext) checkDestroyed() {
+	go func() {
+		for {
+			_, ok := <-hp.sendQueue.destroyed
+			if !ok {
+				return
+			}
+		}
+	}()
+	go func() {
+		for {
+			_, ok := <-hp.replyQueue.destroyed
+			if !ok {
+				return
+			}
+		}
+	}()
 }
 
 // Handles messages coming in on a circuit.

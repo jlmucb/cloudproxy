@@ -55,6 +55,10 @@ type RouterContext struct {
 		sync.RWMutex
 		m map[uint64]uint64
 	}
+	prevIds struct {
+		sync.RWMutex
+		m map[uint64]uint64
+	}
 	// If this server is an entry or exit for this circuit
 	entry struct {
 		sync.RWMutex
@@ -97,6 +101,10 @@ func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout
 		m map[uint64]*Conn
 	}{m: make(map[uint64]*Conn)}
 	hp.nextIds = struct {
+		sync.RWMutex
+		m map[uint64]uint64
+	}{m: make(map[uint64]uint64)}
+	hp.prevIds = struct {
 		sync.RWMutex
 		m map[uint64]uint64
 	}{m: make(map[uint64]uint64)}
@@ -300,6 +308,9 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 				hp.nextIds.Lock()
 				hp.nextIds.m[id] = newId
 				hp.nextIds.Unlock()
+				hp.prevIds.Lock()
+				hp.prevIds.m[newId] = id
+				hp.prevIds.Unlock()
 
 				hp.sendQueue.SetAddr(newId, d.Addrs[0])
 
@@ -386,29 +397,8 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 					hp.errs <- err
 					return
 				}
+				hp.delete(c, id)
 				hp.replyQueue.Close(id, cell, len(c.circuits) == 0)
-
-				// TODO(kwonalbert) Check that this circuit is
-				// actually on this conn
-				close(c.circuits[id].cells)
-				delete(c.circuits, id)
-				hp.entry.Lock()
-				delete(hp.entry.m, id)
-				hp.entry.Unlock()
-				hp.exit.Lock()
-				delete(hp.exit.m, id)
-				hp.exit.Unlock()
-				if len(c.circuits) == 0 {
-					hp.conns.Lock()
-					delete(hp.conns.m, c.RemoteAddr().String())
-					hp.conns.Unlock()
-					hp.circuits.Lock()
-					delete(hp.circuits.m, id)
-					hp.circuits.Unlock()
-					hp.nextIds.Lock()
-					delete(hp.nextIds.m, id)
-					hp.nextIds.Unlock()
-				}
 			}
 		} else { // Unknown cell type, return an error.
 			if err = hp.SendError(id, errBadCellType); err != nil {
@@ -516,4 +506,31 @@ func (hp *RouterContext) SendError(id uint64, err error) error {
 	}
 	hp.replyQueue.EnqueueMsg(id, 0, cell)
 	return nil
+}
+
+func (hp *RouterContext) delete(c *Conn, id uint64) {
+	// TODO(kwonalbert) Check that this circuit is
+	// actually on this conn
+	close(c.circuits[id].cells)
+	delete(c.circuits, id)
+	hp.entry.Lock()
+	delete(hp.entry.m, id)
+	hp.entry.Unlock()
+	hp.exit.Lock()
+	delete(hp.exit.m, id)
+	hp.exit.Unlock()
+	if len(c.circuits) == 0 {
+		hp.conns.Lock()
+		delete(hp.conns.m, c.RemoteAddr().String())
+		hp.conns.Unlock()
+		hp.circuits.Lock()
+		delete(hp.circuits.m, id)
+		hp.circuits.Unlock()
+		hp.nextIds.Lock()
+		delete(hp.nextIds.m, id)
+		hp.nextIds.Unlock()
+		hp.prevIds.Lock()
+		delete(hp.prevIds.m, id)
+		hp.prevIds.Unlock()
+	}
 }

@@ -31,6 +31,7 @@ import (
 // to the queue, or destroy any resources associated with the connection.
 type Queueable struct {
 	id      uint64 // circuit id
+	prevId  uint64 // prev hop circuit id
 	addr    string
 	msg     []byte
 	conn    net.Conn
@@ -58,6 +59,7 @@ type Queue struct {
 	nextAddr   map[uint64]string     // Address of destination.
 	nextConn   map[uint64]net.Conn   // Connection to destination.
 	sendBuffer map[uint64]*list.List // Message buffer of sender.
+	errIds     map[uint64]uint64
 
 	queue     chan *Queueable     // Channel for queueing messages/directives.
 	err       chan sendQueueError // Channel for handling errors.
@@ -74,6 +76,7 @@ func NewQueue(network string, batchSize int, timeout time.Duration) (sq *Queue) 
 	sq.nextAddr = make(map[uint64]string)
 	sq.nextConn = make(map[uint64]net.Conn)
 	sq.sendBuffer = make(map[uint64]*list.List)
+	sq.errIds = make(map[uint64]uint64)
 
 	sq.queue = make(chan *Queueable)
 	sq.err = make(chan sendQueueError)
@@ -90,9 +93,10 @@ func (sq *Queue) Enqueue(q *Queueable) {
 
 // EnqueueMsg copies a byte slice into a queueable object and adds it to
 // the queue.
-func (sq *Queue) EnqueueMsg(id uint64, msg []byte) {
+func (sq *Queue) EnqueueMsg(id, prevId uint64, msg []byte) {
 	q := new(Queueable)
 	q.id = id
+	q.prevId = prevId
 	q.msg = make([]byte, len(msg))
 	copy(q.msg, msg)
 	sq.queue <- q
@@ -100,18 +104,20 @@ func (sq *Queue) EnqueueMsg(id uint64, msg []byte) {
 
 // EnqueueReply creates a queuable object with a reply channel and adds it to
 // the queue.
-func (sq *Queue) EnqueueReply(id uint64, reply chan []byte) {
+func (sq *Queue) EnqueueReply(id, prevId uint64, reply chan []byte) {
 	q := new(Queueable)
 	q.id = id
+	q.prevId = prevId
 	q.reply = reply
 	sq.queue <- q
 }
 
 // EnqueueMsgReply creates a queueable object with a message and a reply channel
 // and adds it to the queue.
-func (sq *Queue) EnqueueMsgReply(id uint64, msg []byte, reply chan []byte) {
+func (sq *Queue) EnqueueMsgReply(id, prevId uint64, msg []byte, reply chan []byte) {
 	q := new(Queueable)
 	q.id = id
+	q.prevId = prevId
 	q.msg = make([]byte, len(msg))
 	q.reply = reply
 	copy(q.msg, msg)
@@ -246,7 +252,7 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 				glog.Errorf("queue: %s\n", e)
 				return
 			}
-			queue.EnqueueMsg(err.id, cell)
+			queue.EnqueueMsg(err.id, 0, cell)
 		}
 	}
 }
@@ -285,7 +291,7 @@ func (sq *Queue) dequeue() {
 		addr := sq.nextAddr[id]
 		q := sq.sendBuffer[id].Front().Value.(*Queueable)
 		c, def := sq.nextConn[id]
-		go senderWorker(sq.network, addr, id, q, c, def, ch, sq.err, sq.timeout)
+		go senderWorker(sq.network, addr, q, c, def, ch, sq.err, sq.timeout)
 	}
 
 	// Wait for workers to finish.
@@ -321,7 +327,7 @@ type senderResult struct {
 	id uint64
 }
 
-func senderWorker(network, addr string, id uint64, q *Queueable, c net.Conn, def bool,
+func senderWorker(network, addr string, q *Queueable, c net.Conn, def bool,
 	res chan<- senderResult, err chan<- sendQueueError, timeout time.Duration) {
 	var e error
 
@@ -331,8 +337,8 @@ func senderWorker(network, addr string, id uint64, q *Queueable, c net.Conn, def
 	if !def {
 		c, e = net.DialTimeout(network, addr, timeout)
 		if e != nil {
-			err <- sendQueueError{id, e}
-			res <- senderResult{c, id}
+			err <- sendQueueError{q.prevId, e}
+			res <- senderResult{c, q.id}
 			if q.reply != nil {
 				q.reply <- nil
 			}
@@ -343,8 +349,8 @@ func senderWorker(network, addr string, id uint64, q *Queueable, c net.Conn, def
 	c.SetDeadline(time.Now().Add(timeout))
 	if q.msg != nil { // Send the message.
 		if _, e := c.Write(q.msg); e != nil {
-			err <- sendQueueError{id, e}
-			res <- senderResult{c, id}
+			err <- sendQueueError{q.prevId, e}
+			res <- senderResult{c, q.id}
 			if q.reply != nil {
 				q.reply <- nil
 			}
@@ -357,8 +363,8 @@ func senderWorker(network, addr string, id uint64, q *Queueable, c net.Conn, def
 		msg := make([]byte, MaxMsgBytes)
 		bytes, e := c.Read(msg)
 		if e != nil {
-			err <- sendQueueError{id, e}
-			res <- senderResult{c, id}
+			err <- sendQueueError{q.prevId, e}
+			res <- senderResult{c, q.id}
 			q.reply <- nil
 			return
 		}
@@ -366,5 +372,5 @@ func senderWorker(network, addr string, id uint64, q *Queueable, c net.Conn, def
 		q.reply <- msg[:bytes]
 	}
 
-	res <- senderResult{c, id}
+	res <- senderResult{c, q.id}
 }

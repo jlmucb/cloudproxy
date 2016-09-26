@@ -279,18 +279,18 @@ func TestCreateDestroy(t *testing.T) {
 
 	id, err := proxy.CreateCircuit(rAddr, fakeAddr)
 	if err != nil {
-		t.Error(err)
+		t.Error("Error creating circuit:", err)
 	}
 
 	c := proxy.circuits[id]
 	if err = c.SendMessage(id, []byte("hola!")); err != nil {
-		t.Error(err)
+		t.Error("Error sending message:", err)
 	}
 
 	// (kwonalbert) Actually receive the error message first;
 	// This gets rid of a race condition between error sending and destroying connection
 	if _, err = c.ReceiveMessage(id); err == nil {
-		t.Error(errors.New("Expecting cannot establish connection error"))
+		t.Error("Expecting cannot establish connection error")
 	}
 
 	if err = proxy.DestroyCircuit(id); err != nil {

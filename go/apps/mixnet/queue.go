@@ -143,7 +143,7 @@ func (sq *Queue) SetConn(id uint64, c net.Conn) {
 	sq.queue <- q
 }
 
-// Close creates a queueable object that sends the last msg,
+// Close creates a queueable object that sends the last msg in the circuit,
 // closes the connection and deletes all associated resources.
 func (sq *Queue) Close(id uint64, msg []byte, destroy bool) {
 	q := new(Queueable)
@@ -162,9 +162,13 @@ func (sq *Queue) delete(q *Queueable) {
 	// messages or reply requests will cause an error.
 	if c, def := sq.nextConn[q.id]; def {
 		if q.destroy {
+			// Wait for the client to kill the connection or timeout
 			_, err := c.Read([]byte{0})
-			if err == io.EOF {
-				c.Close()
+			if err != nil {
+				e, ok := err.(net.Error)
+				if err == io.EOF || (ok && e.Timeout()) {
+					c.Close()
+				}
 			}
 		}
 		delete(sq.nextConn, q.id)

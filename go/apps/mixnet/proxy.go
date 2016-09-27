@@ -160,9 +160,7 @@ func (p *ProxyContext) CreateCircuit(addrs ...string) (uint64, error) {
 }
 
 // DestroyCircuit directs the router to close the connection to the destination
-// and destroy the circuit then closes the connection. TODO(cjpatton) in order
-// to support multi-hop circuits, this code will need to wait for a DESTROYED
-// directive from the first hop.
+// and destroy the circuit then closes the connection.
 func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	// Send DESTROY directive to router.
 	c := p.circuits[id]

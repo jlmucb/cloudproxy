@@ -24,7 +24,7 @@ import (
 )
 
 // Run proxy server.
-func runSocksServerOne(proxy *ProxyContext, rAddr string, ch chan<- testResult) {
+func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResult) {
 	c, err := proxy.Accept()
 	if err != nil {
 		ch <- testResult{err, nil}
@@ -33,7 +33,8 @@ func runSocksServerOne(proxy *ProxyContext, rAddr string, ch chan<- testResult) 
 	defer c.Close()
 	addr := c.(*SocksConn).dstAddr
 
-	id, err := proxy.CreateCircuit(rAddr, addr)
+	rAddrs = append(rAddrs, addr)
+	id, err := proxy.CreateCircuit(rAddrs)
 	if err != nil {
 		ch <- testResult{err, nil}
 		return

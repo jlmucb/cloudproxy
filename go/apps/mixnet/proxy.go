@@ -120,7 +120,7 @@ func (p *ProxyContext) multiplexConn(c *Conn) {
 // CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
-func (p *ProxyContext) CreateCircuit(addrs ...string) (uint64, error) {
+func (p *ProxyContext) CreateCircuit(addrs []string) (uint64, error) {
 	id, err := p.newID()
 	if err != nil {
 		return id, err
@@ -204,7 +204,11 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
 func (p *ProxyContext) ServeClient(c net.Conn, addrs ...string) error {
-	id, err := p.CreateCircuit(addrs...)
+	circuit := make([]string, len(addrs))
+	for i := range circuit {
+		circuit[i] = addrs[i]
+	}
+	id, err := p.CreateCircuit(circuit)
 	if err != nil {
 		return err
 	}

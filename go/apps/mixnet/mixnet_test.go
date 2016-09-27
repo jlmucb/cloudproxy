@@ -307,6 +307,67 @@ func TestCreateDestroy(t *testing.T) {
 	}
 }
 
+func TestCreateDestroyMultiHop(t *testing.T) {
+	router1, proxy, domain, err := makeContext(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router2, proxy2, _, err := makeContext(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy2.Close()
+	defer router1.Close()
+	defer router2.Close()
+	defer proxy.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	rAddr1 := router1.proxyListener.Addr().String()
+	rAddr2 := router2.routerListener.Addr().String()
+
+	// The address doesn't matter here because no packets will be sent on
+	// the established circuit.
+	fakeAddr := "127.0.0.1:0"
+	ch1 := make(chan testResult)
+	ch2 := make(chan testResult)
+	go runRouterHandleOneProxy(router1, 6, ch1)
+	go runRouterHandleOneRouter(router2, 3, ch2)
+
+	id, err := proxy.CreateCircuit(rAddr1, rAddr2, fakeAddr)
+	if err != nil {
+		t.Error(err)
+	}
+
+	c := proxy.circuits[id]
+	if err = c.SendMessage(id, []byte("hola!")); err != nil {
+		t.Error(err)
+	}
+
+	// (kwonalbert) Actually receive the error message first;
+	// This gets rid of a race condition between error sending and destroying connection
+	if _, err = c.ReceiveMessage(id); err == nil {
+		t.Error(errors.New("Expecting cannot establish connection error"))
+	}
+
+	if err = proxy.DestroyCircuit(id); err != nil {
+		t.Error(err)
+	}
+
+	res := <-ch1
+	if res.err != nil {
+		t.Error("Unexpected router error:", res.err)
+	}
+	res = <-ch2
+	if res.err != nil {
+		t.Error("Unexpected router error:", res.err)
+	}
+
+	if len(router1.conns) != 0 {
+		t.Error("Expecting 0 connections, but have", len(router1.conns))
+	} else if len(router2.conns) != 0 {
+		t.Error("Expecting 0 connections, but have", len(router2.conns))
+	}
+}
+
 // Test multiplexing for proxy
 func TestMultiplexProxyCircuit(t *testing.T) {
 	router, proxy, domain, err := makeContext(1)
@@ -474,7 +535,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 		t.Error(err)
 	}
 	cell := make([]byte, CellBytes)
-	binary.PutUvarint(cell[ID:], id)
+	binary.LittleEndian.PutUint64(cell[ID:], id)
 	c := proxy.circuits[id]
 
 	// Unrecognized cell type.
@@ -489,7 +550,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 
 	// Message too long.
 	cell[TYPE] = msgCell
-	binary.PutUvarint(cell[BODY:], uint64(MaxMsgBytes+1))
+	binary.LittleEndian.PutUint64(cell[BODY:], uint64(MaxMsgBytes+1))
 	if _, err := c.Write(cell); err != nil {
 		t.Error(err)
 	}
@@ -516,15 +577,6 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if res.err != nil {
 		t.Error("Not expecting any router errors, but got", res.err)
 	}
-
-	// Multihop circuits not supported yet.
-	// go runRouterHandleOneProxy(router, 1, ch)
-	// c, err = proxy.CreateCircuit(routerAddr, "one:234", "two:34", "three:4")
-	// if err == nil {
-	// 	t.Error("should have gotten \"multi-hop circuits not implemented\" from router")
-	// }
-	// <-ch
-	// c.Close()
 }
 
 // Test timeout on CreateMessage().

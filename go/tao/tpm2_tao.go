@@ -93,26 +93,21 @@ type TPM2Tao struct {
 	// password is the password.
 	password string
 
-	// TODO(jlm): remove rootHandle, quoteHandle, sealHandle, sealHandle
-	// They should no longer be used.
-	// rootHandle is an integer handle for an root held by the TPM.
+	// rootContext is the context for the root handle.
 	rootContext []byte
-	//rootHandle  tpm2.Handle
 
-	// quoteHandle is an integer handle for an quote key held by the TPM.
+	// quoteContext is the context for the quote key.
 	quoteContext []byte
 	quotePublic  []byte
 	quoteCert    []byte
-	//quoteHandle  tpm2.Handle
 
-	// sealHandle is an integer handle for sealing, held by the TPM.
+	// sealContext is a the contect for sealing, held by the TPM.
 	sealContext []byte
 	sealPublic  []byte
 	//sealHandle  tpm2.Handle
 
-	// session handle
+	// session context is ised by seal.
 	sessionContext []byte
-	//sessionHandle  tpm2.Handle
 
 	// verifier is a representation of the root that can be used to verify Attestations.
 	verifier *rsa.PublicKey
@@ -294,7 +289,6 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	// Create the root key.
 	keySize := uint16(2048)
 	quotePassword := ""
-	//var empty []byte
 
 	rootSaveContext := path.Join(tt.path, "root_context")
 	_, rootErr := os.Stat(rootSaveContext)
@@ -306,7 +300,6 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	_, sealErr := os.Stat(sealSaveContext)
 
 	if rootErr != nil || quoteErr != nil || sealErr != nil {
-fmt.Printf("CALLING INIT TPM2 keys")
 		if err := tpm2.InitTpm2Keys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1), quotePassword, rootSaveContext, quoteSaveContext, sealSaveContext); err != nil {
 			return nil, err
 		}

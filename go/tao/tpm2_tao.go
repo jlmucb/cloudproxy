@@ -670,7 +670,7 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 
 func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 	fmt.Printf("TPM2Tao.GetCounter\n")
-	err = s.InitCounter(label, int64(0))
+	err := s.InitCounter(label, int64(0))
 	if err != nil {
 		return int64(0), err
 	}

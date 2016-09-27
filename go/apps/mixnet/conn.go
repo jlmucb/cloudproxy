@@ -39,8 +39,13 @@ const (
 )
 
 const (
+	ID_SIZE  = 8
+	LEN_SIZE = 8
+)
+
+const (
 	ID   = 0
-	TYPE = 8
+	TYPE = ID + ID_SIZE
 	BODY = 9
 )
 
@@ -102,7 +107,7 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 
 // GetID returns the connection's serial ID.
 func getID(cell []byte) uint64 {
-	id, _ := binary.Uvarint(cell[ID:])
+	id := binary.LittleEndian.Uint64(cell[ID:])
 	return id
 }
 
@@ -114,18 +119,18 @@ func (c *Conn) SendMessage(id uint64, msg []byte) error {
 	msgBytes := len(msg)
 	cell := make([]byte, CellBytes)
 
-	binary.PutUvarint(cell[ID:], id)
+	binary.LittleEndian.PutUint64(cell[ID:], id)
 	cell[TYPE] = msgCell
-	m := binary.PutUvarint(cell[BODY:], uint64(msgBytes))
+	binary.LittleEndian.PutUint64(cell[BODY:], uint64(msgBytes))
 
-	bytes := copy(cell[BODY+m:], msg)
+	bytes := copy(cell[BODY+LEN_SIZE:], msg)
 	if _, err := c.Write(cell); err != nil {
 		return err
 	}
 
 	for bytes < msgBytes {
 		tao.ZeroBytes(cell)
-		binary.PutUvarint(cell[ID:], id)
+		binary.LittleEndian.PutUint64(cell[ID:], id)
 		cell[TYPE] = msgCell
 		bytes += copy(cell[BODY:], msg[bytes:])
 		if _, err := c.Write(cell); err != nil {
@@ -159,13 +164,13 @@ func (c *Conn) ReceiveMessage(id uint64) ([]byte, error) {
 		return nil, errCellType
 	}
 
-	msgBytes, n := binary.Uvarint(cell[BODY:])
+	msgBytes := binary.LittleEndian.Uint64(cell[BODY:])
 	if msgBytes > MaxMsgBytes {
 		return nil, errMsgLength
 	}
 
 	msg := make([]byte, msgBytes)
-	bytes := copy(msg, cell[BODY+n:])
+	bytes := copy(msg, cell[BODY+LEN_SIZE:])
 
 	for uint64(bytes) < msgBytes {
 		read = <-c.circuits[id].cells
@@ -224,19 +229,19 @@ func marshalDirective(id uint64, d *Directive) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	dirBytes := len(db)
+	dirBytes := uint64(len(db))
 
 	cell := make([]byte, CellBytes)
-	binary.PutUvarint(cell[ID:], id)
+	binary.LittleEndian.PutUint64(cell[ID:], id)
 
 	cell[TYPE] = dirCell
-	n := binary.PutUvarint(cell[BODY:], uint64(dirBytes))
+	binary.LittleEndian.PutUint64(cell[BODY:], dirBytes)
 
 	// Throw an error if encoded Directive doesn't fit into a cell.
-	if dirBytes+n+1 > CellBytes {
+	if dirBytes+LEN_SIZE+1 > CellBytes {
 		return nil, errCellLength
 	}
-	copy(cell[BODY+n:], db)
+	copy(cell[BODY+LEN_SIZE:], db)
 
 	return cell, nil
 }
@@ -247,8 +252,8 @@ func unmarshalDirective(cell []byte, d *Directive) error {
 		return errCellType
 	}
 
-	dirBytes, n := binary.Uvarint(cell[BODY:])
-	if err := proto.Unmarshal(cell[BODY+n:BODY+n+int(dirBytes)], d); err != nil {
+	dirBytes := binary.LittleEndian.Uint64(cell[BODY:])
+	if err := proto.Unmarshal(cell[BODY+LEN_SIZE:BODY+LEN_SIZE+int(dirBytes)], d); err != nil {
 		return err
 	}
 

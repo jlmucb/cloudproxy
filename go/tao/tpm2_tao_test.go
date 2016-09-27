@@ -184,3 +184,46 @@ func TestTPM2TaoAttest(t *testing.T) {
 		t.Fatal("VerifyQuote succeeds")
 	}
 }
+
+func TestTPM2TaoGetCounter(t *testing.T) {
+/*
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	if err != nil {
+		t.Skip("Couldn't create a new TPM Tao:", err)
+	}
+	tt, ok := tpmtao.(*TPM2Tao)
+	if !ok {
+		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
+	}
+	defer cleanUpTPM2Tao(tt)
+
+	c, err := tpmtao.GetCounter("TestSealCounterLabel")
+	if err != nil {
+		t.Fatal("Couldn't GetCounter from Tao:", err)
+	}
+ */
+}
+
+func TestTPM2TaoRollbackSealUnseal(t *testing.T) {
+/*
+
+	data := make([]byte, 10000)
+	sealed, err := tpmtao.RollbackProtectedSeal("TestSeal", data, SealPolicyDefault)
+	if err != nil {
+		t.Fatal("Couldn't RollbackProtectedSeal data in the TPM Tao:", err)
+	}
+
+	unsealed, policy, err := tpmtao.RollbackProtectedUnseal(sealed)
+	if err != nil {
+		t.Fatal("Couldn't RollbackProtectedUnseal data sealed by the TPM Tao:", err)
+	}
+
+	if policy != SealPolicyDefault {
+		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
+	}
+
+	if !bytes.Equal(unsealed, data) {
+		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
+	}
+ */
+}

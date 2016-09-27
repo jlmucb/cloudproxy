@@ -35,6 +35,7 @@ import (
 	"net"
 	"os"
 	"time"
+	"unsafe"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -2427,105 +2428,293 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 	return out, nil
 }
 
-// WARNING:  The code from here down has not been reviewed by Sid.  Nothing calls it yet.
-// Tpm2 Counter access
-
 // Make an NvHandle
-func GetNvHandle(slot int) (Handle, error) {
-	return Handle(0), nil
+func GetNvHandle(slot uint32) (Handle, error) {
+	return Handle((OrdTPM_HT_NV_INDEX << OrdHR_SHIFT) + slot), nil
 }
+
+// UndefineSpace command: 80020000001f0000012240000001010003e800000009400000090000010000
+// UndefineSpace response, cap: 8002, size: 00000013, error code: 00000000
+// 80020000001300000000000000000000010000
 
 func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
-	return nil, nil
-}
-
-func DecodeUndefineSpace(in []byte) (error) {
-	return nil
-}
-
-func ConstructDefineSpace(owner Handle, handle Handle, authString string, policy []byte) ([]byte, error) {
-	return nil, nil
-}
-
-func DecodeDefineSpace(in []byte) (error) {
-	return nil
-}
-
-func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
-	return nil, nil
-}
-
-func DecodeIncrementNv(in []byte) (error) {
-	return nil
-}
-
-func DecodeReadNv(in []byte) (uint64, error) {
-	return uint64(0), nil
-}
-
-func ConstructReadNv(handle Handle, authString string, size int) ([]byte, error) {
-	return nil, nil
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdUndefineSpace)
+	if err != nil {
+		return nil, errors.New("ConstructUndefineSpace failed")
+	}
+	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	zero := uint16(0)
+	num_bytes := []interface{}{uint32(owner), uint32(handle), zero}
+	out, err := pack(num_bytes)
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, auth...)
+	cmd := packWithBytes(cmdHdr, out)
+	return cmd, nil
 }
 
 // UndefineSpace
 func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
-/*
+	cmd, err := ConstructUndefineSpace(owner, handle)
+	if err != nil {
+		return errors.New("UndefineSpace: Can't construct UndefineSpace command")
+	}
 	// Send command
 	_, err = rw.Write(cmd)
 	if err != nil {
-		return errors.New("Write Tpm fails")
+		return errors.New("UndefineSpace: Write Tpm fails")
 	}
-
 	// Get response
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
 	if err != nil {
-		return errors.New("Read Tpm fails")
+		return errors.New("UndefineSpace: Read Tpm fails")
 	}
-
 	// Decode Response
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
 	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		return errors.New("DecodeCommandResponse fails")
+		return errors.New("UndefineSpace: DecodeCommandResponse fails")
 	}
-	reportCommand("GetRandom", cmd, resp[0:size], status, true)
+	reportCommand("UndefineSpace", cmd, resp[0:size], status, true)
 	if status != ErrSuccess {
-		return nil, errors.New("Can't decode response")
+		return errors.New("UndefineSpace: error")
 	}
-	rand, err := DecodeGetRandom(resp[10:read])
-	if err != nil {
-		return nil, err
-	}
- */
 	return nil
 }
 
+// DefineSpace command: 8002000000310000012a4000000100000009400000090000010000000401020304000e010003e800040004001400000008
+// Definespace response, cap: 8002, size: 00000013, error code: 00000000
+// 80020000001300000000000000000000010000
+
+func ConstructDefineSpace(owner Handle, handle Handle, authString string,
+		attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
+	pw := SetPasswordData(authString)
+	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	var empty []byte
+	num_bytes := []interface{}{uint32(owner), empty}
+	out1, err := pack(num_bytes)
+	if err != nil {
+		return nil, errors.New("DefineSpace: pack error")
+	}
+	hashAlg := uint16(AlgTPM_ALG_SHA1)
+	sizeNvArea := uint16(2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy))
+	out1 = append(append(out1, auth...), pw...)
+	num_bytes2 := []interface{}{sizeNvArea, uint32(handle), hashAlg, attributes, policy, dataSize}
+	out2, err := pack(num_bytes2)
+	if err != nil {
+		return nil, errors.New("DefineSpace: pack error")
+	}
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdDefineSpace)
+	if err != nil {
+		return nil, errors.New("DefineSpace: MakeCommandHeader error")
+	}
+	cmd := packWithBytes(cmdHdr, append(out1, out2...))
+	return cmd, nil
+}
+
 // DefineSpace
-func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle, policy []byte, size int) (Handle, error) {
-	return Handle(0), nil
+func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle,
+		authString string, policy []byte,
+		attributes uint32, dataSize uint16) (error) {
+	cmd, err := ConstructDefineSpace(owner, handle, authString, attributes, policy, dataSize)
+	if err != nil {
+		return errors.New("DefineSpace: Can't construct DefineSpace command")
+	}
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return errors.New("DefineSpace: Write Tpm fails")
+	}
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return errors.New("DefineSpace: Read Tpm fails")
+	}
+	// Decode Response
+	if read < 10 {
+		return errors.New("Read buffer too small")
+	}
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return errors.New("DefineSpace: DecodeCommandResponse fails")
+	}
+	reportCommand("DefineSpace", cmd, resp[0:size], status, true)
+	if status != ErrSuccess {
+		return errors.New("DefineSpace: Can't decode response")
+	}
+	return nil
+}
+
+// IncrementNv command: 80020000002300000134010003e8010003e80000000d40000009000001000401020304
+// IncrementNv response, cap: 8002, size: 00000013, error code: 00000000
+// 80020000001300000000000000000000010000
+
+func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
+	// handle, handle, 0(16), autharea
+	auth := CreatePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+	var empty []byte
+	num_bytes := []interface{}{uint32(handle), int32(handle), empty}
+	out, err := pack(num_bytes)
+	if err != nil {
+		return nil, errors.New("ConstructIncrementNv: pack failed")
+	}
+	out = append(out, auth...)
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdIncrementNvCounter)
+	if err != nil {
+		return nil, errors.New("ConstructIncrementNv: MakeCommandHeader failed")
+	}
+	cmd := packWithBytes(cmdHdr, out)
+	return cmd, nil
 }
 
 // IncrementNv
 func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
+	cmd, err := ConstructIncrementNv(handle, authString)
+	if err != nil {
+		return errors.New("IncrementNv: Can't construct UndefineSpace command")
+	}
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return errors.New("IncrementNv: Write Tpm fails")
+	}
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return errors.New("IncrementNv: Read Tpm fails")
+	}
+	// Decode Response
+	if read < 10 {
+		return errors.New("Read buffer too small")
+	}
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return errors.New("IncrementNv: DecodeCommandResponse fails")
+	}
+	reportCommand("IncrementNv", cmd, resp[0:size], status, true)
+	if status != ErrSuccess {
+		return errors.New("IncrementNv: Can't decode response")
+	}
 	return nil
+}
+
+// ReadNv command: 8002000000270000014e010003e8010003e80000000d4000000900000100040102030400080000
+// ReadNv response, cap: 8002, size: 0000001d, error code: 00000000
+// 80020000001d000000000000000a000800000000000000cf0000010000
+// Tpm2_ReadNv succeeds
+// Counter value: 00000000000000cf
+
+func DecodeReadNv(in []byte) (uint64, error) {
+	var respSize uint32
+	var byteCounter []byte
+	err :=  unpack(in, []interface{}{&respSize, &byteCounter})
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: unpack failed")
+	}
+	c := uint64(0)
+	for i := 0; i < len(byteCounter); i++ {
+		c = c * 256 +  uint64(byteCounter[i])
+	}
+	return c, nil
+}
+
+func ConstructReadNv(handle Handle, authString string, offset uint16, dataSize uint16) ([]byte, error) {
+	// handle, handle, 0(16), pw-autharea, size(16), offset(16)
+	auth := CreatePasswordAuthArea(authString, Handle(OrdTPM_RS_PW))
+	var empty []byte
+	num_bytes := []interface{}{uint32(handle), int32(handle), empty}
+	out, err := pack(num_bytes)
+	if err != nil {
+		return nil, errors.New("ReadNv: pack failed")
+	}
+	out = append(out, auth...)
+	num_bytes2 := []interface{}{dataSize, offset}
+	out2, err := pack(num_bytes2)
+	if err != nil {
+		return nil, errors.New("ReadNv: pack failed")
+	}
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdReadNv)
+	if err != nil {
+		return nil, errors.New("ReadNv: MakeCommandHeader failed")
+	}
+	cmd := packWithBytes(cmdHdr, append(out, out2...))
+	return cmd, nil
 }
 
 // ReadNv
-func ReadNv(rw io.ReadWriter, handle Handle, authString string, size int) (uint64, error) {
-	return uint64(0), nil
+func ReadNv(rw io.ReadWriter, handle Handle, authString string,
+		offset uint16, dataSize uint16) (uint64, error) {
+	cmd, err := ConstructReadNv(handle, authString, offset, dataSize)
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: Can't construct ReadNv command")
+	}
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: Write Tpm fails")
+	}
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: Read Tpm fails")
+	}
+	// Decode Response
+	if read < 10 {
+		return uint64(0), errors.New("Read buffer too small")
+	}
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return uint64(0), errors.New("ReadNv: DecodeCommandResponse fails")
+	}
+	reportCommand("ReadNv", cmd, resp[0:size], status, true)
+	if status != ErrSuccess {
+		return uint64(0), errors.New("ReadNv: error from command")
+	}
+	return DecodeReadNv(resp[10:])
 }
 
-// Tpm2GetCounter
-func GetCounter(rw io.ReadWriter, slot int) (uint64, error) {
-	return uint64(0), nil
+// See note in tpm2_tao.go about counter values for Rollback support.
+
+// Tpm2 GetCounter
+func GetCounter(rw io.ReadWriter, nvHandle Handle, authString string) (int64, error) {
+	fmt.Printf("tpm2.GetCounter\n") // REMOVE
+	c, err := ReadNv(rw, nvHandle, authString, uint16(0), uint16(8))
+	if err != nil {
+		return int64(0), errors.New("Can't read tpm2 counter")
+	}
+	return int64(c), nil
 }
 
-// Tpm2InitCounter
-func InitCounter(rw io.ReadWriter, slot int) (error) {
-	// DefineSpace, map slot
-	return nil
+// Tpm2 InitCounter
+func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) (error) {
+	fmt.Printf("tpm2.InitCounter\n") // REMOVE
+	owner := Handle(OrdTPM_RH_OWNER)
+	dataSize := uint16(8)
+	var tpmPolicy []byte // empty
+	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
+	err := UndefineSpace(rw, owner, nvHandle)
+	if err != nil {
+		fmt.Printf("UndefineSpace failed (ok) %s\n", err)
+	} else {
+		fmt.Printf("UndefineSpace succeeded\n")
+	}
+	err = DefineSpace(rw, owner, nvHandle, authString,
+		tpmPolicy, attributes, dataSize)
+	if err != nil {
+		fmt.Printf("Space already defined?\n")
+	}
+	err =  IncrementNv(rw, nvHandle, authString)
+	return err
 }
+

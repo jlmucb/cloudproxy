@@ -1,0 +1,17 @@
+#
+source ./defines
+
+$BINPATH/tao host start -tao_domain $DOMAINTPM2 &
+
+echo "Waiting 5 seconds for host to start up"
+sleep 5
+$BINPATH/tao run -tao_domain $DOMAINTPM2 $BINPATH/SimpleDomainService \
+-config $DOMAINTPM2/tao.config -service_path $DOMAINTPM2/SimpleDomainService &
+sleep 5
+
+$BINPATH/tao run -tao_domain $DOMAINTPM2 $BINPATH/SimpleServer \
+-domain_config $DOMAINTPM2/tao.config -path $DOMAINTPM2/SimpleServer &
+sleep 1
+$BINPATH/tao run -tao_domain $DOMAINTPM2 $BINPATH/SimpleClient \
+-domain_config $DOMAINTPM2/tao.config -path $DOMAINTPM2/SimpleClient -test_rollback 1 &
+

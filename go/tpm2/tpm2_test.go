@@ -18,10 +18,8 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"fmt"
-	// "io/ioutil"
 	"math/big"
 	"testing"
-	// "github.com/golang/protobuf/proto"
 )
 
 // Test Endian
@@ -311,6 +309,10 @@ func TestCombinedSealTest(t *testing.T) {
 	}
 }
 
+func checkQ(b1 []byte, b2 []byte) bool {
+	return true;
+}
+
 // Combined Quote test
 func TestCombinedQuoteTest(t *testing.T) {
 
@@ -423,7 +425,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	quote_key_info.PublicKey.RsaKey.Exponent = []byte{0, 1, 0, 1}
 	quote_key_info.PublicKey.RsaKey.Modulus = rsaParams.Modulus
 	if !VerifyQuote(to_quote, quote_key_info,
-		uint16(AlgTPM_ALG_SHA1), attest, sig) {
+		uint16(AlgTPM_ALG_SHA1), attest, sig, checkQ) {
 		t.Fatal("VerifyQuote fails")
 	}
 	fmt.Printf("VerifyQuote succeeds\n")
@@ -706,4 +708,78 @@ func TestCombinedContextTest(t *testing.T) {
 
 	// FlushContext
 	defer FlushContext(rw, quoteHandle)
+}
+
+// Combined Nv test
+func TestCombinedNvTest(t *testing.T) {
+fmt.Printf("TestCombinedNvTest\n")
+	// Open tpm
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return
+	}
+	defer rw.Close()
+
+	// Flushall
+	err = Flushall(rw)
+	if err != nil {
+		t.Fatal("Flushall failed\n")
+	}
+
+	handle, err := GetNvHandle(1000)
+	if err != nil {
+		t.Fatal("Can't get nv handle")
+	}
+	fmt.Printf("nvHandle: %x\n", uint32(handle));
+	owner := Handle(OrdTPM_RH_OWNER)
+	err = UndefineSpace(rw, owner, handle)
+	if err != nil {
+		fmt.Printf("UndefineSpace failed (ok) %s\n", err)
+	} else {
+		fmt.Printf("UndefineSpace succeeded\n")
+	}
+	dataSize := uint16(8)
+	offset := uint16(0)
+	var policy []byte // empty
+	attributes := OrdNV_COUNTER | OrdNV_AUTHWRITE | OrdNV_AUTHREAD
+	authString := "01020304"
+	err = DefineSpace(rw, owner, handle, authString, policy,
+		attributes, dataSize)
+	if err != nil {
+		t.Fatal("DefineSpace fails")
+	} else {
+		fmt.Printf("DefineSpace succeeded\n")
+	}
+	// The counter must be initialized by IncrementNv before
+	// ReadNv is called.  Thus the counter is advanced by 1
+	// no matter what.
+	err = IncrementNv(rw, handle, authString)
+	if err != nil {
+		t.Fatal("IncrementNv failed ", err)
+	}
+	c1, err := ReadNv(rw, handle, authString, offset, dataSize)
+	if err != nil {
+		t.Fatal("ReadNv (2) failed %s", err)
+	}
+	fmt.Printf("Counter before second increment: %d\n", c1)
+	err = IncrementNv(rw, handle, authString)
+	if err != nil {
+		t.Fatal("IncrementNv failed ", err)
+	}
+	c2, err := ReadNv(rw, handle, authString, offset, dataSize)
+	if err != nil {
+		t.Fatal("ReadNv (3) failed %s", err)
+	}
+	fmt.Printf("Counter after increment: %d\n", c2)
+	if c2 <= c1 {
+		t.Fatal("Error: Counter did not advance")
+	}
+	// Clean up.
+	err = UndefineSpace(rw, owner, handle)
+	if err != nil {
+		fmt.Printf("UndefineSpace failed (ok) %s\n", err)
+	} else {
+		fmt.Printf("UndefineSpace succeeded\n")
+	}
 }

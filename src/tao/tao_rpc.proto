@@ -51,9 +51,12 @@ message TaoRPCRequest {
   optional int64 time = 4;
   optional int64 expiration = 5;
   optional bytes issuer = 6;
+  // optional string label = 7;
+  // optional int64 counter = 8;
 }
 
 message TaoRPCResponse {
   optional bytes data = 1;
   optional string policy = 2;
+  // optional int64 counter = 3;
 }

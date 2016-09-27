@@ -22,7 +22,7 @@ import (
 	"os"
 	"path"
 
-	// "github.com/jlmucb/cloudproxy/go/tao" // REMOVE
+	"github.com/jlmucb/cloudproxy/go/tao"
 	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
@@ -32,6 +32,7 @@ var simpleCfg = flag.String("domain_config",
 var simpleClientPath = flag.String("path",
 	"./SimpleClient",
 	"path to SimpleClient files")
+var testRollback= flag.Bool("test_rollback", false, "test rollback?")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
@@ -58,19 +59,37 @@ func main() {
 	fmt.Printf("simpleclient: TaoParadigm complete, name: %s\n",
 		clientProgramData.TaoName)
 
-	// TODO(jlm): The commented out code hasn't been reviewed
-	// it will be restored later.
-/*
-	err = tao.Parent().InitCounter("label", 0)  // REMOVE
-	fmt.Printf("Return from InitCounter %s\n", err)
-	_,  err = tao.Parent().GetCounter("label")  // REMOVE
-	fmt.Printf("Return from GetCounter %s\n", err)
-	data := []byte {
-		0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
-		0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5, }
-	_,  err = tao.Parent().RollbackProtectedSeal("label", data, tao.SealPolicyDefault)  // REMOVE
-	fmt.Printf("Return from .RollBackProtectedSeal: %s\n", err)
-*/
+	if *testRollback {
+		err = tao.Parent().InitCounter("label", 0)
+		if err != nil {
+			fmt.Printf("simpleClient: Error return from InitCounter %s\n", err)
+		} else {
+			fmt.Printf("simpleClient: InitCounter, no error\n")
+		}
+		c,  err := tao.Parent().GetCounter("label")
+		if err != nil {
+			fmt.Printf("simpleClient: Error Return from GetCounter %d %s\n", c, err)
+		} else {
+			fmt.Printf("simpleclient: GetCounter successful %d\n", c)
+		}
+		data := []byte {
+			0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
+			0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5, }
+		sealed,  err := tao.Parent().RollbackProtectedSeal("label", data,
+			tao.SealPolicyDefault)  // REMOVE
+		if err != nil {
+			fmt.Printf("simpleClient: Error Return from RollbackProtectedSeal %s\n", err)
+		} else {
+			fmt.Printf("simpleClient: RollbackProtectedSeal successful %x\n", sealed)
+		}
+		recoveredData,  _, err := tao.Parent().RollbackProtectedUnseal(sealed)
+		if err != nil {
+			fmt.Printf("simpleClient: Error Return from RollbackProtectedUnseal %s\n", err)
+		} else {
+			fmt.Printf("simpleClient: RollbackProtectedUnseal successful %x\n", recoveredData)
+		}
+		fmt.Printf("data: %x, recovered data: %x\n", data, recoveredData)
+	}
 
 	// Open the Tao Channel using the Program key. This program does all the
 	// standard channel negotiation and presents the secure server name

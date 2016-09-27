@@ -670,7 +670,10 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 
 func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 	fmt.Printf("TPM2Tao.GetCounter\n")
-	_ = s.InitCounter(label, int64(0))
+	err = s.InitCounter(label, int64(0))
+	if err != nil {
+		return int64(0), err
+	}
 	return tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
 }
 
@@ -695,7 +698,7 @@ func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string
 	if err != nil {
 		return nil, err
 	}
-	if c % 2 == 0 {
+	if (c % 2) != 0 {
 		err = tpm2.IncrementNv(s.rw, s.nvHandle, s.authString)
 		if err != nil {
 			return nil, err

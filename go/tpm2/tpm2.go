@@ -2447,6 +2447,7 @@ func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
 	num_bytes := []interface{}{uint32(owner), uint32(handle), zero}
 	out, err := pack(num_bytes)
 	if err != nil {
+		return nil, err
 	}
 	out = append(out, auth...)
 	cmd := packWithBytes(cmdHdr, out)

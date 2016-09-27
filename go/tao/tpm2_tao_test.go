@@ -174,7 +174,11 @@ func TestTPM2TaoAttest(t *testing.T) {
 		t.Fatal("Can't unmarshal quote structure\n")
 	}
 	tpm2.PrintAttestData(pms)
-	key, _ := tt.GetRsaQuoteKey()
+	quoteHandle, err := tt.loadQuote()
+	if err != nil {
+	}
+	defer tpm2.FlushContext(tt.rw, quoteHandle)
+	key, _ := tt.GetRsaTPMKey(quoteHandle)
 	ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement, tt.GetPcrNums(),
 		computedDigest, a.Tpm2QuoteStructure, a.Signature, key)
 	if err != nil {
@@ -197,6 +201,7 @@ fmt.Printf("TestTPM2TaoGetCounter")
 	}
 	defer cleanUpTPM2Tao(tt)
 
+	// _ = tpm2.Flushall(tt.rw)
 	c, err := tpmtao.GetCounter("TestSealCounterLabel")
 	if err != nil {
 		t.Fatal("Couldn't GetCounter from TPM2 Tao:", err)

@@ -97,22 +97,22 @@ type TPM2Tao struct {
 	// They should no longer be used.
 	// rootHandle is an integer handle for an root held by the TPM.
 	rootContext []byte
-	rootHandle  tpm2.Handle
+	//rootHandle  tpm2.Handle
 
 	// quoteHandle is an integer handle for an quote key held by the TPM.
 	quoteContext []byte
 	quotePublic  []byte
 	quoteCert    []byte
-	quoteHandle  tpm2.Handle
+	//quoteHandle  tpm2.Handle
 
 	// sealHandle is an integer handle for sealing, held by the TPM.
 	sealContext []byte
 	sealPublic  []byte
-	sealHandle  tpm2.Handle
+	//sealHandle  tpm2.Handle
 
 	// session handle
 	sessionContext []byte
-	sessionHandle  tpm2.Handle
+	//sessionHandle  tpm2.Handle
 
 	// verifier is a representation of the root that can be used to verify Attestations.
 	verifier *rsa.PublicKey
@@ -176,8 +176,8 @@ func (tt *TPM2Tao) GetPcrNums() []int {
 
 // TODO(jlm): Fix this to provide quoteHandle quoteHandle
 // in structure should no longer be used.
-func (tt *TPM2Tao) GetRsaQuoteKey() (*rsa.PublicKey, error) {
-	return tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle)
+func (tt *TPM2Tao) GetRsaTPMKey(handle tpm2.Handle) (*rsa.PublicKey, error) {
+	return tpm2.GetRsaKeyFromHandle(tt.rw, handle)
 }
 
 func (tt *TPM2Tao) Rand() io.Reader {
@@ -233,19 +233,6 @@ func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (aut
 
 // FinalizeTPM2Tao releases the resources for the TPM2Tao.
 func FinalizeTPM2Tao(tt *TPM2Tao) {
-	if tt.sessionHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sessionHandle))
-	}
-	tt.sessionHandle = 0
-	if tt.rootHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.rootHandle))
-	}
-	tt.rootHandle = 0
-	if tt.sealHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sealHandle))
-	}
-	tt.sealHandle = 0
-
 	// Release the file handle.
 	tt.rw.Close()
 }
@@ -296,6 +283,8 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		return nil, err
 	}
 
+	tpm2.Flushall(tt.rw)
+
 	// Make sure the TPM2Tao releases all its resources
 	runtime.SetFinalizer(tt, FinalizeTPM2Tao)
 
@@ -317,6 +306,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	_, sealErr := os.Stat(sealSaveContext)
 
 	if rootErr != nil || quoteErr != nil || sealErr != nil {
+fmt.Printf("CALLING INIT TPM2 keys")
 		if err := tpm2.InitTpm2Keys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1), quotePassword, rootSaveContext, quoteSaveContext, sealSaveContext); err != nil {
 			return nil, err
 		}
@@ -334,13 +324,18 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	if tt.sealContext, err = ioutil.ReadFile(sealSaveContext); err != nil {
 		return nil, fmt.Errorf("Could not read the seal context from %s: %v", sealSaveContext, err)
 	}
-
-	if tt.quoteHandle, err = tt.loadQuote(); err != nil {
+	rootHandle, err := tt.loadRoot()
+	if err != nil {
 		return nil, err
 	}
-	defer tpm2.FlushContext(tt.rw, tt.quoteHandle)
+	quoteHandle, err := tt.loadQuote()
+	if err != nil {
+		return nil, err
+	}
+	defer tpm2.FlushContext(tt.rw, rootHandle)
+	defer tpm2.FlushContext(tt.rw, quoteHandle)
 
-	if tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle); err != nil {
+	if tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, quoteHandle); err != nil {
 		return nil, err
 	}
 
@@ -365,7 +360,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 
 	quoteCertPath := path.Join(tt.path, "quote_cert")
 	if _, quoteCertErr := os.Stat(quoteCertPath); quoteCertErr != nil {
-		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, tt.quoteHandle,
+		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, quoteHandle,
 			quotePassword, tt.name, tt.verifier)
 		if err != nil {
 			return nil, err
@@ -380,7 +375,6 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		}
 	}
 	fmt.Fprintf(os.Stderr, "Got TPM 2.0 principal name %q\n", tt.name)
-
 	return tt, nil
 }
 
@@ -662,7 +656,11 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 		return nil
 	}
 	// TODO: make this more general?
-	s.nvHandle = tpm2.Handle(1000)
+	var err error
+	s.nvHandle, err = tpm2.GetNvHandle(1000)
+	if err != nil {
+		return err
+	}
 	s.authString = "01020304"
 
 	return tpm2.InitCounter(s.rw, s.nvHandle, s.authString)

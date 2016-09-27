@@ -18,7 +18,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -173,7 +172,6 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	// Wait for DESTROYED directive from router.
 	var d Directive
 	if err := c.ReceiveDirective(id, &d); err != nil {
-		fmt.Println("Circuit destoy err:", id, err)
 		return err
 	} else if *d.Type != DirectiveType_DESTROYED {
 		return errors.New("could not destroy circuit")
@@ -193,7 +191,7 @@ func (p *ProxyContext) newID() (uint64, error) {
 	if _, err := rand.Read(b); err != nil {
 		return 0, err
 	}
-	id, _ := binary.Uvarint(b)
+	id := binary.LittleEndian.Uint64(b)
 	return id, nil
 }
 

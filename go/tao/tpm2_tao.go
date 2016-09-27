@@ -132,8 +132,8 @@ type TPM2Tao struct {
 	locality byte
 
 	// tpm2 parameters
-	nvHandle    tpm2.Handle
-	authString  string
+	nvHandle   tpm2.Handle
+	authString string
 }
 
 func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
@@ -670,7 +670,7 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 
 func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 	fmt.Printf("TPM2Tao.GetCounter\n")
-	err = s.InitCounter(label, int64(0))
+	err := s.InitCounter(label, int64(0))
 	if err != nil {
 		return int64(0), err
 	}
@@ -680,7 +680,7 @@ func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 // Note:  Tpm2 counters work differently from other counters.  On startup, you
 // can't read a counter value before you initialize it which you do by incrementing
 // it.  What we do is use the (countvalue+1)/2 as the counter in RollbackSeal and Unseal.
-// When you seal, // if the current counter is odd, you bump it twice and use the 
+// When you seal, // if the current counter is odd, you bump it twice and use the
 // value (countvalue+1)/2 in the counter slot.  If the counter is even, you bump by 1.
 // You also need to reseal the tpm keys when you startup since you may shutdown
 // before a RollbackSeal and your key will bump by two and give the wrong counter value.

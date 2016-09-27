@@ -201,7 +201,6 @@ fmt.Printf("TestTPM2TaoGetCounter")
 	}
 	defer cleanUpTPM2Tao(tt)
 
-	// _ = tpm2.Flushall(tt.rw)
 	c, err := tpmtao.GetCounter("TestSealCounterLabel")
 	if err != nil {
 		t.Fatal("Couldn't GetCounter from TPM2 Tao:", err)
@@ -210,7 +209,6 @@ fmt.Printf("TestTPM2TaoGetCounter")
 }
 
 func TestTPM2TaoRollbackSealUnseal(t *testing.T) {
-/*
 	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM2 Tao:", err)
@@ -240,5 +238,4 @@ func TestTPM2TaoRollbackSealUnseal(t *testing.T) {
 	if !bytes.Equal(unsealed, data) {
 		t.Fatal("The data returned from TPM2Tao.Unseal didn't match the original data")
 	}
-*/
 }

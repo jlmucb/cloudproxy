@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -151,7 +152,7 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
-	go hp.handleConn(conn, true)
+	go hp.handleConn(conn, true, true)
 	return conn, nil
 }
 
@@ -162,7 +163,7 @@ func (hp *RouterContext) AcceptRouter() (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
-	go hp.handleConn(conn, false)
+	go hp.handleConn(conn, false, true)
 	return conn, nil
 }
 
@@ -174,7 +175,7 @@ func (hp *RouterContext) DialRouter(network, addr string) (*Conn, error) {
 	}
 	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
 	hp.conns[addr] = conn
-	go hp.handleConn(conn, false)
+	go hp.handleConn(conn, false, false)
 	return conn, nil
 }
 
@@ -224,7 +225,7 @@ func (hp *RouterContext) HandleErr() {
 // handleConn reads a directive or a message from a proxy.
 // Handling directives is done here, but actually receiving the messages
 // is done in handleMessages
-func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
+func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 	for {
 		var err error
 		cell := make([]byte, CellBytes)
@@ -239,20 +240,24 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool) {
 		}
 
 		id := getID(cell)
-		hp.replyQueue.SetConn(id, c)
-		hp.replyQueue.SetAddr(id, c.RemoteAddr().String())
-
 		hp.mapLock.RLock()
 		prevId := hp.prevIds[id]
 		nextId := hp.nextIds[id]
 		isExit := hp.exit[id]
 		hp.mapLock.RUnlock()
 
+		hp.replyQueue.SetConn(id, c)
+		hp.replyQueue.SetAddr(id, c.RemoteAddr().String())
 		if cell[TYPE] == msgCell {
-			if !isExit {
-				binary.LittleEndian.PutUint64(cell[ID:], nextId)
-				hp.sendQueue.EnqueueMsg(nextId, id, cell)
-			} else {
+			if !isExit { // if it's not exit, just relay the cell
+				if forward {
+					binary.LittleEndian.PutUint64(cell[ID:], nextId)
+					hp.sendQueue.EnqueueMsg(nextId, id, cell)
+				} else {
+					binary.LittleEndian.PutUint64(cell[ID:], prevId)
+					hp.replyQueue.EnqueueMsg(prevId, id, cell)
+				}
+			} else { // actually handle the message
 				c.circuits[id].cells <- Cell{cell, err}
 			}
 		} else if cell[TYPE] == dirCell { // Handle a directive.
@@ -432,14 +437,17 @@ func (hp *RouterContext) handleMessages(circ Circuit, id, nextId uint64) {
 
 		// While the connection is open and the message is incomplete, read
 		// the next cell.
-		for err != io.EOF && uint64(bytes) < msgBytes {
+		for uint64(bytes) < msgBytes {
 			read, ok = <-circ.cells
 			if !ok {
 				return
 			}
 			cell = read.cell
 			err = read.err
-			if err != nil {
+			if err == io.EOF {
+				hp.errs <- errors.New("Connection closed before receiving all messages")
+			} else if err != nil {
+				hp.errs <- err
 				return
 			} else if cell[TYPE] != msgCell {
 				if err = hp.SendError(id, errCellType); err != nil {

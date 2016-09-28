@@ -43,10 +43,13 @@ type RouterContext struct {
 	replyQueue *Queue
 
 	// Connections to next hop routers
-	conns    map[string]*Conn
+	conns map[string]*Conn
+	// Maps circuit id to next hop;
+	// not relevant if this router is exit for this circuit
 	circuits map[uint64]*Conn
-	nextIds  map[uint64]uint64
-	prevIds  map[uint64]uint64
+	// Mapping id to next hop circuit id or prev hop circuit id
+	nextIds map[uint64]uint64
+	prevIds map[uint64]uint64
 	// If this server is an entry or exit for this circuit
 	entry map[uint64]bool
 	exit  map[uint64]bool
@@ -305,7 +308,7 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 					hp.errs <- err
 					break
 				}
-				hp.delete(c, id)
+				hp.delete(c, id, prevId)
 				hp.replyQueue.Close(prevId, cell, len(c.circuits) == 0)
 			}
 		} else { // Unknown cell type, return an error.
@@ -317,6 +320,9 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 		// (kwonalbert) This is done to make testing easier;
 		// Easier to count cells by getting the number of errs
 		hp.errs <- nil
+		if len(c.circuits) == 0 {
+			break
+		}
 	}
 }
 
@@ -396,7 +402,7 @@ func (hp *RouterContext) handleDestroy(d Directive, c *Conn, exit bool, id, next
 		if err != nil {
 			return err
 		}
-		hp.delete(c, id)
+		hp.delete(c, id, id) // there is not previous id for this, so delete id
 		hp.replyQueue.Close(id, cell, len(c.circuits) == 0)
 		hp.sendQueue.Close(nextId, nil, exit)
 	} else {
@@ -410,6 +416,7 @@ func (hp *RouterContext) handleDestroy(d Directive, c *Conn, exit bool, id, next
 }
 
 // Handles messages coming in on a circuit.
+
 // The directives are handled in handleConn
 func (hp *RouterContext) handleMessages(circ Circuit, id, nextId uint64) {
 	for {
@@ -429,7 +436,7 @@ func (hp *RouterContext) handleMessages(circ Circuit, id, nextId uint64) {
 				hp.errs <- err
 				return
 			}
-			return
+			continue
 		}
 
 		msg := make([]byte, msgBytes)
@@ -498,19 +505,19 @@ func (hp *RouterContext) SendError(id uint64, err error) error {
 	return nil
 }
 
-func (hp *RouterContext) delete(c *Conn, id uint64) {
+func (hp *RouterContext) delete(c *Conn, id uint64, prevId uint64) {
 	// TODO(kwonalbert) Check that this circuit is
 	// actually on this conn
 	hp.mapLock.Lock()
 	close(c.circuits[id].cells)
 	delete(c.circuits, id)
+	delete(hp.circuits, id)
+	delete(hp.nextIds, prevId)
+	delete(hp.prevIds, id)
 	delete(hp.entry, id)
 	delete(hp.exit, id)
 	if len(c.circuits) == 0 {
 		delete(hp.conns, c.RemoteAddr().String())
-		delete(hp.circuits, id)
-		delete(hp.nextIds, id)
-		delete(hp.prevIds, id)
 	}
 	hp.mapLock.Unlock()
 }

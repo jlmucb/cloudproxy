@@ -163,11 +163,20 @@ func (sq *Queue) delete(q *Queueable) {
 	if c, def := sq.nextConn[q.id]; def {
 		if q.destroy {
 			// Wait for the client to kill the connection or timeout
-			_, err := c.Read([]byte{0})
-			if err != nil {
-				e, ok := err.(net.Error)
-				if err == io.EOF || (ok && e.Timeout()) {
-					c.Close()
+			if q.msg == nil {
+				c.Close()
+			} else {
+				_, err := c.Read([]byte{0})
+				if err != nil {
+					e, ok := err.(net.Error)
+					if err == io.EOF || (ok && e.Timeout()) {
+						if ok && e.Timeout() {
+							// TODO(kwonalbert)
+							// Did not receive closed
+							// Should handle this err here..
+						}
+						c.Close()
+					}
 				}
 			}
 		}

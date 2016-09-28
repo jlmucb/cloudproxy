@@ -17,6 +17,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+syntax = "proto2";
 package tao;
 
 // Copied from: util/protorpc/protorpc.proto
@@ -51,12 +52,12 @@ message TaoRPCRequest {
   optional int64 time = 4;
   optional int64 expiration = 5;
   optional bytes issuer = 6;
-  // optional string label = 7;
-  // optional int64 counter = 8;
+  optional string label = 7;
+  optional int64 counter = 8;
 }
 
 message TaoRPCResponse {
   optional bytes data = 1;
   optional string policy = 2;
-  // optional int64 counter = 3;
+  optional int64 counter = 3;
 }

@@ -18,7 +18,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"errors"
-	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -145,18 +144,15 @@ func (t *RootHost) HostName() auth.Prin {
 }
 
 func (s *RootHost) InitCounter(label string, c int64) error {
-	fmt.Printf("roothost.InitCounter\n")  // REMOVE
 	softtao_counter = c
 	return nil
 }
 
 func (s *RootHost) GetCounter(label string) (int64, error) {
-	fmt.Printf("roothost.GetCounter\n")  // REMOVE
 	return softtao_counter, nil
 }
 
 func (s *RootHost) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("roothost.RollbackProtectedSeal\n")  // REMOVE
 	// TODO(jlm): Add counter to root_host struct instead?
 	softtao_counter = softtao_counter + 1
 	sd := new(RollbackSealedData)
@@ -178,7 +174,6 @@ func (s *RootHost) RollbackProtectedSeal(label string, data []byte, policy strin
 }
 
 func (s *RootHost) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
-	fmt.Printf("roothost.GetRollbackProtectedUnseal\n")  // REMOVE
 	c, err := s.GetCounter("label")
 	if err != nil {
 		c = int64(0)

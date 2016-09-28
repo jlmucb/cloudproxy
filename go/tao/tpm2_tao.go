@@ -505,9 +505,6 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("toQuote: %x\n", toQuote)    // REMOVE
-	// fmt.Printf("Quote: %x\n", quote_struct) // REMOVE
-	// fmt.Printf("sig: %x\n", sig)            // REMOVE
 
 	quoteKey, err := x509.MarshalPKIXPublicKey(tt.verifier)
 	if err != nil {
@@ -678,7 +675,6 @@ func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 // the value in the sealed Rollback blob.
 
 func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("tpm2tao.GetRollbackProtectedSeal\n") // REMOVE
 	_ = s.InitCounter(label, int64(0))
 	c, err := tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
 	if err != nil {
@@ -715,7 +711,6 @@ func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string
 }
 
 func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
-	fmt.Printf("tpm2tao.GetRollbackProtectedUnseal\n") // REMOVE
 	_ = s.InitCounter("", int64(0))
 	unsealed, policy, err := s.Unseal(sealed)
 	if err != nil {

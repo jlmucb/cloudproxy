@@ -557,4 +557,23 @@ bool MarshalKeyPrin(const string &key, string *out) {
   delete sos;
   return true;
 }
+
+bool InitNewCounter(Tao *tao, const string &label, const int64_t& c) {
+  return false;
+}
+
+bool GetACounter(Tao *tao, const string &label, const int64_t* c) {
+  return false;
+}
+
+bool MakeRollbackProtectedSealedSecret(Tao *tao, const string &path,
+      const string &policy, int secret_size, string *secret) {
+  return false;
+}
+
+bool GetRollbackProtectedSealedSecret(Tao *tao, const string &path,
+      const string &policy, string *secret) {
+  return false;
+}
+
 }  // namespace tao

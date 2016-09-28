@@ -67,21 +67,23 @@ bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
   rpc.set_data(sealed);
   return Request("Tao.Unseal", rpc, data, policy);
 }
-/*
- * To add:
-bool TaoRPC::InitCounter(const string &message) {
-  return Request("Tao.InitCounter", rpc, data, policy);
+
+bool TaoRPC::InitCounter(const string &label, int64_t& c) {
+  // return Request("Tao.InitCounter", rpc, data, policy);
+  return false;
 }
 
-bool TaoRPC::GetCounter(const string &message, string* counter) {
+bool TaoRPC::GetCounter(const string &label, int64_t* c) {
+  return false;
 }
 
-bool TaoRPC::RollbackProtectedSeal(const string &message, string* sealed) {
+bool TaoRPC::RollbackProtectedSeal(const string &data, const string &policy, string *sealed) {
+  return false;
 }
 
-bool TaoRPC::RollbackProtectedUnseal(const string &message, string* unsealed, string* policy) {
+bool TaoRPC::RollbackProtectedUnseal(const string &sealed, string *data, string *policy) {
+  return false;
 }
- */
 
 bool TaoRPC::Request(const string &op, const TaoRPCRequest &req, string *data,
                      string *policy) {

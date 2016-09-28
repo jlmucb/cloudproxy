@@ -43,10 +43,10 @@ func TestEncode(t *testing.T) {
 }
 
 func TestTPM2Tao(t *testing.T) {
-	// Set up a TPM Tao that seals and attests against PCRs 17 and 18.
+	// Set up a TPM2 Tao that seals and attests against PCRs 17 and 18.
 	tt, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
-		t.Skip("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
 	tpmtao, ok := tt.(*TPM2Tao)
 	if !ok {
@@ -59,7 +59,7 @@ func TestTPM2TaoSeal(t *testing.T) {
 
 	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
-		t.Skip("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
 	tt, ok := tpmtao.(*TPM2Tao)
 	if !ok {
@@ -70,7 +70,7 @@ func TestTPM2TaoSeal(t *testing.T) {
 	data := []byte(`test data to seal`)
 	sealed, err := tpmtao.Seal(data, SealPolicyDefault)
 	if err != nil {
-		t.Fatal("Couldn't seal data in the TPM Tao:", err)
+		t.Fatal("Couldn't seal data in the TPM2 Tao:", err)
 	}
 	fmt.Printf("sealed: %x\n", sealed)
 
@@ -79,15 +79,15 @@ func TestTPM2TaoSeal(t *testing.T) {
 
 	unsealed, policy, err := tpmtao.Unseal(sealed)
 	if err != nil {
-		t.Fatal("Couldn't unseal data sealed by the TPM Tao:", err)
+		t.Fatal("Couldn't unseal data sealed by the TPM2 Tao:", err)
 	}
 
 	if policy != SealPolicyDefault {
-		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
+		t.Fatal("Got the wrong policy back from TPM2Tao.Unseal")
 	}
 
 	if !bytes.Equal(unsealed, data) {
-		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
+		t.Fatal("The data returned from TPM2Tao.Unseal didn't match the original data")
 	}
 }
 
@@ -95,7 +95,7 @@ func TestTPM2TaoLargeSeal(t *testing.T) {
 
 	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2//tmptest", []int{17, 18})
 	if err != nil {
-		t.Skip("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
 	tt, ok := tpmtao.(*TPM2Tao)
 	if !ok {
@@ -106,20 +106,20 @@ func TestTPM2TaoLargeSeal(t *testing.T) {
 	data := make([]byte, 10000)
 	sealed, err := tpmtao.Seal(data, SealPolicyDefault)
 	if err != nil {
-		t.Fatal("Couldn't seal data in the TPM Tao:", err)
+		t.Fatal("Couldn't seal data in the TPM2 Tao:", err)
 	}
 
 	unsealed, policy, err := tpmtao.Unseal(sealed)
 	if err != nil {
-		t.Fatal("Couldn't unseal data sealed by the TPM Tao:", err)
+		t.Fatal("Couldn't unseal data sealed by the TPM2 Tao:", err)
 	}
 
 	if policy != SealPolicyDefault {
-		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
+		t.Fatal("Got the wrong policy back from TPM2Tao.Unseal")
 	}
 
 	if !bytes.Equal(unsealed, data) {
-		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
+		t.Fatal("The data returned from TPM2Tao.Unseal didn't match the original data")
 	}
 }
 
@@ -130,7 +130,7 @@ func TestTPM2TaoAttest(t *testing.T) {
 
 	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
-		t.Skip("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
 	tt, ok := tpmtao.(*TPM2Tao)
 	if !ok {
@@ -174,7 +174,11 @@ func TestTPM2TaoAttest(t *testing.T) {
 		t.Fatal("Can't unmarshal quote structure\n")
 	}
 	tpm2.PrintAttestData(pms)
-	key, _ := tt.GetRsaQuoteKey()
+	quoteHandle, err := tt.loadQuote()
+	if err != nil {
+	}
+	defer tpm2.FlushContext(tt.rw, quoteHandle)
+	key, _ := tt.GetRsaTPMKey(quoteHandle)
 	ok, err = tpm2.VerifyTpm2Quote(a.SerializedStatement, tt.GetPcrNums(),
 		computedDigest, a.Tpm2QuoteStructure, a.Signature, key)
 	if err != nil {
@@ -186,10 +190,10 @@ func TestTPM2TaoAttest(t *testing.T) {
 }
 
 func TestTPM2TaoGetCounter(t *testing.T) {
-/*
+fmt.Printf("TestTPM2TaoGetCounter")
 	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
 	if err != nil {
-		t.Skip("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
 	tt, ok := tpmtao.(*TPM2Tao)
 	if !ok {
@@ -199,31 +203,39 @@ func TestTPM2TaoGetCounter(t *testing.T) {
 
 	c, err := tpmtao.GetCounter("TestSealCounterLabel")
 	if err != nil {
-		t.Fatal("Couldn't GetCounter from Tao:", err)
+		t.Fatal("Couldn't GetCounter from TPM2 Tao:", err)
 	}
- */
+	fmt.Printf("TestTPM2TaoGetCounter: %d\n", c)
 }
 
 func TestTPM2TaoRollbackSealUnseal(t *testing.T) {
-/*
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	if err != nil {
+		t.Skip("Couldn't create a new TPM2 Tao:", err)
+	}
+	tt, ok := tpmtao.(*TPM2Tao)
+	if !ok {
+		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
+	}
+	defer cleanUpTPM2Tao(tt)
+
 
 	data := make([]byte, 10000)
 	sealed, err := tpmtao.RollbackProtectedSeal("TestSeal", data, SealPolicyDefault)
 	if err != nil {
-		t.Fatal("Couldn't RollbackProtectedSeal data in the TPM Tao:", err)
+		t.Fatal("Couldn't RollbackProtectedSeal data in the TPM2 Tao:", err)
 	}
 
 	unsealed, policy, err := tpmtao.RollbackProtectedUnseal(sealed)
 	if err != nil {
-		t.Fatal("Couldn't RollbackProtectedUnseal data sealed by the TPM Tao:", err)
+		t.Fatal("Couldn't RollbackProtectedUnseal data sealed by the TPM2 Tao:", err)
 	}
 
 	if policy != SealPolicyDefault {
-		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
+		t.Fatal("Got the wrong policy back from TPM2Tao.Unseal")
 	}
 
 	if !bytes.Equal(unsealed, data) {
-		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
+		t.Fatal("The data returned from TPM2Tao.Unseal didn't match the original data")
 	}
- */
 }

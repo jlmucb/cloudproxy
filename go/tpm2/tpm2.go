@@ -2688,7 +2688,6 @@ func ReadNv(rw io.ReadWriter, handle Handle, authString string,
 
 // Tpm2 GetCounter
 func GetCounter(rw io.ReadWriter, nvHandle Handle, authString string) (int64, error) {
-	fmt.Printf("tpm2.GetCounter\n") // REMOVE
 	c, err := ReadNv(rw, nvHandle, authString, uint16(0), uint16(8))
 	if err != nil {
 		return int64(0), errors.New("Can't read tpm2 counter")
@@ -2698,7 +2697,6 @@ func GetCounter(rw io.ReadWriter, nvHandle Handle, authString string) (int64, er
 
 // Tpm2 InitCounter
 func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) (error) {
-	fmt.Printf("tpm2.InitCounter\n") // REMOVE
 	owner := Handle(OrdTPM_RH_OWNER)
 	dataSize := uint16(8)
 	var tpmPolicy []byte // empty

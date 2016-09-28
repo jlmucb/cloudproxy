@@ -93,26 +93,20 @@ type TPM2Tao struct {
 	// password is the password.
 	password string
 
-	// TODO(jlm): remove rootHandle, quoteHandle, sealHandle, sealHandle
-	// They should no longer be used.
-	// rootHandle is an integer handle for an root held by the TPM.
+	// rootContext is the context for the root handle.
 	rootContext []byte
-	rootHandle  tpm2.Handle
 
-	// quoteHandle is an integer handle for an quote key held by the TPM.
+	// quoteContext is the context for the quote key.
 	quoteContext []byte
 	quotePublic  []byte
 	quoteCert    []byte
-	quoteHandle  tpm2.Handle
 
-	// sealHandle is an integer handle for sealing, held by the TPM.
+	// sealContext is a the context for sealing, held by the TPM.
 	sealContext []byte
 	sealPublic  []byte
-	sealHandle  tpm2.Handle
 
-	// session handle
+	// session context is used by seal.
 	sessionContext []byte
-	sessionHandle  tpm2.Handle
 
 	// verifier is a representation of the root that can be used to verify Attestations.
 	verifier *rsa.PublicKey
@@ -132,8 +126,8 @@ type TPM2Tao struct {
 	locality byte
 
 	// tpm2 parameters
-	nvHandle    tpm2.Handle
-	authString  string
+	nvHandle   tpm2.Handle
+	authString string
 }
 
 func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
@@ -176,8 +170,8 @@ func (tt *TPM2Tao) GetPcrNums() []int {
 
 // TODO(jlm): Fix this to provide quoteHandle quoteHandle
 // in structure should no longer be used.
-func (tt *TPM2Tao) GetRsaQuoteKey() (*rsa.PublicKey, error) {
-	return tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle)
+func (tt *TPM2Tao) GetRsaTPMKey(handle tpm2.Handle) (*rsa.PublicKey, error) {
+	return tpm2.GetRsaKeyFromHandle(tt.rw, handle)
 }
 
 func (tt *TPM2Tao) Rand() io.Reader {
@@ -233,19 +227,6 @@ func MakeTPM2Prin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (aut
 
 // FinalizeTPM2Tao releases the resources for the TPM2Tao.
 func FinalizeTPM2Tao(tt *TPM2Tao) {
-	if tt.sessionHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sessionHandle))
-	}
-	tt.sessionHandle = 0
-	if tt.rootHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.rootHandle))
-	}
-	tt.rootHandle = 0
-	if tt.sealHandle != 0 {
-		tpm2.FlushContext(tt.rw, tpm2.Handle(tt.sealHandle))
-	}
-	tt.sealHandle = 0
-
 	// Release the file handle.
 	tt.rw.Close()
 }
@@ -296,6 +277,8 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		return nil, err
 	}
 
+	tpm2.Flushall(tt.rw)
+
 	// Make sure the TPM2Tao releases all its resources
 	runtime.SetFinalizer(tt, FinalizeTPM2Tao)
 
@@ -305,7 +288,6 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	// Create the root key.
 	keySize := uint16(2048)
 	quotePassword := ""
-	//var empty []byte
 
 	rootSaveContext := path.Join(tt.path, "root_context")
 	_, rootErr := os.Stat(rootSaveContext)
@@ -334,13 +316,18 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	if tt.sealContext, err = ioutil.ReadFile(sealSaveContext); err != nil {
 		return nil, fmt.Errorf("Could not read the seal context from %s: %v", sealSaveContext, err)
 	}
-
-	if tt.quoteHandle, err = tt.loadQuote(); err != nil {
+	rootHandle, err := tt.loadRoot()
+	if err != nil {
 		return nil, err
 	}
-	defer tpm2.FlushContext(tt.rw, tt.quoteHandle)
+	quoteHandle, err := tt.loadQuote()
+	if err != nil {
+		return nil, err
+	}
+	defer tpm2.FlushContext(tt.rw, rootHandle)
+	defer tpm2.FlushContext(tt.rw, quoteHandle)
 
-	if tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, tt.quoteHandle); err != nil {
+	if tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, quoteHandle); err != nil {
 		return nil, err
 	}
 
@@ -365,7 +352,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 
 	quoteCertPath := path.Join(tt.path, "quote_cert")
 	if _, quoteCertErr := os.Stat(quoteCertPath); quoteCertErr != nil {
-		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, tt.quoteHandle,
+		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, quoteHandle,
 			quotePassword, tt.name, tt.verifier)
 		if err != nil {
 			return nil, err
@@ -380,7 +367,6 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		}
 	}
 	fmt.Fprintf(os.Stderr, "Got TPM 2.0 principal name %q\n", tt.name)
-
 	return tt, nil
 }
 
@@ -519,9 +505,6 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("toQuote: %x\n", toQuote)    // REMOVE
-	// fmt.Printf("Quote: %x\n", quote_struct) // REMOVE
-	// fmt.Printf("sig: %x\n", sig)            // REMOVE
 
 	quoteKey, err := x509.MarshalPKIXPublicKey(tt.verifier)
 	if err != nil {
@@ -662,7 +645,11 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 		return nil
 	}
 	// TODO: make this more general?
-	s.nvHandle = tpm2.Handle(1000)
+	var err error
+	s.nvHandle, err = tpm2.GetNvHandle(1000)
+	if err != nil {
+		return err
+	}
 	s.authString = "01020304"
 
 	return tpm2.InitCounter(s.rw, s.nvHandle, s.authString)
@@ -680,7 +667,7 @@ func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 // Note:  Tpm2 counters work differently from other counters.  On startup, you
 // can't read a counter value before you initialize it which you do by incrementing
 // it.  What we do is use the (countvalue+1)/2 as the counter in RollbackSeal and Unseal.
-// When you seal, // if the current counter is odd, you bump it twice and use the 
+// When you seal, // if the current counter is odd, you bump it twice and use the
 // value (countvalue+1)/2 in the counter slot.  If the counter is even, you bump by 1.
 // You also need to reseal the tpm keys when you startup since you may shutdown
 // before a RollbackSeal and your key will bump by two and give the wrong counter value.
@@ -688,7 +675,6 @@ func (s *TPM2Tao) GetCounter(label string) (int64, error) {
 // the value in the sealed Rollback blob.
 
 func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("tpm2tao.GetRollbackProtectedSeal\n") // REMOVE
 	_ = s.InitCounter(label, int64(0))
 	c, err := tpm2.GetCounter(s.rw, s.nvHandle, s.authString)
 	if err != nil {
@@ -725,7 +711,6 @@ func (s *TPM2Tao) RollbackProtectedSeal(label string, data []byte, policy string
 }
 
 func (s *TPM2Tao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
-	fmt.Printf("tpm2tao.GetRollbackProtectedUnseal\n") // REMOVE
 	_ = s.InitCounter("", int64(0))
 	unsealed, policy, err := s.Unseal(sealed)
 	if err != nil {

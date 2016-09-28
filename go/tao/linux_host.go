@@ -16,7 +16,6 @@ package tao
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"path"
@@ -397,7 +396,6 @@ func (lh *LinuxHost) Shutdown() error {
 // InitCounter initializes the child's counter for the given label.
 // If label is empty string, just read in the table
 func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) error {
-	fmt.Printf("linuxhost.InitCounter\n")  // REMOVE
 	sealedRollbackKeysFile := path.Join(lh.path, "SealedRollbackTableKeys.bin")
 	encryptedRollbackTableFile := path.Join(lh.path, "EncryptedRollbackTable.bin")
 
@@ -440,7 +438,6 @@ func (lh *LinuxHost) InitCounter(child *LinuxHostChild, label string, c int64) e
 
 // GetCounter gets the child's counter for the given label.
 func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, error) {
-	fmt.Printf("linuxhost.GetCounter\n")  // REMOVE
 	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
 	if lh.rbTable == nil {
 		err := lh.InitCounter(child, "", int64(0))
@@ -459,7 +456,6 @@ func (lh *LinuxHost) GetCounter(child *LinuxHostChild, label string) (int64, err
 
 // RollbackProtectedSeal seals the data associated with the given label with rollback protection.
 func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, data []byte, policy string) ([]byte, error) {
-	fmt.Printf("linuxhost.RollbackProtectedSeal\n")  // REMOVE
 	programName := lh.Host.HostName().MakeSubprincipal(child.ChildSubprin).String()
 	c, err := lh.GetCounter(child, label)
 	if err != nil {
@@ -504,7 +500,6 @@ func (lh *LinuxHost) RollbackProtectedSeal(child *LinuxHostChild, label string, 
 
 // RollbackProtectedUnseal unseals the data associated with the given label with rollback protection.
 func (lh *LinuxHost) RollbackProtectedUnseal(child *LinuxHostChild, sealed []byte) ([]byte, string, error) {
-	fmt.Printf("linuxhost.RollbackProtectedUnseal\n")  // REMOVE
 	b, policy, err := lh.Unseal(child, sealed)
 	if err != nil {
 		return nil, "", errors.New("RollbackProtectedUnseal can't unseal")

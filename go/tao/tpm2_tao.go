@@ -105,7 +105,7 @@ type TPM2Tao struct {
 	sealContext []byte
 	sealPublic  []byte
 
-	// session context is ised by seal.
+	// session context is used by seal.
 	sessionContext []byte
 
 	// verifier is a representation of the root that can be used to verify Attestations.

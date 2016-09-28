@@ -105,6 +105,15 @@ int main(int argc, char **argv) {
 
   if (FLAGS_test_rollback) {
     // Put Rollback protection tests here
+    /*
+    tao.Parent().InitCounter("label", 0)
+    c,  err := tao.Parent().GetCounter("label")
+    byte data[] = { 
+                        0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
+                        0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5, }
+    sealed,  err := tao.Parent().RollbackProtectedSeal("label", data, tao.SealPolicyDefault)
+    recoveredData,  _, err := tao.Parent().RollbackProtectedUnseal(sealed)
+    */
   }
   return 0;
 }

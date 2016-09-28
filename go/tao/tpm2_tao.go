@@ -101,10 +101,9 @@ type TPM2Tao struct {
 	quotePublic  []byte
 	quoteCert    []byte
 
-	// sealContext is a the contect for sealing, held by the TPM.
+	// sealContext is a the context for sealing, held by the TPM.
 	sealContext []byte
 	sealPublic  []byte
-	//sealHandle  tpm2.Handle
 
 	// session context is ised by seal.
 	sessionContext []byte

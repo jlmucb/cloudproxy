@@ -42,6 +42,7 @@ DEFINE_string(server_host, "localhost", "address for client/server");
 DEFINE_string(server_port, "8123", "port for client/server");
 DEFINE_string(domain_server_host, "localhost", "address for domain service");
 DEFINE_string(domain_server_port, "8124", "port for domain service");
+DEFINE_bool(test_rollback, false, "Test rollback protection");
 
 int main(int argc, char **argv) {
 
@@ -100,6 +101,10 @@ int main(int argc, char **argv) {
   } else {
     const char* secret = (const char*) resp_message.data(0).data();
     printf("\nsimpleclient: secret is %s, done\n", secret);
+  }
+
+  if (FLAGS_test_rollback) {
+    // Put Rollback protection tests here
   }
   return 0;
 }

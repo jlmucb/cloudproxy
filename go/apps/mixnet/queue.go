@@ -46,9 +46,9 @@ type sendQueueError struct {
 	error
 }
 
-// The Queue structure maps a serial identifier corresponding to a sender
+// The Queue structure maps a circuit identifier corresponding to a sender
 // (in the router context) to a destination. It also maintains a message buffer
-// for each sender. Once there messages ready on enough buffers, a batch of
+// for each sender. Once messages are ready on enough buffers, a batch of
 // messages are transmitted simultaneously.
 type Queue struct {
 	batchSize int // Number of messages to transmit in a round.
@@ -60,11 +60,9 @@ type Queue struct {
 	nextAddr   map[uint64]string     // Address of destination.
 	nextConn   map[uint64]net.Conn   // Connection to destination.
 	sendBuffer map[uint64]*list.List // Message buffer of sender.
-	errIds     map[uint64]uint64
 
-	queue     chan *Queueable     // Channel for queueing messages/directives.
-	err       chan sendQueueError // Channel for handling errors.
-	destroyed chan uint64         // Channel for waiting for circuit destruction, which happens asynchronously.
+	queue chan *Queueable     // Channel for queueing messages/directives.
+	err   chan sendQueueError // Channel for handling errors.
 }
 
 // NewQueue creates a new Queue structure.
@@ -77,11 +75,9 @@ func NewQueue(network string, batchSize int, timeout time.Duration) (sq *Queue) 
 	sq.nextAddr = make(map[uint64]string)
 	sq.nextConn = make(map[uint64]net.Conn)
 	sq.sendBuffer = make(map[uint64]*list.List)
-	sq.errIds = make(map[uint64]uint64)
 
 	sq.queue = make(chan *Queueable)
 	sq.err = make(chan sendQueueError)
-	sq.destroyed = make(chan uint64)
 	return sq
 }
 
@@ -327,7 +323,7 @@ func (sq *Queue) dequeue() {
 
 		// Pop the message from the buffer and decrement the counter
 		// if the buffer is empty.
-		// resource might be removed (circuit destroyed); check first
+		// Resource might be removed (circuit destroyed); check first
 		if buf, ok := sq.sendBuffer[res.id]; ok {
 			buf.Remove(buf.Front())
 			if buf.Len() == 0 {

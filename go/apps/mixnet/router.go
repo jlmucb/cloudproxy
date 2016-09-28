@@ -154,7 +154,7 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
+	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
 	go hp.handleConn(conn, true, true)
 	return conn, nil
 }
@@ -165,7 +165,7 @@ func (hp *RouterContext) AcceptRouter() (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
+	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
 	go hp.handleConn(conn, false, true)
 	return conn, nil
 }
@@ -176,7 +176,7 @@ func (hp *RouterContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit)}
+	conn := &Conn{c, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
 	hp.conns[addr] = conn
 	go hp.handleConn(conn, false, false)
 	return conn, nil
@@ -309,7 +309,9 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 					break
 				}
 				hp.delete(c, id, prevId)
+				c.cLock.RLock()
 				hp.replyQueue.Close(prevId, cell, len(c.circuits) == 0)
+				c.cLock.RUnlock()
 			}
 		} else { // Unknown cell type, return an error.
 			if err = hp.SendError(id, errBadCellType); err != nil {
@@ -317,12 +319,15 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 				break
 			}
 		}
-		// (kwonalbert) This is done to make testing easier;
+		// Sending nil err makes testing easier;
 		// Easier to count cells by getting the number of errs
 		hp.errs <- nil
-		if len(c.circuits) == 0 {
+		// New circuits could be established while this reads circuits
+		c.cLock.RLock()
+		if len(c.circuits) == 0 { // empty connection
 			break
 		}
+		c.cLock.RUnlock()
 	}
 }
 
@@ -366,7 +371,9 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 		} else {
 			nextConn = hp.conns[d.Addrs[0]]
 		}
+		nextConn.cLock.Lock()
 		nextConn.circuits[newId] = Circuit{make(chan Cell)}
+		nextConn.cLock.Unlock()
 		hp.circuits[newId] = nextConn
 		hp.sendQueue.SetConn(newId, nextConn)
 
@@ -508,9 +515,11 @@ func (hp *RouterContext) SendError(id uint64, err error) error {
 func (hp *RouterContext) delete(c *Conn, id uint64, prevId uint64) {
 	// TODO(kwonalbert) Check that this circuit is
 	// actually on this conn
-	hp.mapLock.Lock()
+	c.cLock.Lock()
 	close(c.circuits[id].cells)
 	delete(c.circuits, id)
+	c.cLock.Unlock()
+	hp.mapLock.Lock()
 	delete(hp.circuits, id)
 	delete(hp.nextIds, prevId)
 	delete(hp.prevIds, id)

@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -66,6 +67,7 @@ type Conn struct {
 	net.Conn
 	timeout  time.Duration // timeout on read/write.
 	circuits map[uint64]Circuit
+	cLock    *sync.RWMutex
 }
 
 // A cell read from the network connection

@@ -84,7 +84,7 @@ class TaoRPC : public Tao {
   /// @param[out] data The returned data, if not nullptr.
   /// @param[out] policy The returned policy, if not nullptr.
   bool Request(const string &op, const TaoRPCRequest &req, string *data,
-               string *policy);
+               string *policy, int64_t* counter);
 
   DISALLOW_COPY_AND_ASSIGN(TaoRPC);
 };

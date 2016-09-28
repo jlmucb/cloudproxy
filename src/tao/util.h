@@ -343,6 +343,15 @@ bool MarshalSpeaksfor(const string &key, const string &binaryTaoName,
 /// @param key The bytes of the key to write as an auth.Prin
 /// @param[out] out The resulting binary-encoded auth.Prin.
 bool MarshalKeyPrin(const string &key, string *out);
+
+
+bool InitNewCounter(Tao *tao, const string &label, const int64_t& c);
+bool GetACounter(Tao *tao, const string &label, const int64_t* c);
+bool MakeRollbackProtectedSealedSecret(Tao *tao, const string &path,
+      const string &policy, int secret_size, string *secret);
+bool GetRollbackProtectedSealedSecret(Tao *tao, const string &path,
+      const string &policy, string *secret);
+
 }  // namespace tao
 
 #endif  // TAO_UTIL_H_

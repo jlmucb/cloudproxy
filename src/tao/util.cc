@@ -559,6 +559,12 @@ bool MarshalKeyPrin(const string &key, string *out) {
 }
 
 bool InitNewCounter(Tao *tao, const string &label, const int64_t& c) {
+/*
+  if (!tao->GetRandomBytes(secret_size, secret)) {
+    LOG(ERROR) << "Could not generate a random secret to seal";
+    return false;
+  }
+*/
   return false;
 }
 

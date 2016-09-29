@@ -83,7 +83,7 @@ bool TaoRPC::GetCounter(const string &label, int64_t* c) {
   return Request("Tao.GetCounter", rpc, nullptr, nullptr, c);
 }
 
-bool TaoRPC::RollbackProtectedSeal(const string &data, const string &policy, string *sealed) {
+bool TaoRPC::RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed) {
   printf("***RollbackProtectedSeal in tao_rpc\n");
   TaoRPCRequest rpc;
   rpc.set_policy(policy);

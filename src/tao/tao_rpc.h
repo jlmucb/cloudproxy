@@ -56,7 +56,7 @@ class TaoRPC : public Tao {
 
   virtual bool InitCounter(const string &label, int64_t& c);
   virtual bool GetCounter(const string &label, int64_t* c);
-  virtual bool RollbackProtectedSeal(const string &data, const string &policy, string *sealed);
+  virtual bool RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed);
   virtual bool RollbackProtectedUnseal(const string &sealed, string *data, string *policy);
 
   virtual string GetRecentErrorMessage() const { return failure_msg_; }

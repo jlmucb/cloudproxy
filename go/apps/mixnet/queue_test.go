@@ -121,7 +121,7 @@ func TestQueueSend(t *testing.T) {
 	}()
 
 	go func() {
-		sq.DoQueueErrorHandlerLog("test queue", kill)
+		sq.DoQueueErrorHandler(nil, kill)
 		done <- true
 	}()
 

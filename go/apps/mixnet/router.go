@@ -37,10 +37,8 @@ type RouterContext struct {
 	proxyListener  net.Listener // Socket where server listens for proxies.
 	routerListener net.Listener // Socket where server listens for proxies.
 
-	// Data structures for queueing and batching messages from sender to
-	// recipient and recipient to sender respectively.
-	sendQueue  *Queue
-	replyQueue *Queue
+	// Data structures for queueing and batching messages
+	queue *Queue
 
 	// Connections to next hop routers
 	conns map[string]*Conn
@@ -135,14 +133,11 @@ func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout
 	}
 
 	// Instantiate the queues.
-	hp.sendQueue = NewQueue(network, batchSize, timeout)
-	hp.replyQueue = NewQueue(network, batchSize, timeout)
+	hp.queue = NewQueue(network, batchSize, timeout)
 	hp.killQueue = make(chan bool)
 	hp.killQueueErrorHandler = make(chan bool)
-	go hp.sendQueue.DoQueue(hp.killQueue)
-	go hp.replyQueue.DoQueue(hp.killQueue)
-	go hp.sendQueue.DoQueueErrorHandler(hp.replyQueue, hp.killQueueErrorHandler)
-	go hp.replyQueue.DoQueueErrorHandlerLog("reply queue", hp.killQueueErrorHandler)
+	go hp.queue.DoQueue(hp.killQueue)
+	go hp.queue.DoQueueErrorHandler(hp.queue, hp.killQueueErrorHandler)
 
 	return hp, nil
 }
@@ -184,8 +179,6 @@ func (hp *RouterContext) DialRouter(network, addr string) (*Conn, error) {
 // Close releases any resources held by the hosted program.
 func (hp *RouterContext) Close() {
 	hp.killQueue <- true
-	hp.killQueue <- true
-	hp.killQueueErrorHandler <- true
 	hp.killQueueErrorHandler <- true
 	if hp.proxyListener != nil {
 		hp.proxyListener.Close()
@@ -254,10 +247,10 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 			if !isExit { // if it's not exit, just relay the cell
 				if forward {
 					binary.LittleEndian.PutUint64(cell[ID:], nextId)
-					hp.sendQueue.EnqueueMsg(nextId, cell, nextConn, c)
+					hp.queue.EnqueueMsg(nextId, cell, nextConn, c)
 				} else {
 					binary.LittleEndian.PutUint64(cell[ID:], prevId)
-					hp.replyQueue.EnqueueMsg(prevId, cell, prevConn, c)
+					hp.queue.EnqueueMsg(prevId, cell, prevConn, c)
 				}
 			} else { // actually handle the message
 				c.circuits[id].cells <- Cell{cell, err}
@@ -272,7 +265,7 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 			// relay the errors back to users
 			if *d.Type == DirectiveType_ERROR {
 				binary.LittleEndian.PutUint64(cell[ID:], prevId)
-				hp.replyQueue.EnqueueMsg(prevId, cell, prevConn, c)
+				hp.queue.EnqueueMsg(prevId, cell, prevConn, c)
 			} else if *d.Type == DirectiveType_CREATE {
 				err := hp.handleCreate(d, c, withProxy, id)
 				if err != nil {
@@ -292,14 +285,14 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 					hp.errs <- err
 					break
 				}
-				hp.replyQueue.EnqueueMsg(prevId, cell, prevConn, c)
+				hp.queue.EnqueueMsg(prevId, cell, prevConn, c)
 			} else if *d.Type == DirectiveType_DESTROYED {
 				// Close the forward circuit if it's an exit or empty now
 				hp.mapLock.RLock()
 				// == 1 because we haven't removed the circuit yet
 				empty := !isExit && len(hp.circuits[id].circuits) == 1
 				hp.mapLock.RUnlock()
-				hp.sendQueue.Close(id, nil, empty, c, prevConn)
+				hp.queue.Close(id, nil, empty, c, prevConn)
 
 				// Relay back destroyed
 				cell, err = marshalDirective(prevId, dirDestroyed)
@@ -309,7 +302,7 @@ func (hp *RouterContext) handleConn(c *Conn, withProxy bool, forward bool) {
 				}
 				hp.delete(c, id, prevId)
 				c.cLock.RLock()
-				hp.replyQueue.Close(prevId, cell, len(c.circuits) == 0, prevConn, nil)
+				hp.queue.Close(prevId, cell, len(c.circuits) == 0, prevConn, nil)
 				c.cLock.RUnlock()
 			}
 		} else { // Unknown cell type, return an error.
@@ -336,7 +329,7 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 	hp.nextIds[id] = newId
 	hp.prevIds[newId] = id
 
-	// Add next hop for this circuit to sendQueue and send a CREATED
+	// Add next hop for this circuit to queue and send a CREATED
 	// directive to sender to inform the sender.
 	if len(d.Addrs) == 0 {
 		if err := hp.SendError(id, errBadDirective, c); err != nil {
@@ -382,7 +375,7 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 			hp.mapLock.Unlock()
 			return err
 		}
-		hp.sendQueue.EnqueueMsg(newId, nextCell, nextConn, c)
+		hp.queue.EnqueueMsg(newId, nextCell, nextConn, c)
 	} else {
 		go hp.handleMessages(d.Addrs[0], c.circuits[id], id, newId, c)
 		hp.exit[id] = true
@@ -393,7 +386,7 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 			return err
 		}
 		// TODO(kwonalbert) If an error occurs sending back destroyed, handle it here
-		hp.replyQueue.EnqueueMsg(id, cell, c, nil)
+		hp.queue.EnqueueMsg(id, cell, c, nil)
 	}
 	hp.mapLock.Unlock()
 	return nil
@@ -408,7 +401,7 @@ func (hp *RouterContext) handleDestroy(d Directive, c *Conn, exit bool, id, next
 			return err
 		}
 		hp.delete(c, id, id) // there is not previous id for this, so delete id
-		hp.replyQueue.Close(id, cell, len(c.circuits) == 0, c, c)
+		hp.queue.Close(id, cell, len(c.circuits) == 0, c, c)
 	} else {
 		nextCell, err := marshalDirective(nextId, dirDestroy)
 		if err != nil {
@@ -417,7 +410,7 @@ func (hp *RouterContext) handleDestroy(d Directive, c *Conn, exit bool, id, next
 		hp.mapLock.RLock()
 		nextConn := hp.circuits[nextId]
 		hp.mapLock.RUnlock()
-		hp.sendQueue.EnqueueMsg(nextId, nextCell, nextConn, c)
+		hp.queue.EnqueueMsg(nextId, nextCell, nextConn, c)
 	}
 	return nil
 }
@@ -484,9 +477,9 @@ func (hp *RouterContext) handleMessages(dest string, circ Circuit, id, nextId ui
 		}
 
 		// Wait for a message from the destination, divide it into cells,
-		// and add the cells to replyQueue.
+		// and add the cells to queue.
 		reply := make(chan []byte)
-		hp.sendQueue.EnqueueMsgReply(nextId, msg, reply, conn, prevConn)
+		hp.queue.EnqueueMsgReply(nextId, msg, reply, conn, prevConn)
 
 		msg = <-reply
 		if msg != nil {
@@ -497,14 +490,14 @@ func (hp *RouterContext) handleMessages(dest string, circ Circuit, id, nextId ui
 			cell[TYPE] = msgCell
 			binary.LittleEndian.PutUint64(cell[BODY:], uint64(msgBytes))
 			bytes := copy(cell[BODY+LEN_SIZE:], msg)
-			hp.replyQueue.EnqueueMsg(id, cell, prevConn, nil)
+			hp.queue.EnqueueMsg(id, cell, prevConn, nil)
 
 			for bytes < msgBytes {
 				tao.ZeroBytes(cell)
 				binary.LittleEndian.PutUint64(cell[ID:], id)
 				cell[TYPE] = msgCell
 				bytes += copy(cell[BODY:], msg[bytes:])
-				hp.replyQueue.EnqueueMsg(id, cell, prevConn, nil)
+				hp.queue.EnqueueMsg(id, cell, prevConn, nil)
 			}
 		}
 	}
@@ -522,7 +515,7 @@ func (hp *RouterContext) SendError(id uint64, err error, c *Conn) error {
 	if err != nil {
 		return err
 	}
-	hp.replyQueue.EnqueueMsg(id, cell, c, nil)
+	hp.queue.EnqueueMsg(id, cell, c, nil)
 	return nil
 }
 

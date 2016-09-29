@@ -209,27 +209,19 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 		case <-kill:
 			return
 		case err := <-sq.err:
-			var d Directive
-			d.Type = DirectiveType_ERROR.Enum()
-			d.Error = proto.String(err.Error())
-			cell, e := marshalDirective(err.id, &d)
-			if e != nil {
-				glog.Errorf("queue: %s\n", e)
-				return
+			if err.conn == nil {
+				var d Directive
+				d.Type = DirectiveType_ERROR.Enum()
+				d.Error = proto.String(err.Error())
+				cell, e := marshalDirective(err.id, &d)
+				if e != nil {
+					glog.Errorf("queue: %s\n", e)
+					return
+				}
+				queue.EnqueueMsg(err.id, cell, err.conn, nil)
+			} else {
+				glog.Errorf("client no. %d: %s\n", err.id, err)
 			}
-			queue.EnqueueMsg(err.id, cell, err.conn, nil)
-		}
-	}
-}
-
-// DoQueueErrorHandlerLog logs errors that occur on this queue.
-func (sq *Queue) DoQueueErrorHandlerLog(name string, kill <-chan bool) {
-	for {
-		select {
-		case <-kill:
-			return
-		case err := <-sq.err:
-			glog.Errorf("%s, client no. %d: %s\n", name, err.id, err)
 		}
 	}
 }

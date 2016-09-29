@@ -124,6 +124,7 @@ int main(int argc, char **argv) {
     } else {
       printf("InitCounter failed\n");
     }
+    /*
     if (client_program_data.GetCounter(label, &counter)) {
       printf("GetCounter (1) succeeded %lld\n", counter);
     } else {
@@ -147,6 +148,7 @@ int main(int argc, char **argv) {
     } else {
       printf("GetCounter (2) failed\n");
     }
+    */
   }
   return 0;
 }

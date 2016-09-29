@@ -19,6 +19,8 @@
 #include "tao/tao_rpc.h"
 #include "tao/util.h"
 
+#include "helpers.h"
+
 using std::string;
 using std::unique_ptr;
 
@@ -105,15 +107,46 @@ int main(int argc, char **argv) {
 
   if (FLAGS_test_rollback) {
     // Put Rollback protection tests here
-    /*
-    tao.Parent().InitCounter("label", 0)
-    c,  err := tao.Parent().GetCounter("label")
     byte data[] = { 
-                        0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
-                        0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5, }
-    sealed,  err := tao.Parent().RollbackProtectedSeal("label", data, tao.SealPolicyDefault)
-    recoveredData,  _, err := tao.Parent().RollbackProtectedUnseal(sealed)
-    */
+      0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
+      0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5
+    };
+    string label("label");
+    string data_to_seal;
+    string sealed_data;
+    string recovered_data;
+    string policy;
+    int64_t counter = 0LL;
+    int64_t initial_counter = 5LL;
+    data_to_seal.assign((const char *)data, sizeof(data));
+    if (client_program_data.InitCounter(label, initial_counter)) {
+      printf("InitCounter succeeded\n");
+    } else {
+      printf("InitCounter failed\n");
+    }
+    if (client_program_data.GetCounter(label, &counter)) {
+      printf("GetCounter (1) succeeded %lld\n", counter);
+    } else {
+      printf("GetCounter (1) failed\n");
+    }
+    if (client_program_data.RollbackProtectedSeal(label, data_to_seal, &sealed_data)) {
+      printf("RollbackProtectedSeal succeeded\n");
+      printf("data to seal: "); PrintBytes(data_to_seal.size(), (byte*)data_to_seal.data()); printf("\n");
+    } else {
+      printf("RollbackProtectedSeal failed\n");
+    }
+    if (client_program_data.RollbackProtectedUnseal(sealed_data, &recovered_data, &policy)) {
+      printf("RollbackProtectedUnseal succeeded\n");
+      printf("unsealed data: "); PrintBytes(recovered_data.size(),
+             (byte*)recovered_data.data()); printf("\n");
+    } else {
+      printf("RollbackProtectedUnseal failed\n");
+    }
+    if (client_program_data.GetCounter(label, &counter)) {
+      printf("GetCounter (2) succeeded %lld\n", counter);
+    } else {
+      printf("GetCounter (2) failed\n");
+    }
   }
   return 0;
 }

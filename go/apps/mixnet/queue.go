@@ -16,7 +16,6 @@ package mixnet
 
 import (
 	"container/list"
-	"errors"
 	"io"
 	"math/rand"
 	"net"
@@ -31,18 +30,18 @@ import (
 // adddress or connection of a sender, add a message or request for reply
 // to the queue, or destroy any resources associated with the connection.
 type Queueable struct {
-	id      uint64 // circuit id
-	prevId  uint64 // prev hop circuit id
-	addr    string
-	msg     []byte
-	conn    net.Conn
-	reply   chan []byte
-	remove  bool
-	destroy bool
+	id       uint64 // circuit id
+	msg      []byte
+	conn     net.Conn
+	prevConn net.Conn
+	reply    chan []byte
+	remove   bool
+	destroy  bool
 }
 
 type sendQueueError struct {
-	id uint64 // circuit id
+	id   uint64
+	conn net.Conn // where to send the error to
 	error
 }
 
@@ -57,8 +56,6 @@ type Queue struct {
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on dial/read/write.
 
-	nextAddr   map[uint64]string     // Address of destination.
-	nextConn   map[uint64]net.Conn   // Connection to destination.
 	sendBuffer map[uint64]*list.List // Message buffer of sender.
 
 	queue chan *Queueable     // Channel for queueing messages/directives.
@@ -72,8 +69,6 @@ func NewQueue(network string, batchSize int, timeout time.Duration) (sq *Queue) 
 	sq.network = network
 	sq.timeout = timeout
 
-	sq.nextAddr = make(map[uint64]string)
-	sq.nextConn = make(map[uint64]net.Conn)
 	sq.sendBuffer = make(map[uint64]*list.List)
 
 	sq.queue = make(chan *Queueable)
@@ -90,58 +85,43 @@ func (sq *Queue) Enqueue(q *Queueable) {
 
 // EnqueueMsg copies a byte slice into a queueable object and adds it to
 // the queue.
-func (sq *Queue) EnqueueMsg(id, prevId uint64, msg []byte) {
+func (sq *Queue) EnqueueMsg(id uint64, msg []byte, conn, prevConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
-	q.prevId = prevId
 	q.msg = make([]byte, len(msg))
 	copy(q.msg, msg)
+	q.conn = conn
+	q.prevConn = prevConn
 	sq.queue <- q
 }
 
 // EnqueueReply creates a queuable object with a reply channel and adds it to
 // the queue.
-func (sq *Queue) EnqueueReply(id, prevId uint64, reply chan []byte) {
+func (sq *Queue) EnqueueReply(id uint64, reply chan []byte, conn, prevConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
-	q.prevId = prevId
 	q.reply = reply
+	q.conn = conn
+	q.prevConn = prevConn
 	sq.queue <- q
 }
 
 // EnqueueMsgReply creates a queueable object with a message and a reply channel
 // and adds it to the queue.
-func (sq *Queue) EnqueueMsgReply(id, prevId uint64, msg []byte, reply chan []byte) {
+func (sq *Queue) EnqueueMsgReply(id uint64, msg []byte, reply chan []byte, conn, prevConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
-	q.prevId = prevId
 	q.msg = make([]byte, len(msg))
 	q.reply = reply
 	copy(q.msg, msg)
-	sq.queue <- q
-}
-
-// SetAddr copies an address into a queuable object and adds it to the queue.
-// This sets the next-hop address for the id.
-func (sq *Queue) SetAddr(id uint64, addr string) {
-	q := new(Queueable)
-	q.id = id
-	q.addr = addr
-	sq.queue <- q
-}
-
-// SetConn creates a queueable object with a net.Conn interface and adds it to
-// the queue. This allows us to reuse an already created channel for replying.
-func (sq *Queue) SetConn(id uint64, c net.Conn) {
-	q := new(Queueable)
-	q.id = id
-	q.conn = c
+	q.conn = conn
+	q.prevConn = prevConn
 	sq.queue <- q
 }
 
 // Close creates a queueable object that sends the last msg in the circuit,
 // closes the connection and deletes all associated resources.
-func (sq *Queue) Close(id uint64, msg []byte, destroy bool) {
+func (sq *Queue) Close(id uint64, msg []byte, destroy bool, conn, prevConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
 	if msg != nil {
@@ -150,36 +130,32 @@ func (sq *Queue) Close(id uint64, msg []byte, destroy bool) {
 	}
 	q.remove = true
 	q.destroy = destroy
+	q.conn = conn
+	q.prevConn = prevConn
 	sq.queue <- q
 }
 
 func (sq *Queue) delete(q *Queueable) {
 	// Close the connection and delete all resources. Any subsequent
 	// messages or reply requests will cause an error.
-	if c, def := sq.nextConn[q.id]; def {
-		if q.destroy {
-			// Wait for the client to kill the connection or timeout
-			if q.msg == nil {
-				c.Close()
-			} else {
-				_, err := c.Read([]byte{0})
-				if err != nil {
-					e, ok := err.(net.Error)
-					if err == io.EOF || (ok && e.Timeout()) {
-						if ok && e.Timeout() {
-							// TODO(kwonalbert)
-							// Did not receive closed
-							// Should handle this err here..
-						}
-						c.Close()
+	if q.destroy {
+		// Wait for the client to kill the connection or timeout
+		if q.msg == nil {
+			q.conn.Close()
+		} else {
+			_, err := q.conn.Read([]byte{0})
+			if err != nil {
+				e, ok := err.(net.Error)
+				if err == io.EOF || (ok && e.Timeout()) {
+					if ok && e.Timeout() {
+						// TODO(kwonalbert)
+						// Did not receive closed
+						// Should handle this err here..
 					}
+					q.conn.Close()
 				}
 			}
 		}
-		delete(sq.nextConn, q.id)
-	}
-	if _, def := sq.nextAddr[q.id]; def {
-		delete(sq.nextAddr, q.id)
 	}
 	if _, def := sq.sendBuffer[q.id]; def {
 		delete(sq.sendBuffer, q.id)
@@ -195,34 +171,10 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 	for {
 		select {
 		case <-kill:
-			for _, c := range sq.nextConn {
-				c.Close()
-			}
 			return
 
 		case q := <-sq.queue:
-			// Set the next-hop address. We don't allow the destination address
-			// or connection to be overwritten in order to avoid accumulating
-			// stale connections on routers.
-			if _, def := sq.nextAddr[q.id]; !def && q.addr != "" {
-				sq.nextAddr[q.id] = q.addr
-			}
-
-			// Set the next-hop connection. This is useful for routing replies
-			// from the destination over already created circuits back to the
-			// source.
-			if _, def := sq.nextConn[q.id]; !def && q.conn != nil {
-				sq.nextConn[q.id] = q.conn
-			}
-
 			if q.msg != nil || q.reply != nil {
-				// Add message or message request (reply) to the queue.
-				if _, def := sq.nextAddr[q.id]; !def {
-					sq.err <- sendQueueError{q.prevId,
-						errors.New("request to send/receive message without a destination")}
-					continue
-				}
-
 				// Create a send buffer for the sender ID if it doesn't exist.
 				if _, def := sq.sendBuffer[q.id]; !def {
 					sq.sendBuffer[q.id] = list.New()
@@ -265,7 +217,7 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 				glog.Errorf("queue: %s\n", e)
 				return
 			}
-			queue.EnqueueMsg(err.id, 0, cell)
+			queue.EnqueueMsg(err.id, cell, err.conn, nil)
 		}
 	}
 }
@@ -301,19 +253,13 @@ func (sq *Queue) dequeue() {
 	// Issue a sendWorker thread for each message to be sent.
 	ch := make(chan senderResult)
 	for _, id := range ids[:sq.batchSize] {
-		addr := sq.nextAddr[id]
 		q := sq.sendBuffer[id].Front().Value.(*Queueable)
-		c, def := sq.nextConn[id]
-		go senderWorker(sq.network, addr, q, c, def, ch, sq.err, sq.timeout)
+		go senderWorker(sq.network, q, ch, sq.err, sq.timeout)
 	}
 
 	// Wait for workers to finish.
 	for _ = range ids[:sq.batchSize] {
 		res := <-ch
-		if res.c != nil {
-			// Save the connection.
-			sq.nextConn[res.id] = res.c
-		}
 
 		// If this was close with a message, then remove q here
 		q := sq.sendBuffer[res.id].Front().Value.(*Queueable)
@@ -340,30 +286,17 @@ type senderResult struct {
 	id uint64
 }
 
-func senderWorker(network, addr string, q *Queueable, c net.Conn, def bool,
+func senderWorker(network string, q *Queueable,
 	res chan<- senderResult, err chan<- sendQueueError, timeout time.Duration) {
-	var e error
-
 	// Wait to connect until the queue is dequeued in order to prevent
 	// an observer from correlating an incoming cell with the handshake
 	// with the destination server.
-	if !def {
-		c, e = net.DialTimeout(network, addr, timeout)
-		if e != nil {
-			err <- sendQueueError{q.prevId, e}
-			res <- senderResult{c, q.id}
-			if q.reply != nil {
-				q.reply <- nil
-			}
-			return
-		}
-	}
 
-	c.SetDeadline(time.Now().Add(timeout))
+	q.conn.SetDeadline(time.Now().Add(timeout))
 	if q.msg != nil { // Send the message.
-		if _, e := c.Write(q.msg); e != nil {
-			err <- sendQueueError{q.prevId, e}
-			res <- senderResult{c, q.id}
+		if _, e := q.conn.Write(q.msg); e != nil {
+			err <- sendQueueError{q.id, q.prevConn, e}
+			res <- senderResult{q.conn, q.id}
 			if q.reply != nil {
 				q.reply <- nil
 			}
@@ -371,13 +304,13 @@ func senderWorker(network, addr string, q *Queueable, c net.Conn, def bool,
 		}
 	}
 
-	c.SetDeadline(time.Now().Add(timeout))
+	q.conn.SetDeadline(time.Now().Add(timeout))
 	if q.reply != nil { // Receive a message.
 		msg := make([]byte, MaxMsgBytes)
-		bytes, e := c.Read(msg)
+		bytes, e := q.conn.Read(msg)
 		if e != nil {
-			err <- sendQueueError{q.prevId, e}
-			res <- senderResult{c, q.id}
+			err <- sendQueueError{q.id, q.prevConn, e}
+			res <- senderResult{q.conn, q.id}
 			q.reply <- nil
 			return
 		}
@@ -385,5 +318,5 @@ func senderWorker(network, addr string, q *Queueable, c net.Conn, def bool,
 		q.reply <- msg[:bytes]
 	}
 
-	res <- senderResult{c, q.id}
+	res <- senderResult{q.conn, q.id}
 }

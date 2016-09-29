@@ -125,12 +125,21 @@ func TestQueueSend(t *testing.T) {
 		done <- true
 	}()
 
+	conns := make([]net.Conn, clientCt)
+	var err error
+	for i := 0; i < clientCt; i++ {
+		conns[i], err = net.DialTimeout(network, dstAddr, timeout)
+		if err != nil {
+			t.Error("Couldn't connect to server:", err)
+		}
+	}
+
 	for round := 0; round < msgCt; round++ {
 		// Enqueue some messages.
 		for i := 0; i < clientCt; i++ {
 			q := new(Queueable)
 			q.id = uint64(i)
-			q.addr = dstAddr
+			q.conn = conns[i]
 			q.msg = []byte(
 				fmt.Sprintf("I am anonymous, but my ID is %d.", i))
 			sq.Enqueue(q)

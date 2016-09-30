@@ -144,7 +144,8 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   // FLAGS_alsologtostderr = true;
   google::ParseCommandLineFlags(argc, argv, remove_args);
-  google::InitGoogleLogging((*argv)[0]);
+  // google::InitGoogleLogging((*argv)[0]);
+  google::InitGoogleLogging("/Users/jlm/tmp");
   google::InstallFailureSignalHandler();
   signal(SIGPIPE, SIG_IGN);
   return InitializeOpenSSL();

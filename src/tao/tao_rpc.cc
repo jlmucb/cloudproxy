@@ -26,65 +26,82 @@ namespace tao {
 
 bool TaoRPC::GetTaoName(string *name) {
   TaoRPCRequest rpc;
-  return Request("Tao.GetTaoName", rpc, name, nullptr /* policy */);
+  return Request("Tao.GetTaoName", rpc, name, nullptr /* policy */, nullptr);
 }
 
 bool TaoRPC::ExtendTaoName(const string &subprin) {
   TaoRPCRequest rpc;
   rpc.set_data(subprin);
   return Request("Tao.ExtendTaoName", rpc, nullptr /* data */,
-                 nullptr /* policy */);
+                 nullptr /* policy */, nullptr);
 }
 
 bool TaoRPC::GetRandomBytes(size_t size, string *bytes) {
   TaoRPCRequest rpc;
   rpc.set_size(size);
-  return Request("Tao.GetRandomBytes", rpc, bytes, nullptr /* policy */);
+  return Request("Tao.GetRandomBytes", rpc, bytes, nullptr /* policy */, nullptr);
 }
 
 bool TaoRPC::GetSharedSecret(size_t size, const string &policy, string *bytes) {
   TaoRPCRequest rpc;
   rpc.set_size(size);
   rpc.set_policy(policy);
-  return Request("Tao.GetSharedSecret", rpc, bytes, nullptr /* policy */);
+  return Request("Tao.GetSharedSecret", rpc, bytes, nullptr /* policy */, nullptr);
 }
 
 bool TaoRPC::Attest(const string &message, string *attestation) {
   TaoRPCRequest rpc;
   rpc.set_data(message);
-  return Request("Tao.Attest", rpc, attestation, nullptr /* policy */);
+  return Request("Tao.Attest", rpc, attestation, nullptr /* policy */, nullptr);
 }
 
 bool TaoRPC::Seal(const string &data, const string &policy, string *sealed) {
   TaoRPCRequest rpc;
   rpc.set_data(data);
   rpc.set_policy(policy);
-  return Request("Tao.Seal", rpc, sealed, nullptr /* policy */);
+  return Request("Tao.Seal", rpc, sealed, nullptr /* policy */, nullptr);
 }
 
 bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
   TaoRPCRequest rpc;
   rpc.set_data(sealed);
-  return Request("Tao.Unseal", rpc, data, policy);
-}
-/*
- * To add:
-bool TaoRPC::InitCounter(const string &message) {
-  return Request("Tao.InitCounter", rpc, data, policy);
+  return Request("Tao.Unseal", rpc, data, policy, nullptr);
 }
 
-bool TaoRPC::GetCounter(const string &message, string* counter) {
+bool TaoRPC::InitCounter(const string& label, int64_t& c) {
+  // LOG(INFO) << "***InitCounter in tao_rpc\n";
+  printf("***InitCounter in tao_rpc\n");
+return false;
+  TaoRPCRequest rpc;
+  rpc.set_label(label);
+  rpc.set_counter(c);
+  return Request("Tao.InitCounter", rpc, nullptr, nullptr, nullptr);
 }
 
-bool TaoRPC::RollbackProtectedSeal(const string &message, string* sealed) {
+bool TaoRPC::GetCounter(const string& label, int64_t* c) {
+  printf("***GetCounter in tao_rpc\n");
+  TaoRPCRequest rpc;
+  rpc.set_label(label);
+  return Request("Tao.GetCounter", rpc, nullptr, nullptr, c);
 }
 
-bool TaoRPC::RollbackProtectedUnseal(const string &message, string* unsealed, string* policy) {
+bool TaoRPC::RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed) {
+  printf("***RollbackProtectedSeal in tao_rpc\n");
+  TaoRPCRequest rpc;
+  rpc.set_policy(policy);
+  rpc.set_data(data);
+  return Request("Tao.RollbackProtectedSeal", rpc, sealed, nullptr, nullptr);
 }
- */
+
+bool TaoRPC::RollbackProtectedUnseal(const string &sealed, string *data, string *policy) {
+  printf("***RollbackProtectedUnseal in tao_rpc\n");
+  TaoRPCRequest rpc;
+  rpc.set_data(sealed);
+  return Request("Tao.RollbackProtectedUnseal", rpc, data, policy, nullptr);
+}
 
 bool TaoRPC::Request(const string &op, const TaoRPCRequest &req, string *data,
-                     string *policy) {
+                     string *policy, int64_t* counter) {
   ProtoRPCRequestHeader reqHdr;
   ProtoRPCResponseHeader respHdr;
   reqHdr.set_op(op);

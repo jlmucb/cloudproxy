@@ -17,5 +17,5 @@ sleep 1
 $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleServer -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleServer" &
 sleep 1
 # $BINPATH/tao run -tao_domain $DOMAIN /Domains/simpleclient_cc.exe -domain_config "/Domains/domain.simpleexample/tao.config" -path "/Domains/domain.simpleexample/SimpleClientCpp" &
-$BINPATH/tao run -tao_domain $DOMAIN /Domains/simpleclient_cc.exe &
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/simpleclient_cc.exe -test_rollback 1 &
 

@@ -110,6 +110,12 @@ public:
   bool Unseal(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
 
+
+  bool InitCounter(string& label, int64_t& c);
+  bool GetCounter(string& label, int64_t* c);
+  bool RollbackProtectedSeal(string& label, string& data, string* sealed);
+  bool RollbackProtectedUnseal(string& sealed, string* data, string* policy);
+
 private:
   // This should be private.
   bool RequestDomainServiceCert(string& network, string& address, string& port,

@@ -125,13 +125,17 @@ class Tao {
   /// performed the Seal() operation.
   virtual bool Unseal(const string &sealed, string *data, string *policy) = 0;
 
-/*
- * To add:
-  virtual bool InitCounter(const string &message) = 0;
-  virtual bool GetCounter(const string &message, string* counter) = 0;
-  virtual bool RollbackProtectedSeal(const string &message, string* sealed) = 0;
-  virtual bool RollbackProtectedUnseal(const string &message, string* unsealed, string* policy) = 0;
- */
+  // InitCounter initializes the rollback counter.
+  virtual bool InitCounter(const string &label, int64_t& c) = 0;
+
+  // GetCounter retrieved the rollback counter.
+  virtual bool GetCounter(const string &label, int64_t* c) = 0;
+
+  // RollbackProtectedSeal does a rollback protected seal.
+  virtual bool RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed) = 0;
+
+  // RollbackProtectedUnseal does a rollback protected unseal.
+  virtual bool RollbackProtectedUnseal(const string &sealed, string *data, string *policy) = 0;
 
   /// Policy for sealing and unsealing. Hosts may implement additional policies.
   /// @{

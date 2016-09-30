@@ -57,21 +57,27 @@ int main(int argc, char **argv) {
   unique_ptr<FDMessageChannel> msg(new FDMessageChannel(3, 4));
 
 // wierd tests
-#if 1
+#define WIERDTEST
+#ifdef WIERDTEST
 string label("label");
 int64_t initial_counter = 5LL;
 printf("Initial test section\n");
 TaoRPC tao1(msg.release());
 TaoRPC* tao2 = &tao1;
 
-#if 1
+#define PTRACCESS
+#define XX
+#ifdef PTRACCESS
 printf("tao2->InitCounter(label, initial_counter): \n");
 if (tao2->InitCounter(label, initial_counter)) {
       printf("TRUE\n");
 } else {
       printf("FALSE\n");
 }
+
+#ifdef XX
 return 0;
+#endif
 
 #else
 
@@ -84,7 +90,9 @@ printf("(*tao2).InitCounter(label, initial_counter): \n");
 (*tao2).InitCounter(label, initial_counter);
 printf("tao2->InitCounter(label, initial_counter): \n");
 tao2->InitCounter(label, initial_counter);
+#ifdef XX
 return 0;
+#endif
 #endif
 #endif
 

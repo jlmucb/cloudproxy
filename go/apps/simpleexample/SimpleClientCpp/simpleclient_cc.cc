@@ -60,6 +60,33 @@ int main(int argc, char **argv) {
   TaoProgramData client_program_data;
   TaoChannel client_channel;
 
+#if 1
+string label("label");
+int64_t initial_counter = 5LL;
+printf("Rollback test section\n");
+TaoRPC tao1(msg.release());
+TaoRPC* tao2= &tao1;
+
+printf("tao2->InitCounter(label, initial_counter): \n");
+if (tao2->InitCounter(label, initial_counter)) {
+      printf("TRUE\n");
+} else {
+      printf("FALSE\n");
+}
+return 0;
+
+if (tao1.InitCounter(label, initial_counter)) {
+      printf("TRUE\n");
+} else {
+      printf("FALSE\n");
+}
+printf("(*tao2).InitCounter(label, initial_counter): \n");
+(*tao2).InitCounter(label, initial_counter);
+printf("tao2->InitCounter(label, initial_counter): \n");
+tao2->InitCounter(label, initial_counter);
+return 0;
+#endif
+
   client_program_data.ClearProgramData();
 
   string tcp("tcp");
@@ -107,6 +134,7 @@ int main(int argc, char **argv) {
 
   if (FLAGS_test_rollback) {
     // Put Rollback protection tests here
+    /*
     byte data[] = { 
       0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
       0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5
@@ -119,6 +147,7 @@ int main(int argc, char **argv) {
     int64_t counter = 0LL;
     int64_t initial_counter = 5LL;
     data_to_seal.assign((const char *)data, sizeof(data));
+
     printf("Rollback test section\n");
     TaoRPC tao1(msg.release());
     TaoRPC* tao2= &tao1;
@@ -127,8 +156,11 @@ int main(int argc, char **argv) {
     } else {
       printf("FALSE\n");
     }
-    tao1.InitCounter(label, initial_counter);
-    /*
+    printf("(*tao2).InitCounter(label, initial_counter): \n");
+    (*tao2).InitCounter(label, initial_counter);
+    printf("tao2->InitCounter(label, initial_counter): \n");
+    tao2->InitCounter(label, initial_counter);
+
     // if (client_program_data.InitCounter(label, initial_counter)) {
     if (((TaoRPC*)tao)->InitCounter(label, initial_counter)) {
       printf("InitCounter succeeded 0\n");

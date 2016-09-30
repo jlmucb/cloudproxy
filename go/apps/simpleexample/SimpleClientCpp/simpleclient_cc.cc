@@ -119,12 +119,22 @@ int main(int argc, char **argv) {
     int64_t counter = 0LL;
     int64_t initial_counter = 5LL;
     data_to_seal.assign((const char *)data, sizeof(data));
-    if (client_program_data.InitCounter(label, initial_counter)) {
-      printf("InitCounter succeeded\n");
+    printf("Rollback test section\n");
+    TaoRPC tao1(msg.release());
+    TaoRPC* tao2= &tao1;
+    if (tao1.InitCounter(label, initial_counter)) {
+      printf("TRUE\n");
     } else {
-      printf("InitCounter failed\n");
+      printf("FALSE\n");
     }
+    tao1.InitCounter(label, initial_counter);
     /*
+    // if (client_program_data.InitCounter(label, initial_counter)) {
+    if (((TaoRPC*)tao)->InitCounter(label, initial_counter)) {
+      printf("InitCounter succeeded 0\n");
+    } else {
+      printf("InitCounter failed 0\n");
+    }
     if (client_program_data.GetCounter(label, &counter)) {
       printf("GetCounter (1) succeeded %lld\n", counter);
     } else {

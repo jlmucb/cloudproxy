@@ -55,18 +55,16 @@ int main(int argc, char **argv) {
   // doesn't need to take any parameters. It will establish a Tao Child Channel
   // directly with these fds.
   unique_ptr<FDMessageChannel> msg(new FDMessageChannel(3, 4));
-  unique_ptr<Tao> tao(new TaoRPC(msg.release()));
 
-  TaoProgramData client_program_data;
-  TaoChannel client_channel;
-
+// wierd tests
 #if 1
 string label("label");
 int64_t initial_counter = 5LL;
-printf("Rollback test section\n");
+printf("Initial test section\n");
 TaoRPC tao1(msg.release());
-TaoRPC* tao2= &tao1;
+TaoRPC* tao2 = &tao1;
 
+#if 1
 printf("tao2->InitCounter(label, initial_counter): \n");
 if (tao2->InitCounter(label, initial_counter)) {
       printf("TRUE\n");
@@ -74,6 +72,8 @@ if (tao2->InitCounter(label, initial_counter)) {
       printf("FALSE\n");
 }
 return 0;
+
+#else
 
 if (tao1.InitCounter(label, initial_counter)) {
       printf("TRUE\n");
@@ -86,6 +86,12 @@ printf("tao2->InitCounter(label, initial_counter): \n");
 tao2->InitCounter(label, initial_counter);
 return 0;
 #endif
+#endif
+
+  unique_ptr<Tao> tao(new TaoRPC(msg.release()));
+
+  TaoProgramData client_program_data;
+  TaoChannel client_channel;
 
   client_program_data.ClearProgramData();
 

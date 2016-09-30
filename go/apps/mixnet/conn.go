@@ -65,12 +65,13 @@ var dirDestroyed = &Directive{Type: DirectiveType_DESTROYED.Enum()}
 // protocol.
 type Conn struct {
 	net.Conn
+	id       uint32
 	timeout  time.Duration // timeout on read/write.
 	circuits map[uint64]Circuit
 	cLock    *sync.RWMutex
 }
 
-// A cell read from the network connection
+// A cell is a message read from the network connection
 type Cell struct {
 	cell []byte
 	err  error
@@ -107,7 +108,7 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 	return n, nil
 }
 
-// GetID returns the connection's serial ID.
+// GetID returns the cell ID.
 func getID(cell []byte) uint64 {
 	id := binary.LittleEndian.Uint64(cell[ID:])
 	return id

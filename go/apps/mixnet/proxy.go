@@ -88,7 +88,11 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, p.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
+	id, err := p.newConnID()
+	if err != nil {
+		return nil, err
+	}
+	conn := &Conn{c, id, p.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
 	go p.multiplexConn(conn)
 	return conn, nil
 }
@@ -99,6 +103,7 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 func (p *ProxyContext) multiplexConn(c *Conn) {
 	for {
 		cell := make([]byte, CellBytes)
+		c.SetDeadline(time.Now().Add(p.timeout))
 		_, err := c.Read(cell)
 		if err == nil {
 			id := getID(cell)
@@ -112,7 +117,11 @@ func (p *ProxyContext) multiplexConn(c *Conn) {
 				}(circuit)
 			}
 			p.conns.Unlock()
-			return
+			break
+		}
+		if len(c.circuits) == 0 { // no more circuits, close the conn
+			c.Close()
+			break
 		}
 	}
 }
@@ -176,20 +185,32 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	}
 
 	delete(c.circuits, id)
-	if len(c.circuits) == 0 { // no more circuits, close the conn
-		c.Close()
-	}
 	return nil
 }
 
 // Return a random circuit ID
 // TODO(kwonalbert): probably won't happen, but should check for duplicates
 func (p *ProxyContext) newID() (uint64, error) {
+	id := uint64(0)
+	for id < 1<<32 { // Reserving the first 2^32 ids for connection id
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			return 0, err
+		}
+		id = binary.LittleEndian.Uint64(b)
+	}
+	return id, nil
+}
+
+// Return a random connection ID
+// TODO(kwonalbert): should check for duplicates
+func (p *ProxyContext) newConnID() (uint32, error) {
+	id := uint32(0)
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
 		return 0, err
 	}
-	id := binary.LittleEndian.Uint64(b)
+	id = binary.LittleEndian.Uint32(b)
 	return id, nil
 }
 

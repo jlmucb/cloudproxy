@@ -69,8 +69,9 @@ bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
 }
 
 bool TaoRPC::InitCounter(const string &label, int64_t& c) {
+  // LOG(INFO) << "***InitCounter in tao_rpc\n";
   printf("***InitCounter in tao_rpc\n");
-return true;
+return false;
   TaoRPCRequest rpc;
   rpc.set_label(label);
   rpc.set_counter(c);

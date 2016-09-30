@@ -55,6 +55,39 @@ int main(int argc, char **argv) {
   // doesn't need to take any parameters. It will establish a Tao Child Channel
   // directly with these fds.
   unique_ptr<FDMessageChannel> msg(new FDMessageChannel(3, 4));
+
+// wierd tests
+#if 1
+string label("label");
+int64_t initial_counter = 5LL;
+printf("Initial test section\n");
+TaoRPC tao1(msg.release());
+TaoRPC* tao2 = &tao1;
+
+#if 1
+printf("tao2->InitCounter(label, initial_counter): \n");
+if (tao2->InitCounter(label, initial_counter)) {
+      printf("TRUE\n");
+} else {
+      printf("FALSE\n");
+}
+return 0;
+
+#else
+
+if (tao1.InitCounter(label, initial_counter)) {
+      printf("TRUE\n");
+} else {
+      printf("FALSE\n");
+}
+printf("(*tao2).InitCounter(label, initial_counter): \n");
+(*tao2).InitCounter(label, initial_counter);
+printf("tao2->InitCounter(label, initial_counter): \n");
+tao2->InitCounter(label, initial_counter);
+return 0;
+#endif
+#endif
+
   unique_ptr<Tao> tao(new TaoRPC(msg.release()));
 
   TaoProgramData client_program_data;
@@ -107,6 +140,7 @@ int main(int argc, char **argv) {
 
   if (FLAGS_test_rollback) {
     // Put Rollback protection tests here
+    /*
     byte data[] = { 
       0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
       0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5
@@ -119,6 +153,7 @@ int main(int argc, char **argv) {
     int64_t counter = 0LL;
     int64_t initial_counter = 5LL;
     data_to_seal.assign((const char *)data, sizeof(data));
+
     printf("Rollback test section\n");
     TaoRPC tao1(msg.release());
     TaoRPC* tao2= &tao1;
@@ -127,8 +162,11 @@ int main(int argc, char **argv) {
     } else {
       printf("FALSE\n");
     }
-    tao1.InitCounter(label, initial_counter);
-    /*
+    printf("(*tao2).InitCounter(label, initial_counter): \n");
+    (*tao2).InitCounter(label, initial_counter);
+    printf("tao2->InitCounter(label, initial_counter): \n");
+    tao2->InitCounter(label, initial_counter);
+
     // if (client_program_data.InitCounter(label, initial_counter)) {
     if (((TaoRPC*)tao)->InitCounter(label, initial_counter)) {
       printf("InitCounter succeeded 0\n");

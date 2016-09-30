@@ -126,10 +126,10 @@ class Tao {
   virtual bool Unseal(const string &sealed, string *data, string *policy) = 0;
 
   // InitCounter initializes the rollback counter.
-  virtual bool InitCounter(const string &label, int64_t& c) = 0;
+  virtual bool InitCounter(const string& label, int64_t& c) = 0;
 
   // GetCounter retrieved the rollback counter.
-  virtual bool GetCounter(const string &label, int64_t* c) = 0;
+  virtual bool GetCounter(const string& label, int64_t* c) = 0;
 
   // RollbackProtectedSeal does a rollback protected seal.
   virtual bool RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed) = 0;

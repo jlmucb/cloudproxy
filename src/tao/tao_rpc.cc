@@ -68,7 +68,7 @@ bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
   return Request("Tao.Unseal", rpc, data, policy, nullptr);
 }
 
-bool TaoRPC::InitCounter(const string &label, int64_t& c) {
+bool TaoRPC::InitCounter(const string& label, int64_t& c) {
   // LOG(INFO) << "***InitCounter in tao_rpc\n";
   printf("***InitCounter in tao_rpc\n");
 return false;
@@ -78,7 +78,7 @@ return false;
   return Request("Tao.InitCounter", rpc, nullptr, nullptr, nullptr);
 }
 
-bool TaoRPC::GetCounter(const string &label, int64_t* c) {
+bool TaoRPC::GetCounter(const string& label, int64_t* c) {
   printf("***GetCounter in tao_rpc\n");
   TaoRPCRequest rpc;
   rpc.set_label(label);

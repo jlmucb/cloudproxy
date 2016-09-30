@@ -47,9 +47,9 @@ $(O)/tao_rpc.pb.o: $(TS)/tao_rpc.pb.cc
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/tao_rpc.pb.o $(TS)/tao_rpc.pb.cc
 
 #$(TS)/tao_rpc.pb.cc: $(TS)/tao_rpc.proto
-	@echo "proto 1"
-	@echo "$(PROTO) --cpp_out=$(TS) $(TS)/tao_rpc.proto"
-	$(PROTO) --cpp_out=$(TS) $(TS)/tao_rpc.proto
+#	@echo "proto 1"
+#	@echo "$(PROTO) --cpp_out=$(TS) $(TS)/tao_rpc.proto"
+#	$(PROTO) --cpp_out=$(TS) $(TS)/tao_rpc.proto
 
 $(O)/tao_rpc.o: $(TS)/tao_rpc.cc
 	@echo "compiling tao_rpc.cc"

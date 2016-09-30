@@ -451,19 +451,20 @@ bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
 }
 
 bool TaoProgramData::InitCounter(string& label, int64_t& c) {
+printf("Calling tao_->TaoProgramData::InitCounter(%llx)\n", tao_);
   return tao_->InitCounter(label, c);
 }
 
 bool TaoProgramData::GetCounter(string& label, int64_t* c) {
-  return tao_->GetCounter(label, c);
+  return false; // return tao_->GetCounter(label, c);
 }
 
 bool TaoProgramData::RollbackProtectedSeal(string& label, string& data, string* sealed) {
-  return tao_->RollbackProtectedSeal(label, data, Tao::SealPolicyDefault, sealed);
+  return false; // return tao_->RollbackProtectedSeal(label, data, Tao::SealPolicyDefault, sealed);
 }
 
 bool TaoProgramData::RollbackProtectedUnseal(string& sealed, string* data, string* policy) {
-  return tao_->RollbackProtectedUnseal(sealed, data, policy);
+  return false; // return tao_->RollbackProtectedUnseal(sealed, data, policy);
 }
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,

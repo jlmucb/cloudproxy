@@ -93,14 +93,14 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, id, p.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
-	go p.multiplexConn(conn)
+	go p.handleConn(conn)
 	return conn, nil
 }
 
-// Multiplexes reading from a connection
-// (kwonalbert) No need to multiplex writes;
-// each circuit should be able to write whenever
-func (p *ProxyContext) multiplexConn(c *Conn) {
+// handleConn multiplexes one a connection read for multiple circuits
+// There is no need to multiplex writes;
+// each circuit should be able to write whenever.
+func (p *ProxyContext) handleConn(c *Conn) {
 	for {
 		cell := make([]byte, CellBytes)
 		c.SetDeadline(time.Now().Add(p.timeout))
@@ -117,10 +117,6 @@ func (p *ProxyContext) multiplexConn(c *Conn) {
 				}(circuit)
 			}
 			p.conns.Unlock()
-			break
-		}
-		if len(c.circuits) == 0 { // no more circuits, close the conn
-			c.Close()
 			break
 		}
 	}
@@ -185,6 +181,9 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	}
 
 	delete(c.circuits, id)
+	if len(c.circuits) == 0 { // no more circuits, close the conn
+		c.Close()
+	}
 	return nil
 }
 

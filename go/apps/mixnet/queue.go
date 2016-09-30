@@ -16,6 +16,7 @@ package mixnet
 
 import (
 	"container/list"
+	"errors"
 	"io"
 	"math/rand"
 	"net"
@@ -296,12 +297,20 @@ func senderWorker(network string, q *Queueable,
 		}
 	}
 
+	// TODO(kwonalbert) Currently this assumes there is only one reply per
+	// msg sent, but this might not be true.
+	// Should allow for arbitrary # of msgs in each directions
 	q.conn.SetDeadline(time.Now().Add(timeout))
 	if q.reply != nil { // Receive a message.
-		msg := make([]byte, MaxMsgBytes)
+		msg := make([]byte, MaxMsgBytes+1)
 		bytes, e := q.conn.Read(msg)
 		if e != nil {
 			err <- sendQueueError{q.id, q.prevConn, e}
+			res <- senderResult{q.conn, q.id}
+			q.reply <- nil
+			return
+		} else if bytes > MaxMsgBytes {
+			err <- sendQueueError{q.id, q.prevConn, errors.New("Response message too long")}
 			res <- senderResult{q.conn, q.id}
 			q.reply <- nil
 			return

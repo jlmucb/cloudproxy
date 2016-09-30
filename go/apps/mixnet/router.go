@@ -44,7 +44,7 @@ type RouterContext struct {
 
 	// Connections to next hop routers
 	conns map[string]*Conn
-	// Maps circuit id to next hop;
+	// Maps circuit id to next hop connections
 	circuits map[uint64]*Conn
 	// Mapping id to next hop circuit id or prev hop circuit id
 	nextIds map[uint64]uint64
@@ -249,9 +249,8 @@ func (hp *RouterContext) HandleErr() {
 	}
 }
 
-// handleConn reads a directive or a message from a proxy.
-// Handling directives is done here, but actually receiving the messages
-// is done in handleMessages
+// handleConn reads a directive or a message from a proxy. The directives
+// are handled here, but actual messages are handled in handleMessages
 func (hp *RouterContext) handleConn(c *Conn, fromProxy bool, forward bool) {
 	for {
 		var err error
@@ -340,7 +339,7 @@ func (hp *RouterContext) handleConn(c *Conn, fromProxy bool, forward bool) {
 				// == 1 because we haven't removed the circuit yet
 				empty := !exit && len(hp.circuits[id].circuits) == 1
 				hp.mapLock.RUnlock()
-				hp.queue.Close(id, nil, empty, c, prevConn)
+				sendQ.Close(sId, nil, empty, c, prevConn)
 
 				// Relay back destroyed
 				cell, err = marshalDirective(prevId, dirDestroyed)
@@ -348,10 +347,8 @@ func (hp *RouterContext) handleConn(c *Conn, fromProxy bool, forward bool) {
 					hp.errs <- err
 					break
 				}
-				hp.delete(c, id, prevId)
-				c.cLock.RLock()
-				hp.queue.Close(prevId, cell, len(c.circuits) == 0, prevConn, nil)
-				c.cLock.RUnlock()
+				empty = hp.delete(c, id, prevId)
+				respQ.Close(rId, cell, empty, prevConn, nil)
 			}
 		} else { // Unknown cell type, return an error.
 			if err = hp.SendError(respQ, rId, id, errBadCellType, c); err != nil {
@@ -362,7 +359,6 @@ func (hp *RouterContext) handleConn(c *Conn, fromProxy bool, forward bool) {
 		// Sending nil err makes testing easier;
 		// Easier to count cells by getting the number of errs
 		hp.errs <- nil
-		// New circuits could be established while this reads circuits
 		c.cLock.RLock()
 		if len(c.circuits) == 0 { // empty connection
 			break
@@ -371,8 +367,9 @@ func (hp *RouterContext) handleConn(c *Conn, fromProxy bool, forward bool) {
 	}
 }
 
-// Handle the create directive by either relaying it on (opens a new connection),
-// or sending back created directive if this is an exit
+// handleCreated handles the create directive by either relaying it on
+// (which opens a new connection), or sending back created directive
+// if this is an exit.
 func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64,
 	sendQ, respQ *Queue, sId, rId uint64) error {
 	hp.mapLock.Lock()
@@ -403,6 +400,7 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 		var nextConn *Conn
 		if _, ok := hp.conns[d.Addrs[0]]; !ok {
 			nextConn, err = hp.DialRouter(hp.network, d.Addrs[0])
+			nextConn.cLock.Lock()
 			if err != nil {
 				hp.mapLock.Unlock()
 				if e := hp.SendError(respQ, rId, id, err, c); e != nil {
@@ -411,8 +409,8 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 			}
 		} else {
 			nextConn = hp.conns[d.Addrs[0]]
+			nextConn.cLock.Lock()
 		}
-		nextConn.cLock.Lock()
 		nextConn.circuits[newId] = Circuit{make(chan Cell)}
 		nextConn.cLock.Unlock()
 		hp.circuits[newId] = nextConn
@@ -452,8 +450,8 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 	return nil
 }
 
-// Handle the destroy directive by either relaying it on, or sending back
-// destroyed directive if this is an exit
+// handleDestroy handles the destroy directive by either relaying it on,
+// or sending back destroyed directive if this is an exit
 func (hp *RouterContext) handleDestroy(d Directive, c, nextConn *Conn, exit bool, id, nextId uint64,
 	sendQ, respQ *Queue, sId, rId uint64) error {
 	// Close the connection if you are an exit for this circuit
@@ -463,8 +461,8 @@ func (hp *RouterContext) handleDestroy(d Directive, c, nextConn *Conn, exit bool
 		if err != nil {
 			return err
 		}
-		hp.delete(c, id, id) // there is not previous id for this, so delete id
-		respQ.Close(rId, cell, len(c.circuits) == 0, c, c)
+		empty := hp.delete(c, id, id) // there is not previous id for this, so delete id
+		respQ.Close(rId, cell, empty, c, c)
 	} else {
 		nextCell, err := marshalDirective(nextId, dirDestroy)
 		if err != nil {
@@ -475,8 +473,8 @@ func (hp *RouterContext) handleDestroy(d Directive, c, nextConn *Conn, exit bool
 	return nil
 }
 
-// Handles actual messages coming in on a circuit.
-// The directives are handled in handleConn
+// handleMessages reconstructs the full message at the exit node, and sends it
+// out to the final destination. The directives are handled in handleConn.
 func (hp *RouterContext) handleMessages(dest string, circ Circuit, id, nextId uint64, prevConn *Conn,
 	sendQ, respQ *Queue, sId, rId uint64) {
 	var conn net.Conn = nil
@@ -580,14 +578,16 @@ func (hp *RouterContext) SendError(queue *Queue, queueId, id uint64, err error, 
 	return nil
 }
 
-func (hp *RouterContext) delete(c *Conn, id uint64, prevId uint64) {
+func (hp *RouterContext) delete(c *Conn, id uint64, prevId uint64) bool {
 	// TODO(kwonalbert) Check that this circuit is
 	// actually on this conn
+	hp.mapLock.Lock()
 	c.cLock.Lock()
+
 	close(c.circuits[id].cells)
 	delete(c.circuits, id)
-	c.cLock.Unlock()
-	hp.mapLock.Lock()
+	empty := len(c.circuits) == 0
+
 	delete(hp.circuits, id)
 	delete(hp.nextIds, prevId)
 	delete(hp.prevIds, id)
@@ -596,5 +596,7 @@ func (hp *RouterContext) delete(c *Conn, id uint64, prevId uint64) {
 	if len(c.circuits) == 0 {
 		delete(hp.conns, c.RemoteAddr().String())
 	}
+	c.cLock.Unlock()
 	hp.mapLock.Unlock()
+	return empty
 }

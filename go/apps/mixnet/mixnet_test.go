@@ -270,17 +270,14 @@ func TestProxyRouterConnect(t *testing.T) {
 	// Wait for a connection from the proxy.
 	ch := make(chan bool)
 	go func(ch chan<- bool) {
-		c, _ := router.AcceptProxy()
-		defer c.Close()
+		router.AcceptProxy()
 		ch <- true
 	}(ch)
 
-	c, err := proxy.DialRouter(network, routerAddr)
+	_, err = proxy.DialRouter(network, routerAddr)
 	if err != nil {
-		router.Close()
-		t.Fatal(err)
+		t.Error(err)
 	}
-	defer c.Close()
 
 	<-ch
 }
@@ -538,7 +535,7 @@ func TestProxyRouterRelay(t *testing.T) {
 	}
 	res = <-routerCh
 	if res.err != nil {
-		t.Errorf("relay error", res.err)
+		t.Error("relay error:", res.err)
 	}
 }
 
@@ -634,8 +631,13 @@ func TestSendMessageTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	proxy2, err := makeProxyContext(localAddr, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer router.Close()
 	defer proxy.Close()
+	defer proxy2.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
 	routerAddr := router.proxyListener.Addr().String()
 	ch := make(chan testResult)
@@ -653,15 +655,16 @@ func TestSendMessageTimeout(t *testing.T) {
 		if err = c.SendMessage(id, []byte("hello")); err != nil {
 			t.Error(err)
 		}
-		if _, err = c.ReceiveMessage(id); err == nil {
-			t.Error("receiveMessage incorrectly succeeded")
+		_, err = c.ReceiveMessage(id)
+		if e, ok := err.(net.Error); !(ok && e.Timeout()) {
+			t.Error("receiveMessage should have timed out")
 		}
 		done <- true
 	}()
 
 	// Proxy 2 just creates a circuit.
 	go func() {
-		_, err = proxy.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
+		_, err = proxy2.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
 		if err != nil {
 			t.Error(err)
 		}

@@ -46,6 +46,12 @@ DEFINE_string(domain_server_host, "localhost", "address for domain service");
 DEFINE_string(domain_server_port, "8124", "port for domain service");
 DEFINE_bool(test_rollback, false, "Test rollback protection");
 
+#define WIERDTEST
+#ifdef WIERDTEST
+#include "tao_rpc_test.cc"
+using tao::TaoRPC2;
+#endif
+
 int main(int argc, char **argv) {
 
   // Parse flags, signal handlers, openssl init.
@@ -57,13 +63,19 @@ int main(int argc, char **argv) {
   unique_ptr<FDMessageChannel> msg(new FDMessageChannel(3, 4));
 
 // wierd tests
-#define WIERDTEST
 #ifdef WIERDTEST
+FDMessageChannel* msg1 = new FDMessageChannel(3, 4);
 string label("label");
 int64_t initial_counter = 5LL;
 printf("Initial test section\n");
-TaoRPC tao1(msg.release());
+#define YY
+#ifdef YY
+TaoRPC2 tao1(msg1);
+TaoRPC2* tao2 = &tao1;
+#else
+TaoRPC tao1(msg1);
 TaoRPC* tao2 = &tao1;
+#endif
 
 #define PTRACCESS
 #define XX

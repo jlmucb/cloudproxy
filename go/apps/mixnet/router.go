@@ -161,7 +161,7 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
-	go hp.handleConn(conn, true, true)
+	go hp.handleConn(conn, true)
 	return conn, nil
 }
 
@@ -176,7 +176,7 @@ func (hp *RouterContext) AcceptRouter() (*Conn, error) {
 		return nil, err
 	}
 	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
-	go hp.handleConn(conn, false, true)
+	go hp.handleConn(conn, false)
 	return conn, nil
 }
 
@@ -192,7 +192,7 @@ func (hp *RouterContext) DialRouter(network, addr string) (*Conn, error) {
 	}
 	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
 	hp.conns[addr] = conn
-	go hp.handleConn(conn, false, false)
+	go hp.handleConn(conn, false)
 	return conn, nil
 }
 
@@ -251,7 +251,7 @@ func (hp *RouterContext) HandleErr() {
 
 // handleConn reads a directive or a message from a proxy. The directives
 // are handled here, but actual messages are handled in handleMessages
-func (hp *RouterContext) handleConn(c *Conn, fromProxy bool, forward bool) {
+func (hp *RouterContext) handleConn(c *Conn, fromProxy bool) {
 	for {
 		var err error
 		cell := make([]byte, CellBytes)
@@ -268,7 +268,7 @@ func (hp *RouterContext) handleConn(c *Conn, fromProxy bool, forward bool) {
 		id := getID(cell)
 		hp.mapLock.RLock()
 		prevId := hp.prevIds[id]
-		nextId := hp.nextIds[id]
+		nextId, forward := hp.nextIds[id]
 		exit := hp.exit[id]
 		nextConn := hp.circuits[nextId]
 		prevConn := hp.circuits[prevId]
@@ -461,6 +461,9 @@ func (hp *RouterContext) handleDestroy(d Directive, c, nextConn *Conn, exit bool
 		if err != nil {
 			return err
 		}
+		if nextConn != nil {
+			nextConn.Close()
+		}
 		empty := hp.delete(c, id, id) // there is not previous id for this, so delete id
 		respQ.Close(rId, cell, empty, c, c)
 	} else {
@@ -533,32 +536,45 @@ func (hp *RouterContext) handleMessages(dest string, circ Circuit, id, nextId ui
 				}
 				break
 			}
+			hp.mapLock.Lock()
+			hp.circuits[nextId] = &Conn{conn, 0, hp.timeout, nil, nil}
+			hp.mapLock.Unlock()
+			// Create handler for responses from the destination
+			go func(conn net.Conn, prevConn *Conn, queue *Queue, queueId, id uint64) {
+				for {
+					resp := make([]byte, MaxMsgBytes+1)
+					conn.SetDeadline(time.Now().Add(hp.timeout))
+					n, e := conn.Read(resp)
+					if e == io.EOF {
+						return
+					} else if e != nil {
+						hp.SendError(queue, queueId, id, e, prevConn)
+						return
+					} else if n > MaxMsgBytes {
+						hp.SendError(queue, queueId, id, errors.New("Response message too long"), prevConn)
+						return
+					}
+					cell := make([]byte, CellBytes)
+					binary.LittleEndian.PutUint64(cell[ID:], id)
+					respBytes := len(resp[:n])
+
+					cell[TYPE] = msgCell
+					binary.LittleEndian.PutUint64(cell[BODY:], uint64(respBytes))
+					bytes := copy(cell[BODY+LEN_SIZE:], resp)
+					queue.EnqueueMsg(queueId, cell, prevConn, nil)
+
+					for bytes < n {
+						tao.ZeroBytes(cell)
+						binary.LittleEndian.PutUint64(cell[ID:], id)
+						cell[TYPE] = msgCell
+						bytes += copy(cell[BODY:], resp[bytes:])
+						queue.EnqueueMsg(queueId, cell, prevConn, nil)
+					}
+
+				}
+			}(conn, prevConn, respQ, rId, id)
 		}
-
-		// Wait for a message from the destination, divide it into cells,
-		// and add the cells to queue.
-		reply := make(chan []byte)
-		sendQ.EnqueueMsgReply(sId, msg, reply, conn, prevConn)
-
-		msg = <-reply
-		if msg != nil {
-			tao.ZeroBytes(cell)
-			binary.LittleEndian.PutUint64(cell[ID:], id)
-			msgBytes := len(msg)
-
-			cell[TYPE] = msgCell
-			binary.LittleEndian.PutUint64(cell[BODY:], uint64(msgBytes))
-			bytes := copy(cell[BODY+LEN_SIZE:], msg)
-			respQ.EnqueueMsg(rId, cell, prevConn, nil)
-
-			for bytes < msgBytes {
-				tao.ZeroBytes(cell)
-				binary.LittleEndian.PutUint64(cell[ID:], id)
-				cell[TYPE] = msgCell
-				bytes += copy(cell[BODY:], msg[bytes:])
-				respQ.EnqueueMsg(rId, cell, prevConn, nil)
-			}
-		}
+		sendQ.EnqueueMsg(sId, msg, conn, prevConn)
 	}
 	if conn != nil {
 		conn.Close()

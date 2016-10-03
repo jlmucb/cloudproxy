@@ -504,8 +504,8 @@ func TestProxyRouterRelay(t *testing.T) {
 
 	trials := []int{
 		37, // A short message
-		CellBytes - (BODY + 8), // A cell
-		len(msg),               // A long message
+		CellBytes - (BODY + LEN_SIZE), // A cell
+		len(msg),                      // A long message
 	}
 
 	go runDummyServer(len(trials), 1, dstCh, dstAddrCh)

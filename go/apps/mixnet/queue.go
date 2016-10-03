@@ -16,7 +16,6 @@ package mixnet
 
 import (
 	"container/list"
-	"errors"
 	"io"
 	"math/rand"
 	"net"
@@ -35,7 +34,6 @@ type Queueable struct {
 	msg      []byte
 	conn     net.Conn
 	prevConn net.Conn
-	reply    chan []byte
 	remove   bool
 	destroy  bool
 }
@@ -90,30 +88,6 @@ func (sq *Queue) EnqueueMsg(id uint64, msg []byte, conn, prevConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
 	q.msg = make([]byte, len(msg))
-	copy(q.msg, msg)
-	q.conn = conn
-	q.prevConn = prevConn
-	sq.queue <- q
-}
-
-// EnqueueReply creates a queuable object with a reply channel and adds it to
-// the queue.
-func (sq *Queue) EnqueueReply(id uint64, reply chan []byte, conn, prevConn net.Conn) {
-	q := new(Queueable)
-	q.id = id
-	q.reply = reply
-	q.conn = conn
-	q.prevConn = prevConn
-	sq.queue <- q
-}
-
-// EnqueueMsgReply creates a queueable object with a message and a reply channel
-// and adds it to the queue.
-func (sq *Queue) EnqueueMsgReply(id uint64, msg []byte, reply chan []byte, conn, prevConn net.Conn) {
-	q := new(Queueable)
-	q.id = id
-	q.msg = make([]byte, len(msg))
-	q.reply = reply
 	copy(q.msg, msg)
 	q.conn = conn
 	q.prevConn = prevConn
@@ -175,7 +149,7 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 			return
 
 		case q := <-sq.queue:
-			if q.msg != nil || q.reply != nil {
+			if q.msg != nil {
 				// Create a send buffer for the sender ID if it doesn't exist.
 				if _, def := sq.sendBuffer[q.id]; !def {
 					sq.sendBuffer[q.id] = list.New()
@@ -290,33 +264,8 @@ func senderWorker(network string, q *Queueable,
 		if _, e := q.conn.Write(q.msg); e != nil {
 			err <- sendQueueError{q.id, q.prevConn, e}
 			res <- senderResult{q.conn, q.id}
-			if q.reply != nil {
-				q.reply <- nil
-			}
 			return
 		}
-	}
-
-	// TODO(kwonalbert) Currently this assumes there is only one reply per
-	// msg sent, but this might not be true.
-	// Should allow for arbitrary # of msgs in each directions
-	q.conn.SetDeadline(time.Now().Add(timeout))
-	if q.reply != nil { // Receive a message.
-		msg := make([]byte, MaxMsgBytes+1)
-		bytes, e := q.conn.Read(msg)
-		if e != nil {
-			err <- sendQueueError{q.id, q.prevConn, e}
-			res <- senderResult{q.conn, q.id}
-			q.reply <- nil
-			return
-		} else if bytes > MaxMsgBytes {
-			err <- sendQueueError{q.id, q.prevConn, errors.New("Response message too long")}
-			res <- senderResult{q.conn, q.id}
-			q.reply <- nil
-			return
-		}
-		// Pass message to channel.
-		q.reply <- msg[:bytes]
 	}
 
 	res <- senderResult{q.conn, q.id}

@@ -72,7 +72,7 @@ func runDummyServer(clientCt, msgCt int, ch chan<- testResult, addr chan<- strin
 
 		go func(c net.Conn, clientNo int) {
 			defer c.Close()
-			buf := make([]byte, CellBytes*10)
+			buf := make([]byte, MaxMsgBytes+1)
 			for j := 0; j < msgCt; j++ {
 				bytes, err := c.Read(buf)
 				if err != nil {

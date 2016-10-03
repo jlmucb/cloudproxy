@@ -98,6 +98,8 @@ bool TaoRPC2::Attest(const string &message, string *attestation) {
 }
 
 bool TaoRPC2::Seal(const string &data, const string &policy, string *sealed) {
+printf("***Seal\n");
+return false;
   TaoRPCRequest rpc;
   rpc.set_data(data);
   rpc.set_policy(policy);

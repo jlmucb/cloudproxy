@@ -46,11 +46,6 @@ DEFINE_string(domain_server_host, "localhost", "address for domain service");
 DEFINE_string(domain_server_port, "8124", "port for domain service");
 DEFINE_bool(test_rollback, false, "Test rollback protection");
 
-#define WIERDTEST
-#ifdef WIERDTEST
-#include "tao_rpc_test.cc"
-using tao::TaoRPC2;
-#endif
 
 int main(int argc, char **argv) {
 
@@ -61,53 +56,6 @@ int main(int argc, char **argv) {
   // doesn't need to take any parameters. It will establish a Tao Child Channel
   // directly with these fds.
   unique_ptr<FDMessageChannel> msg(new FDMessageChannel(3, 4));
-
-// wierd tests
-#ifdef WIERDTEST
-FDMessageChannel* msg1 = new FDMessageChannel(3, 4);
-string label("label");
-int64_t initial_counter = 5LL;
-printf("Initial test section\n");
-#define YY
-#ifdef YY
-TaoRPC2 tao1(msg1);
-TaoRPC2* tao2 = &tao1;
-#else
-TaoRPC tao1(msg1);
-TaoRPC* tao2 = &tao1;
-#endif
-
-#define PTRACCESS
-#define XX
-#ifdef PTRACCESS
-printf("tao2->InitCounter(label, initial_counter): \n");
-if (tao2->InitCounter(label, initial_counter)) {
-      printf("TRUE\n");
-} else {
-      printf("FALSE\n");
-}
-
-#ifdef XX
-return 0;
-#endif
-
-#else
-
-if (tao1.InitCounter(label, initial_counter)) {
-      printf("TRUE\n");
-} else {
-      printf("FALSE\n");
-}
-printf("(*tao2).InitCounter(label, initial_counter): \n");
-(*tao2).InitCounter(label, initial_counter);
-printf("tao2->InitCounter(label, initial_counter): \n");
-tao2->InitCounter(label, initial_counter);
-#ifdef XX
-return 0;
-#endif
-#endif
-#endif
-
   unique_ptr<Tao> tao(new TaoRPC(msg.release()));
 
   TaoProgramData client_program_data;
@@ -160,7 +108,6 @@ return 0;
 
   if (FLAGS_test_rollback) {
     // Put Rollback protection tests here
-    /*
     byte data[] = { 
       0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
       0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5
@@ -174,25 +121,12 @@ return 0;
     int64_t initial_counter = 5LL;
     data_to_seal.assign((const char *)data, sizeof(data));
 
-    printf("Rollback test section\n");
-    TaoRPC tao1(msg.release());
-    TaoRPC* tao2= &tao1;
-    if (tao1.InitCounter(label, initial_counter)) {
-      printf("TRUE\n");
-    } else {
-      printf("FALSE\n");
-    }
-    printf("(*tao2).InitCounter(label, initial_counter): \n");
-    (*tao2).InitCounter(label, initial_counter);
-    printf("tao2->InitCounter(label, initial_counter): \n");
-    tao2->InitCounter(label, initial_counter);
-
-    // if (client_program_data.InitCounter(label, initial_counter)) {
-    if (((TaoRPC*)tao)->InitCounter(label, initial_counter)) {
+    if (client_program_data.InitCounter(label, initial_counter)) {
       printf("InitCounter succeeded 0\n");
     } else {
       printf("InitCounter failed 0\n");
     }
+/*
     if (client_program_data.GetCounter(label, &counter)) {
       printf("GetCounter (1) succeeded %lld\n", counter);
     } else {

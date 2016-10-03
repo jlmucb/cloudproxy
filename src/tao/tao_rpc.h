@@ -37,30 +37,30 @@ class TaoRPC : public Tao {
   /// Ownership is taken.
   explicit TaoRPC(MessageChannel *channel) : channel_(channel) {}
 
-  virtual void Close() { channel_->Close(); }
+  void Close() { channel_->Close(); }
 
-  virtual bool SerializeToString(string *params) const;
+  bool SerializeToString(string *params) const;
 
   static TaoRPC *DeserializeFromString(const string &params);
 
   /// Tao implementation.
   /// @{
-  virtual bool GetTaoName(string *name);
-  virtual bool ExtendTaoName(const string &subprin);
-  virtual bool GetRandomBytes(size_t size, string *bytes);
-  virtual bool GetSharedSecret(size_t size, const string &policy,
+  bool GetTaoName(string *name);
+  bool ExtendTaoName(const string &subprin);
+  bool GetRandomBytes(size_t size, string *bytes);
+  bool GetSharedSecret(size_t size, const string &policy,
                                string *bytes);
-  virtual bool Attest(const string &message, string *attestation);
-  virtual bool Seal(const string &data, const string &policy, string *sealed);
-  virtual bool Unseal(const string &sealed, string *data, string *policy);
+  bool Attest(const string &message, string *attestation);
+  bool Seal(const string &data, const string &policy, string *sealed);
+  bool Unseal(const string &sealed, string *data, string *policy);
 
-  virtual bool InitCounter(const string& label, int64_t& c);
-  virtual bool GetCounter(const string &label, int64_t* c);
-  virtual bool RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed);
-  virtual bool RollbackProtectedUnseal(const string &sealed, string *data, string *policy);
+  bool InitCounter(const string& label, int64_t& c);
+  bool GetCounter(const string &label, int64_t* c);
+  bool RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed);
+  bool RollbackProtectedUnseal(const string &sealed, string *data, string *policy);
 
-  virtual string GetRecentErrorMessage() const { return failure_msg_; }
-  virtual string ResetRecentErrorMessage() {
+  string GetRecentErrorMessage() const { return failure_msg_; }
+  string ResetRecentErrorMessage() {
     string msg = failure_msg_;
     failure_msg_ = "";
     return msg;

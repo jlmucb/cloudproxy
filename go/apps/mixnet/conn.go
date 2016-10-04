@@ -65,10 +65,11 @@ var dirDestroyed = &Directive{Type: DirectiveType_DESTROYED.Enum()}
 // protocol.
 type Conn struct {
 	net.Conn
-	id       uint32
-	timeout  time.Duration // timeout on read/write.
-	circuits map[uint64]Circuit
-	cLock    *sync.RWMutex
+	id        uint32
+	timeout   time.Duration // timeout on read/write.
+	circuits  map[uint64]Circuit
+	cLock     *sync.RWMutex
+	withProxy bool
 }
 
 // A cell is a message read from the network connection

@@ -32,10 +32,9 @@ import (
 
 // RouterContext stores the runtime environment for a Tao-delegated router.
 type RouterContext struct {
-	keys           *tao.Keys    // Signing keys of this hosted program.
-	domain         *tao.Domain  // Policy guard and public key.
-	proxyListener  net.Listener // Socket where server listens for proxies.
-	routerListener net.Listener // Socket where server listens for proxies.
+	keys     *tao.Keys    // Signing keys of this hosted program.
+	domain   *tao.Domain  // Policy guard and public key.
+	listener net.Listener // Socket where server listens for proxies/routers
 
 	// Data structures for queueing and batching messages
 	queue     *Queue
@@ -71,7 +70,7 @@ type RouterContext struct {
 // It also creates a regular listener socket for other routers to connect to.
 // A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
-func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout time.Duration,
+func NewRouterContext(path, network, addr string, batchSize int, timeout time.Duration,
 	x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 
 	hp = new(RouterContext)
@@ -110,26 +109,15 @@ func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout
 		return nil, err
 	}
 
-	tlsConfigProxy := &tls.Config{
+	tlsConfig := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		Certificates:       []tls.Certificate{*cert},
 		InsecureSkipVerify: true,
-	}
-
-	tlsConfigRouter := &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*cert},
-		InsecureSkipVerify: true,
-	}
-
-	// Bind address to socket.
-	if hp.proxyListener, err = tao.ListenAnonymous(network, addr1, tlsConfigProxy,
-		hp.domain.Guard, hp.domain.Keys.VerifyingKey, hp.keys.Delegation); err != nil {
-		return nil, err
+		ClientAuth:         tls.RequestClientCert,
 	}
 
 	// Different listener, since mixes should be authenticated
-	if hp.routerListener, err = tao.Listen(network, addr2, tlsConfigRouter,
+	if hp.listener, err = Listen(network, addr, tlsConfig,
 		hp.domain.Guard, hp.domain.Keys.VerifyingKey, hp.keys.Delegation); err != nil {
 		return nil, err
 	}
@@ -150,24 +138,9 @@ func NewRouterContext(path, network, addr1, addr2 string, batchSize int, timeout
 	return hp, nil
 }
 
-// AcceptProxy Waits for connectons from proxies.
-func (hp *RouterContext) AcceptProxy() (*Conn, error) {
-	c, err := hp.proxyListener.Accept()
-	if err != nil {
-		return nil, err
-	}
-	id, err := hp.newConnID()
-	if err != nil {
-		return nil, err
-	}
-	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
-	go hp.handleConn(conn, true)
-	return conn, nil
-}
-
 // AcceptRouter Waits for connectons from other routers.
-func (hp *RouterContext) AcceptRouter() (*Conn, error) {
-	c, err := hp.routerListener.Accept()
+func (hp *RouterContext) Accept() (*Conn, error) {
+	c, err := hp.listener.Accept()
 	if err != nil {
 		return nil, err
 	}
@@ -175,8 +148,11 @@ func (hp *RouterContext) AcceptRouter() (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
-	go hp.handleConn(conn, false)
+	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex), true}
+	if len(c.(*tls.Conn).ConnectionState().PeerCertificates) > 0 {
+		conn.withProxy = false
+	}
+	go hp.handleConn(conn)
 	return conn, nil
 }
 
@@ -190,9 +166,9 @@ func (hp *RouterContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
+	conn := &Conn{c, id, hp.timeout, make(map[uint64]Circuit), new(sync.RWMutex), false}
 	hp.conns[addr] = conn
-	go hp.handleConn(conn, false)
+	go hp.handleConn(conn)
 	return conn, nil
 }
 
@@ -200,11 +176,8 @@ func (hp *RouterContext) DialRouter(network, addr string) (*Conn, error) {
 func (hp *RouterContext) Close() {
 	hp.killQueue <- true
 	hp.killQueueErrorHandler <- true
-	if hp.proxyListener != nil {
-		hp.proxyListener.Close()
-	}
-	if hp.routerListener != nil {
-		hp.routerListener.Close()
+	if hp.listener != nil {
+		hp.listener.Close()
 	}
 	for _, conn := range hp.conns {
 		for _, circuit := range conn.circuits {
@@ -251,7 +224,7 @@ func (hp *RouterContext) HandleErr() {
 
 // handleConn reads a directive or a message from a proxy. The directives
 // are handled here, but actual messages are handled in handleMessages
-func (hp *RouterContext) handleConn(c *Conn, fromProxy bool) {
+func (hp *RouterContext) handleConn(c *Conn) {
 	for {
 		var err error
 		cell := make([]byte, CellBytes)
@@ -275,7 +248,7 @@ func (hp *RouterContext) handleConn(c *Conn, fromProxy bool) {
 		sendQ, respQ := hp.queue, hp.queue
 		sId, rId := nextId, prevId
 		// if connecting to proxy, queue based on connection id, not circuit
-		if fromProxy {
+		if c.withProxy {
 			sendQ = hp.proxyReq
 			respQ = hp.proxyResp
 			sId = uint64(c.id)
@@ -313,7 +286,7 @@ func (hp *RouterContext) handleConn(c *Conn, fromProxy bool) {
 				binary.LittleEndian.PutUint64(cell[ID:], prevId)
 				respQ.EnqueueMsg(rId, cell, prevConn, c)
 			} else if *d.Type == DirectiveType_CREATE {
-				err := hp.handleCreate(d, c, fromProxy, id, sendQ, respQ, sId, rId)
+				err := hp.handleCreate(d, c, c.withProxy, id, sendQ, respQ, sId, rId)
 				if err != nil {
 					hp.errs <- err
 					break
@@ -537,7 +510,7 @@ func (hp *RouterContext) handleMessages(dest string, circ Circuit, id, nextId ui
 				break
 			}
 			hp.mapLock.Lock()
-			hp.circuits[nextId] = &Conn{conn, 0, hp.timeout, nil, nil}
+			hp.circuits[nextId] = &Conn{conn, 0, hp.timeout, nil, nil, false}
 			hp.mapLock.Unlock()
 			// Create handler for responses from the destination
 			go func(conn net.Conn, prevConn *Conn, queue *Queue, queueId, id uint64) {

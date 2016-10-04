@@ -92,7 +92,7 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, id, p.timeout, make(map[uint64]Circuit), new(sync.RWMutex)}
+	conn := &Conn{c, id, p.timeout, make(map[uint64]Circuit), new(sync.RWMutex), false}
 	go p.handleConn(conn)
 	return conn, nil
 }

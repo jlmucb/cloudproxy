@@ -147,7 +147,7 @@ func (p *ProxyContext) CreateCircuit(addrs []string) (uint64, error) {
 
 	d := &Directive{
 		Type:  DirectiveType_CREATE.Enum(),
-		Addrs: addrs[1:],
+		Addrs: addrs,
 	}
 
 	// Send CREATE directive to router.

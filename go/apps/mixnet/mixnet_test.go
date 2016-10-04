@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"path"
@@ -59,30 +60,35 @@ func makeTrivialDomain(configDir string) (*tao.Domain, error) {
 	return tao.CreateDomain(policyDomainConfig, configPath, password)
 }
 
-func makeContext(batchSize int) (*RouterContext, *ProxyContext, *tao.Domain, error) {
+func makeContext(batchSize int) (*RouterContext, *ProxyContext, *DirectoryContext, *tao.Domain, error) {
 	tempDir, err := ioutil.TempDir("", configDirName)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	// Create a domain with a LiberalGuard.
 	d, err := makeTrivialDomain(tempDir)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	router, err := makeRouterContext(tempDir, localAddr, batchSize, d)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// Create a proxy context. This just loads the domain.
 	proxy, err := makeProxyContext(localAddr, d)
 	if err != nil {
 		router.Close()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return router, proxy, d, nil
+	directory, err := makeDirectorycontext(tempDir, localAddr, d)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return router, proxy, directory, d, nil
 }
 
 func makeRouterContext(dir, rAddr string, batchSize int, domain *tao.Domain) (*RouterContext, error) {
@@ -112,9 +118,44 @@ func makeProxyContext(proxyAddr string, domain *tao.Domain) (*ProxyContext, erro
 	return proxy, nil
 }
 
+func makeDirectorycontext(dir, addr string, domain *tao.Domain) (*DirectoryContext, error) {
+	// Create a SoftTao from the domain.
+	st, err := tao.NewSoftTao(dir, password)
+	if err != nil {
+		return nil, err
+	}
+
+	directory, err := NewDirectoryContext(domain.ConfigPath, network, addr, timeout, &id, st)
+	if err != nil {
+		return nil, err
+	}
+	return directory, nil
+}
+
 type testResult struct {
 	err error
 	msg []byte
+}
+
+func setupDirectory(routers []*RouterContext, directory *DirectoryContext) {
+	go func() {
+		for i := 0; i < len(routers)*2; i++ {
+			directory.Accept()
+		}
+	}()
+
+	for _, router := range routers {
+		err := router.Register(directory.listener.Addr().String())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	for _, router := range routers {
+		err := router.GetDirectory(directory.listener.Addr().String())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 // Router accepts a connection from a proxy and reads a cell.
@@ -148,41 +189,36 @@ func runProxyWriteCell(proxy *ProxyContext, addr string, msg []byte) error {
 }
 
 // Router accepts a connection from a proxy and handles a number of requests.
-func runRouterHandleOneConn(router *RouterContext, requestCount int, ch chan<- testResult) {
+func runRouterHandleOneConn(router *RouterContext, ch chan<- testResult) {
 	_, err := router.Accept()
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
 	}
 
-	for i := 0; i < requestCount; i++ {
+	for {
 		if err = <-router.errs; err != nil {
 			ch <- testResult{err, nil}
 		}
 	}
-
-	ch <- testResult{nil, nil}
 }
 
 // Router accepts a connection from a proxy with multiple circuits
-func runRouterHandleOneConnMultCircuits(router *RouterContext, numCircuits int, requestCounts []int, ch chan<- testResult) {
+func runRouterHandleOneConnMultCircuits(router *RouterContext, ch chan<- testResult) {
 	_, err := router.Accept()
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
 	}
 
-	for circ := 0; circ < numCircuits; circ++ {
-		for i := 0; i < requestCounts[circ]; i++ {
-			if err = <-router.errs; err != nil {
-				ch <- testResult{err, nil}
-			}
+	for {
+		if err = <-router.errs; err != nil {
+			ch <- testResult{err, nil}
 		}
 	}
-	ch <- testResult{nil, nil}
 }
 
-func runRouterHandleConns(router *RouterContext, connCt, requestCt int, ch chan<- testResult) {
+func runRouterHandleConns(router *RouterContext, connCt int, ch chan<- testResult) {
 	for i := 0; i < connCt; i++ {
 		_, err := router.Accept()
 		if err != nil {
@@ -191,13 +227,11 @@ func runRouterHandleConns(router *RouterContext, connCt, requestCt int, ch chan<
 		}
 	}
 
-	for i := 0; i < connCt*requestCt; i++ {
+	for {
 		if err := <-router.errs; err != nil {
 			ch <- testResult{err, nil}
 		}
 	}
-
-	ch <- testResult{nil, nil}
 }
 
 // Proxy dials a router, creates a circuit, and sends a message over
@@ -222,7 +256,7 @@ func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) (
 
 // Test connection set up.
 func TestProxyRouterConnect(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,20 +282,21 @@ func TestProxyRouterConnect(t *testing.T) {
 
 // Test CREATE and DESTROY.
 func TestCreateDestroy(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, directory, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer router.Close()
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	setupDirectory([]*RouterContext{router}, directory)
 	rAddr := router.listener.Addr().String()
 
 	// The address doesn't matter here because no packets will be sent on
 	// the established circuit.
 	fakeAddr := "127.0.0.1:0"
 	ch := make(chan testResult)
-	go runRouterHandleOneConn(router, 2, ch)
+	go runRouterHandleOneConn(router, ch)
 
 	id, err := proxy.CreateCircuit([]string{rAddr, fakeAddr})
 	if err != nil {
@@ -276,9 +311,12 @@ func TestCreateDestroy(t *testing.T) {
 		t.Error("Error destroying circuit:", err)
 	}
 
-	res := <-ch
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
 	}
 
 	if len(router.nextIds) != 0 {
@@ -287,7 +325,7 @@ func TestCreateDestroy(t *testing.T) {
 }
 
 func TestCreateDestroyMultiHop(t *testing.T) {
-	router1, proxy, domain, err := makeContext(1)
+	router1, proxy, directory, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,9 +346,8 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 	defer router3.Close()
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	setupDirectory([]*RouterContext{router1, router2, router3}, directory)
 	rAddr1 := router1.listener.Addr().String()
-	rAddr2 := router2.listener.Addr().String()
-	rAddr3 := router3.listener.Addr().String()
 
 	// The address doesn't matter here because no packets will be sent on
 	// the established circuit.
@@ -318,11 +355,11 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 	ch1 := make(chan testResult)
 	ch2 := make(chan testResult)
 	ch3 := make(chan testResult)
-	go runRouterHandleOneConn(router1, 2*2, ch1)
-	go runRouterHandleOneConn(router2, 2*2, ch2)
-	go runRouterHandleOneConn(router3, 2, ch3)
+	go runRouterHandleOneConn(router1, ch1)
+	go runRouterHandleOneConn(router2, ch2)
+	go runRouterHandleOneConn(router3, ch3)
 
-	id, err := proxy.CreateCircuit([]string{rAddr1, rAddr2, rAddr3, fakeAddr})
+	id, err := proxy.CreateCircuit([]string{rAddr1, "", "", fakeAddr})
 	if err != nil {
 		t.Error(err)
 	}
@@ -336,17 +373,14 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 		t.Error("Could not destroy circuit:", err)
 	}
 
-	res := <-ch1
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
-	}
-	res = <-ch2
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
-	}
-	res = <-ch3
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
+	for _, ch := range []chan testResult{ch1, ch2, ch3} {
+		select {
+		case res := <-ch:
+			if res.err != nil {
+				t.Error("Unexpected router error:", res.err)
+			}
+		default:
+		}
 	}
 
 	if len(router1.nextIds) != 0 || len(router2.nextIds) != 0 || len(router3.nextIds) != 0 {
@@ -357,7 +391,7 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 
 // Test multiplexing for proxy
 func TestMultiplexProxyCircuit(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +411,7 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 		numReqs[i] = 2
 		fakeAddrs[i] = fmt.Sprintf("127.0.0.1:%d", -i)
 	}
-	go runRouterHandleOneConnMultCircuits(router, clientCt, numReqs, ch)
+	go runRouterHandleOneConnMultCircuits(router, ch)
 
 	for i := range numReqs {
 		ids[i], err = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]})
@@ -400,15 +434,18 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 			t.Error("Couldn't destroy circuit:", err)
 		}
 	}
-	res := <-ch
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
 	}
 }
 
 // Test sending a cell.
 func TestProxyRouterCell(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +485,7 @@ func TestProxyRouterCell(t *testing.T) {
 // Test setting up a circuit and relay a message to destination. Try
 // messages of various lengths.
 func TestProxyRouterRelay(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -477,11 +514,7 @@ func TestProxyRouterRelay(t *testing.T) {
 	rAddr := router.listener.Addr().String()
 
 	// First two messages fits in one cell, the last one is over multiple cells
-	// Funky counting, since the cells contain some meta data..
-	longReqCt := 1 + ((len(msg)-(CellBytes-(BODY+8)))/(CellBytes-BODY) + 1)
-	reqCts := []int{2, 2, longReqCt + 1}
-
-	go runRouterHandleOneConnMultCircuits(router, len(trials), reqCts, routerCh)
+	go runRouterHandleOneConnMultCircuits(router, routerCh)
 
 	for _, l := range trials {
 		reply, err := runProxySendMessage(proxy, rAddr, dstAddr, msg[:l])
@@ -497,15 +530,19 @@ func TestProxyRouterRelay(t *testing.T) {
 			t.Errorf("relay (length=%d): sent: %x", l, msg[:l])
 		}
 	}
-	res = <-routerCh
-	if res.err != nil {
-		t.Error("relay error:", res.err)
+
+	select {
+	case res := <-routerCh:
+		if res.err != nil {
+			t.Error("Router error:", res.err)
+		}
+	default:
 	}
 }
 
 // Test sending malformed messages from the proxy to the router.
 func TestMaliciousProxyRouterRelay(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +552,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	routerAddr := router.listener.Addr().String()
 	ch := make(chan testResult)
 
-	go runRouterHandleOneConn(router, 5, ch)
+	go runRouterHandleOneConn(router, ch)
 	fakeAddr := "127.0.0.1:0"
 	id, err := proxy.CreateCircuit([]string{routerAddr, fakeAddr})
 	if err != nil {
@@ -558,15 +595,18 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 		t.Error(err)
 	}
 
-	res := <-ch
-	if res.err != nil {
-		t.Error("Not expecting any router errors, but got", res.err)
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			t.Error("Not expecting any router errors, but got", res.err)
+		}
+	default:
 	}
 }
 
 // Test timeout on CreateMessage().
 func TestCreateTimeout(t *testing.T) {
-	router, proxy, domain, err := makeContext(2)
+	router, proxy, _, domain, err := makeContext(2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -577,21 +617,26 @@ func TestCreateTimeout(t *testing.T) {
 	ch := make(chan testResult)
 
 	// The proxy should get a timeout if it's the only connecting client.
-	go runRouterHandleConns(router, 1, 1, ch)
+	go runRouterHandleConns(router, 1, ch)
 	hostAddr := genHostname() + ":80"
 	_, err = proxy.CreateCircuit([]string{routerAddr, hostAddr})
 	if err == nil {
 		t.Errorf("proxy.CreateCircuit(%s, %s) incorrectly succeeded when it should have timed out", routerAddr, hostAddr)
 	}
-	res := <-ch
-	if res.err != nil {
-		t.Error(res.err)
+
+	select {
+	case res := <-ch:
+		e, _ := res.err.(net.Error)
+		if res.err != nil && !e.Timeout() {
+			t.Error(res.err)
+		}
+	default:
 	}
 }
 
 // Test timeout on ReceiveMessage().
 func TestSendMessageTimeout(t *testing.T) {
-	router, proxy, domain, err := makeContext(2)
+	router, proxy, _, domain, err := makeContext(2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -607,7 +652,7 @@ func TestSendMessageTimeout(t *testing.T) {
 	ch := make(chan testResult)
 	done := make(chan bool)
 
-	go runRouterHandleConns(router, 2, 2, ch)
+	go runRouterHandleConns(router, 2, ch)
 
 	// Proxy 1 creates a circuit, sends a message and awaits a reply.
 	go func() {
@@ -642,7 +687,7 @@ func TestSendMessageTimeout(t *testing.T) {
 // The client sends the server a message and the server echoes it back.
 func TestMixnetSingleHop(t *testing.T) {
 	clientCt := 10
-	router, proxy, domain, err := makeContext(clientCt)
+	router, proxy, _, domain, err := makeContext(clientCt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -658,7 +703,7 @@ func TestMixnetSingleHop(t *testing.T) {
 	dstCh := make(chan testResult, clientCt)
 	dstAddrCh := make(chan string)
 
-	go runRouterHandleConns(router, clientCt, 3, routerCh)
+	go runRouterHandleConns(router, clientCt, routerCh)
 	go runDummyServer(clientCt, 1, dstCh, dstAddrCh)
 	dstAddr := <-dstAddrCh
 
@@ -706,16 +751,19 @@ func TestMixnetSingleHop(t *testing.T) {
 	}
 
 	// Wait for router to finish.
-	res = <-routerCh
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
+	select {
+	case res := <-routerCh:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
 	}
 }
 
 // Test mixnet end-to-end with many clients and two routers.
 func TestMixnetMultiHop(t *testing.T) {
 	clientCt := 10
-	router, proxy, domain, err := makeContext(clientCt)
+	router, proxy, directory, domain, err := makeContext(clientCt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -734,21 +782,22 @@ func TestMixnetMultiHop(t *testing.T) {
 	proxy.Close()
 	defer router.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	setupDirectory([]*RouterContext{router, router2, router3}, directory)
 	routerAddr := router.listener.Addr().String()
 	routerAddr2 := router2.listener.Addr().String()
-	routerAddr3 := router3.listener.Addr().String()
 
 	var res testResult
 	clientCh := make(chan testResult, clientCt)
 	proxyCh := make(chan testResult, clientCt)
 	routerCh := make(chan testResult)
 	routerCh2 := make(chan testResult)
+	routerCh3 := make(chan testResult)
 	dstCh := make(chan testResult, clientCt)
 	dstAddrCh := make(chan string)
 
-	go runRouterHandleConns(router, clientCt, 3*2, routerCh)
-	go runRouterHandleOneConn(router2, clientCt*3*2, routerCh2)
-	go runRouterHandleOneConn(router3, clientCt*3, routerCh2)
+	go runRouterHandleConns(router, clientCt, routerCh)
+	go runRouterHandleOneConn(router2, routerCh2)
+	go runRouterHandleOneConn(router3, routerCh3)
 	go runDummyServer(clientCt, 1, dstCh, dstAddrCh)
 	dstAddr := <-dstAddrCh
 
@@ -762,7 +811,7 @@ func TestMixnetMultiHop(t *testing.T) {
 			}
 			defer proxy.Close()
 			proxyAddr := proxy.listener.Addr().String()
-			go runSocksServerOne(proxy, []string{routerAddr, routerAddr2, routerAddr3}, proxyCh)
+			go runSocksServerOne(proxy, []string{routerAddr, routerAddr2, ""}, proxyCh)
 
 			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
 			ch <- runSocksClient(proxyAddr, dstAddr, msg)
@@ -773,6 +822,7 @@ func TestMixnetMultiHop(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		res = <-clientCh
 		if res.err != nil {
+			fmt.Println("err0:", res.err, string(res.msg))
 			t.Error(res.err)
 		} else {
 			t.Log("client got:", string(res.msg))
@@ -783,6 +833,7 @@ func TestMixnetMultiHop(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		res = <-proxyCh
 		if res.err != nil {
+			fmt.Println("err1:", res.err)
 			t.Error(res.err)
 		}
 	}
@@ -795,16 +846,15 @@ func TestMixnetMultiHop(t *testing.T) {
 		}
 	}
 
-	// Wait for router to finish.
-	res = <-routerCh
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
-	}
-
-	// Wait for router to finish.
-	res = <-routerCh2
-	if res.err != nil {
-		t.Error("Unexpected router error:", res.err)
+	// Check if routers had any errors
+	for _, ch := range []chan testResult{routerCh, routerCh2} {
+		select {
+		case res := <-ch:
+			if res.err != nil {
+				t.Error("Unexpected router error:", res.err)
+			}
+		default:
+		}
 	}
 }
 
@@ -818,7 +868,7 @@ func TestMixnetMultiPath(t *testing.T) {
 	routerCt := pathLen * numPaths
 	routers := make([]*RouterContext, routerCt)
 	routerAddrs := make([]string, routerCt)
-	router, proxy, domain, err := makeContext(perPath)
+	router, proxy, directory, domain, err := makeContext(perPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -840,18 +890,15 @@ func TestMixnetMultiPath(t *testing.T) {
 		routerChs[i] = make(chan testResult)
 		if i%3 == 0 { // entry
 			routerAddrs[i] = routers[i].listener.Addr().String()
-			go runRouterHandleConns(routers[i], perPath, 3*2, routerChs[i])
+			go runRouterHandleConns(routers[i], perPath, routerChs[i])
 		} else {
 			routerAddrs[i] = routers[i].listener.Addr().String()
-			if i%3 == 1 { // middle
-				go runRouterHandleConns(routers[i], numPaths, perPath*3*2/numPaths, routerChs[i])
-			} else { // exit
-				go runRouterHandleConns(routers[i], numPaths, perPath*3/numPaths, routerChs[i])
-			}
+			go runRouterHandleConns(routers[i], numPaths, routerChs[i])
 		}
 	}
 	proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	setupDirectory(routers, directory)
 
 	var res testResult
 	clientCh := make(chan testResult, clientCt)
@@ -919,9 +966,12 @@ func TestMixnetMultiPath(t *testing.T) {
 
 	// Wait for router to finish.
 	for i := range routers {
-		res = <-routerChs[i]
-		if res.err != nil {
-			t.Fatal(i, "Unexpected router error:", res.err)
+		select {
+		case res = <-routerChs[i]:
+			if res.err != nil {
+				t.Fatal(i, "Unexpected router error:", res.err)
+			}
+		default:
 		}
 	}
 }

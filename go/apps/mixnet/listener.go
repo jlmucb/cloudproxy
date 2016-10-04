@@ -22,13 +22,14 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-type routerListener struct {
+type mixnetListener struct {
 	net.Listener
 	guard      tao.Guard
 	verifier   *tao.Verifier
 	delegation *tao.Attestation
 }
 
+// Listen listens on a TLS connection with RequestClientCert.
 func Listen(network, laddr string, config *tls.Config, g tao.Guard, v *tao.Verifier, del *tao.Attestation) (net.Listener, error) {
 	config.ClientAuth = tls.RequestClientCert
 	inner, err := tls.Listen(network, laddr, config)
@@ -36,10 +37,13 @@ func Listen(network, laddr string, config *tls.Config, g tao.Guard, v *tao.Verif
 		return nil, err
 	}
 
-	return &routerListener{inner, g, v, del}, nil
+	return &mixnetListener{inner, g, v, del}, nil
 }
 
-func (l *routerListener) Accept() (net.Conn, error) {
+// Accept listens for a TLS connection. It performs a handshake, then it checks
+// for certs. If certs are not provided, we assume the connection came from a
+// proxy. Otherwise, it came from a router, and Accept checks the cert.
+func (l *mixnetListener) Accept() (net.Conn, error) {
 	c, err := l.Listener.Accept()
 	if err != nil {
 		return nil, err
@@ -47,8 +51,10 @@ func (l *routerListener) Accept() (net.Conn, error) {
 
 	// Tao handshake Protocol:
 	// 0. TLS handshake explicit handshake (so we can check cert first)
-	// 1. Client -> Server: Tao delegation for X.509 certificate.
-	// 2. Server: checks for a Tao-authorized program.
+	// If cert is presented, there are two optional steps:
+	// 1a. Client -> Server: Tao delegation for X.509 certificate.
+	// 2a. Server: checks for a Tao-authorized program.
+	// Then send back your certs:
 	// 3. Server -> Client: Tao delegation for X.509 certificate.
 	// 4. Client: checks for a Tao-authorized program.
 	err = c.(*tls.Conn).Handshake()

@@ -34,3 +34,20 @@ message Directive {
   // ERROR or FATAL, an error message.
   optional string error = 3;
 }
+
+enum DirectoryMessageType {
+  REGISTER = 0;
+  DELETE = 1;
+  LIST = 2;
+  DIRECTORY = 3;
+  DIRERROR = 4;
+}
+
+message DirectoryMessage {
+  required DirectoryMessageType type = 1;
+  // Addresses to register to or delete from the directory,
+  // or list of all available mixnets
+  repeated string addrs = 2;
+  // Possible error message
+  optional string error = 3;
+}

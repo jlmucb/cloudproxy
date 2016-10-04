@@ -17,7 +17,6 @@ package main
 import (
 	"crypto/x509/pkix"
 	"flag"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -32,30 +31,17 @@ import (
 // The proxy dials the Tao-delegated router anonymously, sends a message,
 // and waits for a response.
 func serveMixnetProxies(hp *mixnet.RouterContext) error {
+	go hp.HandleErr()
 	for {
-		c, err := hp.AcceptProxy()
+		_, err := hp.Accept()
 		if err != nil {
 			return err
 		}
-
-		go func(c *mixnet.Conn) {
-			defer c.Close()
-			for {
-				if err := hp.HandleConn(c); err == io.EOF {
-					glog.Infof("connection %s closed by peer.", c.RemoteAddr())
-					break
-				} else if err != nil {
-					glog.Errorf("error while serving client %s: %s", c.RemoteAddr(), err)
-					break
-				}
-			}
-		}(c)
 	}
 }
 
 // Command line arguments.
-var routerAddr1 = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router facing proxies.")
-var routerAddr2 = flag.String("addr", "127.0.0.1:8124", "Address and port for the Tao-delegated mixnet router facing other routers.")
+var routerAddr = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
 var routerNetwork = flag.String("network", "tcp", "Network protocol for the Tao-delegated mixnet router.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
 var batchSize = flag.Int("batch", 1, "Number of senders in a batch.")
@@ -74,7 +60,7 @@ func main() {
 		glog.Fatalf("router: failed to parse timeout duration: %s", err)
 	}
 
-	hp, err := mixnet.NewRouterContext(*configPath, *routerNetwork, *routerAddr1, *routerAddr2,
+	hp, err := mixnet.NewRouterContext(*configPath, *routerNetwork, *routerAddr,
 		*batchSize, timeout, &x509Identity, tao.Parent())
 	if err != nil {
 		glog.Fatalf("failed to configure router: %s", err)

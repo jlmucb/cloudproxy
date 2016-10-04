@@ -82,6 +82,12 @@ func main() {
 		} else {
 			fmt.Printf("simpleClient: RollbackProtectedSeal successful %x\n", sealed)
 		}
+		c,  err = tao.Parent().GetCounter("label")
+		if err != nil {
+			fmt.Printf("simpleClient: Error Return from GetCounter %d %s\n", c, err)
+		} else {
+			fmt.Printf("simpleclient: GetCounter successful %d\n", c)
+		}
 		recoveredData,  _, err := tao.Parent().RollbackProtectedUnseal(sealed)
 		if err != nil {
 			fmt.Printf("simpleClient: Error Return from RollbackProtectedUnseal %s\n", err)

@@ -166,6 +166,9 @@ bool TaoRPC::Request(const string &op, const TaoRPCRequest &req, string *data,
     }
     policy->assign(resp.policy());
   }
+  if (counter != nullptr) {
+    *counter = resp.counter();
+  }
   return true;
 }
 

@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
     string sealed_data;
     string recovered_data;
     string policy;
-    int64_t counter = 0LL;
+    int64_t counter = 2LL;
     int64_t initial_counter = 5LL;
     data_to_seal.assign((const char *)data, sizeof(data));
 
@@ -126,7 +126,6 @@ int main(int argc, char **argv) {
     } else {
       printf("InitCounter failed 0\n");
     }
-/*
     if (client_program_data.GetCounter(label, &counter)) {
       printf("GetCounter (1) succeeded %lld\n", counter);
     } else {
@@ -137,6 +136,11 @@ int main(int argc, char **argv) {
       printf("data to seal: "); PrintBytes(data_to_seal.size(), (byte*)data_to_seal.data()); printf("\n");
     } else {
       printf("RollbackProtectedSeal failed\n");
+    }
+    if (client_program_data.GetCounter(label, &counter)) {
+      printf("GetCounter (1) succeeded %lld\n", counter);
+    } else {
+      printf("GetCounter (1) failed\n");
     }
     if (client_program_data.RollbackProtectedUnseal(sealed_data, &recovered_data, &policy)) {
       printf("RollbackProtectedUnseal succeeded\n");
@@ -150,7 +154,6 @@ int main(int argc, char **argv) {
     } else {
       printf("GetCounter (2) failed\n");
     }
-    */
   }
   return 0;
 }

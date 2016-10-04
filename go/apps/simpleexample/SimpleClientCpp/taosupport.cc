@@ -456,15 +456,15 @@ printf("Calling tao_->TaoProgramData::InitCounter(%llx)\n", tao_);
 }
 
 bool TaoProgramData::GetCounter(string& label, int64_t* c) {
-  return false; // return tao_->GetCounter(label, c);
+  return tao_->GetCounter(label, c);
 }
 
 bool TaoProgramData::RollbackProtectedSeal(string& label, string& data, string* sealed) {
-  return false; // return tao_->RollbackProtectedSeal(label, data, Tao::SealPolicyDefault, sealed);
+  return tao_->RollbackProtectedSeal(label, data, Tao::SealPolicyDefault, sealed);
 }
 
 bool TaoProgramData::RollbackProtectedUnseal(string& sealed, string* data, string* policy) {
-  return false; // return tao_->RollbackProtectedUnseal(sealed, data, policy);
+  return tao_->RollbackProtectedUnseal(sealed, data, policy);
 }
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,

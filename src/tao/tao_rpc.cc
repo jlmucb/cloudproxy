@@ -69,7 +69,6 @@ bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
 }
 
 bool TaoRPC::InitCounter(const string& label, int64_t& c) {
-  printf("***InitCounter in tao_rpc\n");
   TaoRPCRequest rpc;
   rpc.set_label(label);
   rpc.set_counter(c);
@@ -77,22 +76,20 @@ bool TaoRPC::InitCounter(const string& label, int64_t& c) {
 }
 
 bool TaoRPC::GetCounter(const string& label, int64_t* c) {
-  printf("***GetCounter in tao_rpc\n");
   TaoRPCRequest rpc;
   rpc.set_label(label);
   return Request("Tao.GetCounter", rpc, nullptr, nullptr, c);
 }
 
 bool TaoRPC::RollbackProtectedSeal(const string& label, const string &data, const string &policy, string *sealed) {
-  printf("***RollbackProtectedSeal in tao_rpc\n");
   TaoRPCRequest rpc;
+  rpc.set_label(label);
   rpc.set_policy(policy);
   rpc.set_data(data);
   return Request("Tao.RollbackProtectedSeal", rpc, sealed, nullptr, nullptr);
 }
 
 bool TaoRPC::RollbackProtectedUnseal(const string &sealed, string *data, string *policy) {
-  printf("***RollbackProtectedUnseal in tao_rpc\n");
   TaoRPCRequest rpc;
   rpc.set_data(sealed);
   return Request("Tao.RollbackProtectedUnseal", rpc, data, policy, nullptr);

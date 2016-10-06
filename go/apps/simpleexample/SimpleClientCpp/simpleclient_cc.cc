@@ -117,8 +117,8 @@ int main(int argc, char **argv) {
     string sealed_data;
     string recovered_data;
     string policy;
-    int64_t counter = 2LL;
-    int64_t initial_counter = 5LL;
+    int64_t counter = 0LL;
+    int64_t initial_counter = 0LL;
     data_to_seal.assign((const char *)data, sizeof(data));
 
     if (client_program_data.InitCounter(label, initial_counter)) {

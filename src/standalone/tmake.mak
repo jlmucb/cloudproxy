@@ -43,12 +43,13 @@ $(O)/message_channel.o: $(TS)/message_channel.cc
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/message_channel.o $(TS)/message_channel.cc
 
 $(O)/tao_rpc.pb.o: $(TS)/tao_rpc.pb.cc
-	@echo "proto"
+	@echo "proto 2"
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/tao_rpc.pb.o $(TS)/tao_rpc.pb.cc
 
-$(TS)/tao_rpc.pb.cc: $(TS)/tao_rpc.proto
-	@echo "proto"
-	$(PROTOC) --cpp_out=$(TS) $(TS)/tao_rpc.proto
+#$(TS)/tao_rpc.pb.cc: $(TS)/tao_rpc.proto
+#	@echo "proto 1"
+#	@echo "$(PROTO) --cpp_out=$(TS) $(TS)/tao_rpc.proto"
+#	$(PROTO) --cpp_out=$(TS) $(TS)/tao_rpc.proto
 
 $(O)/tao_rpc.o: $(TS)/tao_rpc.cc
 	@echo "compiling tao_rpc.cc"

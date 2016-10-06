@@ -144,7 +144,9 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   // FLAGS_alsologtostderr = true;
   google::ParseCommandLineFlags(argc, argv, remove_args);
-  google::InitGoogleLogging((*argv)[0]);
+  string log_area((*argv)[0]);
+  log_area.append("_log");
+  google::InitGoogleLogging(log_area.c_str());
   google::InstallFailureSignalHandler();
   signal(SIGPIPE, SIG_IGN);
   return InitializeOpenSSL();
@@ -557,4 +559,29 @@ bool MarshalKeyPrin(const string &key, string *out) {
   delete sos;
   return true;
 }
+
+bool InitNewCounter(Tao *tao, const string &label, const int64_t& c) {
+/*
+  if (!tao->GetRandomBytes(secret_size, secret)) {
+    LOG(ERROR) << "Could not generate a random secret to seal";
+    return false;
+  }
+*/
+  return false;
+}
+
+bool GetACounter(Tao *tao, const string &label, const int64_t* c) {
+  return false;
+}
+
+bool MakeRollbackProtectedSealedSecret(Tao *tao, const string &path,
+      const string &policy, int secret_size, string *secret) {
+  return false;
+}
+
+bool GetRollbackProtectedSealedSecret(Tao *tao, const string &path,
+      const string &policy, string *secret) {
+  return false;
+}
+
 }  // namespace tao

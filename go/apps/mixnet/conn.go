@@ -58,6 +58,13 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 	return n, nil
 }
 
+func (c *Conn) Member(id uint64) bool {
+	c.cLock.RLock()
+	_, ok := c.circuits[id]
+	c.cLock.RUnlock()
+	return ok
+}
+
 func (c *Conn) GetCircuit(id uint64) *Circuit {
 	c.cLock.RLock()
 	circuit := c.circuits[id]

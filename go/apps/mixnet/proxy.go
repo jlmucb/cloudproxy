@@ -107,16 +107,17 @@ func (p *ProxyContext) handleConn(c *Conn) {
 		_, err := c.Read(cell)
 		if err == nil {
 			id := getID(cell)
-			c.circuits[id].cells <- Cell{cell, err}
+			c.cLock.RLock()
+			circuit := c.circuits[id]
+			c.cLock.RUnlock()
+			circuit.cells <- Cell{cell, err}
 		} else {
 			// Relay other errors (mostly timeout) to all circuits in this connection
-			p.conns.Lock()
 			for _, circuit := range c.circuits {
 				go func(circuit Circuit) {
 					circuit.cells <- Cell{nil, err}
 				}(circuit)
 			}
-			p.conns.Unlock()
 			break
 		}
 	}
@@ -133,17 +134,22 @@ func (p *ProxyContext) CreateCircuit(addrs []string) (uint64, error) {
 	}
 
 	var c *Conn
+	p.conns.Lock()
 	if _, ok := p.conns.m[addrs[0]]; !ok {
 		c, err = p.DialRouter(p.network, addrs[0])
 		if err != nil {
+			p.conns.Unlock()
 			return id, err
 		}
 		p.conns.m[addrs[0]] = c
 	} else {
 		c = p.conns.m[addrs[0]]
 	}
-	c.circuits[id] = Circuit{make(chan Cell)}
 	p.circuits[id] = c
+	c.cLock.Lock()
+	c.circuits[id] = Circuit{make(chan Cell)}
+	c.cLock.Unlock()
+	p.conns.Unlock()
 
 	d := &Directive{
 		Type:  DirectiveType_CREATE.Enum(),
@@ -168,8 +174,9 @@ func (p *ProxyContext) CreateCircuit(addrs []string) (uint64, error) {
 // DestroyCircuit directs the router to close the connection to the destination
 // and destroy the circuit then closes the connection.
 func (p *ProxyContext) DestroyCircuit(id uint64) error {
-	// Send DESTROY directive to router.
 	c := p.circuits[id]
+
+	// Send DESTROY directive to router.
 	if _, err := c.SendDirective(id, dirDestroy); err != nil {
 		return err
 	}
@@ -181,10 +188,17 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 		return errors.New("could not destroy circuit")
 	}
 
+	p.conns.Lock()
+	c.cLock.Lock()
+	close(c.circuits[id].cells)
 	delete(c.circuits, id)
+	delete(p.circuits, id)
 	if len(c.circuits) == 0 { // no more circuits, close the conn
 		c.Close()
+		delete(p.conns.m, c.RemoteAddr().String())
 	}
+	c.cLock.Unlock()
+	p.conns.Unlock()
 	return nil
 }
 
@@ -295,6 +309,12 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 			glog.Error("proxy: encounter unexpected error with router", err)
 			break
 		}
+	}
+	// Clear the errors
+	select {
+	case <-proxyErrs:
+	case <-routerErrs:
+	default:
 	}
 
 	return p.DestroyCircuit(id)

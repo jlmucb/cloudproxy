@@ -30,6 +30,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
@@ -461,12 +462,19 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 	}
 	go runRouterHandleOneConnMultCircuits(router, ch)
 
+	wg := new(sync.WaitGroup)
 	for i := range numReqs {
-		ids[i], err = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]})
-		if err != nil {
-			t.Error("Couldn't create circuit:", err)
-		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			var e error
+			ids[i], e = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]})
+			if e != nil {
+				t.Error("Couldn't create circuit:", err)
+			}
+		}(i)
 	}
+	wg.Wait()
 
 	unique := make(map[*Conn]bool)
 	for _, conn := range proxy.circuits {
@@ -477,11 +485,16 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 	}
 
 	for i := range numReqs {
-		err = proxy.DestroyCircuit(ids[i])
-		if err != nil {
-			t.Error("Couldn't destroy circuit:", err)
-		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			err := proxy.DestroyCircuit(ids[i])
+			if err != nil {
+				t.Error("Couldn't destroy circuit:", err)
+			}
+		}(i)
 	}
+	wg.Wait()
 	select {
 	case res := <-ch:
 		if res.err != nil {

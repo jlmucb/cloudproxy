@@ -17,7 +17,6 @@ package mixnet
 import (
 	"encoding/binary"
 	"errors"
-	"io"
 	"net"
 	"sync"
 	"time"
@@ -149,10 +148,10 @@ func (c *Conn) SendMessage(id uint64, msg []byte) error {
 // a messsage.
 func (c *Conn) ReceiveMessage(id uint64) ([]byte, error) {
 	// Receive cells from router.
-	read, ok := <-c.circuits[id].cells
-	if !ok {
-		return nil, io.EOF
-	}
+	c.cLock.Lock()
+	circuit := c.circuits[id]
+	c.cLock.Unlock()
+	read := <-circuit.cells
 	cell := read.cell
 	err := read.err
 	if err != nil {
@@ -211,7 +210,10 @@ func (c *Conn) SendDirective(id uint64, d *Directive) (int, error) {
 // received, e.g. in response to RouterContext.HandleProxy(). If the directive
 // type is ERROR, return an error.
 func (c *Conn) ReceiveDirective(id uint64, d *Directive) error {
-	read := <-c.circuits[id].cells
+	c.cLock.Lock()
+	circuit := c.circuits[id]
+	c.cLock.Unlock()
+	read := <-circuit.cells
 	cell := read.cell
 	err := read.err
 

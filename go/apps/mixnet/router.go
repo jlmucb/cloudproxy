@@ -23,6 +23,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -589,44 +590,57 @@ func (hp *RouterContext) handleMessages(dest string, circ Circuit, id, nextId ui
 			hp.circuits[nextId] = &Conn{conn, 0, hp.timeout, nil, nil, false}
 			hp.mapLock.Unlock()
 			// Create handler for responses from the destination
-			go func(conn net.Conn, prevConn *Conn, queue *Queue, queueId, id uint64) {
-				for {
-					resp := make([]byte, MaxMsgBytes+1)
-					conn.SetDeadline(time.Now().Add(hp.timeout))
-					n, e := conn.Read(resp)
-					if e == io.EOF {
-						return
-					} else if e != nil {
-						hp.SendError(queue, queueId, id, e, prevConn)
-						return
-					} else if n > MaxMsgBytes {
-						hp.SendError(queue, queueId, id, errors.New("Response message too long"), prevConn)
-						return
-					}
-					cell := make([]byte, CellBytes)
-					binary.LittleEndian.PutUint64(cell[ID:], id)
-					respBytes := len(resp[:n])
-
-					cell[TYPE] = msgCell
-					binary.LittleEndian.PutUint64(cell[BODY:], uint64(respBytes))
-					bytes := copy(cell[BODY+LEN_SIZE:], resp)
-					queue.EnqueueMsg(queueId, cell, prevConn, nil)
-
-					for bytes < n {
-						tao.ZeroBytes(cell)
-						binary.LittleEndian.PutUint64(cell[ID:], id)
-						cell[TYPE] = msgCell
-						bytes += copy(cell[BODY:], resp[bytes:])
-						queue.EnqueueMsg(queueId, cell, prevConn, nil)
-					}
-
-				}
-			}(conn, prevConn, respQ, rId, id)
+			go hp.handleResponse(conn, prevConn, respQ, rId, id)
 		}
 		sendQ.EnqueueMsg(sId, msg, conn, prevConn)
 	}
 	if conn != nil {
 		conn.Close()
+	}
+}
+
+// handleResponse receives a message from the final destination, breaks it down
+// into cells, and sends it back to the user
+func (hp *RouterContext) handleResponse(conn net.Conn, prevConn *Conn, queue *Queue, queueId, id uint64) {
+	for {
+		resp := make([]byte, MaxMsgBytes+1)
+		conn.SetDeadline(time.Now().Add(hp.timeout))
+		n, e := conn.Read(resp)
+		if e == io.EOF {
+			// the connection closed
+			return
+		} else if e != nil {
+			if strings.Contains(e.Error(), "closed network connection") {
+				// TODO(kwonalbert) Currently, this is a hack to
+				// avoid sending unnecesary error back to user,
+				// since Read returns this error when the conn
+				// closes while it's reading
+				return
+			} else {
+				hp.SendError(queue, queueId, id, e, prevConn)
+				return
+			}
+		} else if n > MaxMsgBytes {
+			hp.SendError(queue, queueId, id, errors.New("Response message too long"), prevConn)
+			return
+		}
+		cell := make([]byte, CellBytes)
+		binary.LittleEndian.PutUint64(cell[ID:], id)
+		respBytes := len(resp[:n])
+
+		cell[TYPE] = msgCell
+		binary.LittleEndian.PutUint64(cell[BODY:], uint64(respBytes))
+		bytes := copy(cell[BODY+LEN_SIZE:], resp)
+		queue.EnqueueMsg(queueId, cell, prevConn, nil)
+
+		for bytes < n {
+			tao.ZeroBytes(cell)
+			binary.LittleEndian.PutUint64(cell[ID:], id)
+			cell[TYPE] = msgCell
+			bytes += copy(cell[BODY:], resp[bytes:])
+			queue.EnqueueMsg(queueId, cell, prevConn, nil)
+		}
+
 	}
 }
 

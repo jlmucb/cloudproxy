@@ -15,6 +15,8 @@
 package mixnet
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"io/ioutil"
 	"os"
 	"path"
@@ -57,6 +59,23 @@ func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResul
 	ch <- testResult{err, []byte(addr)}
 }
 
+// Run a proxy server that accepts more than one message
+func runSocksServer(proxy *ProxyContext, rAddrs []string, ch chan<- testResult) {
+	c, err := proxy.Accept()
+	if err != nil {
+		ch <- testResult{err, nil}
+		return
+	}
+	defer c.Close()
+	addr := c.(*SocksConn).dstAddr
+
+	circuit := make([]string, len(rAddrs)+1)
+	copy(circuit, rAddrs)
+	circuit[len(rAddrs)] = addr
+
+	ch <- testResult{proxy.ServeClient(c, circuit), []byte(addr)}
+}
+
 // Connect to a destination through a mixnet proxy, send a message,
 // and wait for a response.
 func runSocksClient(pAddr, dAddr string, msg []byte) testResult {
@@ -76,6 +95,39 @@ func runSocksClient(pAddr, dAddr string, msg []byte) testResult {
 	}
 
 	bytes, err := c.Read(msg)
+	if err != nil {
+		return testResult{err, nil}
+	}
+
+	return testResult{nil, msg[:bytes]}
+}
+
+// Connect to a destination through a mixnet proxy, send a message,
+// and wait for a response.
+func runTLSClient(pAddr, dAddr string, msg []byte) testResult {
+	dialer, err := netproxy.SOCKS5(network, pAddr, nil, netproxy.Direct)
+	if err != nil {
+		return testResult{err, nil}
+	}
+
+	c, err := dialer.Dial(network, dAddr)
+	if err != nil {
+		return testResult{err, nil}
+	}
+	defer c.Close()
+
+	config := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		InsecureSkipVerify: true,
+	}
+
+	tlsConn := tls.Client(c, config)
+
+	if _, err = tlsConn.Write(msg); err != nil {
+		return testResult{err, nil}
+	}
+
+	bytes, err := tlsConn.Read(msg)
 	if err != nil {
 		return testResult{err, nil}
 	}

@@ -261,6 +261,10 @@ func senderWorker(network string, q *Queueable,
 
 	q.conn.SetDeadline(time.Now().Add(timeout))
 	if q.msg != nil { // Send the message.
+		if q.msg[TYPE] == 1 {
+			var d Directive
+			unmarshalDirective(q.msg, &d)
+		}
 		if _, e := q.conn.Write(q.msg); e != nil {
 			err <- sendQueueError{q.id, q.prevConn, e}
 			res <- senderResult{q.conn, q.id}

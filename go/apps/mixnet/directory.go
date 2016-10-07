@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -101,7 +100,6 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 	if err == io.EOF {
 		return
 	} else if err != nil {
-		fmt.Println("here:", err)
 		errMsg := &DirectoryMessage{
 			Type:  DirectoryMessageType_DIRERROR.Enum(),
 			Error: proto.String(err.Error()),

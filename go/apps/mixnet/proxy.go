@@ -224,7 +224,7 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // Read a message from the client, send it over the mixnet, wait for a reply,
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
-func (p *ProxyContext) ServeClient(c net.Conn, addrs ...string) error {
+func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 	circuit := make([]string, len(addrs))
 	for i := range circuit {
 		circuit[i] = addrs[i]
@@ -235,13 +235,64 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs ...string) error {
 	}
 	p.clients[id] = c
 
-	for {
-		err = p.HandleClient(id)
+	proxyErrs := make(chan error)
+	routerErrs := make(chan error)
+	go func(id uint64) {
+		c := p.clients[id]
+		d := p.circuits[id]
+
+		for {
+			msg := make([]byte, MaxMsgBytes)
+			bytes, err := c.Read(msg)
+			if err != nil {
+				proxyErrs <- err
+				d.circuits[id].cells <- Cell{nil, io.EOF}
+				return
+			}
+
+			if err = d.SendMessage(id, msg[:bytes]); err != nil {
+				proxyErrs <- err
+				return
+			}
+
+		}
+	}(id)
+
+	go func(id uint64) {
+		c := p.clients[id]
+		d := p.circuits[id]
+
+		for {
+			reply, err := d.ReceiveMessage(id)
+			if err != nil {
+				routerErrs <- err
+				return
+			}
+
+			c.SetDeadline(time.Now().Add(p.timeout))
+			if _, err = c.Write(reply); err != nil {
+				proxyErrs <- err
+				d.circuits[id].cells <- Cell{nil, io.EOF}
+				return
+			}
+		}
+	}(id)
+
+	select {
+	case err = <-proxyErrs:
 		if err == io.EOF {
-			glog.Info("proxy: encountered EOF while serving")
+			glog.Info("proxy: encountered EOF with client")
 			break
 		} else if err != nil {
-			glog.Errorf("proxy: reading message from client: %s", err)
+			glog.Error("proxy: encounter unexpected error with client", err)
+			break
+		}
+	case err = <-routerErrs:
+		if err == io.EOF {
+			glog.Info("proxy: encountered EOF with router")
+			break
+		} else if err != nil {
+			glog.Error("proxy: encounter unexpected error with router", err)
 			break
 		}
 	}

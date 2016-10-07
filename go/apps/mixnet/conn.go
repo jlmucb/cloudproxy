@@ -17,6 +17,7 @@ package mixnet
 import (
 	"encoding/binary"
 	"errors"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -148,7 +149,10 @@ func (c *Conn) SendMessage(id uint64, msg []byte) error {
 // a messsage.
 func (c *Conn) ReceiveMessage(id uint64) ([]byte, error) {
 	// Receive cells from router.
-	read := <-c.circuits[id].cells
+	read, ok := <-c.circuits[id].cells
+	if !ok {
+		return nil, io.EOF
+	}
 	cell := read.cell
 	err := read.err
 	if err != nil {

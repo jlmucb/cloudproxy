@@ -17,6 +17,8 @@ package mixnet
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/binary"
@@ -252,6 +254,52 @@ func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) (
 	// the router will report a broken pipe.
 	msg, err = c.ReceiveMessage(id)
 	return msg, err
+}
+
+// A dummy TLS server echoes back client's message.
+func runTLSServer(clientCt int, ch chan<- testResult, addr chan<- string) {
+	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	config := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+		ClientAuth:         tls.RequestClientCert,
+	}
+	l, err := tls.Listen(network, localAddr, config)
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
+	defer l.Close()
+	addr <- l.Addr().String()
+
+	for i := 0; i < clientCt; i++ {
+		c, err := l.Accept()
+		if err != nil {
+			ch <- testResult{err, []byte{}}
+			return
+		}
+
+		go func(c net.Conn, clientNo int) {
+			defer c.Close()
+			buf := make([]byte, MaxMsgBytes+1)
+			for {
+				bytes, err := c.Read(buf)
+				if err != nil {
+					ch <- testResult{err, nil}
+				} else {
+					_, err := c.Write(buf[:bytes])
+					if err != nil {
+						ch <- testResult{err, nil}
+					} else {
+						bufCopy := make([]byte, bytes)
+						copy(bufCopy, buf[:bytes])
+						ch <- testResult{nil, bufCopy}
+					}
+				}
+			}
+		}(c, i)
+	}
 }
 
 // Test connection set up.
@@ -760,6 +808,82 @@ func TestMixnetSingleHop(t *testing.T) {
 	}
 }
 
+// Test routing TLS connection with mixnet
+func TestMixnetSingleHopTLS(t *testing.T) {
+	clientCt := 4
+	router, proxy, _, domain, err := makeContext(clientCt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy.Close()
+	defer router.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	routerAddr := router.listener.Addr().String()
+
+	var res testResult
+	clientCh := make(chan testResult, clientCt)
+	proxyCh := make(chan testResult, clientCt)
+	routerCh := make(chan testResult)
+	dstCh := make(chan testResult, clientCt)
+	dstAddrCh := make(chan string)
+
+	go runRouterHandleConns(router, clientCt, routerCh)
+	go runTLSServer(clientCt, dstCh, dstAddrCh)
+	dstAddr := <-dstAddrCh
+
+	for i := 0; i < clientCt; i++ {
+		go func(pid int, ch chan<- testResult) {
+			pa := "127.0.0.1:0"
+			proxy, err := makeProxyContext(pa, domain)
+			if err != nil {
+				ch <- testResult{err, nil}
+				return
+			}
+			defer proxy.Close()
+			proxyAddr := proxy.listener.Addr().String()
+			go runSocksServer(proxy, []string{routerAddr}, proxyCh)
+
+			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
+			ch <- runTLSClient(proxyAddr, dstAddr, msg)
+		}(i, clientCh)
+	}
+
+	// Wait for clients to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-clientCh
+		if res.err != nil {
+			t.Error(res.err)
+		} else {
+			t.Log("client got:", string(res.msg))
+		}
+	}
+
+	// Wait for proxies to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-proxyCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Wait for server to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-dstCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Wait for router to finish.
+	select {
+	case res := <-routerCh:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
+	}
+}
+
 // Test mixnet end-to-end with many clients and two routers.
 func TestMixnetMultiHop(t *testing.T) {
 	clientCt := 10
@@ -822,7 +946,6 @@ func TestMixnetMultiHop(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		res = <-clientCh
 		if res.err != nil {
-			fmt.Println("err0:", res.err, string(res.msg))
 			t.Error(res.err)
 		} else {
 			t.Log("client got:", string(res.msg))
@@ -833,7 +956,6 @@ func TestMixnetMultiHop(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		res = <-proxyCh
 		if res.err != nil {
-			fmt.Println("err1:", res.err)
 			t.Error(res.err)
 		}
 	}

@@ -16,13 +16,16 @@ package mixnet
 
 import (
 	"container/list"
+	"crypto/rand"
+	"encoding/binary"
 	"io"
-	"math/rand"
+	"log"
 	"net"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 // The Queueable object is passed through a channel and mutates the state of
@@ -51,6 +54,9 @@ type sendQueueError struct {
 type Queue struct {
 	batchSize int // Number of messages to transmit in a round.
 	ct        int // Current number of buffers with messages ready.
+	// Tao to get the random bytes
+	// Might be okay to just use crypto/rand..
+	t tao.Tao
 
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on dial/read/write.
@@ -62,10 +68,11 @@ type Queue struct {
 }
 
 // NewQueue creates a new Queue structure.
-func NewQueue(network string, batchSize int, timeout time.Duration) (sq *Queue) {
+func NewQueue(network string, t tao.Tao, batchSize int, timeout time.Duration) (sq *Queue) {
 	sq = new(Queue)
 	sq.batchSize = batchSize
 	sq.network = network
+	sq.t = t
 	sq.timeout = timeout
 
 	sq.sendBuffer = make(map[uint64]*list.List)
@@ -122,11 +129,9 @@ func (sq *Queue) delete(q *Queueable) {
 			if err != nil {
 				e, ok := err.(net.Error)
 				if err == io.EOF || (ok && e.Timeout()) {
-					if ok && e.Timeout() {
-						// TODO(kwonalbert)
-						// Did not receive closed
-						// Should handle this err here..
-					}
+					// If it times out, and the connection
+					// is supposed to be closed,
+					// ignore it..
 					q.conn.Close()
 				}
 			}
@@ -207,12 +212,38 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 func (sq *Queue) dequeue() {
 
 	// Shuffle the serial IDs.
-	order := rand.Perm(int(sq.ct)) // TODO(cjpatton) Use tao.GetRandomBytes().
+	pi := make([]int, sq.ct)
+	for i := 0; i < sq.ct; i++ { // Initialize a trivial permutation
+		pi[i] = i
+	}
+
+	for i := sq.ct - 1; i > 0; i-- { // Shuffle by random swaps
+		var b []byte
+		var err error = nil
+		if sq.t != nil {
+			b, err = sq.t.GetRandomBytes(8)
+		}
+		if err != nil || sq.t == nil {
+			glog.Error("Could not read random bytes from Tao")
+			b = make([]byte, 8)
+			if _, err := rand.Read(b); err != nil {
+				// if we can't even get crypto/rand, fatal error
+				log.Fatal(err)
+			}
+		}
+		j := int(binary.LittleEndian.Uint64(b) % uint64(i+1))
+		if j != i {
+			tmp := pi[j]
+			pi[j] = pi[i]
+			pi[i] = tmp
+		}
+	}
+
 	ids := make([]uint64, sq.ct)
 	i := 0
 	for id, buf := range sq.sendBuffer {
 		if buf.Len() > 0 {
-			ids[order[i]] = id
+			ids[pi[i]] = id
 			i++
 		}
 	}

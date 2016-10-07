@@ -124,7 +124,6 @@ func (p *ProxyContext) handleConn(c *Conn) {
 // CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
-// TODO(kwonalbert) Make it so that the first server picks the circuit
 func (p *ProxyContext) CreateCircuit(addrs []string) (*Circuit, uint64, error) {
 	id, err := p.newID()
 	if err != nil {

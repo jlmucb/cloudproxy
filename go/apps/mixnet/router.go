@@ -128,9 +128,9 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 	}
 
 	// Instantiate the queues.
-	r.queue = NewQueue(network, batchSize, timeout)
-	r.proxyReq = NewQueue(network, batchSize, timeout)
-	r.proxyResp = NewQueue(network, batchSize, timeout)
+	r.queue = NewQueue(network, t, batchSize, timeout)
+	r.proxyReq = NewQueue(network, t, batchSize, timeout)
+	r.proxyResp = NewQueue(network, t, batchSize, timeout)
 	r.killQueue = make(chan bool)
 	r.killQueueErrorHandler = make(chan bool)
 	go r.queue.DoQueue(r.killQueue)

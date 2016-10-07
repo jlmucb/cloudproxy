@@ -106,7 +106,7 @@ func TestQueueSend(t *testing.T) {
 	msgCt := 3
 
 	timeout, _ := time.ParseDuration("2s")
-	sq := NewQueue(network, batchSize, timeout)
+	sq := NewQueue(network, nil, batchSize, timeout)
 	kill := make(chan bool)
 	done := make(chan bool)
 	dstCh := make(chan testResult)

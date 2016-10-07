@@ -311,7 +311,7 @@ func (hp *RouterContext) handleConn(c *Conn) {
 					respQ.EnqueueMsg(rId, cell, prevConn, c)
 				}
 			} else { // actually handle the message
-				c.circuits[id].cells <- Cell{cell, err}
+				c.GetCircuit(id).cells <- Cell{cell, err}
 			}
 		} else if cell[TYPE] == dirCell { // Handle a directive.
 			var d Directive
@@ -346,21 +346,19 @@ func (hp *RouterContext) handleConn(c *Conn) {
 				}
 				respQ.EnqueueMsg(rId, cell, prevConn, c)
 			} else if *d.Type == DirectiveType_DESTROYED {
-				// Close the forward circuit if it's an exit or empty now
-				hp.mapLock.RLock()
-				// == 1 because we haven't removed the circuit yet
-				empty := !exit && len(hp.circuits[id].circuits) == 1
-				hp.mapLock.RUnlock()
-				sendQ.Close(sId, nil, empty, c, prevConn)
-
-				// Relay back destroyed
 				cell, err = marshalDirective(prevId, dirDestroyed)
 				if err != nil {
 					hp.errs <- err
 					break
 				}
-				empty = hp.delete(c, id, prevId)
+				empty := hp.delete(c, id, prevId)
+				// Close the forward circuit if it's an exit or empty now
+				// Relay back destroyed
+				sendQ.Close(sId, nil, empty, c, prevConn)
 				respQ.Close(rId, cell, empty, prevConn, nil)
+				if empty {
+					break
+				}
 			}
 		} else { // Unknown cell type, return an error.
 			if err = hp.SendError(respQ, rId, id, errBadCellType, c); err != nil {
@@ -371,11 +369,6 @@ func (hp *RouterContext) handleConn(c *Conn) {
 		// Sending nil err makes testing easier;
 		// Easier to count cells by getting the number of errs
 		hp.errs <- nil
-		c.cLock.RLock()
-		if len(c.circuits) == 0 { // empty connection
-			break
-		}
-		c.cLock.RUnlock()
 	}
 }
 
@@ -393,14 +386,9 @@ func member(s string, set []string) bool {
 // if this is an exit.
 func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64,
 	sendQ, respQ *Queue, sId, rId uint64) error {
-	hp.mapLock.Lock()
-	newId, err := hp.newID()
-	hp.nextIds[id] = newId
-	hp.prevIds[newId] = id
-
 	if entry {
-		// Pick a fresh path of the same length
-		// Random selection without replacement
+		// A fresh path of the same length if user has no preference
+		// (Random selection without replacement)
 		directory := make([]string, len(hp.directory))
 		copy(directory, hp.directory)
 		for _, router := range d.Addrs {
@@ -427,6 +415,14 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 		}
 	}
 
+	// TODO(kwonalbert) probably could support finer grain locking..
+	hp.mapLock.Lock()
+	defer hp.mapLock.Unlock()
+
+	newId, err := hp.newID()
+	hp.nextIds[id] = newId
+	hp.prevIds[newId] = id
+
 	circuit := &Circuit{c, id, make(chan Cell)}
 	c.AddCircuit(circuit)
 
@@ -445,14 +441,12 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 		// Relay the CREATE message
 		hp.exit[id] = false
 		if err != nil {
-			hp.mapLock.Unlock()
 			return err
 		}
 		var nextConn *Conn
 		if _, ok := hp.conns[d.Addrs[relayIdx+1]]; !ok {
 			nextConn, err = hp.DialRouter(hp.network, d.Addrs[relayIdx+1])
 			if err != nil {
-				hp.mapLock.Unlock()
 				if e := hp.SendError(respQ, rId, id, err, c); e != nil {
 					return e
 				}
@@ -470,7 +464,6 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 		}
 		nextCell, err := marshalDirective(newId, dir)
 		if err != nil {
-			hp.mapLock.Unlock()
 			return err
 		}
 		// middle node, then just queue to the generic queue, not one of the proxy queue
@@ -489,13 +482,11 @@ func (hp *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint6
 		// Tell the previous hop (proxy or router) it's created
 		cell, err := marshalDirective(id, dirCreated)
 		if err != nil {
-			hp.mapLock.Unlock()
 			return err
 		}
 		// TODO(kwonalbert) If an error occurs sending back destroyed, handle it here
 		respQ.EnqueueMsg(id, cell, c, nil)
 	}
-	hp.mapLock.Unlock()
 	return nil
 }
 
@@ -639,7 +630,6 @@ func (hp *RouterContext) handleResponse(conn net.Conn, prevConn *Conn, queue *Qu
 			bytes += copy(cell[BODY:], resp[bytes:])
 			queue.EnqueueMsg(queueId, cell, prevConn, nil)
 		}
-
 	}
 }
 

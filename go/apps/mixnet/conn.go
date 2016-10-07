@@ -15,49 +15,10 @@
 package mixnet
 
 import (
-	"encoding/binary"
-	"errors"
 	"net"
 	"sync"
 	"time"
-
-	"github.com/golang/protobuf/proto"
 )
-
-const (
-
-	// CellBytes specifies the length of a cell.
-	CellBytes = 1 << 10
-
-	// MaxMsgBytes specifies the maximum length of a message.
-	MaxMsgBytes = 1 << 16
-)
-
-const (
-	msgCell = iota
-	dirCell
-)
-
-const (
-	ID_SIZE  = 8
-	LEN_SIZE = 8
-)
-
-const (
-	ID   = 0
-	TYPE = ID + ID_SIZE
-	BODY = 9
-)
-
-var errCellLength = errors.New("incorrect cell length")
-var errCellType = errors.New("incorrect cell type")
-var errBadCellType = errors.New("unrecognized cell type")
-var errBadDirective = errors.New("received bad directive")
-var errMsgLength = errors.New("message too long")
-
-var dirCreated = &Directive{Type: DirectiveType_CREATED.Enum()}
-var dirDestroy = &Directive{Type: DirectiveType_DESTROY.Enum()}
-var dirDestroyed = &Directive{Type: DirectiveType_DESTROYED.Enum()}
 
 // Conn implements the net.Conn interface. The read and write operations are
 // overloaded to check that only cells are sent between entities in the mixnet
@@ -117,42 +78,4 @@ func (c *Conn) DeleteCircuit(circuit *Circuit) bool {
 	empty := len(c.circuits) == 0
 	c.cLock.Unlock()
 	return empty
-}
-
-// Transform a directive into a cell, encoding its length and padding it to the
-// length of a cell.
-func marshalDirective(id uint64, d *Directive) ([]byte, error) {
-	db, err := proto.Marshal(d)
-	if err != nil {
-		return nil, err
-	}
-	dirBytes := uint64(len(db))
-
-	cell := make([]byte, CellBytes)
-	binary.LittleEndian.PutUint64(cell[ID:], id)
-
-	cell[TYPE] = dirCell
-	binary.LittleEndian.PutUint64(cell[BODY:], dirBytes)
-
-	// Throw an error if encoded Directive doesn't fit into a cell.
-	if dirBytes+LEN_SIZE+1 > CellBytes {
-		return nil, errCellLength
-	}
-	copy(cell[BODY+LEN_SIZE:], db)
-
-	return cell, nil
-}
-
-// Parse a directive from a cell.
-func unmarshalDirective(cell []byte, d *Directive) error {
-	if cell[TYPE] != dirCell {
-		return errCellType
-	}
-
-	dirBytes := binary.LittleEndian.Uint64(cell[BODY:])
-	if err := proto.Unmarshal(cell[BODY+LEN_SIZE:BODY+LEN_SIZE+int(dirBytes)], d); err != nil {
-		return err
-	}
-
-	return nil
 }

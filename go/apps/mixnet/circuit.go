@@ -35,12 +35,6 @@ type Circuit struct {
 	cells chan Cell
 }
 
-// GetID returns the cell ID.
-func getID(cell []byte) uint64 {
-	id := binary.LittleEndian.Uint64(cell[ID:])
-	return id
-}
-
 // SendMessage divides a message into cells and sends each cell over the network
 // connection. A message is signaled to the receiver by the first byte of the
 // first cell. The next few bytes encode the total number of bytes in the

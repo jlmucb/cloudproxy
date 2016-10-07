@@ -37,7 +37,9 @@ func serveClients(routerAddr string, proxy *mixnet.ProxyContext) error {
 
 		go func(c net.Conn) {
 			defer c.Close()
-			proxy.ServeClient(c, routerAddr, c.(*mixnet.SocksConn).DestinationAddr())
+			// Length of the slice determines path length,
+			// so insert some empty strings
+			proxy.ServeClient(c, []string{routerAddr, "", "", c.(*mixnet.SocksConn).DestinationAddr()})
 		}(c)
 	}
 }

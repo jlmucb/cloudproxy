@@ -234,11 +234,7 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
 func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
-	path := make([]string, len(addrs))
-	for i := range path {
-		path[i] = addrs[i]
-	}
-	circuit, id, err := p.CreateCircuit(path)
+	circuit, id, err := p.CreateCircuit(addrs)
 	if err != nil {
 		return err
 	}

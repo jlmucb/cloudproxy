@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -177,4 +178,54 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 		}
 	}
 	dc.dirLock.Unlock()
+}
+
+func RegisterRouter(c net.Conn, addrs []string) error {
+	dm := &DirectoryMessage{
+		Type:  DirectoryMessageType_REGISTER.Enum(),
+		Addrs: addrs,
+	}
+	b, err := proto.Marshal(dm)
+	if err != nil {
+		return err
+	}
+	n, err := c.Write(b)
+	if err != nil {
+		return err
+	} else if n != len(b) {
+		return errors.New("Couldn't write the whole request")
+	}
+	c.Read([]byte{0})
+	return nil
+}
+
+func GetDirectory(c net.Conn) ([]string, error) {
+	dm := &DirectoryMessage{
+		Type: DirectoryMessageType_LIST.Enum(),
+	}
+	b, err := proto.Marshal(dm)
+	if err != nil {
+		return nil, err
+	}
+	n, err := c.Write(b)
+	if err != nil {
+		return nil, err
+	} else if n != len(b) {
+		return nil, errors.New("Couldn't write the whole request")
+	}
+
+	msg := make([]byte, MaxMsgBytes+1)
+	n, err = c.Read(msg)
+	if err != nil {
+		return nil, err
+	} else if n > MaxMsgBytes {
+		return nil, errors.New("Couldn't read the whole response")
+	}
+
+	var dir DirectoryMessage
+	if err = proto.Unmarshal(msg[:n], &dir); err != nil {
+		return nil, err
+	}
+
+	return dir.Addrs, err
 }

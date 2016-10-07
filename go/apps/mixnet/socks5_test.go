@@ -38,7 +38,7 @@ func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResul
 	circuit := make([]string, len(rAddrs)+1)
 	copy(circuit, rAddrs)
 	circuit[len(rAddrs)] = addr
-	id, err := proxy.CreateCircuit(circuit)
+	_, id, err := proxy.CreateCircuit(circuit)
 	if err != nil {
 		ch <- testResult{err, nil}
 		return

@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 const (
@@ -67,20 +66,9 @@ type Conn struct {
 	net.Conn
 	id        uint32
 	timeout   time.Duration // timeout on read/write.
-	circuits  map[uint64]Circuit
+	circuits  map[uint64]*Circuit
 	cLock     *sync.RWMutex
 	withProxy bool
-}
-
-// A cell is a message read from the network connection
-type Cell struct {
-	cell []byte
-	err  error
-}
-
-// A circuit carries cells
-type Circuit struct {
-	cells chan Cell
 }
 
 // Read a cell from the channel. If len(msg) != CellBytes, return an error.
@@ -109,127 +97,26 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 	return n, nil
 }
 
-// GetID returns the cell ID.
-func getID(cell []byte) uint64 {
-	id := binary.LittleEndian.Uint64(cell[ID:])
-	return id
-}
-
-// SendMessage divides a message into cells and sends each cell over the network
-// connection. A message is signaled to the receiver by the first byte of the
-// first cell. The next few bytes encode the total number of bytes in the
-// message.
-func (c *Conn) SendMessage(id uint64, msg []byte) error {
-	msgBytes := len(msg)
-	cell := make([]byte, CellBytes)
-
-	binary.LittleEndian.PutUint64(cell[ID:], id)
-	cell[TYPE] = msgCell
-	binary.LittleEndian.PutUint64(cell[BODY:], uint64(msgBytes))
-
-	bytes := copy(cell[BODY+LEN_SIZE:], msg)
-	if _, err := c.Write(cell); err != nil {
-		return err
-	}
-
-	for bytes < msgBytes {
-		tao.ZeroBytes(cell)
-		binary.LittleEndian.PutUint64(cell[ID:], id)
-		cell[TYPE] = msgCell
-		bytes += copy(cell[BODY:], msg[bytes:])
-		if _, err := c.Write(cell); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ReceiveMessage reads message cells from the router and assembles them into
-// a messsage.
-func (c *Conn) ReceiveMessage(id uint64) ([]byte, error) {
-	// Receive cells from router.
-	c.cLock.Lock()
+func (c *Conn) GetCircuit(id uint64) *Circuit {
+	c.cLock.RLock()
 	circuit := c.circuits[id]
-	c.cLock.Unlock()
-	read := <-circuit.cells
-	cell := read.cell
-	err := read.err
-	if err != nil {
-		return nil, err
-	}
-
-	if cell[TYPE] == dirCell {
-		var d Directive
-		if err = unmarshalDirective(cell, &d); err != nil {
-			return nil, err
-		}
-		if *d.Type == DirectiveType_ERROR {
-			return nil, errors.New("router error: " + (*d.Error))
-		}
-		return nil, errCellType
-	} else if cell[TYPE] != msgCell {
-		return nil, errCellType
-	}
-
-	msgBytes := binary.LittleEndian.Uint64(cell[BODY:])
-	if msgBytes > MaxMsgBytes {
-		return nil, errMsgLength
-	}
-
-	msg := make([]byte, msgBytes)
-	bytes := copy(msg, cell[BODY+LEN_SIZE:])
-
-	for uint64(bytes) < msgBytes {
-		read = <-c.circuits[id].cells
-		cell = read.cell
-		err = read.err
-		if err != nil {
-			return nil, err
-		} else if cell[TYPE] != msgCell {
-			return nil, errCellType
-		}
-		bytes += copy(msg[bytes:], cell[BODY:])
-	}
-
-	return msg, nil
+	c.cLock.RUnlock()
+	return circuit
 }
 
-// SendDirective serializes and pads a directive to the length of a cell and
-// sends it to the peer. A directive is signaled to the receiver by the first
-// byte of the cell. The next few bytes encode the length of of the serialized
-// protocol buffer. If the buffer doesn't fit in a cell, then throw an error.
-func (c *Conn) SendDirective(id uint64, d *Directive) (int, error) {
-	cell, err := marshalDirective(id, d)
-	if err != nil {
-		return 0, err
-	}
-	return c.Write(cell)
-}
-
-// ReceiveDirective awaits a reply from the peer and returns the directive
-// received, e.g. in response to RouterContext.HandleProxy(). If the directive
-// type is ERROR, return an error.
-func (c *Conn) ReceiveDirective(id uint64, d *Directive) error {
+func (c *Conn) AddCircuit(circuit *Circuit) {
 	c.cLock.Lock()
-	circuit := c.circuits[id]
+	c.circuits[circuit.id] = circuit
 	c.cLock.Unlock()
-	read := <-circuit.cells
-	cell := read.cell
-	err := read.err
+}
 
-	if err != nil {
-		return err
-	}
-
-	err = unmarshalDirective(cell, d)
-	if err != nil {
-		return err
-	}
-
-	if *d.Type == DirectiveType_ERROR {
-		return errors.New("router error: " + (*d.Error))
-	}
-	return nil
+func (c *Conn) DeleteCircuit(circuit *Circuit) bool {
+	c.cLock.Lock()
+	close(circuit.cells)
+	delete(c.circuits, circuit.id)
+	empty := len(c.circuits) == 0
+	c.cLock.Unlock()
+	return empty
 }
 
 // Transform a directive into a cell, encoding its length and padding it to the
@@ -268,54 +155,4 @@ func unmarshalDirective(cell []byte, d *Directive) error {
 	}
 
 	return nil
-}
-
-func RegisterRouter(c net.Conn, addrs []string) error {
-	dm := &DirectoryMessage{
-		Type:  DirectoryMessageType_REGISTER.Enum(),
-		Addrs: addrs,
-	}
-	b, err := proto.Marshal(dm)
-	if err != nil {
-		return err
-	}
-	n, err := c.Write(b)
-	if err != nil {
-		return err
-	} else if n != len(b) {
-		return errors.New("Couldn't write the whole request")
-	}
-	c.Read([]byte{0})
-	return nil
-}
-
-func GetDirectory(c net.Conn) ([]string, error) {
-	dm := &DirectoryMessage{
-		Type: DirectoryMessageType_LIST.Enum(),
-	}
-	b, err := proto.Marshal(dm)
-	if err != nil {
-		return nil, err
-	}
-	n, err := c.Write(b)
-	if err != nil {
-		return nil, err
-	} else if n != len(b) {
-		return nil, errors.New("Couldn't write the whole request")
-	}
-
-	msg := make([]byte, MaxMsgBytes+1)
-	n, err = c.Read(msg)
-	if err != nil {
-		return nil, err
-	} else if n > MaxMsgBytes {
-		return nil, errors.New("Couldn't read the whole response")
-	}
-
-	var dir DirectoryMessage
-	if err = proto.Unmarshal(msg[:n], &dir); err != nil {
-		return nil, err
-	}
-
-	return dir.Addrs, err
 }

@@ -92,7 +92,7 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := &Conn{c, id, p.timeout, make(map[uint64]Circuit), new(sync.RWMutex), false}
+	conn := &Conn{c, id, p.timeout, make(map[uint64]*Circuit), new(sync.RWMutex), false}
 	go p.handleConn(conn)
 	return conn, nil
 }
@@ -107,14 +107,12 @@ func (p *ProxyContext) handleConn(c *Conn) {
 		_, err := c.Read(cell)
 		if err == nil {
 			id := getID(cell)
-			c.cLock.RLock()
-			circuit := c.circuits[id]
-			c.cLock.RUnlock()
+			circuit := c.GetCircuit(id)
 			circuit.cells <- Cell{cell, err}
 		} else {
 			// Relay other errors (mostly timeout) to all circuits in this connection
 			for _, circuit := range c.circuits {
-				go func(circuit Circuit) {
+				go func(circuit *Circuit) {
 					circuit.cells <- Cell{nil, err}
 				}(circuit)
 			}
@@ -127,10 +125,10 @@ func (p *ProxyContext) handleConn(c *Conn) {
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
 // TODO(kwonalbert) Make it so that the first server picks the circuit
-func (p *ProxyContext) CreateCircuit(addrs []string) (uint64, error) {
+func (p *ProxyContext) CreateCircuit(addrs []string) (*Circuit, uint64, error) {
 	id, err := p.newID()
 	if err != nil {
-		return id, err
+		return nil, id, err
 	}
 
 	var c *Conn
@@ -139,16 +137,15 @@ func (p *ProxyContext) CreateCircuit(addrs []string) (uint64, error) {
 		c, err = p.DialRouter(p.network, addrs[0])
 		if err != nil {
 			p.conns.Unlock()
-			return id, err
+			return nil, id, err
 		}
 		p.conns.m[addrs[0]] = c
 	} else {
 		c = p.conns.m[addrs[0]]
 	}
 	p.circuits[id] = c
-	c.cLock.Lock()
-	c.circuits[id] = Circuit{make(chan Cell)}
-	c.cLock.Unlock()
+	circuit := &Circuit{c, id, make(chan Cell)}
+	c.AddCircuit(circuit)
 	p.conns.Unlock()
 
 	d := &Directive{
@@ -157,47 +154,45 @@ func (p *ProxyContext) CreateCircuit(addrs []string) (uint64, error) {
 	}
 
 	// Send CREATE directive to router.
-	if _, err := c.SendDirective(id, d); err != nil {
-		return id, err
+	if _, err := circuit.SendDirective(d); err != nil {
+		return nil, id, err
 	}
 
 	// Wait for CREATED directive from router.
-	if err := c.ReceiveDirective(id, d); err != nil {
-		return id, err
+	if err := circuit.ReceiveDirective(d); err != nil {
+		return nil, id, err
 	} else if *d.Type != DirectiveType_CREATED {
-		return id, errors.New("could not create circuit")
+		return nil, id, errors.New("could not create circuit")
 	}
 
-	return id, nil
+	return circuit, id, nil
 }
 
 // DestroyCircuit directs the router to close the connection to the destination
 // and destroy the circuit then closes the connection.
 func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	c := p.circuits[id]
+	circuit := c.GetCircuit(id)
 
 	// Send DESTROY directive to router.
-	if _, err := c.SendDirective(id, dirDestroy); err != nil {
+	if _, err := circuit.SendDirective(dirDestroy); err != nil {
 		return err
 	}
 	// Wait for DESTROYED directive from router.
 	var d Directive
-	if err := c.ReceiveDirective(id, &d); err != nil {
+	if err := circuit.ReceiveDirective(&d); err != nil {
 		return err
 	} else if *d.Type != DirectiveType_DESTROYED {
 		return errors.New("could not destroy circuit")
 	}
 
 	p.conns.Lock()
-	c.cLock.Lock()
-	close(c.circuits[id].cells)
-	delete(c.circuits, id)
+	empty := c.DeleteCircuit(circuit)
 	delete(p.circuits, id)
-	if len(c.circuits) == 0 { // no more circuits, close the conn
+	if empty { // no more circuits, close the conn
 		c.Close()
 		delete(p.conns.m, c.RemoteAddr().String())
 	}
-	c.cLock.Unlock()
 	p.conns.Unlock()
 	return nil
 }
@@ -239,11 +234,11 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
 func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
-	circuit := make([]string, len(addrs))
-	for i := range circuit {
-		circuit[i] = addrs[i]
+	path := make([]string, len(addrs))
+	for i := range path {
+		path[i] = addrs[i]
 	}
-	id, err := p.CreateCircuit(circuit)
+	circuit, id, err := p.CreateCircuit(path)
 	if err != nil {
 		return err
 	}
@@ -264,7 +259,7 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 				return
 			}
 
-			if err = d.SendMessage(id, msg[:bytes]); err != nil {
+			if err = circuit.SendMessage(msg[:bytes]); err != nil {
 				proxyErrs <- err
 				return
 			}
@@ -277,7 +272,7 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 		d := p.circuits[id]
 
 		for {
-			reply, err := d.ReceiveMessage(id)
+			reply, err := circuit.ReceiveMessage()
 			if err != nil {
 				routerErrs <- err
 				return
@@ -325,6 +320,7 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 func (p *ProxyContext) HandleClient(id uint64) error {
 	c := p.clients[id]
 	d := p.circuits[id]
+	circuit := d.GetCircuit(id)
 
 	msg := make([]byte, MaxMsgBytes)
 	bytes, err := c.Read(msg)
@@ -332,11 +328,11 @@ func (p *ProxyContext) HandleClient(id uint64) error {
 		return err
 	}
 
-	if err = d.SendMessage(id, msg[:bytes]); err != nil {
+	if err = circuit.SendMessage(msg[:bytes]); err != nil {
 		return err
 	}
 
-	reply, err := d.ReceiveMessage(id)
+	reply, err := circuit.ReceiveMessage()
 	if err != nil {
 		return err
 	}

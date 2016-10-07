@@ -240,20 +240,18 @@ func runRouterHandleConns(router *RouterContext, connCt int, ch chan<- testResul
 // Proxy dials a router, creates a circuit, and sends a message over
 // the circuit.
 func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) ([]byte, error) {
-	id, err := proxy.CreateCircuit([]string{rAddr, dAddr})
+	circ, _, err := proxy.CreateCircuit([]string{rAddr, dAddr})
 	if err != nil {
 		return nil, err
 	}
 
-	c := proxy.circuits[id]
-
-	if err = c.SendMessage(id, msg); err != nil {
+	if err = circ.SendMessage(msg); err != nil {
 		return nil, err
 	}
 
 	// dummyServer receives one message and replies. Without this line,
 	// the router will report a broken pipe.
-	msg, err = c.ReceiveMessage(id)
+	msg, err = circ.ReceiveMessage()
 	return msg, err
 }
 
@@ -347,7 +345,7 @@ func TestCreateDestroy(t *testing.T) {
 	ch := make(chan testResult)
 	go runRouterHandleOneConn(router, ch)
 
-	id, err := proxy.CreateCircuit([]string{rAddr, fakeAddr})
+	_, id, err := proxy.CreateCircuit([]string{rAddr, fakeAddr})
 	if err != nil {
 		t.Error("Error creating circuit:", err)
 	}
@@ -408,7 +406,7 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 	go runRouterHandleOneConn(router2, ch2)
 	go runRouterHandleOneConn(router3, ch3)
 
-	id, err := proxy.CreateCircuit([]string{rAddr1, "", "", fakeAddr})
+	_, id, err := proxy.CreateCircuit([]string{rAddr1, "", "", fakeAddr})
 	if err != nil {
 		t.Error(err)
 	}
@@ -468,7 +466,7 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			var e error
-			ids[i], e = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]})
+			_, ids[i], e = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]})
 			if e != nil {
 				t.Error("Couldn't create circuit:", err)
 			}
@@ -615,7 +613,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 
 	go runRouterHandleOneConn(router, ch)
 	fakeAddr := "127.0.0.1:0"
-	id, err := proxy.CreateCircuit([]string{routerAddr, fakeAddr})
+	circ, id, err := proxy.CreateCircuit([]string{routerAddr, fakeAddr})
 	if err != nil {
 		t.Error(err)
 	}
@@ -628,7 +626,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if _, err = c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = c.ReceiveMessage(id)
+	_, err = circ.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
@@ -639,15 +637,15 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if _, err := c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = c.ReceiveMessage(id)
+	_, err = circ.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
 
-	if err = c.SendMessage(id, []byte("Are you there?")); err != nil {
+	if err = circ.SendMessage([]byte("Are you there?")); err != nil {
 		t.Error(err)
 	}
-	_, err = c.ReceiveMessage(id)
+	_, err = circ.ReceiveMessage()
 	if err == nil {
 		t.Error("Receive message incorrectly succeeded")
 	}
@@ -680,7 +678,7 @@ func TestCreateTimeout(t *testing.T) {
 	// The proxy should get a timeout if it's the only connecting client.
 	go runRouterHandleConns(router, 1, ch)
 	hostAddr := genHostname() + ":80"
-	_, err = proxy.CreateCircuit([]string{routerAddr, hostAddr})
+	_, _, err = proxy.CreateCircuit([]string{routerAddr, hostAddr})
 	if err == nil {
 		t.Errorf("proxy.CreateCircuit(%s, %s) incorrectly succeeded when it should have timed out", routerAddr, hostAddr)
 	}
@@ -717,15 +715,14 @@ func TestSendMessageTimeout(t *testing.T) {
 
 	// Proxy 1 creates a circuit, sends a message and awaits a reply.
 	go func() {
-		id, err := proxy.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
+		circ, _, err := proxy.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
 		if err != nil {
 			t.Error(err)
 		}
-		c := proxy.circuits[id]
-		if err = c.SendMessage(id, []byte("hello")); err != nil {
+		if err = circ.SendMessage([]byte("hello")); err != nil {
 			t.Error(err)
 		}
-		_, err = c.ReceiveMessage(id)
+		_, err = circ.ReceiveMessage()
 		if e, ok := err.(net.Error); !(ok && e.Timeout()) {
 			t.Error("receiveMessage should have timed out")
 		}
@@ -734,7 +731,7 @@ func TestSendMessageTimeout(t *testing.T) {
 
 	// Proxy 2 just creates a circuit.
 	go func() {
-		_, err = proxy2.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
+		_, _, err = proxy2.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
 		if err != nil {
 			t.Error(err)
 		}

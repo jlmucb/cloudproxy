@@ -108,6 +108,8 @@ func makeRouterContext(dir, rAddr string, batchSize int, domain *tao.Domain) (*R
 	if err != nil {
 		return nil, err
 	}
+	// Because we are auto assigning ports, explicitly set the addr here
+	router.addr = router.listener.Addr().String()
 	return router, nil
 }
 

@@ -38,6 +38,8 @@ type RouterContext struct {
 	domain   *tao.Domain  // Policy guard and public key.
 	listener net.Listener // Socket where server listens for proxies/routers
 
+	addr string
+
 	// Data structures for queueing and batching messages
 	queue     *Queue
 	proxyReq  *Queue
@@ -81,6 +83,8 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 	r = new(RouterContext)
 	r.network = network
 	r.timeout = timeout
+
+	r.addr = addr
 
 	r.conns = make(map[string]*Conn)
 	r.circuits = make(map[uint64]*Conn)
@@ -368,9 +372,6 @@ func (r *RouterContext) handleConn(c *Conn) {
 				break
 			}
 		}
-		// Sending nil err makes testing easier;
-		// Easier to count cells by getting the number of errs
-		r.errs <- nil
 	}
 }
 
@@ -435,11 +436,11 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 	// directive to sender to inform the sender.
 	relayIdx := -1
 	for i, addr := range d.Addrs {
-		if addr == r.listener.Addr().String() {
+		if addr == r.addr {
 			relayIdx = i
 		}
 	}
-	if relayIdx != len(d.Addrs)-2 { // last element is the final dest, so check -2
+	if relayIdx != len(d.Addrs)-2 { // last addr is the final dest, so check -2
 		// Relay the CREATE message
 		r.exit[id] = false
 		if err != nil {
@@ -479,7 +480,7 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 			sId = newId
 			rId = id
 		}
-		go r.handleMessages(d.Addrs[len(d.Addrs)-1], c.GetCircuit(id), id, newId, c, sendQ, respQ, sId, rId)
+		go r.handleMessage(d.Addrs[len(d.Addrs)-1], c.GetCircuit(id), id, newId, c, sendQ, respQ, sId, rId)
 		r.exit[id] = true
 		// Tell the previous hop (proxy or router) it's created
 		cell, err := marshalDirective(id, dirCreated)
@@ -524,7 +525,7 @@ func (r *RouterContext) handleDestroy(d Directive, c, nextConn *Conn, exit bool,
 
 // handleMessages reconstructs the full message at the exit node, and sends it
 // out to the final destination. The directives are handled in handleConn.
-func (r *RouterContext) handleMessages(dest string, circ *Circuit, id, nextId uint64, prevConn *Conn,
+func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uint64, prevConn *Conn,
 	sendQ, respQ *Queue, sId, rId uint64) {
 	var conn net.Conn = nil
 	for {
@@ -610,7 +611,7 @@ func (r *RouterContext) handleResponse(conn net.Conn, prevConn *Conn, queue *Que
 				// TODO(kwonalbert) Currently, this is a hack to
 				// avoid sending unnecesary error back to user,
 				// since Read returns this error when the conn
-				// closes while it's reading
+				// closes while it's constructing response cells
 				return
 			} else {
 				r.SendError(queue, queueId, id, e, prevConn)

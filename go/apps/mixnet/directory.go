@@ -136,6 +136,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 	}
 
 	dc.dirLock.Lock()
+	defer dc.dirLock.Unlock()
 	if *dm.Type == DirectoryMessageType_REGISTER {
 		if fromRouter {
 			dc.directory = append(dc.directory, dm.Addrs...)
@@ -177,7 +178,6 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 			glog.Error("Could not send back all of the directory")
 		}
 	}
-	dc.dirLock.Unlock()
 }
 
 func RegisterRouter(c net.Conn, addrs []string) error {

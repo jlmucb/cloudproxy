@@ -1,14 +1,4 @@
-package mixnet
-
 // Copyright (c) 2016, Google Inc. All rights reserved.
-import (
-	"encoding/binary"
-	"errors"
-	"net"
-
-	"github.com/jlmucb/cloudproxy/go/tao"
-)
-
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +11,16 @@ import (
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+package mixnet
+
+import (
+	"encoding/binary"
+	"errors"
+	"net"
+
+	"github.com/jlmucb/cloudproxy/go/tao"
+)
 
 // A cell is a message read from the network connection
 type Cell struct {

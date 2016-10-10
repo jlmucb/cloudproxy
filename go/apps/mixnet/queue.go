@@ -222,9 +222,11 @@ func (sq *Queue) dequeue() {
 		var err error = nil
 		if sq.t != nil {
 			b, err = sq.t.GetRandomBytes(8)
+			if err != nil {
+				glog.Error("Could not read random bytes from Tao")
+			}
 		}
 		if err != nil || sq.t == nil {
-			glog.Error("Could not read random bytes from Tao")
 			b = make([]byte, 8)
 			if _, err := rand.Read(b); err != nil {
 				// if we can't even get crypto/rand, fatal error

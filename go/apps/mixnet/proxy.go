@@ -44,6 +44,15 @@ type ProxyContext struct {
 		sync.Mutex
 		m map[string]*Conn
 	}
+	// Used to check duplicates
+	circuitIds struct {
+		sync.Mutex
+		m map[uint64]bool
+	}
+	connIds struct {
+		sync.Mutex
+		m map[uint32]bool
+	}
 
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on read/write.
@@ -71,6 +80,14 @@ func NewProxyContext(path, network, addr string, timeout time.Duration) (p *Prox
 		sync.Mutex
 		m map[string]*Conn
 	}{m: make(map[string]*Conn)}
+	p.circuitIds = struct {
+		sync.Mutex
+		m map[uint64]bool
+	}{m: make(map[uint64]bool)}
+	p.connIds = struct {
+		sync.Mutex
+		m map[uint32]bool
+	}{m: make(map[uint32]bool)}
 
 	return p, nil
 }
@@ -197,28 +214,39 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 }
 
 // Return a random circuit ID
-// TODO(kwonalbert): probably won't happen, but should check for duplicates
 func (p *ProxyContext) newID() (uint64, error) {
+	p.circuitIds.Lock()
 	id := uint64(0)
-	for id < 1<<32 { // Reserving the first 2^32 ids for connection id
+	ok := true
+	// Reserve ids < 2^32 to connection ids
+	for ok || id < (1<<32) {
 		b := make([]byte, 8)
 		if _, err := rand.Read(b); err != nil {
 			return 0, err
 		}
 		id = binary.LittleEndian.Uint64(b)
+		_, ok = p.circuitIds.m[id]
 	}
+	p.circuitIds.m[id] = true
+	p.circuitIds.Unlock()
 	return id, nil
 }
 
 // Return a random connection ID
-// TODO(kwonalbert): should check for duplicates
 func (p *ProxyContext) newConnID() (uint32, error) {
+	p.connIds.Lock()
 	id := uint32(0)
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		return 0, err
+	ok := true
+	for ok {
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			return 0, err
+		}
+		id = binary.LittleEndian.Uint32(b)
+		_, ok = p.connIds.m[id]
 	}
-	id = binary.LittleEndian.Uint32(b)
+	p.connIds.m[id] = true
+	p.connIds.Unlock()
 	return id, nil
 }
 

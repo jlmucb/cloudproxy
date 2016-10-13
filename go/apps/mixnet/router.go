@@ -52,6 +52,11 @@ type RouterContext struct {
 	// Mapping id to next hop circuit id or prev hop circuit id
 	nextIds map[uint64]uint64
 	prevIds map[uint64]uint64
+	// Used to check duplicate connection ids
+	connIds struct {
+		sync.Mutex
+		m map[uint32]bool
+	}
 	// If this server is an entry or exit for this circuit
 	entry map[uint64]bool
 	exit  map[uint64]bool
@@ -90,6 +95,10 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 	r.circuits = make(map[uint64]*Conn)
 	r.nextIds = make(map[uint64]uint64)
 	r.prevIds = make(map[uint64]uint64)
+	r.connIds = struct {
+		sync.Mutex
+		m map[uint32]bool
+	}{m: make(map[uint32]bool)}
 	r.entry = make(map[uint64]bool)
 	r.exit = make(map[uint64]bool)
 
@@ -230,25 +239,37 @@ func (r *RouterContext) Close() {
 }
 
 // Return a random circuit ID
-// TODO(kwonalbert): probably won't happen, but should check for duplicates
-func (p *RouterContext) newID() (uint64, error) {
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		return 0, err
+func (r *RouterContext) newID() (uint64, error) {
+	id := uint64(0)
+	ok := true
+	// Reserve ids < 2^32 to connection ids
+	for ok || id < (1<<32) {
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			return 0, err
+		}
+		id = binary.LittleEndian.Uint64(b)
+		// newID should always be in the prevIds
+		_, ok = r.prevIds[id]
 	}
-	id := binary.LittleEndian.Uint64(b)
 	return id, nil
 }
 
 // Return a random connection ID
-// TODO(kwonalbert): should check for duplicates
 func (r *RouterContext) newConnID() (uint32, error) {
-	id := uint32(0)
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		return 0, err
+	r.connIds.Lock()
+	var id uint32
+	ok := true
+	for ok {
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			return 0, err
+		}
+		id = binary.LittleEndian.Uint32(b)
+		_, ok = r.connIds.m[id]
 	}
-	id = binary.LittleEndian.Uint32(b)
+	r.connIds.m[id] = true
+	r.connIds.Unlock()
 	return id, nil
 }
 
@@ -405,6 +426,10 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 		}
 		for i := 1; i < len(d.Addrs)-1; i++ {
 			if d.Addrs[i] != "" {
+				// TODO(kwonalbert) Currently, we allow the
+				// clients to pick the path, if they want,
+				// mostly for testing. But for better security,
+				// we should not allows this for final version.
 				continue
 			}
 			b := make([]byte, LEN_SIZE)
@@ -418,7 +443,6 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 		}
 	}
 
-	// TODO(kwonalbert) probably could support finer grain locking..
 	r.mapLock.Lock()
 	defer r.mapLock.Unlock()
 

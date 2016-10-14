@@ -17,8 +17,9 @@ package mixnet;
 enum DirectiveType {
   ERROR = 0;     // Signal an error to peer.
   CREATE = 1;    // Create a circuit.
-  CREATED = 2;   // Reply from router confirming the circuit was created.
+  CREATED = 2;   // Reply from router confirming CREATE
   DESTROY = 3;   // Destroy a circuit.
+  DESTROYED = 4;   // Reply from router confirming DESTROY
 }
 
 message Directive {
@@ -31,5 +32,22 @@ message Directive {
   repeated string addrs = 2;
 
   // ERROR or FATAL, an error message.
+  optional string error = 3;
+}
+
+enum DirectoryMessageType {
+  REGISTER = 0;
+  DELETE = 1;
+  LIST = 2;
+  DIRECTORY = 3;
+  DIRERROR = 4;
+}
+
+message DirectoryMessage {
+  required DirectoryMessageType type = 1;
+  // Addresses to register to or delete from the directory,
+  // or list of all available mixnets
+  repeated string addrs = 2;
+  // Possible error message
   optional string error = 3;
 }

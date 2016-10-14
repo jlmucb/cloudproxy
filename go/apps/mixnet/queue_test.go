@@ -72,7 +72,7 @@ func runDummyServer(clientCt, msgCt int, ch chan<- testResult, addr chan<- strin
 
 		go func(c net.Conn, clientNo int) {
 			defer c.Close()
-			buf := make([]byte, CellBytes*10)
+			buf := make([]byte, MaxMsgBytes+1)
 			for j := 0; j < msgCt; j++ {
 				bytes, err := c.Read(buf)
 				if err != nil {
@@ -82,7 +82,9 @@ func runDummyServer(clientCt, msgCt int, ch chan<- testResult, addr chan<- strin
 					if err != nil {
 						ch <- testResult{err, nil}
 					} else {
-						ch <- testResult{nil, buf[:bytes]}
+						bufCopy := make([]byte, bytes)
+						copy(bufCopy, buf[:bytes])
+						ch <- testResult{nil, bufCopy}
 					}
 				}
 				done <- true
@@ -104,7 +106,7 @@ func TestQueueSend(t *testing.T) {
 	msgCt := 3
 
 	timeout, _ := time.ParseDuration("2s")
-	sq := NewQueue(network, batchSize, timeout)
+	sq := NewQueue(network, nil, batchSize, timeout)
 	kill := make(chan bool)
 	done := make(chan bool)
 	dstCh := make(chan testResult)
@@ -119,16 +121,25 @@ func TestQueueSend(t *testing.T) {
 	}()
 
 	go func() {
-		sq.DoQueueErrorHandlerLog("test queue", kill)
+		sq.DoQueueErrorHandler(nil, kill)
 		done <- true
 	}()
+
+	conns := make([]net.Conn, clientCt)
+	var err error
+	for i := 0; i < clientCt; i++ {
+		conns[i], err = net.DialTimeout(network, dstAddr, timeout)
+		if err != nil {
+			t.Error("Couldn't connect to server:", err)
+		}
+	}
 
 	for round := 0; round < msgCt; round++ {
 		// Enqueue some messages.
 		for i := 0; i < clientCt; i++ {
 			q := new(Queueable)
 			q.id = uint64(i)
-			q.addr = dstAddr
+			q.conn = conns[i]
 			q.msg = []byte(
 				fmt.Sprintf("I am anonymous, but my ID is %d.", i))
 			sq.Enqueue(q)

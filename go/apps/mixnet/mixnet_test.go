@@ -17,19 +17,25 @@ package mixnet
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
+	"net"
 	"os"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
-        "github.com/golang/protobuf/proto"
-        "github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 var password = make([]byte, 32)
@@ -57,39 +63,54 @@ func makeTrivialDomain(configDir string) (*tao.Domain, error) {
 	return tao.CreateDomain(policyDomainConfig, configPath, password)
 }
 
-func makeContext(batchSize int) (*RouterContext, *ProxyContext, *tao.Domain, error) {
+func makeContext(batchSize int) (*RouterContext, *ProxyContext, *DirectoryContext, *tao.Domain, error) {
 	tempDir, err := ioutil.TempDir("", configDirName)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	// Create a domain with a LiberalGuard.
 	d, err := makeTrivialDomain(tempDir)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	// Create a SoftTao from the domain.
-	st, err := tao.NewSoftTao(tempDir, password)
+	router, err := makeRouterContext(tempDir, localAddr, batchSize, d)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+
+	// Create a proxy context. This just loads the domain.
+	proxy, err := makeProxyContext(localAddr, d)
+	if err != nil {
+		router.Close()
+		return nil, nil, nil, nil, err
+	}
+
+	directory, err := makeDirectorycontext(tempDir, localAddr, d)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return router, proxy, directory, d, nil
+}
+
+func makeRouterContext(dir, rAddr string, batchSize int, domain *tao.Domain) (*RouterContext, error) {
+	// Create a SoftTao from the domain.
+	st, err := tao.NewSoftTao(dir, password)
+	if err != nil {
+		return nil, err
 	}
 
 	// Create router context. This loads the domain and binds a
 	// socket and an anddress.
-	router, err := NewRouterContext(d.ConfigPath, network, localAddr,
+	router, err := NewRouterContext(domain.ConfigPath, network, rAddr,
 		batchSize, timeout, &id, st)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-
-	// Create a proxy context. This just loads the domain.
-	proxy, err := NewProxyContext(d.ConfigPath, network, localAddr, timeout)
-	if err != nil {
-		router.Close()
-		return nil, nil, nil, err
-	}
-
-	return router, proxy, d, nil
+	// Because we are auto assigning ports, explicitly set the addr here
+	router.addr = router.listener.Addr().String()
+	return router, nil
 }
 
 func makeProxyContext(proxyAddr string, domain *tao.Domain) (*ProxyContext, error) {
@@ -102,19 +123,53 @@ func makeProxyContext(proxyAddr string, domain *tao.Domain) (*ProxyContext, erro
 	return proxy, nil
 }
 
+func makeDirectorycontext(dir, addr string, domain *tao.Domain) (*DirectoryContext, error) {
+	// Create a SoftTao from the domain.
+	st, err := tao.NewSoftTao(dir, password)
+	if err != nil {
+		return nil, err
+	}
+
+	directory, err := NewDirectoryContext(domain.ConfigPath, network, addr, timeout, &id, st)
+	if err != nil {
+		return nil, err
+	}
+	return directory, nil
+}
+
 type testResult struct {
 	err error
 	msg []byte
 }
 
+func setupDirectory(routers []*RouterContext, directory *DirectoryContext) {
+	go func() {
+		for i := 0; i < len(routers)*2; i++ {
+			directory.Accept()
+		}
+	}()
+
+	for _, router := range routers {
+		err := router.Register(directory.listener.Addr().String())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	for _, router := range routers {
+		err := router.GetDirectory(directory.listener.Addr().String())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
 // Router accepts a connection from a proxy and reads a cell.
 func runRouterReadCell(router *RouterContext, ch chan<- testResult) {
-	c, err := router.AcceptProxy()
+	c, err := router.Accept()
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
 	}
-	defer c.Close()
 
 	cell := make([]byte, CellBytes)
 	if _, err := c.Read(cell); err != nil {
@@ -130,7 +185,6 @@ func runProxyWriteCell(proxy *ProxyContext, addr string, msg []byte) error {
 	if err != nil {
 		return err
 	}
-	defer c.Close()
 
 	if _, err := c.Write(msg); err != nil {
 		return err
@@ -139,147 +193,320 @@ func runProxyWriteCell(proxy *ProxyContext, addr string, msg []byte) error {
 	return nil
 }
 
-// Router accepts a connection from a proxy and handles a number of
-// requests.
-func runRouterHandleOneProxy(router *RouterContext, requestCount int, ch chan<- testResult) {
-	c, err := router.AcceptProxy()
+// Router accepts a connection from a proxy and handles a number of requests.
+func runRouterHandleOneConn(router *RouterContext, ch chan<- testResult) {
+	_, err := router.Accept()
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
 	}
-	defer c.Close()
 
-	for i := 0; i < requestCount; i++ {
-		if err = router.HandleProxy(c); err != nil {
+	for {
+		if err = <-router.errs; err != nil {
 			ch <- testResult{err, nil}
-			return
 		}
 	}
-
-	ch <- testResult{nil, nil}
 }
 
-func runRouterHandleProxy(router *RouterContext, clientCt, requestCt int, ch chan<- testResult) {
-	done := make(chan bool)
+// Router accepts a connection from a proxy with multiple circuits
+func runRouterHandleOneConnMultCircuits(router *RouterContext, ch chan<- testResult) {
+	_, err := router.Accept()
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
 
-	for i := 0; i < clientCt; i++ {
-		c, err := router.AcceptProxy()
+	for {
+		if err = <-router.errs; err != nil {
+			ch <- testResult{err, nil}
+		}
+	}
+}
+
+func runRouterHandleConns(router *RouterContext, connCt int, ch chan<- testResult) {
+	for i := 0; i < connCt; i++ {
+		_, err := router.Accept()
 		if err != nil {
 			ch <- testResult{err, []byte{}}
 			return
 		}
-		defer c.Close()
-
-		go func(c *Conn) {
-			defer func() { done <- true }()
-			for i := 0; i < requestCt; i++ {
-				if err = router.HandleProxy(c); err != nil {
-					ch <- testResult{err, nil}
-					return
-				}
-			}
-		}(c)
 	}
 
-	for i := 0; i < clientCt; i++ {
-		<-done
+	for {
+		if err := <-router.errs; err != nil {
+			ch <- testResult{err, nil}
+		}
 	}
-
-	ch <- testResult{nil, nil}
 }
 
 // Proxy dials a router, creates a circuit, and sends a message over
 // the circuit.
 func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) ([]byte, error) {
-	c, err := proxy.CreateCircuit(rAddr, dAddr)
+	circ, _, err := proxy.CreateCircuit([]string{rAddr, dAddr})
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
 
-	if err = proxy.SendMessage(c, msg); err != nil {
+	if err = circ.SendMessage(msg); err != nil {
 		return nil, err
 	}
 
 	// dummyServer receives one message and replies. Without this line,
 	// the router will report a broken pipe.
-	return proxy.ReceiveMessage(c)
+	msg, err = circ.ReceiveMessage()
+	return msg, err
+}
+
+// A dummy TLS server echoes back client's message.
+func runTLSServer(clientCt int, ch chan<- testResult, addr chan<- string) {
+	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	config := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+		ClientAuth:         tls.RequestClientCert,
+	}
+	l, err := tls.Listen(network, localAddr, config)
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
+	defer l.Close()
+	addr <- l.Addr().String()
+
+	for i := 0; i < clientCt; i++ {
+		c, err := l.Accept()
+		if err != nil {
+			ch <- testResult{err, []byte{}}
+			return
+		}
+
+		go func(c net.Conn, clientNo int) {
+			defer c.Close()
+			buf := make([]byte, MaxMsgBytes+1)
+			for {
+				bytes, err := c.Read(buf)
+				if err != nil {
+					ch <- testResult{err, nil}
+				} else {
+					_, err := c.Write(buf[:bytes])
+					if err != nil {
+						ch <- testResult{err, nil}
+					} else {
+						bufCopy := make([]byte, bytes)
+						copy(bufCopy, buf[:bytes])
+						ch <- testResult{nil, bufCopy}
+					}
+				}
+			}
+		}(c, i)
+	}
 }
 
 // Test connection set up.
 func TestProxyRouterConnect(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer router.Close()
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
-	routerAddr := router.proxyListener.Addr().String()
+	routerAddr := router.listener.Addr().String()
 
 	// Wait for a connection from the proxy.
 	ch := make(chan bool)
 	go func(ch chan<- bool) {
-		c, _ := router.AcceptProxy()
-		defer c.Close()
+		router.Accept()
 		ch <- true
 	}(ch)
 
-	c, err := proxy.DialRouter(network, routerAddr)
+	_, err = proxy.DialRouter(network, routerAddr)
 	if err != nil {
-		router.Close()
-		t.Fatal(err)
+		t.Error(err)
 	}
-	defer c.Close()
 
 	<-ch
 }
 
 // Test CREATE and DESTROY.
 func TestCreateDestroy(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, directory, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer router.Close()
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
-	rAddr := router.proxyListener.Addr().String()
+	setupDirectory([]*RouterContext{router}, directory)
+	rAddr := router.listener.Addr().String()
 
 	// The address doesn't matter here because no packets will be sent on
 	// the established circuit.
 	fakeAddr := "127.0.0.1:0"
 	ch := make(chan testResult)
-	go runRouterHandleOneProxy(router, 3, ch)
+	go runRouterHandleOneConn(router, ch)
 
-	c, err := proxy.CreateCircuit(rAddr, fakeAddr)
+	_, id, err := proxy.CreateCircuit([]string{rAddr, fakeAddr})
+	if err != nil {
+		t.Error("Error creating circuit:", err)
+	}
+
+	if len(router.nextIds) != 1 {
+		t.Error("Failed to establish circuit:", len(router.nextIds))
+	}
+
+	if err = proxy.DestroyCircuit(id); err != nil {
+		t.Error("Error destroying circuit:", err)
+	}
+
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
+	}
+
+	if len(router.nextIds) != 0 {
+		t.Error("Expecting 0 circuits, but have", len(router.nextIds))
+	}
+}
+
+func TestCreateDestroyMultiHop(t *testing.T) {
+	router1, proxy, directory, domain, err := makeContext(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tempDir, err := ioutil.TempDir("", configDirName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router2, err := makeRouterContext(tempDir, localAddr, 1, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router3, err := makeRouterContext(tempDir, localAddr, 1, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer router1.Close()
+	defer router2.Close()
+	defer router3.Close()
+	defer proxy.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	setupDirectory([]*RouterContext{router1, router2, router3}, directory)
+	rAddr1 := router1.listener.Addr().String()
+
+	// The address doesn't matter here because no packets will be sent on
+	// the established circuit.
+	fakeAddr := "127.0.0.1:0"
+	ch1 := make(chan testResult)
+	ch2 := make(chan testResult)
+	ch3 := make(chan testResult)
+	go runRouterHandleOneConn(router1, ch1)
+	go runRouterHandleOneConn(router2, ch2)
+	go runRouterHandleOneConn(router3, ch3)
+
+	_, id, err := proxy.CreateCircuit([]string{rAddr1, "", "", fakeAddr})
 	if err != nil {
 		t.Error(err)
 	}
 
-	if err = proxy.SendMessage(c, []byte("hola!")); err != nil {
-		t.Error(err)
+	if len(router1.nextIds) != 1 || len(router2.nextIds) != 1 || len(router3.nextIds) != 1 {
+		t.Error("Expecting 0 connections, but have",
+			len(router1.nextIds), len(router2.nextIds), len(router3.nextIds))
 	}
 
-	if err = proxy.DestroyCircuit(c); err != nil {
-		t.Error(err)
+	if err = proxy.DestroyCircuit(id); err != nil {
+		t.Error("Could not destroy circuit:", err)
 	}
 
-	res := <-ch
-	if res.err != io.EOF {
-		t.Error("should have gotten EOF from router, but got:", res.err)
+	for _, ch := range []chan testResult{ch1, ch2, ch3} {
+		select {
+		case res := <-ch:
+			if res.err != nil {
+				t.Error("Unexpected router error:", res.err)
+			}
+		default:
+		}
 	}
 
-	sendCt := len(router.sendQueue.nextConn)
-	replyCt := len(router.replyQueue.nextConn)
-	if sendCt > 0 || replyCt > 0 {
-		t.Errorf("%d send, %d reply connections open, should be 0", sendCt, replyCt)
+	if len(router1.nextIds) != 0 || len(router2.nextIds) != 0 || len(router3.nextIds) != 0 {
+		t.Error("Expecting 0 connections, but have",
+			len(router1.nextIds), len(router2.nextIds), len(router3.nextIds))
+	}
+}
+
+// Test multiplexing for proxy
+func TestMultiplexProxyCircuit(t *testing.T) {
+	router, proxy, _, domain, err := makeContext(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer router.Close()
+	defer proxy.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	rAddr := router.listener.Addr().String()
+
+	// The address doesn't matter here because no packets will be sent on
+	// the established circuit.
+	ch := make(chan testResult)
+	clientCt := 2
+	numReqs := make([]int, clientCt)
+	fakeAddrs := make([]string, clientCt)
+	ids := make([]uint64, clientCt)
+	for i := range numReqs {
+		numReqs[i] = 2
+		fakeAddrs[i] = fmt.Sprintf("127.0.0.1:%d", -i)
+	}
+	go runRouterHandleOneConnMultCircuits(router, ch)
+
+	wg := new(sync.WaitGroup)
+	for i := range numReqs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			var e error
+			_, ids[i], e = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]})
+			if e != nil {
+				t.Error("Couldn't create circuit:", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	unique := make(map[*Conn]bool)
+	for _, conn := range proxy.circuits {
+		unique[conn] = true
+	}
+	if len(unique) != 1 {
+		t.Error(errors.New("Should only have one connection"))
+	}
+
+	for i := range numReqs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			err := proxy.DestroyCircuit(ids[i])
+			if err != nil {
+				t.Error("Couldn't destroy circuit:", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
 	}
 }
 
 // Test sending a cell.
 func TestProxyRouterCell(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,38 +515,38 @@ func TestProxyRouterCell(t *testing.T) {
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
 	ch := make(chan testResult)
 
-	msg := make([]byte, CellBytes+1)
-	for i := 0; i < len(msg); i++ {
-		msg[i] = byte(i)
+	cell := make([]byte, CellBytes+1)
+	for i := 0; i < len(cell); i++ {
+		cell[i] = byte(i)
 	}
 
 	// This cell is just right.
 	go runRouterReadCell(router, ch)
-	if err = runProxyWriteCell(proxy, router.proxyListener.Addr().String(), msg[:CellBytes]); err != nil {
+	if err = runProxyWriteCell(proxy, router.listener.Addr().String(), cell[:CellBytes]); err != nil {
 		t.Error(err)
 	}
 	res := <-ch
 	if res.err != nil && res.err != io.EOF {
 		t.Error(res.err)
-	} else if bytes.Compare(res.msg, msg[:CellBytes]) != 0 {
+	} else if bytes.Compare(res.msg, cell[:CellBytes]) != 0 {
 		t.Errorf("Server got: %s", res.msg)
 	}
 
 	// This cell is too big.
 	go runRouterReadCell(router, ch)
-	if err = runProxyWriteCell(proxy, router.proxyListener.Addr().String(), msg); err != errCellLength {
+	if err = runProxyWriteCell(proxy, router.listener.Addr().String(), cell); err != errCellLength {
 		t.Error("runProxyWriteCell(): should have returned errCellLength")
 	}
 	res = <-ch
-	if res.err != io.EOF {
-		t.Error("runRouterReadCell(): should have returned EOF.")
+	if err := res.err.(net.Error); !err.Timeout() {
+		t.Error("runRouterReadCell(): should have timed out")
 	}
 }
 
 // Test setting up a circuit and relay a message to destination. Try
 // messages of various lengths.
 func TestProxyRouterRelay(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,26 +565,22 @@ func TestProxyRouterRelay(t *testing.T) {
 	var res testResult
 
 	trials := []int{
-		37,        // A short message
-		CellBytes, // A cell
-		len(msg),  // A long message
+		37, // A short message
+		CellBytes - (BODY + LEN_SIZE), // A cell
+		len(msg),                      // A long message
 	}
 
 	go runDummyServer(len(trials), 1, dstCh, dstAddrCh)
 	dstAddr := <-dstAddrCh
-	rAddr := router.proxyListener.Addr().String()
+	rAddr := router.listener.Addr().String()
+
+	// First two messages fits in one cell, the last one is over multiple cells
+	go runRouterHandleOneConnMultCircuits(router, routerCh)
 
 	for _, l := range trials {
-
-		go runRouterHandleOneProxy(router, 2, routerCh)
 		reply, err := runProxySendMessage(proxy, rAddr, dstAddr, msg[:l])
 		if err != nil {
 			t.Errorf("relay (length=%d): %s", l, err)
-		}
-
-		res = <-routerCh
-		if res.err != nil {
-			t.Errorf("relay (length=%d): %s", l, res.err)
 		}
 
 		res = <-dstCh
@@ -368,134 +591,149 @@ func TestProxyRouterRelay(t *testing.T) {
 			t.Errorf("relay (length=%d): sent: %x", l, msg[:l])
 		}
 	}
+
+	select {
+	case res := <-routerCh:
+		if res.err != nil {
+			t.Error("Router error:", res.err)
+		}
+	default:
+	}
 }
 
 // Test sending malformed messages from the proxy to the router.
 func TestMaliciousProxyRouterRelay(t *testing.T) {
-	router, proxy, domain, err := makeContext(1)
+	router, proxy, _, domain, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer router.Close()
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
-	routerAddr := router.proxyListener.Addr().String()
-	cell := make([]byte, CellBytes)
+	routerAddr := router.listener.Addr().String()
 	ch := make(chan testResult)
 
-	go runRouterHandleOneProxy(router, 2, ch)
-	c, err := proxy.DialRouter(network, routerAddr)
+	go runRouterHandleOneConn(router, ch)
+	fakeAddr := "127.0.0.1:0"
+	circ, id, err := proxy.CreateCircuit([]string{routerAddr, fakeAddr})
 	if err != nil {
 		t.Error(err)
 	}
+	cell := make([]byte, CellBytes)
+	binary.LittleEndian.PutUint64(cell[ID:], id)
+	c := proxy.circuits[id]
 
 	// Unrecognized cell type.
-	cell[0] = 0xff
+	cell[TYPE] = 0xff
 	if _, err = c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = proxy.ReceiveMessage(c)
+	_, err = circ.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
 
 	// Message too long.
-	cell[0] = msgCell
-	binary.PutUvarint(cell[1:], uint64(MaxMsgBytes+1))
+	cell[TYPE] = msgCell
+	binary.LittleEndian.PutUint64(cell[BODY:], uint64(MaxMsgBytes+1))
 	if _, err := c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = proxy.ReceiveMessage(c)
+	_, err = circ.ReceiveMessage()
 	if err == nil {
 		t.Error("ReceiveMessage incorrectly succeeded")
 	}
-	<-ch
-	c.Close()
 
-	// Bogus destination.
-	go runRouterHandleOneProxy(router, 2, ch)
-	c, err = proxy.CreateCircuit(routerAddr, "127.0.0.1:9999")
-	if err != nil {
+	if err = circ.SendMessage([]byte("Are you there?")); err != nil {
 		t.Error(err)
 	}
-	if err = proxy.SendMessage(c, []byte("Are you there?")); err != nil {
-		t.Error(err)
-	}
-	_, err = proxy.ReceiveMessage(c)
+	_, err = circ.ReceiveMessage()
 	if err == nil {
 		t.Error("Receive message incorrectly succeeded")
 	}
-	<-ch
-	c.Close()
-
-	// Multihop circuits not supported yet.
-	go runRouterHandleOneProxy(router, 1, ch)
-	c, err = proxy.CreateCircuit(routerAddr, "one:234", "two:34", "three:4")
-	if err == nil {
-		t.Error("should have gotten \"multi-hop circuits not implemented\" from router")
+	err = proxy.DestroyCircuit(id)
+	if err != nil {
+		t.Error(err)
 	}
-	<-ch
-	c.Close()
+
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			t.Error("Not expecting any router errors, but got", res.err)
+		}
+	default:
+	}
 }
 
 // Test timeout on CreateMessage().
 func TestCreateTimeout(t *testing.T) {
-	router, proxy, domain, err := makeContext(2)
+	router, proxy, _, domain, err := makeContext(2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer router.Close()
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
-	routerAddr := router.proxyListener.Addr().String()
+	routerAddr := router.listener.Addr().String()
 	ch := make(chan testResult)
 
 	// The proxy should get a timeout if it's the only connecting client.
-	go runRouterHandleProxy(router, 1, 1, ch)
-	hostAddr := genHostname()+":80"
-	_, err = proxy.CreateCircuit(routerAddr, hostAddr)
+	go runRouterHandleConns(router, 1, ch)
+	hostAddr := genHostname() + ":80"
+	_, _, err = proxy.CreateCircuit([]string{routerAddr, hostAddr})
 	if err == nil {
 		t.Errorf("proxy.CreateCircuit(%s, %s) incorrectly succeeded when it should have timed out", routerAddr, hostAddr)
 	}
-	res := <-ch
-	if res.err != nil {
-		t.Error(res.err)
+
+	select {
+	case res := <-ch:
+		e, _ := res.err.(net.Error)
+		if res.err != nil && !e.Timeout() {
+			t.Error(res.err)
+		}
+	default:
 	}
 }
 
 // Test timeout on ReceiveMessage().
 func TestSendMessageTimeout(t *testing.T) {
-	router, proxy, domain, err := makeContext(2)
+	router, proxy, _, domain, err := makeContext(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy2, err := makeProxyContext(localAddr, domain)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer router.Close()
 	defer proxy.Close()
+	defer proxy2.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
-	routerAddr := router.proxyListener.Addr().String()
+	routerAddr := router.listener.Addr().String()
 	ch := make(chan testResult)
 	done := make(chan bool)
 
-	go runRouterHandleProxy(router, 2, 2, ch)
+	go runRouterHandleConns(router, 2, ch)
 
 	// Proxy 1 creates a circuit, sends a message and awaits a reply.
 	go func() {
-		c, err := proxy.CreateCircuit(routerAddr, genHostname()+":80")
+		circ, _, err := proxy.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
 		if err != nil {
 			t.Error(err)
 		}
-		if err = proxy.SendMessage(c, []byte("hello")); err != nil {
+		if err = circ.SendMessage([]byte("hello")); err != nil {
 			t.Error(err)
 		}
-		if _, err = proxy.ReceiveMessage(c); err == nil {
-			t.Error("proxy.ReceiveMessage incorrectly succeeded")
+		_, err = circ.ReceiveMessage()
+		if e, ok := err.(net.Error); !(ok && e.Timeout()) {
+			t.Error("receiveMessage should have timed out")
 		}
 		done <- true
 	}()
 
 	// Proxy 2 just creates a circuit.
 	go func() {
-		_, err = proxy.CreateCircuit(routerAddr, genHostname()+":80")
+		_, _, err = proxy2.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
 		if err != nil {
 			t.Error(err)
 		}
@@ -507,44 +745,42 @@ func TestSendMessageTimeout(t *testing.T) {
 
 // Test mixnet end-to-end with many clients. Proxy a protocol through mixnet.
 // The client sends the server a message and the server echoes it back.
-func TestMixnet(t *testing.T) {
-
+func TestMixnetSingleHop(t *testing.T) {
 	clientCt := 10
-	router, proxy, domain, err := makeContext(clientCt)
+	router, proxy, _, domain, err := makeContext(clientCt)
 	if err != nil {
 		t.Fatal(err)
 	}
 	proxy.Close()
 	defer router.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
-	routerAddr := router.proxyListener.Addr().String()
+	routerAddr := router.listener.Addr().String()
 
 	var res testResult
-	clientCh := make(chan testResult)
-	proxyCh := make(chan testResult)
+	clientCh := make(chan testResult, clientCt)
+	proxyCh := make(chan testResult, clientCt)
 	routerCh := make(chan testResult)
-	dstCh := make(chan testResult)
+	dstCh := make(chan testResult, clientCt)
 	dstAddrCh := make(chan string)
 
-	go runRouterHandleProxy(router, clientCt, 3, routerCh)
+	go runRouterHandleConns(router, clientCt, routerCh)
 	go runDummyServer(clientCt, 1, dstCh, dstAddrCh)
 	dstAddr := <-dstAddrCh
 
 	for i := 0; i < clientCt; i++ {
 		go func(pid int, ch chan<- testResult) {
 			pa := "127.0.0.1:0"
-			proxy, err = makeProxyContext(pa, domain)
+			proxy, err := makeProxyContext(pa, domain)
 			if err != nil {
 				ch <- testResult{err, nil}
 				return
 			}
 			defer proxy.Close()
 			proxyAddr := proxy.listener.Addr().String()
-			go runSocksServerOne(proxy, routerAddr, proxyCh)
+			go runSocksServerOne(proxy, []string{routerAddr}, proxyCh)
 
 			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
 			ch <- runSocksClient(proxyAddr, dstAddr, msg)
-
 		}(i, clientCh)
 	}
 
@@ -575,10 +811,301 @@ func TestMixnet(t *testing.T) {
 	}
 
 	// Wait for router to finish.
+	select {
+	case res := <-routerCh:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
+	}
+}
+
+// Test routing TLS connection with mixnet
+func TestMixnetSingleHopTLS(t *testing.T) {
+	clientCt := 4
+	router, proxy, _, domain, err := makeContext(clientCt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy.Close()
+	defer router.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	routerAddr := router.listener.Addr().String()
+
+	var res testResult
+	clientCh := make(chan testResult, clientCt)
+	proxyCh := make(chan testResult, clientCt)
+	routerCh := make(chan testResult)
+	dstCh := make(chan testResult, clientCt)
+	dstAddrCh := make(chan string)
+
+	go runRouterHandleConns(router, clientCt, routerCh)
+	go runTLSServer(clientCt, dstCh, dstAddrCh)
+	dstAddr := <-dstAddrCh
+
 	for i := 0; i < clientCt; i++ {
-		res = <-routerCh
-		if res.err != nil && res.err != io.EOF {
+		go func(pid int, ch chan<- testResult) {
+			pa := "127.0.0.1:0"
+			proxy, err := makeProxyContext(pa, domain)
+			if err != nil {
+				ch <- testResult{err, nil}
+				return
+			}
+			defer proxy.Close()
+			proxyAddr := proxy.listener.Addr().String()
+			go runSocksServer(proxy, []string{routerAddr}, proxyCh)
+
+			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
+			ch <- runTLSClient(proxyAddr, dstAddr, msg)
+		}(i, clientCh)
+	}
+
+	// Wait for clients to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-clientCh
+		if res.err != nil {
 			t.Error(res.err)
+		} else {
+			t.Log("client got:", string(res.msg))
+		}
+	}
+
+	// Wait for proxies to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-proxyCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Wait for server to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-dstCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Wait for router to finish.
+	select {
+	case res := <-routerCh:
+		if res.err != nil {
+			t.Error("Unexpected router error:", res.err)
+		}
+	default:
+	}
+}
+
+// Test mixnet end-to-end with many clients and two routers.
+func TestMixnetMultiHop(t *testing.T) {
+	clientCt := 10
+	router, proxy, directory, domain, err := makeContext(clientCt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tempDir, err := ioutil.TempDir("", configDirName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router2, err := makeRouterContext(tempDir, localAddr, 1, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router3, err := makeRouterContext(tempDir, localAddr, 1, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxy.Close()
+	defer router.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	setupDirectory([]*RouterContext{router, router2, router3}, directory)
+	routerAddr := router.listener.Addr().String()
+	routerAddr2 := router2.listener.Addr().String()
+
+	var res testResult
+	clientCh := make(chan testResult, clientCt)
+	proxyCh := make(chan testResult, clientCt)
+	routerCh := make(chan testResult)
+	routerCh2 := make(chan testResult)
+	routerCh3 := make(chan testResult)
+	dstCh := make(chan testResult, clientCt)
+	dstAddrCh := make(chan string)
+
+	go runRouterHandleConns(router, clientCt, routerCh)
+	go runRouterHandleOneConn(router2, routerCh2)
+	go runRouterHandleOneConn(router3, routerCh3)
+	go runDummyServer(clientCt, 1, dstCh, dstAddrCh)
+	dstAddr := <-dstAddrCh
+
+	for i := 0; i < clientCt; i++ {
+		go func(pid int, ch chan<- testResult) {
+			pa := "127.0.0.1:0"
+			proxy, err := makeProxyContext(pa, domain)
+			if err != nil {
+				ch <- testResult{err, nil}
+				return
+			}
+			defer proxy.Close()
+			proxyAddr := proxy.listener.Addr().String()
+			go runSocksServerOne(proxy, []string{routerAddr, routerAddr2, ""}, proxyCh)
+
+			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
+			ch <- runSocksClient(proxyAddr, dstAddr, msg)
+		}(i, clientCh)
+	}
+
+	// Wait for clients to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-clientCh
+		if res.err != nil {
+			t.Error(res.err)
+		} else {
+			t.Log("client got:", string(res.msg))
+		}
+	}
+
+	// Wait for proxies to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-proxyCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Wait for server to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-dstCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Check if routers had any errors
+	for _, ch := range []chan testResult{routerCh, routerCh2} {
+		select {
+		case res := <-ch:
+			if res.err != nil {
+				t.Error("Unexpected router error:", res.err)
+			}
+		default:
+		}
+	}
+}
+
+// Test mixnets with multiple paths, mixing with each other
+// Current test only supports even and same number of clients per router
+func TestMixnetMultiPath(t *testing.T) {
+	clientCt := 20
+	numPaths := 2
+	perPath := clientCt / numPaths
+	pathLen := 3
+	routerCt := pathLen * numPaths
+	routers := make([]*RouterContext, routerCt)
+	routerAddrs := make([]string, routerCt)
+	router, proxy, directory, domain, err := makeContext(perPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	routerChs := make([]chan testResult, routerCt)
+	tempDir, err := ioutil.TempDir("", configDirName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range routers {
+		if i == 0 {
+			routers[i] = router
+		} else {
+			routers[i], err = makeRouterContext(tempDir, localAddr, perPath, domain)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		defer routers[i].Close()
+		routerChs[i] = make(chan testResult)
+		if i%3 == 0 { // entry
+			routerAddrs[i] = routers[i].listener.Addr().String()
+			go runRouterHandleConns(routers[i], perPath, routerChs[i])
+		} else {
+			routerAddrs[i] = routers[i].listener.Addr().String()
+			go runRouterHandleConns(routers[i], numPaths, routerChs[i])
+		}
+	}
+	proxy.Close()
+	defer os.RemoveAll(path.Base(domain.ConfigPath))
+	setupDirectory(routers, directory)
+
+	var res testResult
+	clientCh := make(chan testResult, clientCt)
+	proxyCh := make(chan testResult, clientCt)
+	dstCh := make(chan testResult, clientCt)
+	dstAddrCh := make(chan string)
+
+	go runDummyServer(clientCt, 1, dstCh, dstAddrCh)
+	dstAddr := <-dstAddrCh
+	for i := 0; i < clientCt; i++ {
+		go func(pid int, ch chan<- testResult) {
+			pa := "127.0.0.1:0"
+			proxy, err := makeProxyContext(pa, domain)
+			if err != nil {
+				ch <- testResult{err, nil}
+				return
+			}
+			defer proxy.Close()
+			proxyAddr := proxy.listener.Addr().String()
+			circuit := make([]string, pathLen)
+			if pid%2 == 0 {
+				copy(circuit, routerAddrs[:3])
+				if pid%4 == 2 {
+					circuit[1] = routerAddrs[4]
+				}
+			} else {
+				copy(circuit, routerAddrs[3:])
+				if pid%4 == 3 {
+					circuit[1] = routerAddrs[1]
+				} else {
+				}
+			}
+			go runSocksServerOne(proxy, circuit, proxyCh)
+
+			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
+			ch <- runSocksClient(proxyAddr, dstAddr, msg)
+		}(i, clientCh)
+	}
+
+	// Wait for clients to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-clientCh
+		if res.err != nil {
+			t.Error(res.err)
+		} else {
+			t.Log("client got:", string(res.msg))
+		}
+	}
+
+	// Wait for proxies to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-proxyCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Wait for server to finish.
+	for i := 0; i < clientCt; i++ {
+		res = <-dstCh
+		if res.err != nil {
+			t.Error(res.err)
+		}
+	}
+
+	// Wait for router to finish.
+	for i := range routers {
+		select {
+		case res = <-routerChs[i]:
+			if res.err != nil {
+				t.Fatal(i, "Unexpected router error:", res.err)
+			}
+		default:
 		}
 	}
 }

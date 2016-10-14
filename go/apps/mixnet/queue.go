@@ -16,13 +16,16 @@ package mixnet
 
 import (
 	"container/list"
-	"errors"
-	"math/rand"
+	"crypto/rand"
+	"encoding/binary"
+	"io"
+	"log"
 	"net"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 // The Queueable object is passed through a channel and mutates the state of
@@ -30,53 +33,52 @@ import (
 // adddress or connection of a sender, add a message or request for reply
 // to the queue, or destroy any resources associated with the connection.
 type Queueable struct {
-	id      uint64 // Serial identififer of associated connection.
-	addr    string
-	msg     []byte
-	conn    net.Conn
-	reply   chan []byte
-	destroy bool
+	id       uint64 // circuit id
+	msg      []byte
+	conn     net.Conn
+	prevConn net.Conn
+	remove   bool
+	destroy  bool
 }
 
 type sendQueueError struct {
-	id uint64 // Serial identifier of sender to which error pertains.
+	id   uint64
+	conn net.Conn // where to send the error to
 	error
 }
 
-// The Queue structure maps a serial identifier corresponding to a sender
+// The Queue structure maps a circuit identifier corresponding to a sender
 // (in the router context) to a destination. It also maintains a message buffer
-// for each sender. Once there messages ready on enough buffers, a batch of
+// for each sender. Once messages are ready on enough buffers, a batch of
 // messages are transmitted simultaneously.
 type Queue struct {
 	batchSize int // Number of messages to transmit in a round.
 	ct        int // Current number of buffers with messages ready.
+	// Tao to get the random bytes
+	// Might be okay to just use crypto/rand..
+	t tao.Tao
 
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on dial/read/write.
 
-	nextAddr   map[uint64]string     // Address of destination.
-	nextConn   map[uint64]net.Conn   // Connection to destination.
 	sendBuffer map[uint64]*list.List // Message buffer of sender.
 
-	queue	  chan *Queueable     // Channel for queueing messages/directives.
-	err       chan sendQueueError // Channel for handling errors.
-	destroyed chan uint64 // Channel for waiting for circuit destruction, which happens asynchronously.
+	queue chan *Queueable     // Channel for queueing messages/directives.
+	err   chan sendQueueError // Channel for handling errors.
 }
 
 // NewQueue creates a new Queue structure.
-func NewQueue(network string, batchSize int, timeout time.Duration) (sq *Queue) {
+func NewQueue(network string, t tao.Tao, batchSize int, timeout time.Duration) (sq *Queue) {
 	sq = new(Queue)
 	sq.batchSize = batchSize
 	sq.network = network
+	sq.t = t
 	sq.timeout = timeout
 
-	sq.nextAddr = make(map[uint64]string)
-	sq.nextConn = make(map[uint64]net.Conn)
 	sq.sendBuffer = make(map[uint64]*list.List)
 
 	sq.queue = make(chan *Queueable)
 	sq.err = make(chan sendQueueError)
-	sq.destroyed = make(chan uint64)
 	return sq
 }
 
@@ -89,59 +91,55 @@ func (sq *Queue) Enqueue(q *Queueable) {
 
 // EnqueueMsg copies a byte slice into a queueable object and adds it to
 // the queue.
-func (sq *Queue) EnqueueMsg(id uint64, msg []byte) {
+func (sq *Queue) EnqueueMsg(id uint64, msg []byte, conn, prevConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
 	q.msg = make([]byte, len(msg))
 	copy(q.msg, msg)
+	q.conn = conn
+	q.prevConn = prevConn
 	sq.queue <- q
 }
 
-// EnqueueReply creates a queuable object with a reply channel and adds it to
-// the queue.
-func (sq *Queue) EnqueueReply(id uint64, reply chan []byte) {
+// Close creates a queueable object that sends the last msg in the circuit,
+// closes the connection and deletes all associated resources.
+func (sq *Queue) Close(id uint64, msg []byte, destroy bool, conn, prevConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
-	q.reply = reply
+	if msg != nil {
+		q.msg = make([]byte, len(msg))
+		copy(q.msg, msg)
+	}
+	q.remove = true
+	q.destroy = destroy
+	q.conn = conn
+	q.prevConn = prevConn
 	sq.queue <- q
 }
 
-// EnqueueMsgReply creates a queueable object with a message and a reply channel
-// and adds it to the queue.
-func (sq *Queue) EnqueueMsgReply(id uint64, msg []byte, reply chan []byte) {
-	q := new(Queueable)
-	q.id = id
-	q.msg = make([]byte, len(msg))
-	q.reply = reply
-	copy(q.msg, msg)
-	sq.queue <- q
-}
-
-// SetAddr copies an address into a queuable object and adds it to the queue.
-// This sets the next-hop address for the id.
-func (sq *Queue) SetAddr(id uint64, addr string) {
-	q := new(Queueable)
-	q.id = id
-	q.addr = addr
-	sq.queue <- q
-}
-
-// SetConn creates a queueable object with a net.Conn interface and adds it to
-// the queue. This allows us to reuse an already created channel for replying.
-func (sq *Queue) SetConn(id uint64, c net.Conn) {
-	q := new(Queueable)
-	q.id = id
-	q.conn = c
-	sq.queue <- q
-}
-
-// Close creates a queueable object that closes the connection and deletes all
-// associated resources.
-func (sq *Queue) Close(id uint64) {
-	q := new(Queueable)
-	q.id = id
-	q.destroy = true
-	sq.queue <- q
+func (sq *Queue) delete(q *Queueable) {
+	// Close the connection and delete all resources. Any subsequent
+	// messages or reply requests will cause an error.
+	if q.destroy {
+		// Wait for the client to kill the connection or timeout
+		if q.msg == nil {
+			q.conn.Close()
+		} else {
+			_, err := q.conn.Read([]byte{0})
+			if err != nil {
+				e, ok := err.(net.Error)
+				if err == io.EOF || (ok && e.Timeout()) {
+					// If it times out, and the connection
+					// is supposed to be closed,
+					// ignore it..
+					q.conn.Close()
+				}
+			}
+		}
+	}
+	if _, def := sq.sendBuffer[q.id]; def {
+		delete(sq.sendBuffer, q.id)
+	}
 }
 
 // DoQueue adds messages to a queue and transmits messages in batches. It also
@@ -153,51 +151,10 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 	for {
 		select {
 		case <-kill:
-			for _, c := range sq.nextConn {
-				c.Close()
-			}
 			return
 
 		case q := <-sq.queue:
-			// Set the next-hop address. We don't allow the destination address
-			// or connection to be overwritten in order to avoid accumulating
-			// stale connections on routers.
-			if _, def := sq.nextAddr[q.id]; !def && q.addr != "" {
-				sq.nextAddr[q.id] = q.addr
-			}
-
-			// Set the next-hop connection. This is useful for routing replies
-			// from the destination over already created circuits back to the
-			// source.
-			if _, def := sq.nextConn[q.id]; !def && q.conn != nil {
-				sq.nextConn[q.id] = q.conn
-			}
-
-			if q.destroy {
-				// Close the connection and delete all resources. Any subsequent
-				// messages or reply requests will cause an error.
-				if c, def := sq.nextConn[q.id]; def {
-					c.Close()
-					delete(sq.nextConn, q.id)
-				}
-				if _, def := sq.nextAddr[q.id]; def {
-					delete(sq.nextAddr, q.id)
-				}
-				if _, def := sq.sendBuffer[q.id]; def {
-					delete(sq.sendBuffer, q.id)
-				}
-
-				sq.destroyed <- q.id
-
-			} else if q.msg != nil || q.reply != nil {
-				// Add message or message request (reply) to the queue.
-
-				if _, def := sq.nextAddr[q.id]; !def {
-					sq.err <- sendQueueError{q.id,
-						errors.New("request to send/receive message without a destination")}
-					continue
-				}
-
+			if q.msg != nil {
 				// Create a send buffer for the sender ID if it doesn't exist.
 				if _, def := sq.sendBuffer[q.id]; !def {
 					sq.sendBuffer[q.id] = list.New()
@@ -212,6 +169,8 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 
 				// Add message to send buffer.
 				buf.PushBack(q)
+			} else if q.remove {
+				sq.delete(q)
 			}
 
 			// Transmit batches of messages.
@@ -230,27 +189,19 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 		case <-kill:
 			return
 		case err := <-sq.err:
-			var d Directive
-			d.Type = DirectiveType_ERROR.Enum()
-			d.Error = proto.String(err.Error())
-			cell, e := marshalDirective(&d)
-			if e != nil {
-				glog.Errorf("queue: %s\n", e)
-				return
+			if err.conn == nil {
+				var d Directive
+				d.Type = DirectiveType_ERROR.Enum()
+				d.Error = proto.String(err.Error())
+				cell, e := marshalDirective(err.id, &d)
+				if e != nil {
+					glog.Errorf("queue: %s\n", e)
+					return
+				}
+				queue.EnqueueMsg(err.id, cell, err.conn, nil)
+			} else {
+				glog.Errorf("client no. %d: %s\n", err.id, err)
 			}
-			queue.EnqueueMsg(err.id, cell)
-		}
-	}
-}
-
-// DoQueueErrorHandlerLog logs errors that occur on this queue.
-func (sq *Queue) DoQueueErrorHandlerLog(name string, kill <-chan bool) {
-	for {
-		select {
-		case <-kill:
-			return
-		case err := <-sq.err:
-			glog.Errorf("%s, client no. %d: %s\n", name, err.id, err)
 		}
 	}
 }
@@ -261,12 +212,40 @@ func (sq *Queue) DoQueueErrorHandlerLog(name string, kill <-chan bool) {
 func (sq *Queue) dequeue() {
 
 	// Shuffle the serial IDs.
-	order := rand.Perm(int(sq.ct)) // TODO(cjpatton) Use tao.GetRandomBytes().
+	pi := make([]int, sq.ct)
+	for i := 0; i < sq.ct; i++ { // Initialize a trivial permutation
+		pi[i] = i
+	}
+
+	for i := sq.ct - 1; i > 0; i-- { // Shuffle by random swaps
+		var b []byte
+		var err error = nil
+		if sq.t != nil {
+			b, err = sq.t.GetRandomBytes(8)
+			if err != nil {
+				glog.Error("Could not read random bytes from Tao")
+			}
+		}
+		if err != nil || sq.t == nil {
+			b = make([]byte, 8)
+			if _, err := rand.Read(b); err != nil {
+				// if we can't even get crypto/rand, fatal error
+				log.Fatal(err)
+			}
+		}
+		j := int(binary.LittleEndian.Uint64(b) % uint64(i+1))
+		if j != i {
+			tmp := pi[j]
+			pi[j] = pi[i]
+			pi[i] = tmp
+		}
+	}
+
 	ids := make([]uint64, sq.ct)
 	i := 0
 	for id, buf := range sq.sendBuffer {
 		if buf.Len() > 0 {
-			ids[order[i]] = id
+			ids[pi[i]] = id
 			i++
 		}
 	}
@@ -274,25 +253,29 @@ func (sq *Queue) dequeue() {
 	// Issue a sendWorker thread for each message to be sent.
 	ch := make(chan senderResult)
 	for _, id := range ids[:sq.batchSize] {
-		addr := sq.nextAddr[id]
 		q := sq.sendBuffer[id].Front().Value.(*Queueable)
-		c, def := sq.nextConn[id]
-		go senderWorker(sq.network, addr, id, q, c, def, ch, sq.err, sq.timeout)
+		go senderWorker(sq.network, q, ch, sq.err, sq.timeout)
 	}
 
 	// Wait for workers to finish.
 	for _ = range ids[:sq.batchSize] {
 		res := <-ch
-		if res.c != nil {
-			// Save the connection.
-			sq.nextConn[res.id] = res.c
+
+		// If this was close with a message, then remove q here
+		q := sq.sendBuffer[res.id].Front().Value.(*Queueable)
+		if q.remove {
+			sq.delete(q)
 		}
 
 		// Pop the message from the buffer and decrement the counter
 		// if the buffer is empty.
-		buf := sq.sendBuffer[res.id]
-		buf.Remove(buf.Front())
-		if buf.Len() == 0 {
+		// Resource might be removed (circuit destroyed); check first
+		if buf, ok := sq.sendBuffer[res.id]; ok {
+			buf.Remove(buf.Front())
+			if buf.Len() == 0 {
+				sq.ct--
+			}
+		} else {
 			sq.ct--
 		}
 	}
@@ -303,50 +286,24 @@ type senderResult struct {
 	id uint64
 }
 
-func senderWorker(network, addr string, id uint64, q *Queueable, c net.Conn, def bool,
+func senderWorker(network string, q *Queueable,
 	res chan<- senderResult, err chan<- sendQueueError, timeout time.Duration) {
-	var e error
-
 	// Wait to connect until the queue is dequeued in order to prevent
 	// an observer from correlating an incoming cell with the handshake
 	// with the destination server.
-	if !def {
-		c, e = net.DialTimeout(network, addr, timeout)
-		if e != nil {
-			err <- sendQueueError{id, e}
-			res <- senderResult{c, id}
-			if q.reply != nil {
-				q.reply <- nil
-			}
-			return
-		}
-	}
 
-	c.SetDeadline(time.Now().Add(timeout))
+	q.conn.SetDeadline(time.Now().Add(timeout))
 	if q.msg != nil { // Send the message.
-		if _, e := c.Write(q.msg); e != nil {
-			err <- sendQueueError{id, e}
-			res <- senderResult{c, id}
-			if q.reply != nil {
-				q.reply <- nil
-			}
+		if q.msg[TYPE] == 1 {
+			var d Directive
+			unmarshalDirective(q.msg, &d)
+		}
+		if _, e := q.conn.Write(q.msg); e != nil {
+			err <- sendQueueError{q.id, q.prevConn, e}
+			res <- senderResult{q.conn, q.id}
 			return
 		}
 	}
 
-	c.SetDeadline(time.Now().Add(timeout))
-	if q.reply != nil { // Receive a message.
-		msg := make([]byte, MaxMsgBytes)
-		bytes, e := c.Read(msg)
-		if e != nil {
-			err <- sendQueueError{id, e}
-			res <- senderResult{c, id}
-			q.reply <- nil
-			return
-		}
-		// Pass message to channel.
-		q.reply <- msg[:bytes]
-	}
-
-	res <- senderResult{c, id}
+	res <- senderResult{q.conn, q.id}
 }

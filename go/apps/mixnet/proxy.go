@@ -15,10 +15,12 @@
 package mixnet
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -31,8 +33,26 @@ type ProxyContext struct {
 	domain   *tao.Domain  // Policy guard and public key.
 	listener net.Listener // SOCKS5 server for listening to clients.
 
-	// Next serial identifier that will be assigned to a new connection.
-	id uint64
+	// Mapping circuit id to a connection,
+	// and mapping address to connection for multiplexing
+	clients  map[uint64]net.Conn
+	circuits map[uint64]*Conn
+	// Because DeleteCircuit could be called at anytime,
+	// we put a global lock around adding/deleting circuits
+	// Should be okay for performance, since it doesn't happen often
+	conns struct {
+		sync.Mutex
+		m map[string]*Conn
+	}
+	// Used to check duplicates
+	circuitIds struct {
+		sync.Mutex
+		m map[uint64]bool
+	}
+	connIds struct {
+		sync.Mutex
+		m map[uint32]bool
+	}
 
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on read/write.
@@ -54,6 +74,21 @@ func NewProxyContext(path, network, addr string, timeout time.Duration) (p *Prox
 		return nil, err
 	}
 
+	p.clients = make(map[uint64]net.Conn)
+	p.circuits = make(map[uint64]*Conn)
+	p.conns = struct {
+		sync.Mutex
+		m map[string]*Conn
+	}{m: make(map[string]*Conn)}
+	p.circuitIds = struct {
+		sync.Mutex
+		m map[uint64]bool
+	}{m: make(map[uint64]bool)}
+	p.connIds = struct {
+		sync.Mutex
+		m map[uint32]bool
+	}{m: make(map[uint32]bool)}
+
 	return p, nil
 }
 
@@ -70,160 +105,149 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c, p.nextID(), p.timeout}, nil
+	id, err := p.newConnID()
+	if err != nil {
+		return nil, err
+	}
+	conn := &Conn{c, id, p.timeout, make(map[uint64]*Circuit), new(sync.RWMutex), false}
+	go p.handleConn(conn)
+	return conn, nil
 }
 
-// SendDirective serializes and pads a directive to the length of a cell and
-// sends it to the peer. A directive is signaled to the receiver by the first
-// byte of the cell. The next few bytes encode the length of of the serialized
-// protocol buffer. If the buffer doesn't fit in a cell, then throw an error.
-func (p *ProxyContext) SendDirective(c *Conn, d *Directive) (int, error) {
-	cell, err := marshalDirective(d)
-	if err != nil {
-		return 0, err
+// handleConn multiplexes one a connection read for multiple circuits
+// There is no need to multiplex writes;
+// each circuit should be able to write whenever.
+func (p *ProxyContext) handleConn(c *Conn) {
+	for {
+		cell := make([]byte, CellBytes)
+		c.SetDeadline(time.Now().Add(p.timeout))
+		_, err := c.Read(cell)
+		if err == nil {
+			id := getID(cell)
+			circuit := c.GetCircuit(id)
+			circuit.cells <- Cell{cell, err}
+		} else {
+			// Relay other errors (mostly timeout) to all circuits in this connection
+			for _, circuit := range c.circuits {
+				go func(circuit *Circuit) {
+					circuit.cells <- Cell{nil, err}
+				}(circuit)
+			}
+			break
+		}
 	}
-	return c.Write(cell)
-}
-
-// ReceiveDirective awaits a reply from the peer and returns the directive
-// received, e.g. in response to RouterContext.HandleProxy(). If the directive
-// type is ERROR, return an error.
-func (p *ProxyContext) ReceiveDirective(c *Conn, d *Directive) (int, error) {
-	cell := make([]byte, CellBytes)
-	bytes, err := c.Read(cell)
-	if err != nil && err != io.EOF {
-		return 0, err
-	}
-
-	err = unmarshalDirective(cell, d)
-	if err != nil {
-		return 0, err
-	}
-
-	if *d.Type == DirectiveType_ERROR {
-		return bytes, errors.New("router error: " + (*d.Error))
-	}
-	return bytes, nil
 }
 
 // CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
-func (p *ProxyContext) CreateCircuit(addrs ...string) (*Conn, error) {
-	c, err := p.DialRouter(p.network, addrs[0])
+func (p *ProxyContext) CreateCircuit(addrs []string) (*Circuit, uint64, error) {
+	id, err := p.newID()
 	if err != nil {
-		return nil, err
+		return nil, id, err
 	}
+
+	var c *Conn
+	p.conns.Lock()
+	if _, ok := p.conns.m[addrs[0]]; !ok {
+		c, err = p.DialRouter(p.network, addrs[0])
+		if err != nil {
+			p.conns.Unlock()
+			return nil, id, err
+		}
+		p.conns.m[addrs[0]] = c
+	} else {
+		c = p.conns.m[addrs[0]]
+	}
+	p.circuits[id] = c
+	circuit := &Circuit{c, id, make(chan Cell)}
+	c.AddCircuit(circuit)
+	p.conns.Unlock()
 
 	d := &Directive{
 		Type:  DirectiveType_CREATE.Enum(),
-		Addrs: addrs[1:],
+		Addrs: addrs,
 	}
 
 	// Send CREATE directive to router.
-	if _, err := p.SendDirective(c, d); err != nil {
-		return c, err
+	if _, err := circuit.SendDirective(d); err != nil {
+		return nil, id, err
 	}
 
 	// Wait for CREATED directive from router.
-	if _, err := p.ReceiveDirective(c, d); err != nil {
-		return c, err
+	if err := circuit.ReceiveDirective(d); err != nil {
+		return nil, id, err
 	} else if *d.Type != DirectiveType_CREATED {
-		return c, errors.New("could not create circuit")
+		return nil, id, errors.New("could not create circuit")
 	}
 
-	return c, nil
+	return circuit, id, nil
 }
 
 // DestroyCircuit directs the router to close the connection to the destination
-// and destroy the circuit then closes the connection. TODO(cjpatton) in order
-// to support multi-hop circuits, this code will need to wait for a DESTROYED
-// directive from the first hop.
-func (p *ProxyContext) DestroyCircuit(c *Conn) error {
+// and destroy the circuit then closes the connection.
+func (p *ProxyContext) DestroyCircuit(id uint64) error {
+	c := p.circuits[id]
+	circuit := c.GetCircuit(id)
+
 	// Send DESTROY directive to router.
-	if _, err := p.SendDirective(c, dirDestroy); err != nil {
+	if _, err := circuit.SendDirective(dirDestroy); err != nil {
 		return err
 	}
-	c.Close()
+	// Wait for DESTROYED directive from router.
+	var d Directive
+	if err := circuit.ReceiveDirective(&d); err != nil {
+		return err
+	} else if *d.Type != DirectiveType_DESTROYED {
+		return errors.New("could not destroy circuit")
+	}
+
+	p.conns.Lock()
+	empty := c.DeleteCircuit(circuit)
+	delete(p.circuits, id)
+	if empty { // no more circuits, close the conn
+		c.Close()
+		delete(p.conns.m, c.RemoteAddr().String())
+	}
+	p.conns.Unlock()
 	return nil
 }
 
-// SendMessage divides a message into cells and sends each cell over the network
-// connection. A message is signaled to the receiver by the first byte of the
-// first cell. The next few bytes encode the total number of bytes in the
-// message.
-func (p *ProxyContext) SendMessage(c *Conn, msg []byte) error {
-	msgBytes := len(msg)
-	cell := make([]byte, CellBytes)
-	cell[0] = msgCell
-	n := binary.PutUvarint(cell[1:], uint64(msgBytes))
-
-	bytes := copy(cell[1+n:], msg)
-	if _, err := c.Write(cell); err != nil {
-		return err
-	}
-
-	for bytes < msgBytes {
-		tao.ZeroBytes(cell)
-		cell[0] = msgCell
-		bytes += copy(cell[1:], msg[bytes:])
-		if _, err := c.Write(cell); err != nil {
-			return err
+// Return a random circuit ID
+func (p *ProxyContext) newID() (uint64, error) {
+	p.circuitIds.Lock()
+	id := uint64(0)
+	ok := true
+	// Reserve ids < 2^32 to connection ids
+	for ok || id < (1<<32) {
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			return 0, err
 		}
+		id = binary.LittleEndian.Uint64(b)
+		_, ok = p.circuitIds.m[id]
 	}
-	return nil
+	p.circuitIds.m[id] = true
+	p.circuitIds.Unlock()
+	return id, nil
 }
 
-// ReceiveMessage reads message cells from the router and assembles them into
-// a messsage.
-func (p *ProxyContext) ReceiveMessage(c *Conn) ([]byte, error) {
-	var err error
-
-	// Receive cells from router.
-	cell := make([]byte, CellBytes)
-	if _, err = c.Read(cell); err != nil && err != io.EOF {
-		return nil, err
-	}
-
-	if cell[0] == dirCell {
-		var d Directive
-		if err = unmarshalDirective(cell, &d); err != nil {
-			return nil, err
+// Return a random connection ID
+func (p *ProxyContext) newConnID() (uint32, error) {
+	p.connIds.Lock()
+	id := uint32(0)
+	ok := true
+	for ok {
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			return 0, err
 		}
-		if *d.Type == DirectiveType_ERROR {
-			return nil, errors.New("router error: " + (*d.Error))
-		}
-		return nil, errCellType
-	} else if cell[0] != msgCell {
-		return nil, errCellType
+		id = binary.LittleEndian.Uint32(b)
+		_, ok = p.connIds.m[id]
 	}
-
-	msgBytes, n := binary.Uvarint(cell[1:])
-	if msgBytes > MaxMsgBytes {
-		return nil, errMsgLength
-	}
-
-	msg := make([]byte, msgBytes)
-	bytes := copy(msg, cell[1+n:])
-
-	for err != io.EOF && uint64(bytes) < msgBytes {
-		if _, err = c.Read(cell); err != nil && err != io.EOF {
-			return nil, err
-		}
-		if cell[0] != msgCell {
-			return nil, errCellType
-		}
-		bytes += copy(msg[bytes:], cell[1:])
-	}
-
-	return msg, nil
-}
-
-// Return the next serial identifier.
-func (p *ProxyContext) nextID() (id uint64) {
-	id = p.id
-	p.id++
-	return id
+	p.connIds.m[id] = true
+	p.connIds.Unlock()
+	return id, nil
 }
 
 // Accept waits for clients running the SOCKS5 protocol.
@@ -236,43 +260,102 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // Read a message from the client, send it over the mixnet, wait for a reply,
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
-func (p *ProxyContext) ServeClient(c net.Conn, addrs ...string) error {
-
-	d, err := p.CreateCircuit(addrs...)
+func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
+	circuit, id, err := p.CreateCircuit(addrs)
 	if err != nil {
 		return err
 	}
+	p.clients[id] = c
 
-	for {
-		err = p.HandleClient(c, d)
+	proxyErrs := make(chan error)
+	routerErrs := make(chan error)
+	go func(id uint64) {
+		c := p.clients[id]
+		d := p.circuits[id]
+
+		for {
+			msg := make([]byte, MaxMsgBytes)
+			bytes, err := c.Read(msg)
+			if err != nil {
+				proxyErrs <- err
+				d.circuits[id].cells <- Cell{nil, io.EOF}
+				return
+			}
+
+			if err = circuit.SendMessage(msg[:bytes]); err != nil {
+				proxyErrs <- err
+				return
+			}
+
+		}
+	}(id)
+
+	go func(id uint64) {
+		c := p.clients[id]
+		d := p.circuits[id]
+
+		for {
+			reply, err := circuit.ReceiveMessage()
+			if err != nil {
+				routerErrs <- err
+				return
+			}
+
+			c.SetDeadline(time.Now().Add(p.timeout))
+			if _, err = c.Write(reply); err != nil {
+				proxyErrs <- err
+				d.circuits[id].cells <- Cell{nil, io.EOF}
+				return
+			}
+		}
+	}(id)
+
+	select {
+	case err = <-proxyErrs:
 		if err == io.EOF {
-			glog.Info("proxy: encountered EOF while serving")
+			glog.Info("proxy: encountered EOF with client")
 			break
 		} else if err != nil {
-			glog.Errorf("proxy: reading message from client: %s", err)
+			glog.Error("proxy: encounter unexpected error with client", err)
+			break
+		}
+	case err = <-routerErrs:
+		if err == io.EOF {
+			glog.Info("proxy: encountered EOF with router")
+			break
+		} else if err != nil {
+			glog.Error("proxy: encounter unexpected error with router", err)
 			break
 		}
 	}
+	// Clear the errors
+	select {
+	case <-proxyErrs:
+	case <-routerErrs:
+	default:
+	}
 
-	return p.DestroyCircuit(d)
+	return p.DestroyCircuit(id)
 }
 
 // HandleClient relays a message read from client connection c to mixnet
 // connection  d and relay reply.
-func (p *ProxyContext) HandleClient(c net.Conn, d *Conn) error {
+func (p *ProxyContext) HandleClient(id uint64) error {
+	c := p.clients[id]
+	d := p.circuits[id]
+	circuit := d.GetCircuit(id)
 
 	msg := make([]byte, MaxMsgBytes)
-	c.SetDeadline(time.Now().Add(p.timeout))
 	bytes, err := c.Read(msg)
 	if err != nil {
 		return err
 	}
 
-	if err = p.SendMessage(d, msg[:bytes]); err != nil {
+	if err = circuit.SendMessage(msg[:bytes]); err != nil {
 		return err
 	}
 
-	reply, err := p.ReceiveMessage(d)
+	reply, err := circuit.ReceiveMessage()
 	if err != nil {
 		return err
 	}

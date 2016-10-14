@@ -30,10 +30,10 @@ import (
 // serveMixnetProxies runs the mixnet router service for mixnet proxies.
 // The proxy dials the Tao-delegated router anonymously, sends a message,
 // and waits for a response.
-func serveMixnetProxies(hp *mixnet.RouterContext) error {
-	go hp.HandleErr()
+func serveMixnetProxies(r *mixnet.RouterContext) error {
+	go r.HandleErr()
 	for {
-		_, err := hp.Accept()
+		_, err := r.Accept()
 		if err != nil {
 			return err
 		}
@@ -60,7 +60,7 @@ func main() {
 		glog.Fatalf("router: failed to parse timeout duration: %s", err)
 	}
 
-	hp, err := mixnet.NewRouterContext(*configPath, *routerNetwork, *routerAddr,
+	r, err := mixnet.NewRouterContext(*configPath, *routerNetwork, *routerAddr,
 		*batchSize, timeout, &x509Identity, tao.Parent())
 	if err != nil {
 		glog.Fatalf("failed to configure router: %s", err)
@@ -70,13 +70,13 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	go func() {
 		sig := <-sigs
-		hp.Close()
+		r.Close()
 		glog.Infof("router: closing on signal: %s", sig)
 		signo := int(sig.(syscall.Signal))
 		os.Exit(0x80 + signo)
 	}()
 
-	if err := serveMixnetProxies(hp); err != nil {
+	if err := serveMixnetProxies(r); err != nil {
 		glog.Errorf("router: error while serving: %s", err)
 	}
 

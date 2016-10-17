@@ -40,8 +40,19 @@ func serveMixnetProxies(r *mixnet.RouterContext) error {
 	}
 }
 
+// Update directory every x amount of time
+var updateThreshold time.Duration = 3600 * time.Second
+
+func updateDirectory(r *mixnet.RouterContext, dirAddr string) {
+	for {
+		time.Sleep(updateThreshold)
+		r.GetDirectory(dirAddr)
+	}
+}
+
 // Command line arguments.
 var routerAddr = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
+var dirAddr = flag.String("dir_addr", "127.0.0.1:8000", "Address and port of the router directory.")
 var routerNetwork = flag.String("network", "tcp", "Network protocol for the Tao-delegated mixnet router.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
 var batchSize = flag.Int("batch", 1, "Number of senders in a batch.")
@@ -75,6 +86,9 @@ func main() {
 		signo := int(sig.(syscall.Signal))
 		os.Exit(0x80 + signo)
 	}()
+
+	r.Register(*dirAddr)
+	go updateDirectory(r, *dirAddr)
 
 	if err := serveMixnetProxies(r); err != nil {
 		glog.Errorf("router: error while serving: %s", err)

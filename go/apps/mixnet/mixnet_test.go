@@ -150,6 +150,7 @@ func setupDirectory(routers []*RouterContext, directory *DirectoryContext) {
 	}()
 
 	for _, router := range routers {
+		router.addr = router.listener.Addr().String()
 		err := router.Register(directory.listener.Addr().String())
 		if err != nil {
 			log.Fatal(err)

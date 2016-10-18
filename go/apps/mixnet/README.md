@@ -81,80 +81,122 @@ We will consider extending our protocol to a network of routers to achieve
 security in this model. This approach may have the added benifit of reducing
 latency of messages traversing the mixnet.
 
-Design
-------
+Design Overview
+---------------
 
-We designed the mixnet to proxy client/server protocols. There are
-two main components of the protocol: the _proxy_ (`mixnet_proxy`) accepts
-arbitrary TCP connections from a client and relays messages over the
-mixnet to the server; the _router_ (`mixnet_router`) accepts connections
-from a proxy and performs the mixnet operations. The proxy and router perform
-a one-way authenticated TLS handshake to exchange a key for wrapping
-(encrypting and authenticating) messages sent between them. Messages sent
-between proxies and routers (or routers and routers) are fixed length cells.
+Our mixnet design consists of two major component, _router_ and _proxy_, and one
+administrative component, _directory_. A router (`mixnet_router`), or a _mix_,
+shuffles and routes users' messages, and a proxy (`mixnet_proxy`) accepts any
+TCP connections via a SOCKS5 proxy from a user and relays the packets through
+the mixnet. A directory (`mixnet_directory`) acts as a synchronization point,
+and manages a list of available routers in the mixnet currently for other
+routers and proxies to use.
 
-The protocol for a single proxy and router is as follows.
-To send a message to a server, the client sends the message to the proxy
-which divides the message into cells and sends them to the router. The
-router waits until it has received all the cells, then assembles them into
-the original message. Once the router has queued messages from enough senders, it
-transmits the message to the server. It then waits for a reply from the server,
-divides the reply into cells, and queues the cells to be transmitted back to
-the proxy. The proxy waits until it has received all the reply cells, assembles
-them into the complete message, and sends it back to the client.
+At a high level, our design is, at least at the moment, an asynchronous
+free-flow mixnet. Unlike cascade-mixnets, a free-flow mixnet allows different
+messages to be routed through different paths through the network of mixes. It
+is also asynchronous in the sense that each mix makes their own routing
+decisions without coordinating with rest of the mixes in the network.
 
-The router maintains two data structures: the _sendQueue_ for sender to recipient
-traffic, and the _replyQueue_ for recipient to sender traffic. They are
-functionally equivalent (see `queue.go`); they receive cells from proxies (or other routers)
-and replies from recipients, and they send cells to proxies (or other routers)
-and messages to recipients. The _batchSize_ specifies how many messages/cells
-are waiting in the queue from distinct peers before transmitting
-them. When its time to transmit, a connection to the destination is established
-(if it hasn't been established already) and the messages are sent in a random
-order.
+A typical messaging session for two end-to-end users, Alice and Bob, works as
+follows.
 
-A cell is either a chunk of a message or a _directive_. A directive contains
-instructions for a router or proxy and are implemented as protocol buffers
-(`mixnet.proto`):
+1. Proxy accepts a connection from Alice, and receives a message to send to Bob.
 
- * ERROR: something went wrong.
- * CREATE: the proxy instructs the router to create a circuit over the mixnet
-           to a destination address. The response is either ERROR or CREATED.
- * CREATED: the router informs the proxy that the circuit was created.
- * DESTROY: the proxy instructs the router to destroy the circuit.
+2. Proxy picks an _entry_ mix. It then establishes a one-way authenticated TLS
+   connection with the entry (the mix attests that it is running CloudProxy),
+   and requests to establish a _circuit_ to Bob. A circuit is a path of mixes in
+   the network the messages for this particular end-to-end connection will be
+   routed through.
 
-Note that when a circuit is created, all that happens is the router is
-informed of the destination server. The connection is established when the
-router is ready to dequeue; otherwise, the TCP handshake would allow the
-adversary to correlate the wrapped CREATE directive with the TCP handshake.
+3. The entry mix selects random mixes to form a circuit. It establishes a
+   two-way authenticated TLS connection to the next mix in the circuit, and it
+   relays the circuit creation request to the next hop. The next mix does the
+   same until the circuit reaches the _exit_ mix.
 
-The router (`router.go`) is a Tao-delegated program and will only run when launched in a
-Tao environment. The proxy (`proxy.go`) is not launched in the Tao and is expected to run
-locally on the client's machine. It is assumed that the client has a copy
-of the root public policy key. When the proxy dials the router, the router
-attests to its identity, and the attestation is verified by the proxy using
-the policy key; if verification fails, the proxy exits. Both the proxy and
-router communicate with the TaoCA to obtain a copy of the policy.
+4. Once the circuit is established, the proxy sends the message over to the
+   entry mix. Every packet exchanged between a mix and a proxy, called a _cell_,
+   is of fixed length. If the message is shorter than a cell, then the message
+   is padded to the fixed length. If the message is longer, then it is broken
+   down into multiple cells.
 
-The proxy implements SOCKS [3], a widely a widely used protocol
-that allows a server to proxy client internet traffic. (See `socks.go`.)
-Our proxy only
-partially implements the server role; see `SocksListener.Accept()`
-for details. For example, it only allows the client to specify
-IPv4 addresses, which excludes DNS-based host names.
+5. Once enough cells from different proxies are available at the entry mix, it
+   permutes the cells, and sends the cells to the next mix in the circuit.
+   Similarly, the intermediate mixes in circuits wait for enough cells from
+   different circuits, and permute the cells, and send the cells to the next
+   hops. The exit mix reconstructs the message from cells, and send the message
+   to Bob.
 
-Our implementation so far only allows a mixnet with a single router;
-router-to-router communication and construction/destruction of multi-hop
-circuits still need to be implemented. Notice that our design makes no attempt
-to preserve the confidentiality or integrity of cells _on the routers_; as a
-result, every router a message traverses would learn its intended destination,
-as well as the contents of the message. This problem is addressed in Tor using onion-routing,
-a technique that ensures each router knows only the previous and next hops in the circuit.
-Doing this in a way that preserves forward secrecy makes the circuit
-construction expensive, since the proxy needs to exchange a key with each hop
-successively. Since the client can be assured of the identity of the routers
-via the root of trust, and trusting the code is secure, we could construct the
-circuit in one pass.
+6. Bob can respond to the message, and the message will traverse the mixnet
+   using the same circuit in reverse.
+
+Note that in step 3, the entry mix picks the circuit through the network, not
+Bob. This is because the entry mix, which is CloudProxy authenticated, is
+assumed to be secure, and disabling malicious users (who are not authenticated)
+from selecting the path will likely enable better security.
+
+The design also made several design decisions that trades-off security and
+performance. For instance, it may result in less latency to allow a mix in step
+5 to treat connections from proxies and other routers the same way, and thus
+requires less connections from proxies. This, however, could reduce the
+anonymity set size of the proxies. Such design choices may change as we analyze
+the security of the system further.
+
+Code Overview
+-------------
+
+Some of the important files are
+
+* `queue.go`: Implements the batching and mixing functionality for cells.
+* `router.go` Handles connections from/to proxies, routers, and end points. Uses
+  a queue from `queue.go` to maintain 3 different queues for (1) cells sent from
+  proxies, (2) cells sent to proxies, and (3) cells to/from other routers. This
+  is required to be run in CloudProxy environment.
+* `socks5.go`: Implements a simple SOCKS5 proxy that proxy uses to listen to
+  end users.
+* `proxy.go`: Uses socks5 to receive messages from end-users, breaks the
+  messages into cells, and handles communication with the entry mix.
+* `conn.go`, `listener.go`, `circuit.go`: Used to manage different network
+  connections and circuits.
+* `mixnet_proto`: Specifies the directives (e.g., creating/destroying circuits)
+  used by proxies and routers.
+
+Parameters
+----------
+
+There are server system wide parameters that impact the security and performance
+of the system.
+
+* Batch size (`batchsize`): This determines how many cells from different circuits
+  or proxies a router needs to collect before mixing and sending them to the next
+  hop in the circuit.
+
+* Hop length: Currently, the default number of hops in the circuit is set to 3.
+  Longer circuits will likely provide better anonymity, at the cost of increased
+  latency, and vice-versa. The hop count also need not be fixed for all circuits,
+  but we assume it is for simpler design and analysis.
+
+* Cell size: Each cell is fixed at 1024B currently. This should be at most 65KB,
+  the maximum packet length for TCP.
+
+
+Tests
+-----
+
+`mixnet_test.go` and other test files contain unit tests and integration tests
+that can be run natively in Go. The largest integration test uses 20 proxies,
+6 routers, and there are four paths through the routers used by 20 proxies.
+The messages are then echoed back to the proxies by a simple server at the
+end of the circuit.
+
+The scripts in `scripts` runs a full Tao test (currently with soft-tao). It
+implements essentially the same integration test as the one in `mixnet_test.go`,
+except it runs it with real Tao. The script assumes that typical Tao testing
+environment is setup (i.e., Tao is installed, `/Domains` exists, etc.). To run
+the test, simple run
+
+    ./initmixnet.sh
+    ./run.sh
 
 References
 ----------

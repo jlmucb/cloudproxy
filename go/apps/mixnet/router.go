@@ -90,6 +90,10 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 	r.timeout = timeout
 
 	r.addr = addr
+	port := addr
+	if addr != "127.0.0.1:0" {
+		port = ":" + strings.Split(addr, ":")[1]
+	}
 
 	r.conns = make(map[string]*Conn)
 	r.circuits = make(map[uint64]*Conn)
@@ -135,7 +139,7 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 		ClientAuth:         tls.RequestClientCert,
 	}
 
-	if r.listener, err = Listen(network, addr, tlsConfig,
+	if r.listener, err = Listen(network, port, tlsConfig,
 		r.domain.Guard, r.domain.Keys.VerifyingKey, r.keys.Delegation); err != nil {
 		return nil, err
 	}
@@ -196,7 +200,7 @@ func (r *RouterContext) Register(dirAddr string) error {
 	if err != nil {
 		return err
 	}
-	err = RegisterRouter(c, []string{r.listener.Addr().String()})
+	err = RegisterRouter(c, []string{r.addr})
 	if err != nil {
 		return err
 	}
@@ -410,7 +414,7 @@ func member(s string, set []string) bool {
 // if this is an exit.
 func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64,
 	sendQ, respQ *Queue, sId, rId uint64) error {
-	if entry {
+	if entry && len(r.directory) > 0 {
 		// A fresh path of the same length if user has no preference
 		// (Random selection without replacement)
 		directory := make([]string, len(r.directory))

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"net"
 	"os"
@@ -28,7 +29,7 @@ import (
 
 // serveClient runs the SOCKS5 proxy for clients and connects them
 // to the mixnet.
-func serveClients(routerAddr string, proxy *mixnet.ProxyContext) error {
+func serveClients(routerAddrs []string, proxy *mixnet.ProxyContext) error {
 	for {
 		c, err := proxy.Accept()
 		if err != nil {
@@ -39,14 +40,21 @@ func serveClients(routerAddr string, proxy *mixnet.ProxyContext) error {
 			defer c.Close()
 			// Length of the slice determines path length,
 			// so insert some empty strings
-			proxy.ServeClient(c, []string{routerAddr, "", "", c.(*mixnet.SocksConn).DestinationAddr()})
+			err := proxy.ServeClient(c, append(routerAddrs, c.(*mixnet.SocksConn).DestinationAddr()))
+			if err != nil {
+				glog.Fatal(err)
+			}
 		}(c)
 	}
 }
 
 // Command line arguments.
-var proxyAddr = flag.String("proxy_addr", "127.0.0.1:1080", "Address and port to listen to client's connections.")
+var proxyAddr = flag.String("addr", ":1080", "Address and port to listen to client's connections.")
+
+// TODO(kwonalbert) Shouldn't need a router addr here
+// Should download it automatically from the directory
 var routerAddr = flag.String("router_addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
+var circuit = flag.String("circuit", "", "A file with pre-built circuit.")
 var network = flag.String("network", "tcp", "Network protocol for the mixnet proxy and router.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
 var timeoutDuration = flag.String("timeout", "10s", "Timeout on TCP connections, e.g. \"10s\".")
@@ -74,8 +82,23 @@ func main() {
 		os.Exit(0x80 + signo)
 	}()
 
-	if err = serveClients(*routerAddr, proxy); err != nil {
-		glog.Errorf("proxy: error while serving: %s", err)
+	if *circuit == "" {
+		if err = serveClients([]string{*routerAddr}, proxy); err != nil {
+			glog.Errorf("proxy: error while serving: %s", err)
+		}
+	} else {
+		f, err := os.Open(*circuit)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		scan := bufio.NewScanner(f)
+		routers := []string{}
+		for scan.Scan() {
+			routers = append(routers, scan.Text())
+		}
+		if err = serveClients(routers, proxy); err != nil {
+			glog.Errorf("proxy: error while serving: %s", err)
+		}
 	}
 
 	glog.Flush()

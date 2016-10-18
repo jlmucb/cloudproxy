@@ -198,6 +198,9 @@ the test, simple run
     ./initmixnet.sh
     ./run.sh
 
+All tests currently use localhost. A large multi-machine test is currently left
+as future work.
+
 References
 ----------
 

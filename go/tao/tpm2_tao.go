@@ -131,8 +131,9 @@ type TPM2Tao struct {
 }
 
 // Loads keys from Blobs.
-func (tt *TPM2Tao) loadKeyFromBlobs(ownerHandle tpm2.Handle, ownerPw string, objectPw string,
-	publicBlob []byte, privateBlob []byte) (tpm2.Handle, error) {
+func (tt *TPM2Tao) loadKeyFromBlobs(ownerHandle tpm2.Handle, ownerPw string,
+		objectPw string, publicBlob []byte,
+		privateBlob []byte) (tpm2.Handle, error) {
 	return tpm2.LoadKeyFromBlobs(tt.rw, ownerHandle, ownerPw, objectPw, publicBlob, privateBlob)
 }
 
@@ -362,7 +363,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	// Load the sub-keys.
 	quoteHandle, err := tt.loadKeyFromBlobs(rootHandle, "", quotePassword, quoteKeyPublicBlob, quoteKeyPrivateBlob)
 	if err != nil {
-		return nil, fmt.Errorf("Could not load quote keys from blobs")
+		return nil, fmt.Errorf("Could not load quote keys from blobs %s", err)
 	}
 	defer tpm2.FlushContext(tt.rw, quoteHandle)
 	sealHandle, err := tt.loadKeyFromBlobs(rootHandle, "", quotePassword, sealKeyPublicBlob, sealKeyPrivateBlob)

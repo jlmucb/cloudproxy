@@ -130,7 +130,13 @@ type TPM2Tao struct {
 	authString string
 }
 
-func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
+// Loads keys from Blobs.
+func (tt *TPM2Tao) loadKeyFromBlobs(ownerHandle tpm2.Handle, ownerPw string, objectPw string,
+	publicBlob []byte, privateBlob []byte) (tpm2.Handle, error) {
+	return tpm2.LoadKeyFromBlobs(tt.rw, ownerHandle, ownerPw, objectPw, publicBlob, privateBlob)
+}
+
+func (tt *TPM2Tao) loadRootContext() (tpm2.Handle, error) {
 	rh, err := tpm2.LoadContext(tt.rw, tt.rootContext)
 	if err != nil {
 		return tpm2.Handle(0), errors.New("Load Context fails for root")
@@ -138,7 +144,7 @@ func (tt *TPM2Tao) loadRoot() (tpm2.Handle, error) {
 	return rh, nil
 }
 
-func (tt *TPM2Tao) loadQuote() (tpm2.Handle, error) {
+func (tt *TPM2Tao) loadQuoteContext() (tpm2.Handle, error) {
 	qh, err := tpm2.LoadContext(tt.rw, tt.quoteContext)
 	if err != nil {
 		return tpm2.Handle(0), errors.New("Load Context fails for quote")
@@ -147,7 +153,7 @@ func (tt *TPM2Tao) loadQuote() (tpm2.Handle, error) {
 }
 
 // IAH: does it build?
-func (tt *TPM2Tao) loadSeal() (tpm2.Handle, error) {
+func (tt *TPM2Tao) loadSealContext() (tpm2.Handle, error) {
 	sh, err := tpm2.LoadContext(tt.rw, tt.sealContext)
 	if err != nil {
 		return tpm2.Handle(0), errors.New("Load Context fails for root")
@@ -155,7 +161,7 @@ func (tt *TPM2Tao) loadSeal() (tpm2.Handle, error) {
 	return sh, nil
 }
 
-func (tt *TPM2Tao) loadSession() (tpm2.Handle, []byte, error) {
+func (tt *TPM2Tao) loadSessionContext() (tpm2.Handle, []byte, error) {
 	sh, digest, err := tpm2.AssistCreateSession(tt.rw,
 		tpm2.AlgTPM_ALG_SHA1, tt.pcrs)
 	if err != nil {
@@ -276,7 +282,6 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	tpm2.Flushall(tt.rw)
 
 	// Make sure the TPM2Tao releases all its resources
@@ -285,47 +290,100 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	tt.pcrs = pcrNums
 	tt.path = statePath
 
-	// Create the root key.
 	keySize := uint16(2048)
 	quotePassword := ""
 
-	rootSaveContext := path.Join(tt.path, "root_context")
-	_, rootErr := os.Stat(rootSaveContext)
+	quoteKeyPrivateBlobFile := path.Join(tt.path, "quote_private_key_blob")
+	_, quotePrivateErr := os.Stat(quoteKeyPrivateBlobFile)
+	quoteKeyPublicBlobFile := path.Join(tt.path, "quote_public_key_blob")
+	_, quotePublicErr := os.Stat(quoteKeyPrivateBlobFile)
 
-	quoteSaveContext := path.Join(tt.path, "quote_context")
-	_, quoteErr := os.Stat(quoteSaveContext)
+	sealKeyPrivateBlobFile := path.Join(tt.path, "seal_private_key_blob")
+	_, sealPrivateErr := os.Stat(sealKeyPrivateBlobFile)
+	sealKeyPublicBlobFile := path.Join(tt.path, "seal_public_key_blob")
+	_, sealPublicErr := os.Stat(sealKeyPrivateBlobFile)
 
-	sealSaveContext := path.Join(tt.path, "seal_context")
-	_, sealErr := os.Stat(sealSaveContext)
+	var quoteKeyPublicBlob []byte
+	var quoteKeyPrivateBlob []byte
+	var sealKeyPublicBlob []byte
+	var sealKeyPrivateBlob []byte
 
-	if rootErr != nil || quoteErr != nil || sealErr != nil {
-		if err := tpm2.InitTpm2Keys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1), quotePassword, rootSaveContext, quoteSaveContext, sealSaveContext); err != nil {
-			return nil, err
-		}
-	}
-
-	// Read the contexts and public info and use them to load the handles.
-	if tt.rootContext, err = ioutil.ReadFile(rootSaveContext); err != nil {
-		return nil, fmt.Errorf("Could not read the root context from %s: %v", rootSaveContext, err)
-	}
-
-	if tt.quoteContext, err = ioutil.ReadFile(quoteSaveContext); err != nil {
-		return nil, fmt.Errorf("Could not read the quote context from %s: %v", quoteSaveContext, err)
-	}
-
-	if tt.sealContext, err = ioutil.ReadFile(sealSaveContext); err != nil {
-		return nil, fmt.Errorf("Could not read the seal context from %s: %v", sealSaveContext, err)
-	}
-	rootHandle, err := tt.loadRoot()
-	if err != nil {
-		return nil, err
-	}
-	quoteHandle, err := tt.loadQuote()
+	// Create the root key.
+	rootHandle, err := tpm2.CreateTpm2HierarchyRoot(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1))
 	if err != nil {
 		return nil, err
 	}
 	defer tpm2.FlushContext(tt.rw, rootHandle)
+
+	if err != nil || quotePrivateErr != nil || sealPrivateErr != nil || quotePublicErr != nil || sealPublicErr != nil {
+		quoteKeyPublicBlob, quoteKeyPrivateBlob, sealKeyPublicBlob, sealKeyPrivateBlob, err :=
+			tpm2.CreateTpm2HierarchySubKeys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1),
+				rootHandle, quotePassword)
+		if err != nil {
+			return nil, err
+		}
+		// Save the blobs
+		err = ioutil.WriteFile(quoteKeyPrivateBlobFile, quoteKeyPrivateBlob, 0644)
+		if err != nil {
+			return nil, errors.New("Can't write quoteKeyPrivateBlobFile")
+		}
+		err = ioutil.WriteFile(quoteKeyPublicBlobFile, quoteKeyPublicBlob, 0644)
+		if err != nil {
+			return nil, errors.New("Can't write quoteKeyPublicBlobFile")
+		}
+		err = ioutil.WriteFile(sealKeyPrivateBlobFile, sealKeyPrivateBlob, 0644)
+		if err != nil {
+			return nil, errors.New("Can't write sealKeyPrivateBlobFile")
+		}
+		err = ioutil.WriteFile(sealKeyPublicBlobFile, sealKeyPublicBlob, 0644)
+		if err != nil {
+			return nil, errors.New("Can't write sealKeyPrivateBlobFile")
+		}
+	} else {
+		quoteKeyPrivateBlob, err = ioutil.ReadFile(quoteKeyPrivateBlobFile)
+		if err != nil {
+			return nil, fmt.Errorf("Could not read the quote key from %s: %v", quoteKeyPrivateBlobFile, err)
+		}
+		quoteKeyPublicBlob, err = ioutil.ReadFile(quoteKeyPublicBlobFile)
+		if err != nil {
+			return nil, fmt.Errorf("Could not read the quote key from %s: %v", quoteKeyPublicBlobFile, err)
+		}
+
+		sealKeyPrivateBlob, err = ioutil.ReadFile(sealKeyPrivateBlobFile)
+		if err != nil {
+			return nil, fmt.Errorf("Could not read the seal key from %s: %v", sealKeyPrivateBlobFile, err)
+		}
+		sealKeyPublicBlob, err = ioutil.ReadFile(sealKeyPublicBlobFile)
+		if err != nil {
+			return nil, fmt.Errorf("Could not read the seal key from %s: %v", sealKeyPublicBlobFile, err)
+		}
+	}
+
+	// Load the sub-keys.
+	quoteHandle, err := tt.loadKeyFromBlobs(rootHandle, "", quotePassword, quoteKeyPublicBlob, quoteKeyPrivateBlob)
+	if err != nil {
+		return nil, fmt.Errorf("Could not load quote keys from blobs")
+	}
 	defer tpm2.FlushContext(tt.rw, quoteHandle)
+	sealHandle, err := tt.loadKeyFromBlobs(rootHandle, "", quotePassword, sealKeyPublicBlob, sealKeyPrivateBlob)
+	if err != nil {
+		return nil, fmt.Errorf("Could not load seal key from blobs")
+	}
+	defer tpm2.FlushContext(tt.rw, sealHandle)
+
+	// Save the contexts for later.
+	tt.rootContext, err = tpm2.SaveContext(tt.rw, rootHandle)
+	if err != nil {
+		return nil, fmt.Errorf("Could not save the root context")
+	}
+	tt.quoteContext, err = tpm2.SaveContext(tt.rw, quoteHandle)
+	if err != nil {
+		return nil, fmt.Errorf("Could not save the quote context")
+	}
+	tt.sealContext, err = tpm2.SaveContext(tt.rw, sealHandle)
+	if err != nil {
+		return nil, fmt.Errorf("Could not save the seal context")
+	}
 
 	if tt.verifier, err = tpm2.GetRsaKeyFromHandle(tt.rw, quoteHandle); err != nil {
 		return nil, err
@@ -352,17 +410,17 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 
 	quoteCertPath := path.Join(tt.path, "quote_cert")
 	if _, quoteCertErr := os.Stat(quoteCertPath); quoteCertErr != nil {
-		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, quoteHandle,
-			quotePassword, tt.name, tt.verifier)
+		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, quoteHandle, quotePassword, tt.name, tt.verifier)
 		if err != nil {
 			return nil, err
 		}
-
-		if err := ioutil.WriteFile(quoteCertPath, tt.quoteCert, 0644); err != nil {
+		err = ioutil.WriteFile(quoteCertPath, tt.quoteCert, 0644)
+		if err != nil {
 			return nil, err
 		}
 	} else {
-		if tt.quoteCert, err = ioutil.ReadFile(quoteCertPath); err != nil {
+		tt.quoteCert, err = ioutil.ReadFile(quoteCertPath)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -452,7 +510,7 @@ func getQuoteCert(rw io.ReadWriteCloser, filePath string, quoteHandle tpm2.Handl
 func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 	message auth.Form) (*Attestation, error) {
 	fmt.Fprintf(os.Stderr, "About to load the quote key in attest\n")
-	qh, err := tt.loadQuote()
+	qh, err := tt.loadQuoteContext()
 	if err != nil {
 		return nil, err
 	}
@@ -530,13 +588,13 @@ func (tt *TPM2Tao) Attest(issuer *auth.Prin, start, expiration *int64,
 // data separately. We use the keys infrastructure to perform secure and
 // flexible encryption.
 func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
-	rh, err := tt.loadRoot()
+	rh, err := tt.loadRootContext()
 	if err != nil {
 		return nil, err
 	}
 	defer tpm2.FlushContext(tt.rw, rh)
 
-	sk, policy_digest, err := tt.loadSession()
+	sk, policy_digest, err := tt.loadSessionContext()
 	if err != nil {
 		return nil, errors.New("Can't load root key")
 	}
@@ -590,13 +648,13 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 // Unseal decrypts data that has been sealed by the Seal() operation, but only
 // if the policy specified during the Seal() operation is satisfied.
 func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error) {
-	rh, err := tt.loadRoot()
+	rh, err := tt.loadRootContext()
 	if err != nil {
 		return nil, "", err
 	}
 	defer tpm2.FlushContext(tt.rw, rh)
 
-	sh, policy_digest, err := tt.loadSession()
+	sh, policy_digest, err := tt.loadSessionContext()
 	if err != nil {
 		return nil, "", errors.New("Can't load root key")
 	}
@@ -902,13 +960,13 @@ func (tt *TPM2Tao) Tpm2Certify(network, addr string, keyName string) ([]byte, er
 	}
 	defer conn.Close()
 
-	rk, err := tt.loadRoot()
+	rk, err := tt.loadRootContext()
 	if err != nil {
 		return nil, err
 	}
 	defer tpm2.FlushContext(tt.rw, rk)
 
-	qh, err := tt.loadQuote()
+	qh, err := tt.loadQuoteContext()
 	if err != nil {
 		return nil, err
 	}

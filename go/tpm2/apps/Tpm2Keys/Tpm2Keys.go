@@ -58,7 +58,7 @@ func main() {
 		return
 	}
 
-	err = tpm2.InitTpm2Keys(rw, pcrs, uint16(*keySize),
+	err = tpm2.InitTpm2KeysandContexts(rw, pcrs, uint16(*keySize),
 		uint16(tpm2.AlgTPM_ALG_SHA1), "", *rootContextFileName,
                 *quoteContextFileName, *storeContextFileName)
 	if err == nil {

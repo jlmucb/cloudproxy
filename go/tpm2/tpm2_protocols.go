@@ -27,8 +27,6 @@ import (
 	"time"
 )
 
-// TODO(jlm): Remove Printf's.
-
 const (
 	RootKeyHandle     uint32 = 0x810003e8
 	QuoteKeyHandle    uint32 = 0x810003e9
@@ -196,79 +194,94 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVal []byte,
 
 	// quote_hash == decrypted sig?
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
-		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
 		return false, nil
 	}
 	return true, nil
 }
 
-// This program creates a key hierarchy consisting of a
-// primary key and quoting key for cloudproxy.
-func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
-	keySize uint16, hash_alg_id uint16,
-	quotePassword string) (Handle, Handle, Handle, error) {
+// Loads keys from blobs.
+func LoadKeyFromBlobs(rw io.ReadWriter, ownerHandle Handle, ownerPw string, objectPw string,
+	publicBlob []byte, privateBlob []byte) (Handle, error) {
+	newHandle, _, err := Load(rw, ownerHandle, ownerPw, objectPw, publicBlob, privateBlob)
+	if err != nil {
+		return Handle(0), errors.New("Load failed")
+	}
+	return newHandle, nil
+}
 
+func CreateTpm2HierarchyRoot(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16) (Handle, error) {
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1), FlagStorageDefault,
-		empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), hash_alg_id, FlagStorageDefault,
+		empty, uint16(AlgTPM_ALG_AES), uint16(128), uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), keySize, uint32(0x00010001), empty}
-	rootHandle, _, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
-	if err != nil {
-		return Handle(0), Handle(0), Handle(0),
-			errors.New("CreatePrimary failed")
-	}
+	rootHandle, _, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
+	return rootHandle, err
+}
 
+// Create quote and seal keys under rootHandle and return in order:
+//	quote public blob, quote private blob, seal public blob, seal private blob
+func CreateTpm2HierarchySubKeys(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16,
+	rootHandle Handle, quotePassword string) ([]byte, []byte, []byte, []byte, error) {
+
+	var empty []byte
 	// CreateKey (Quote Key)
-	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), hash_alg_id,
 		FlagSignerDefault, empty, uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
 		uint16(AlgTPM_ALG_SHA1), keySize, uint32(0x00010001), empty}
-	quote_private, quote_public, err := CreateKey(rw,
-		uint32(rootHandle), pcrs, "", quotePassword, keyparms)
+	quote_private, quote_public, err := CreateKey(rw, uint32(rootHandle), pcrs, "", quotePassword, keyparms)
 	if err != nil {
-		return Handle(0), Handle(0), Handle(0),
-			errors.New("Can't create quote key")
+		return nil, nil, nil, nil, errors.New("Can't create quote key")
 	}
 
-	// Load
-	quoteHandle, _, err := Load(rw, rootHandle, "",
-		"", quote_public, quote_private)
+	// CreateKey (storage key)
+	storeparms := RsaParams{uint16(AlgTPM_ALG_RSA), hash_alg_id, FlagStorageDefault,
+		empty, uint16(AlgTPM_ALG_AES), uint16(128), uint16(AlgTPM_ALG_CFB),
+		uint16(AlgTPM_ALG_NULL), uint16(0), keySize, uint32(0x00010001), empty}
+	store_private, store_public, err := CreateKey(rw, uint32(rootHandle), pcrs, "", quotePassword, storeparms)
 	if err != nil {
-		return Handle(0), Handle(0), Handle(0),
-			errors.New("Load failed")
+		return nil, nil, nil, nil, errors.New("Can't create store key")
 	}
-
-	// CreateKey
-	storeparms := RsaParams{uint16(AlgTPM_ALG_RSA),
-		uint16(AlgTPM_ALG_SHA1), FlagStorageDefault,
-		empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
-		uint16(0), keySize, uint32(0x00010001), empty}
-	store_private, store_public, err := CreateKey(rw,
-		uint32(rootHandle), pcrs, "", quotePassword, storeparms)
-	if err != nil {
-		return Handle(0), Handle(0), Handle(0),
-			errors.New("Can't create store key")
-	}
-
-	// Load
-	storeHandle, _, err := Load(rw, rootHandle, "", "", store_public, store_private)
-	if err != nil {
-		return Handle(0), Handle(0), Handle(0),
-			errors.New("Load failed")
-	}
-
-	return rootHandle, quoteHandle, storeHandle, nil
+	return quote_public, quote_private, store_public, store_private, nil
 }
 
-// and makes their handles permanent.
+// This program creates a key hierarchy consisting of a
+// primary key and quoting key for cloudproxy.
+func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16,
+	quotePassword string) (Handle, Handle, Handle, error) {
+
+	// Create Root.
+	rootHandle, err := CreateTpm2HierarchyRoot(rw, pcrs, keySize, uint16(AlgTPM_ALG_SHA1))
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("CreatePrimary failed")
+	}
+
+	// Create sub keys.
+	quote_public, quote_private, seal_public, seal_private, err := CreateTpm2HierarchySubKeys(rw, pcrs, keySize,
+		uint16(AlgTPM_ALG_SHA1), rootHandle, quotePassword)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("Can't create quote key")
+	}
+
+	// Load
+	quoteHandle, err := LoadKeyFromBlobs(rw, rootHandle, "", "", quote_public, quote_private)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("Quote load failed")
+	}
+
+	// Load
+	sealHandle, err := LoadKeyFromBlobs(rw, rootHandle, "", "", seal_public, seal_private)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0), errors.New("Load failed")
+	}
+
+	return rootHandle, quoteHandle, sealHandle, nil
+}
+
+// Makes their handles permanent.
 func PersistTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
-	hash_alg_id uint16, rootHandle uint32, quoteHandle uint32,
-	quotePassword string) error {
+	hash_alg_id uint16, rootHandle uint32, quoteHandle uint32, quotePassword string) error {
 
 	// Remove old permanent handles
 	err := EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(rootHandle),
@@ -293,7 +306,8 @@ func PersistTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 	return nil
 }
 
-func InitTpm2Keys(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16,
+// This isnt used any more.
+func InitTpm2KeysandContexts(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint16,
 	quotePassword string, rootFileName string, quoteFileName string,
 	storeFileName string) error {
 
@@ -327,8 +341,9 @@ func InitTpm2Keys(rw io.ReadWriter, pcrs []int, keySize uint16, hash_alg_id uint
 	return nil
 }
 
-func RestoreTpm2Keys(rw io.ReadWriter, quotePassword string, rootFileName string,
-	quoteFileName string, storeFileName string) (Handle, Handle, Handle, error) {
+func RestoreTpm2KeysFromContext(rw io.ReadWriter, quotePassword string,
+	rootFileName string, quoteFileName string,
+	storeFileName string) (Handle, Handle, Handle, error) {
 
 	rootSaveArea, err := ioutil.ReadFile(rootFileName)
 	if err != nil {

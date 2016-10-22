@@ -79,14 +79,13 @@ func TestCreateAndStoreKeyHierarchy(t *testing.T) {
 	quoteFileName := "./tmptest/quoteContext"
 	storeFileName := "./tmptest/storeContext"
 
-	err = InitTpm2Keys(rw, pcrs, keySize, hash_alg_id,
-		quotePassword, rootFileName,
-		quoteFileName, storeFileName)
+	err = InitTpm2KeysandContexts(rw, pcrs, keySize, hash_alg_id,
+		quotePassword, rootFileName, quoteFileName, storeFileName)
 	if err != nil {
 		t.Fatal("Can't InitTpm2Keys")
 	}
-	rootHandle, quoteHandle, storeHandle, err := RestoreTpm2Keys(rw,
-		quotePassword, rootFileName, quoteFileName, storeFileName)
+	rootHandle, quoteHandle, storeHandle, err := RestoreTpm2KeysFromContext(
+		rw, quotePassword, rootFileName, quoteFileName, storeFileName)
 	if err != nil {
 		t.Fatal("Can't RestoreTpm2Keys")
 	}

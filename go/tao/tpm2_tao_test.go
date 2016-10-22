@@ -174,7 +174,7 @@ func TestTPM2TaoAttest(t *testing.T) {
 		t.Fatal("Can't unmarshal quote structure\n")
 	}
 	tpm2.PrintAttestData(pms)
-	quoteHandle, err := tt.loadQuote()
+	quoteHandle, err := tt.loadQuoteContext()
 	if err != nil {
 	}
 	defer tpm2.FlushContext(tt.rw, quoteHandle)

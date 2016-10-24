@@ -297,12 +297,12 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	quoteKeyPrivateBlobFile := path.Join(tt.path, "quote_private_key_blob")
 	_, quotePrivateErr := os.Stat(quoteKeyPrivateBlobFile)
 	quoteKeyPublicBlobFile := path.Join(tt.path, "quote_public_key_blob")
-	_, quotePublicErr := os.Stat(quoteKeyPrivateBlobFile)
+	_, quotePublicErr := os.Stat(quoteKeyPublicBlobFile)
 
 	sealKeyPrivateBlobFile := path.Join(tt.path, "seal_private_key_blob")
 	_, sealPrivateErr := os.Stat(sealKeyPrivateBlobFile)
 	sealKeyPublicBlobFile := path.Join(tt.path, "seal_public_key_blob")
-	_, sealPublicErr := os.Stat(sealKeyPrivateBlobFile)
+	_, sealPublicErr := os.Stat(sealKeyPublicBlobFile)
 
 	var quoteKeyPublicBlob []byte
 	var quoteKeyPrivateBlob []byte
@@ -316,7 +316,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	}
 	defer tpm2.FlushContext(tt.rw, rootHandle)
 
-	if err != nil || quotePrivateErr != nil || sealPrivateErr != nil || quotePublicErr != nil || sealPublicErr != nil {
+	if quotePrivateErr != nil || sealPrivateErr != nil || quotePublicErr != nil || sealPublicErr != nil {
 		quoteKeyPublicBlob, quoteKeyPrivateBlob, sealKeyPublicBlob, sealKeyPrivateBlob, err :=
 			tpm2.CreateTpm2HierarchySubKeys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1),
 				rootHandle, quotePassword)

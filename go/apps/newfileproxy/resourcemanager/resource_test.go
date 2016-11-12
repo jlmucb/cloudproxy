@@ -12,16 +12,64 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package newfileproxy
+package resourcemanager;
 
 import (
-	"bytes"
-	"crypto/rand"
 	"fmt"
 	"testing"
+	"time"
 )
 
+func TestTimeEncode(t *testing.T) {
+	now := time.Now()
+	s, err := EncodeTime(now)
+	if err != nil {
+		t.Fatal("EncodeTime fails\n")
+	}
+	fmt.Printf("Encoded time: %s\n", s)
+	tt, err := DecodeTime(s)
+	if err != nil {
+		t.Fatal("DecodeTime fails\n")
+	}
+	if !now.Equal(*tt) {
+		t.Fatal("TestTimeEncode not equal\n")
+	}
+	fmt.Printf("TestTimeEncode succeeds")
+}
+
 func TestResourceInfo(t *testing.T) {
+	return
+	/*
+	time.Now()
+	t.String()
+	validFor := 365 * 24 * time.Hour
+	notAfter := notBefore.Add(validFor)
+	ta, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", *obj.NotAfter)
+	Time.RFC1123Z
+	a := new(PrincipalInfo)
+	b := new(ResourceInfo)
+	c := new(ResourceMasterInfo)
+	*/
+
+	// EncodeTime(t time.Time) (string, error)
+	// DecodeTime(s string) (*time.Time, error)
 	// t.Fatal("TestResourceInfo fails\n")
 	// fmt.Printf("TestResourceInfo succeeds\n")
+	// MakeCombinedPrincipal(appPricipal *string, userPrincipal *string) *CombinedPrincipal
+	// (info *ResourceInfo) IsOwner(p CombinedPrincipal) bool
+	// (info *ResourceInfo) IsReader(p CombinedPrincipal) bool
+	// (info *ResourceInfo) IsWriter(p CombinedPrincipal) bool
+	// (info *ResourceInfo) AddOwner(p CombinedPrincipal) error
+	// (info *ResourceInfo) DeleteOwner(p CombinedPrincipal) error
+	// (info *ResourceInfo) AddReader(p CombinedPrincipal) error
+	// (info *ResourceInfo) DeleteReader(p CombinedPrincipal) error
+	// (info *ResourceInfo) AddWriter(p CombinedPrincipal) error
+	// (info *ResourceInfo) DeleteWriter(p CombinedPrincipal) error
+	// (m *ResourceMasterInfo) FindResource(resourceName string) *ResourceInfo
+	// (m *ResourceMasterInfo) InsertResource(info *ResourceInfo) error
+	// (m *ResourceMasterInfo) InsertResource(resourceName string) error
+	// (m *ResourceMasterInfo) PrintMaster(printResources bool)
+	// (r *ResourceInfo) PrintResource()
+	// (m *ResourceInfo) Read(directory string) ([]byte, error)
+	// (m *ResourceInfo) Write(directory string, fileContents []byte) error
 }

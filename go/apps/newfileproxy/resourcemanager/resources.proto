@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+syntax = "proto2";
 package resourcemanager;
 
 enum ResourceType {
@@ -21,13 +22,9 @@ enum ResourceType {
 
 message PrincipalInfo {
   // Principal name (should match common name in cert, if user, OU if application).
-  optional string application_name = 1;
+  optional string name = 1;
   // Signed certificate.
-  optional bytes application_cert = 2;
-  // User name.
-  optional string user_name = 2;
-  // Signed certificate.
-  optional bytes user_cert = 2;
+  optional bytes cert = 2;
 }
 
 // A combined principal is several principals like application, user, all of
@@ -48,15 +45,15 @@ message ResourceInfo {
   // Encoded modified time.
   optional string date_modified = 4;
   // Size in bytes.
-  optional int32  size = 4;
+  optional int32 size = 5;
   // File encryption and integrity keys.
-  optional bytes keys = 5;
+  optional bytes keys = 6;
   // List of owners.
-  repeated CombinedPrincipal owners = 6;
+  repeated CombinedPrincipal owners = 7;
   // List of writers.
-  repeated CombinedPrincipal writers = 7;
+  repeated CombinedPrincipal writers = 8;
   // List of readers.
-  repeated CombinedPrincipal readers = 8;
+  repeated CombinedPrincipal readers = 9;
 }
 
 message ResourceMasterInfo {
@@ -65,7 +62,7 @@ message ResourceMasterInfo {
   // Directory files are stored.
   optional  string  base_directory_name = 2;
   // Policy key used to sign user certs, etc.
-  optional policy_cert = 3;
+  optional bytes policy_cert = 3;
   // Resources.
   repeated ResourceInfo resources = 4;
 }

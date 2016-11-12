@@ -12,28 +12,31 @@
 //
 // File: resources.go
 
-package newfileproxy;
+package resourcemanager;
 
 import (
-	"bytes"
-	"crypto/rand"
-	"crypto/x509"
-	"fmt"
-	"log"
-	"path"
+	// "fmt"
+	// "log"
+	// "path"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tao"
-	"github.com/jlmucb/cloudproxy/go/util"
+	// "github.com/golang/protobuf/proto"
+	// "github.com/jlmucb/cloudproxy/go/tao"
+	// "github.com/jlmucb/cloudproxy/go/util"
 )
 
 func EncodeTime(t time.Time) (string, error) {
-	return "", nil
+	const longForm = "2006-01-02T15:04:05.999999999Z07:00"
+	return t.Format(longForm), nil
 }
 
 func DecodeTime(s string) (*time.Time, error) {
-	return nil, nil
+	const longForm = "2006-01-02T15:04:05.999999999Z07:00"
+	tt, err := time.Parse(longForm, s)
+	if err != nil {
+		return nil, err
+	}
+	return &tt, nil
 }
 
 // MakeCombinedPrincipal
@@ -97,20 +100,12 @@ func (m *ResourceMasterInfo) InsertResource(info *ResourceInfo) error {
 }
 
 // DeleteResource deletes a resource.
-func (m *ResourceMasterInfo) InsertResource(resourceName string) error {
+func (m *ResourceMasterInfo) DeleteResource(resourceName string) error {
 	return nil
 }
 
 // PrintMaster prints the ResourceMaster into the log.
 func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
-	log.Printf("Program principal: %s\n", m.ProgramName)
-	log.Printf("Base Directory: %s\n", m.BaseDirectory)
-	log.Printf("%d resources\n", len(m.Resources))
-	if printResources {
-		for _, r := range m.Resources {
-			r.PrintResource()
-		}
-	}
 }
 
 // PrintResource prints a resource to the log.

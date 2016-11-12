@@ -49,6 +49,9 @@ func TestResourceInfo(t *testing.T) {
 	a := new(PrincipalInfo)
 	b := new(ResourceInfo)
 	c := new(ResourceMasterInfo)
+	ProtoMessage.Messageitems = append(ProtoMessage.Messageitems, testMessageItem)
+	items := datatowrite.GetMessageitems()
+	PrintPrincipalList(pl []CombinedPrincipal)
 	*/
 
 	// EncodeTime(t time.Time) (string, error)

@@ -15,9 +15,10 @@
 package resourcemanager;
 
 import (
-	// "fmt"
+	"fmt"
 	// "log"
-	// "path"
+	"io/ioutil"
+	"path"
 	"time"
 
 	// "github.com/golang/protobuf/proto"
@@ -91,11 +92,21 @@ func (info *ResourceInfo) DeleteWriter(p CombinedPrincipal) error {
 
 // FindResource looks up the resource by its name.
 func (m *ResourceMasterInfo) FindResource(resourceName string) *ResourceInfo {
+	for i := 0; i < len(m.Resources); i++ {
+		if *m.Resources[i].Name == resourceName {
+			return m.Resources[i]
+		}
+	}
 	return nil
 }
 
 // InsertResource adds a resource.
 func (m *ResourceMasterInfo) InsertResource(info *ResourceInfo) error {
+	l := m.FindResource(*info.Name)
+	if l != nil {
+		return nil 
+	}
+	m.Resources = append(m.Resources, info)
 	return nil
 }
 
@@ -108,20 +119,45 @@ func (m *ResourceMasterInfo) DeleteResource(resourceName string) error {
 func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
 }
 
+func (p *PrincipalInfo) PrintPrincipal() {
+	fmt.Printf("Name: %s, cert: %x\n", p.Name, p.Cert)
+}
+
+func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
+	// principals
+	for i := 0; i < len(cp.Principals); i++ {
+		cp.Principals[i].PrintPrincipal()
+	}
+}
+
+func PrintPrincipalList(pl []CombinedPrincipal) {
+	for i := 0; i < len(pl); i++ {
+		pl[i].PrintCombinedPrincipal()
+	}
+}
+
 // PrintResource prints a resource to the log.
-func (r *ResourceInfo) PrintResource() {
+func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
+	// name, type, date_created, date_modified, size, keys
+	// owners, readers, writers
+	contents, err := r.Read(directory)
+	if err != nil {
+		fmt.Printf("File: %s\n", contents)
+	}
 }
 
 // Read causes the bytes of the file to be decrypted and read to the message
 // stream. By the time this function is called, the remote principal has already
 // been authenticated and the operation has already been authorized.
-func (m *ResourceInfo) Read(directory string) ([]byte, error) {
-	return nil, nil
+func (r *ResourceInfo) Read(directory string) ([]byte, error) {
+	filename := path.Join(directory, *r.Name)
+	return ioutil.ReadFile(filename)
 }
 
 // Write causes the bytes of the file to be encrypted and integrity-protected
 // and written to disk as they are read from the MessageStream.
-func (m *ResourceInfo) Write(directory string, fileContents []byte) error {
-	return nil
+func (r *ResourceInfo) Write(directory string, fileContents []byte) error {
+	filename := path.Join(directory, *r.Name)
+	return ioutil.WriteFile(filename, fileContents, 0644)
 }
 

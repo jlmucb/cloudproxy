@@ -16,14 +16,9 @@ package resourcemanager;
 
 import (
 	"fmt"
-	// "log"
 	"io/ioutil"
 	"path"
 	"time"
-
-	// "github.com/golang/protobuf/proto"
-	// "github.com/jlmucb/cloudproxy/go/tao"
-	// "github.com/jlmucb/cloudproxy/go/util"
 )
 
 func EncodeTime(t time.Time) (string, error) {
@@ -41,27 +36,71 @@ func DecodeTime(s string) (*time.Time, error) {
 }
 
 // MakeCombinedPrincipal
-func MakeCombinedPrincipal(appPricipal *string, userPrincipal *string) *CombinedPrincipal {
-	return nil
+func MakeCombinedPrincipal(appPrincipal *PrincipalInfo, userPrincipal *PrincipalInfo) *CombinedPrincipal {
+	cp := new(CombinedPrincipal)
+	cp.Principals = append(cp.Principals, appPrincipal)
+	cp.Principals = append(cp.Principals, userPrincipal)
+	return cp
+}
+
+
+func SameCombinedPrincipal(p1 CombinedPrincipal, p2 CombinedPrincipal) bool {
+	if len(p1.Principals) != len(p2.Principals) {
+		return false
+	}
+	for i := 0; i < len(p1.Principals); i++ {
+		if *p1.Principals[i].Name != *p2.Principals[i].Name {
+			return false
+		}
+	}
+	return true
 }
 
 // IsOwner
 func (info *ResourceInfo) IsOwner(p CombinedPrincipal) bool {
+	for i := 0; i < len(info.Owners); i++ {
+		if SameCombinedPrincipal(*info.Owners[i], p) {
+			return true
+		}
+	}
 	return false
 }
 
 // IsReader
 func (info *ResourceInfo) IsReader(p CombinedPrincipal) bool {
+	for i := 0; i < len(info.Readers); i++ {
+		if SameCombinedPrincipal(*info.Readers[i], p) {
+			return true
+		}
+	}
 	return false
 }
 
 // IsWriter
 func (info *ResourceInfo) IsWriter(p CombinedPrincipal) bool {
+	for i := 0; i < len(info.Writers); i++ {
+		if SameCombinedPrincipal(*info.Writers[i], p) {
+			return true
+		}
+	}
 	return false
 }
 
 // Add Owner
 func (info *ResourceInfo) AddOwner(p CombinedPrincipal) error {
+	info.Owners= append(info.Owners, &p)
+	return nil
+}
+
+// Add Reader
+func (info *ResourceInfo) AddReader(p CombinedPrincipal) error {
+	info.Readers= append(info.Readers, &p)
+	return nil
+}
+
+// Add Writer
+func (info *ResourceInfo) AddWriter(p CombinedPrincipal) error {
+	info.Writers= append(info.Writers, &p)
 	return nil
 }
 
@@ -70,18 +109,8 @@ func (info *ResourceInfo) DeleteOwner(p CombinedPrincipal) error {
 	return nil
 }
 
-// Add Reader
-func (info *ResourceInfo) AddReader(p CombinedPrincipal) error {
-	return nil
-}
-
 // Delete Reader
 func (info *ResourceInfo) DeleteReader(p CombinedPrincipal) error {
-	return nil
-}
-
-// Add Writer
-func (info *ResourceInfo) AddWriter(p CombinedPrincipal) error {
 	return nil
 }
 
@@ -115,12 +144,8 @@ func (m *ResourceMasterInfo) DeleteResource(resourceName string) error {
 	return nil
 }
 
-// PrintMaster prints the ResourceMaster into the log.
-func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
-}
-
 func (p *PrincipalInfo) PrintPrincipal() {
-	fmt.Printf("Name: %s, cert: %x\n", p.Name, p.Cert)
+	fmt.Printf("Name: %s, Certificate: %x\n", p.Name, p.Cert)
 }
 
 func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
@@ -130,7 +155,7 @@ func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
 	}
 }
 
-func PrintPrincipalList(pl []CombinedPrincipal) {
+func PrintPrincipalList(pl []*CombinedPrincipal) {
 	for i := 0; i < len(pl); i++ {
 		pl[i].PrintCombinedPrincipal()
 	}
@@ -138,11 +163,37 @@ func PrintPrincipalList(pl []CombinedPrincipal) {
 
 // PrintResource prints a resource to the log.
 func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
-	// name, type, date_created, date_modified, size, keys
-	// owners, readers, writers
-	contents, err := r.Read(directory)
-	if err != nil {
-		fmt.Printf("File: %s\n", contents)
+	fmt.Printf("Name: %s\n", r.Name)
+	fmt.Printf("Type: %d, size: %d\n", r.Type, r.Size)
+	fmt.Printf("Created: %s, modified: %s\n", r.DateCreated, r.DateModified)
+	fmt.Printf("Owners: ")
+	PrintPrincipalList(r.Owners)
+	fmt.Printf("\n")
+	fmt.Printf("Readers: ")
+	PrintPrincipalList(r.Readers)
+	fmt.Printf("\n")
+	fmt.Printf("Writers: ")
+	PrintPrincipalList(r.Writers)
+	fmt.Printf("\n")
+	if printContents {
+		fileName := path.Join(directory, *r.Name)
+		contents, err := r.Read(fileName)
+		if err != nil {
+			fmt.Printf("File: %s\n", contents)
+		}
+	}
+}
+
+// PrintMaster prints the ResourceMaster into the log.
+func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
+	fmt.Printf("ServiceName: %s\n", m.ServiceName)
+	fmt.Printf("BaseDirectoryName: %s\n", m.BaseDirectoryName)
+	fmt.Printf("PolicyCert: %s\n", m.PolicyCert)
+	fmt.Printf("Number of resources: %d\n", len(m.Resources))
+	if printResources {
+		for i := 0; i < len(m.Resources); i++ {
+			m.Resources[i].PrintResource(*m.BaseDirectoryName, false)
+		}
 	}
 }
 

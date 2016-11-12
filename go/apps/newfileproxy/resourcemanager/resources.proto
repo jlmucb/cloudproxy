@@ -1,0 +1,72 @@
+// Copyright (c) 2016, Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package resourcemanager;
+
+enum ResourceType {
+  FILE = 1;
+  DIRECTORY = 2;
+}
+
+message PrincipalInfo {
+  // Principal name (should match common name in cert, if user, OU if application).
+  optional string application_name = 1;
+  // Signed certificate.
+  optional bytes application_cert = 2;
+  // User name.
+  optional string user_name = 2;
+  // Signed certificate.
+  optional bytes user_cert = 2;
+}
+
+// A combined principal is several principals like application, user, all of
+// which have to be authenticated to constitute an authorization.
+message CombinedPrincipal {
+  repeated PrincipalInfo principals = 1;
+}
+
+// Readers and writers can delegate writes.
+// Writers to a directory can create and delete files in the directory.
+message ResourceInfo {
+  // Resource name,  e.g. - directory1/directory2/filename.
+  required string name = 1;
+  // Always ResourceType.FILE.
+  optional int32  type = 2;
+  // Encoded created time.
+  optional string date_created = 3;
+  // Encoded modified time.
+  optional string date_modified = 4;
+  // Size in bytes.
+  optional int32  size = 4;
+  // File encryption and integrity keys.
+  optional bytes keys = 5;
+  // List of owners.
+  repeated CombinedPrincipal owners = 6;
+  // List of writers.
+  repeated CombinedPrincipal writers = 7;
+  // List of readers.
+  repeated CombinedPrincipal readers = 8;
+}
+
+message ResourceMasterInfo {
+  // Service name owning resources (files).
+  optional  string  service_name = 1;
+  // Directory files are stored.
+  optional  string  base_directory_name = 2;
+  // Policy key used to sign user certs, etc.
+  optional policy_cert = 3;
+  // Resources.
+  repeated ResourceInfo resources = 4;
+}
+

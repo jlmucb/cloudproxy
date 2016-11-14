@@ -33,6 +33,7 @@ type Circuit struct {
 	conn  net.Conn
 	id    uint64
 	cells chan Cell
+	keys  [][32]byte
 }
 
 // SendMessage divides a message into cells and sends each cell over the network
@@ -45,6 +46,7 @@ func (c *Circuit) SendMessage(msg []byte) error {
 
 	binary.LittleEndian.PutUint64(cell[ID:], c.id)
 	cell[TYPE] = msgCell
+
 	binary.LittleEndian.PutUint64(cell[BODY:], uint64(msgBytes))
 
 	bytes := copy(cell[BODY+LEN_SIZE:], msg)

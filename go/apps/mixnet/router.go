@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/nacl/box"
+
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -37,6 +39,9 @@ type RouterContext struct {
 	keys     *tao.Keys    // Signing keys of this hosted program.
 	domain   *tao.Domain  // Policy guard and public key.
 	listener net.Listener // Socket where server listens for proxies/routers
+
+	publicKey  *[32]byte
+	privateKey *[32]byte
 
 	addr string
 
@@ -110,6 +115,8 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 
 	r.errs = make(chan error)
 	r.done = make(chan bool)
+
+	r.publicKey, r.privateKey, err = box.GenerateKey(rand.Reader)
 
 	// Generate keys and get attestation from parent.
 	if r.keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, t); err != nil {
@@ -454,7 +461,7 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 	r.nextIds[id] = newId
 	r.prevIds[newId] = id
 
-	circuit := &Circuit{c, id, make(chan Cell)}
+	circuit := &Circuit{c, id, make(chan Cell), nil}
 	c.AddCircuit(circuit)
 
 	r.circuits[id] = c
@@ -485,7 +492,7 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 		} else {
 			nextConn = r.conns[d.Addrs[relayIdx+1]]
 		}
-		newCirc := &Circuit{c, id, make(chan Cell)}
+		newCirc := &Circuit{c, id, make(chan Cell), nil}
 		nextConn.AddCircuit(newCirc)
 		r.circuits[newId] = nextConn
 

@@ -454,7 +454,7 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 	r.nextIds[id] = newId
 	r.prevIds[newId] = id
 
-	circuit := &Circuit{c, id, make(chan Cell)}
+	circuit := NewCircuit(c, id)
 	c.AddCircuit(circuit)
 
 	r.circuits[id] = c
@@ -485,7 +485,7 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 		} else {
 			nextConn = r.conns[d.Addrs[relayIdx+1]]
 		}
-		newCirc := &Circuit{c, id, make(chan Cell)}
+		newCirc := NewCircuit(c, id)
 		nextConn.AddCircuit(newCirc)
 		r.circuits[newId] = nextConn
 

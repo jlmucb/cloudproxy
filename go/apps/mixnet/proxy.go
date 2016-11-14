@@ -125,12 +125,12 @@ func (p *ProxyContext) handleConn(c *Conn) {
 		if err == nil {
 			id := getID(cell)
 			circuit := c.GetCircuit(id)
-			circuit.cells <- Cell{cell, err}
+			circuit.BufferCell(cell, err)
 		} else {
 			// Relay other errors (mostly timeout) to all circuits in this connection
 			for _, circuit := range c.circuits {
 				go func(circuit *Circuit) {
-					circuit.cells <- Cell{nil, err}
+					circuit.BufferCell(nil, err)
 				}(circuit)
 			}
 			break
@@ -160,7 +160,7 @@ func (p *ProxyContext) CreateCircuit(addrs []string) (*Circuit, uint64, error) {
 		c = p.conns.m[addrs[0]]
 	}
 	p.circuits[id] = c
-	circuit := &Circuit{c, id, make(chan Cell)}
+	circuit := NewCircuit(c, id)
 	c.AddCircuit(circuit)
 	p.conns.Unlock()
 
@@ -278,7 +278,7 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 			bytes, err := c.Read(msg)
 			if err != nil {
 				proxyErrs <- err
-				d.circuits[id].cells <- Cell{nil, io.EOF}
+				d.circuits[id].BufferCell(nil, io.EOF)
 				return
 			}
 
@@ -304,7 +304,7 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 			c.SetDeadline(time.Now().Add(p.timeout))
 			if _, err = c.Write(reply); err != nil {
 				proxyErrs <- err
-				d.circuits[id].cells <- Cell{nil, io.EOF}
+				d.circuits[id].BufferCell(nil, io.EOF)
 				return
 			}
 		}

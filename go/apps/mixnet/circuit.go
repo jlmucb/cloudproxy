@@ -23,36 +23,42 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-// A cell is a message read from the network connection
-type Cell struct {
-	cell []byte
-	err  error
-}
-
 // A circuit carries cells
 type Circuit struct {
 	conn  net.Conn
 	id    uint64
-	cells chan Cell
+	cells chan []byte
+	errs  chan error
+}
+
+func NewCircuit(conn net.Conn, id uint64) *Circuit {
+	return &Circuit{
+		conn:  conn,
+		id:    id,
+		cells: make(chan []byte, 2),
+		errs:  make(chan error, 2),
+	}
 }
 
 func (c *Circuit) Write(msg []byte) (int, error) {
-	// No need to multiple writes
+	// No need to multiplex writes
 	return c.conn.Write(msg)
 }
 
 func (c *Circuit) BufferCell(cell []byte, err error) {
-	c.cells <- Cell{cell, err}
+	c.cells <- cell
+	c.errs <- err
 }
 
 func (c *Circuit) Read(msg []byte) (int, error) {
-	cell, ok := <-c.cells
-	if !ok {
+	cell, ok1 := <-c.cells
+	err, ok2 := <-c.errs
+	if !ok1 || !ok2 {
 		return 0, io.EOF
-	} else if cell.err != nil {
-		return 0, cell.err
+	} else if err != nil {
+		return 0, err
 	}
-	n := copy(msg, cell.cell)
+	n := copy(msg, cell)
 	return n, nil
 }
 
@@ -74,7 +80,7 @@ func (c *Circuit) SendMessage(msg []byte) error {
 	binary.LittleEndian.PutUint64(cell[BODY:], uint64(msgBytes))
 
 	bytes := copy(cell[BODY+LEN_SIZE:], msg)
-	if _, err := c.conn.Write(cell); err != nil {
+	if _, err := c.Write(cell); err != nil {
 		return err
 	}
 
@@ -83,7 +89,7 @@ func (c *Circuit) SendMessage(msg []byte) error {
 		binary.LittleEndian.PutUint64(cell[ID:], c.id)
 		cell[TYPE] = msgCell
 		bytes += copy(cell[BODY:], msg[bytes:])
-		if _, err := c.conn.Write(cell); err != nil {
+		if _, err := c.Write(cell); err != nil {
 			return err
 		}
 	}
@@ -99,16 +105,15 @@ func (c *Circuit) SendDirective(d *Directive) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return c.conn.Write(cell)
+	return c.Write(cell)
 }
 
 // ReceiveMessage reads message cells from the router and assembles them into
 // a messsage.
 func (c *Circuit) ReceiveMessage() ([]byte, error) {
 	// Receive cells from router.
-	read := <-c.cells
-	cell := read.cell
-	err := read.err
+	cell := make([]byte, CellBytes)
+	n, err := c.Read(cell)
 	if err != nil {
 		return nil, err
 	}
@@ -132,18 +137,20 @@ func (c *Circuit) ReceiveMessage() ([]byte, error) {
 	}
 
 	msg := make([]byte, msgBytes)
-	bytes := copy(msg, cell[BODY+LEN_SIZE:])
+	bytes := copy(msg, cell[BODY+LEN_SIZE:n])
 
 	for uint64(bytes) < msgBytes {
-		read = <-c.cells
-		cell = read.cell
-		err = read.err
+		tao.ZeroBytes(cell)
+		n, err = c.Read(cell)
+		if err != nil {
+			return nil, err
+		}
 		if err != nil {
 			return nil, err
 		} else if cell[TYPE] != msgCell {
 			return nil, errCellType
 		}
-		bytes += copy(msg[bytes:], cell[BODY:])
+		bytes += copy(msg[bytes:], cell[BODY:n])
 	}
 
 	return msg, nil
@@ -153,10 +160,8 @@ func (c *Circuit) ReceiveMessage() ([]byte, error) {
 // received, e.g. in response to RouterContext.HandleProxy(). If the directive
 // type is ERROR, return an error.
 func (c *Circuit) ReceiveDirective(d *Directive) error {
-	read := <-c.cells
-	cell := read.cell
-	err := read.err
-
+	cell := make([]byte, CellBytes)
+	_, err := c.Read(cell)
 	if err != nil {
 		return err
 	}

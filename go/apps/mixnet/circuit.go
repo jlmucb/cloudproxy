@@ -17,6 +17,7 @@ package mixnet
 import (
 	"encoding/binary"
 	"errors"
+	"io"
 	"net"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -33,6 +34,31 @@ type Circuit struct {
 	conn  net.Conn
 	id    uint64
 	cells chan Cell
+}
+
+func (c *Circuit) Write(msg []byte) (int, error) {
+	// No need to multiple writes
+	return c.conn.Write(msg)
+}
+
+func (c *Circuit) BufferCell(cell []byte, err error) {
+	c.cells <- Cell{cell, err}
+}
+
+func (c *Circuit) Read(msg []byte) (int, error) {
+	cell, ok := <-c.cells
+	if !ok {
+		return 0, io.EOF
+	} else if cell.err != nil {
+		return 0, cell.err
+	}
+	n := copy(msg, cell.cell)
+	return n, nil
+}
+
+func (c *Circuit) Close() error {
+	close(c.cells)
+	return nil
 }
 
 // SendMessage divides a message into cells and sends each cell over the network

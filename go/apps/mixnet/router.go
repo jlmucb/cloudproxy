@@ -236,7 +236,7 @@ func (r *RouterContext) Close() {
 	for _, conn := range r.conns {
 		r.done <- true
 		for _, circuit := range conn.circuits {
-			close(circuit.cells)
+			circuit.Close()
 		}
 		conn.Close()
 	}
@@ -342,7 +342,7 @@ func (r *RouterContext) handleConn(c *Conn) {
 					respQ.EnqueueMsg(rId, cell, prevConn, c)
 				}
 			} else { // actually handle the message
-				c.GetCircuit(id).cells <- Cell{cell, err}
+				c.GetCircuit(id).BufferCell(cell, err)
 			}
 		} else if cell[TYPE] == dirCell { // Handle a directive.
 			var d Directive
@@ -557,17 +557,13 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 	sendQ, respQ *Queue, sId, rId uint64) {
 	var conn net.Conn = nil
 	for {
-		read, ok := <-circ.cells
-		if !ok {
-			break
-		}
-		cell := read.cell
-		err := read.err
+		cell := make([]byte, CellBytes)
+		n, err := circ.Read(cell)
 		if err != nil {
 			break
 		}
 
-		msgBytes := binary.LittleEndian.Uint64(cell[BODY:])
+		msgBytes := binary.LittleEndian.Uint64(cell[BODY:n])
 		if msgBytes > MaxMsgBytes {
 			if err = r.SendError(respQ, rId, id, errMsgLength, prevConn); err != nil {
 				r.errs <- err
@@ -577,17 +573,13 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 		}
 
 		msg := make([]byte, msgBytes)
-		bytes := copy(msg, cell[BODY+LEN_SIZE:])
+		bytes := copy(msg, cell[BODY+LEN_SIZE:n])
 
 		// While the connection is open and the message is incomplete, read
 		// the next cell.
 		for uint64(bytes) < msgBytes {
-			read, ok = <-circ.cells
-			if !ok {
-				break
-			}
-			cell = read.cell
-			err = read.err
+			cell := make([]byte, CellBytes)
+			n, err = circ.Read(cell)
 			if err == io.EOF {
 				r.errs <- errors.New("Connection closed before receiving all messages")
 			} else if err != nil {
@@ -599,7 +591,7 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 					break
 				}
 			}
-			bytes += copy(msg[bytes:], cell[BODY:])
+			bytes += copy(msg[bytes:], cell[BODY:n])
 		}
 
 		if conn == nil { // dial when you receive the first message to send

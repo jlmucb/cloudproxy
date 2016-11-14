@@ -48,7 +48,6 @@ message DirectoryMessage {
   // Addresses to register to or delete from the directory,
   // or list of all available mixnets
   repeated string addrs = 2;
-  repeated bytes keys = 3;
   // Possible error message
-  optional string error = 4;
+  optional string error = 3;
 }

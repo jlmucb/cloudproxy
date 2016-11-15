@@ -14,25 +14,15 @@
 //
 // File: utility.go
 
-package resourcemanager;
+package common;
 
 import (
-	// "crypto/aes"
-	// "crypto/cipher"
-	// "crypto/hmac"
 	"crypto/rand"
-	// "crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	// "errors"
-	// "fmt"
 	"log"
 	"math/big"
 	"time"
-
-	// "github.com/jlmucb/cloudproxy/go/tao"
-	// "github.com/jlmucb/cloudproxy/go/tao/auth"
-	// "github.com/jlmucb/cloudproxy/go/util"
 )
 
 // policyKey.SigningKey.GetSigner())

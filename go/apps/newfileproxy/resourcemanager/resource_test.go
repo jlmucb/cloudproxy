@@ -23,6 +23,8 @@ import (
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
 )
 
 func TestTimeEncode(t *testing.T) {
@@ -68,7 +70,7 @@ func TestTableFunctions(t *testing.T) {
         var policyPub interface{}
         policyPriv = policyKey
         policyPub = policyKey.Public()
-	policyCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
+	policyCert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 				"US", policyPriv, nil, "", "TestPolicyCert", "US",
 				policyPub, notBefore, notAfter,
 				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
@@ -87,7 +89,7 @@ func TestTableFunctions(t *testing.T) {
 	}
         var programPub interface{}
 	programPub = programKey.Public()
-	programCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
+	programCert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 				"US", policyPriv, policyCertificate, "", "TestProgramCert", "US",
 				programPub, notBefore, notAfter,
 				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
@@ -102,7 +104,7 @@ func TestTableFunctions(t *testing.T) {
 	}
         var user1Pub interface{}
 	user1Pub = user1Key.Public()
-	user1Cert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
+	user1Cert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 				"US", policyKey, policyCertificate, "", "TestUserCert1", "US",
 				user1Pub, notBefore, notAfter,
 				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
@@ -117,7 +119,7 @@ func TestTableFunctions(t *testing.T) {
 	}
         var user2Pub interface{}
 	user2Pub = user2Key.Public()
-	user2Cert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
+	user2Cert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 				"US", policyKey, policyCertificate, "", "TestUserCert2", "US",
 				user2Pub, notBefore, notAfter,
 				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)

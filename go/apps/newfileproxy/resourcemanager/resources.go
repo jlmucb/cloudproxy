@@ -104,18 +104,46 @@ func (info *ResourceInfo) AddWriter(p CombinedPrincipal) error {
 	return nil
 }
 
+// FindCombinedPrincipalPosition looks up the resource by its name and returns position in stack.
+func FindCombinedPrincipalPosition(toDelete CombinedPrincipal, cpList []*CombinedPrincipal) int {
+	for i := 0; i < len(cpList); i++ {
+		if SameCombinedPrincipal(toDelete, *cpList[i]) {
+			return i
+		}
+	}
+	return -1 
+}
+
 // Delete Owner
 func (info *ResourceInfo) DeleteOwner(p CombinedPrincipal) error {
+	n := FindCombinedPrincipalPosition(p, info.Owners)
+	if n < 0 {
+		return nil
+	}
+	info.Owners[n] = info.Owners[len(info.Owners) - 1]
+	info.Owners = info.Owners[:len(info.Owners) - 1]
 	return nil
 }
 
 // Delete Reader
 func (info *ResourceInfo) DeleteReader(p CombinedPrincipal) error {
+	n := FindCombinedPrincipalPosition(p, info.Readers)
+	if n < 0 {
+		return nil
+	}
+	info.Readers[n] = info.Readers[len(info.Readers) - 1]
+	info.Readers = info.Readers[:len(info.Readers) - 1]
 	return nil
 }
 
 // Delete Writer.
 func (info *ResourceInfo) DeleteWriter(p CombinedPrincipal) error {
+	n := FindCombinedPrincipalPosition(p, info.Writers)
+	if n < 0 {
+		return nil
+	}
+	info.Writers[n] = info.Owners[len(info.Owners) - 1]
+	info.Writers = info.Owners[:len(info.Owners) - 1]
 	return nil
 }
 

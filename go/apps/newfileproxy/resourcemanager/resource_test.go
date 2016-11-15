@@ -15,7 +15,13 @@
 package resourcemanager;
 
 import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 )
@@ -37,42 +43,74 @@ func TestTimeEncode(t *testing.T) {
 	fmt.Printf("TestTimeEncode succeeds")
 }
 
-func TestResourceInfo(t *testing.T) {
-	return
-	/*
-	time.Now()
-	t.String()
+func TestTableFunctions(t *testing.T) {
+
+	notBefore := time.Now()
 	validFor := 365 * 24 * time.Hour
 	notAfter := notBefore.Add(validFor)
-	ta, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", *obj.NotAfter)
-	Time.RFC1123Z
+
+	serialNumber := new(big.Int).SetInt64(1)
+
+	policyKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal("TestTableFunctions: ecdsa.GenerateKey fails\n")
+	}
+	var policyPriv interface{}
+        var policyPub interface{}
+        policyPriv = policyKey
+        policyPub = policyKey.Public()
+	policyCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
+			  	"US", policyPub, nil, "", "TestPolicyCert", "US",
+				policyPriv.(crypto.Signer), notBefore, notAfter,
+				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
+	if err != nil {
+		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
+	}
+	policyCertificate, err := x509.ParseCertificate(policyCert)
+	if err != nil {
+		t.Fatal("TestTableFunctions: ParseCertificate fails\n")
+	}
+	fmt.Printf("PolicyCert: %x\n", policyCert)
+	fmt.Printf("Policy Certificate: %x\n", policyCertificate)
+
+/*
+
+	programKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal("TestTableFunctions: ecdsa.GenerateKey fails\n")
+	}
+	programCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
+			  	"US", policyKey, policyCertificate, "", "TestPolicyCert", "US", programKey,
+			  	notBefore, notAfter,
+				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
+	if err != nil {
+		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
+	}
+	fmt.Printf("ProgramCert: %x\n", programCert)
+
+	userKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal("TestTableFunctions: ecdsa.GenerateKey fails\n")
+	}
+	userCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
+			  	"US", policyKey, policyCertificate, "", "TestPolicyCert", "US", userKey,
+			  	notBefore, notAfter,
+				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
+	if err != nil {
+		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
+	}
+	fmt.Printf("UserCert: %x\n", userCert)
+*/
+
+/*
 	a := new(PrincipalInfo)
 	b := new(ResourceInfo)
 	c := new(ResourceMasterInfo)
-	ProtoMessage.Messageitems = append(ProtoMessage.Messageitems, testMessageItem)
-	items := datatowrite.GetMessageitems()
-	PrintPrincipalList(pl []CombinedPrincipal)
-	*/
 
-	// EncodeTime(t time.Time) (string, error)
-	// DecodeTime(s string) (*time.Time, error)
-	// t.Fatal("TestResourceInfo fails\n")
-	// fmt.Printf("TestResourceInfo succeeds\n")
-	// MakeCombinedPrincipal(appPricipal *string, userPrincipal *string) *CombinedPrincipal
-	// (info *ResourceInfo) IsOwner(p CombinedPrincipal) bool
-	// (info *ResourceInfo) IsReader(p CombinedPrincipal) bool
-	// (info *ResourceInfo) IsWriter(p CombinedPrincipal) bool
-	// (info *ResourceInfo) AddOwner(p CombinedPrincipal) error
-	// (info *ResourceInfo) DeleteOwner(p CombinedPrincipal) error
-	// (info *ResourceInfo) AddReader(p CombinedPrincipal) error
-	// (info *ResourceInfo) DeleteReader(p CombinedPrincipal) error
-	// (info *ResourceInfo) AddWriter(p CombinedPrincipal) error
-	// (info *ResourceInfo) DeleteWriter(p CombinedPrincipal) error
-	// (m *ResourceMasterInfo) FindResource(resourceName string) *ResourceInfo
-	// (m *ResourceMasterInfo) InsertResource(info *ResourceInfo) error
-	// (m *ResourceMasterInfo) InsertResource(resourceName string) error
-	// (m *ResourceMasterInfo) PrintMaster(printResources bool)
-	// (r *ResourceInfo) PrintResource()
-	// (m *ResourceInfo) Read(directory string) ([]byte, error)
-	// (m *ResourceInfo) Write(directory string, fileContents []byte) error
+	PrintPrincipalList(pl []CombinedPrincipal)
+ */
+}
+
+func TestResourceInfo(t *testing.T) {
+	return
 }

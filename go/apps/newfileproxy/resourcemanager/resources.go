@@ -43,7 +43,6 @@ func MakeCombinedPrincipal(appPrincipal *PrincipalInfo, userPrincipal *Principal
 	return cp
 }
 
-
 func SameCombinedPrincipal(p1 CombinedPrincipal, p2 CombinedPrincipal) bool {
 	if len(p1.Principals) != len(p2.Principals) {
 		return false

@@ -573,41 +573,12 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 	sendQ, respQ *Queue, sId, rId uint64) {
 	var conn net.Conn = nil
 	for {
-		cell := make([]byte, CellBytes)
-		n, err := circ.Read(cell)
+		msg, err := circ.ReceiveMessage()
 		if err != nil {
-			break
-		}
-
-		msgBytes := binary.LittleEndian.Uint64(cell[BODY:n])
-		if msgBytes > MaxMsgBytes {
-			if err = r.SendError(respQ, rId, id, errMsgLength, prevConn); err != nil {
+			if err = r.SendError(respQ, rId, id, err, prevConn); err != nil {
 				r.errs <- err
-				return
 			}
 			continue
-		}
-
-		msg := make([]byte, msgBytes)
-		bytes := copy(msg, cell[BODY+LEN_SIZE:n])
-
-		// While the connection is open and the message is incomplete, read
-		// the next cell.
-		for uint64(bytes) < msgBytes {
-			cell := make([]byte, CellBytes)
-			n, err = circ.Read(cell)
-			if err == io.EOF {
-				r.errs <- errors.New("Connection closed before receiving all messages")
-			} else if err != nil {
-				r.errs <- err
-				return
-			} else if cell[TYPE] != msgCell {
-				if err = r.SendError(respQ, rId, id, errCellType, prevConn); err != nil {
-					r.errs <- err
-					break
-				}
-			}
-			bytes += copy(msg[bytes:], cell[BODY:n])
 		}
 
 		if conn == nil { // dial when you receive the first message to send
@@ -615,9 +586,8 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 			if err != nil {
 				if err = r.SendError(respQ, rId, id, err, prevConn); err != nil {
 					r.errs <- err
-					break
 				}
-				break
+				continue
 			}
 			r.mapLock.Lock()
 			r.circuits[nextId] = &Conn{conn, 0, r.timeout, nil, nil, false}
@@ -659,18 +629,17 @@ func (r *RouterContext) handleResponse(conn net.Conn, prevConn *Conn, queue *Que
 		}
 		cell := make([]byte, CellBytes)
 		binary.LittleEndian.PutUint64(cell[ID:], id)
-		respBytes := len(resp[:n])
 
 		cell[TYPE] = msgCell
-		binary.LittleEndian.PutUint64(cell[BODY:], uint64(respBytes))
-		bytes := copy(cell[BODY+LEN_SIZE:], resp)
-		queue.EnqueueMsg(queueId, cell, prevConn, nil)
 
-		for bytes < n {
-			tao.ZeroBytes(cell)
-			binary.LittleEndian.PutUint64(cell[ID:], id)
-			cell[TYPE] = msgCell
-			bytes += copy(cell[BODY:], resp[bytes:])
+		bodies := make(chan []byte)
+		go breakMessages(resp[:n], bodies)
+		for {
+			body, ok := <-bodies
+			if !ok {
+				break
+			}
+			copy(cell[BODY:], body)
 			queue.EnqueueMsg(queueId, cell, prevConn, nil)
 		}
 	}

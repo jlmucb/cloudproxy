@@ -107,28 +107,37 @@ func (c *Circuit) Close() error {
 	return nil
 }
 
+func breakMessages(msg []byte, res chan []byte) {
+	body := make([]byte, CellBytes-BODY)
+	binary.LittleEndian.PutUint64(body, uint64(len(msg)))
+	bytes := copy(body[LEN_SIZE:], msg)
+	res <- body
+	for bytes < len(msg) {
+		body := make([]byte, CellBytes-BODY)
+		bytes += copy(body, msg[bytes:])
+		res <- body
+	}
+	close(res)
+}
+
 // SendMessage divides a message into cells and sends each cell over the network
 // connection. A message is signaled to the receiver by the first byte of the
 // first cell. The next few bytes encode the total number of bytes in the
 // message.
 func (c *Circuit) SendMessage(msg []byte) error {
-	msgBytes := len(msg)
 	cell := make([]byte, CellBytes)
-
 	binary.LittleEndian.PutUint64(cell[ID:], c.id)
 	cell[TYPE] = msgCell
-	binary.LittleEndian.PutUint64(cell[BODY:], uint64(msgBytes))
 
-	bytes := copy(cell[BODY+LEN_SIZE:], msg)
-	if _, err := c.Write(cell); err != nil {
-		return err
-	}
+	bodies := make(chan []byte)
 
-	for bytes < msgBytes {
-		tao.ZeroBytes(cell)
-		binary.LittleEndian.PutUint64(cell[ID:], c.id)
-		cell[TYPE] = msgCell
-		bytes += copy(cell[BODY:], msg[bytes:])
+	go breakMessages(msg, bodies)
+	for {
+		body, ok := <-bodies
+		if !ok {
+			break
+		}
+		copy(cell[BODY:], body)
 		if _, err := c.Write(cell); err != nil {
 			return err
 		}
@@ -182,9 +191,6 @@ func (c *Circuit) ReceiveMessage() ([]byte, error) {
 	for uint64(bytes) < msgBytes {
 		tao.ZeroBytes(cell)
 		n, err = c.Read(cell)
-		if err != nil {
-			return nil, err
-		}
 		if err != nil {
 			return nil, err
 		} else if cell[TYPE] != msgCell {

@@ -201,6 +201,7 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	if _, err := circuit.SendDirective(dirDestroy); err != nil {
 		return err
 	}
+
 	// Wait for DESTROYED directive from router.
 	var d Directive
 	if err := circuit.ReceiveDirective(&d); err != nil {

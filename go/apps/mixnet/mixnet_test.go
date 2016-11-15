@@ -655,6 +655,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if err == nil {
 		t.Error("Receive message incorrectly succeeded")
 	}
+
 	err = proxy.DestroyCircuit(id)
 	if err != nil {
 		t.Error(err)

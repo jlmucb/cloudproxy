@@ -180,10 +180,11 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 	}
 }
 
-func RegisterRouter(c net.Conn, addrs []string) error {
+func RegisterRouter(c net.Conn, addrs []string, keys [][]byte) error {
 	dm := &DirectoryMessage{
 		Type:  DirectoryMessageType_REGISTER.Enum(),
 		Addrs: addrs,
+		Keys:  keys,
 	}
 	b, err := proto.Marshal(dm)
 	if err != nil {

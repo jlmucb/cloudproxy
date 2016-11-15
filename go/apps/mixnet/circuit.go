@@ -34,21 +34,50 @@ type Circuit struct {
 	next  *Circuit
 	prev  *Circuit
 
-	key        *[32]byte
+	peerKey    *[32]byte
 	publicKey  *[32]byte
 	privateKey *[32]byte
+	sharedKey  *[32]byte
 }
 
-func NewCircuit(conn *Conn, id uint64) *Circuit {
-	pub, priv, _ := box.GenerateKey(rand.Reader)
-	return &Circuit{
-		conn:       conn,
-		id:         id,
-		cells:      make(chan []byte, 2),
-		errs:       make(chan error, 2),
-		publicKey:  pub,
-		privateKey: priv,
+// SET THE CORRECT KEYS
+func NewCircuit(conn *Conn, id uint64, peerKey, publicKey, privateKey *[32]byte) *Circuit {
+	if peerKey != nil && privateKey != nil {
+		var sharedKey [32]byte
+		box.Precompute(&sharedKey, peerKey, privateKey)
+		return &Circuit{
+			conn:  conn,
+			id:    id,
+			cells: make(chan []byte, 2),
+			errs:  make(chan error, 2),
+
+			peerKey:    peerKey,
+			publicKey:  publicKey,
+			privateKey: privateKey,
+			sharedKey:  &sharedKey,
+		}
+	} else {
+		return &Circuit{
+			conn:  conn,
+			id:    id,
+			cells: make(chan []byte, 2),
+			errs:  make(chan error, 2),
+		}
 	}
+}
+
+func (c *Circuit) Encrypt(msg []byte) []byte {
+	var nonce [24]byte
+	rand.Read(nonce[:])
+	boxed := box.SealAfterPrecomputation(nil, msg, &nonce, c.sharedKey)
+	boxed = append(nonce[:], boxed...)
+	return boxed
+}
+
+func (c *Circuit) Decrypt(boxed []byte) ([]byte, bool) {
+	var nonce [24]byte
+	copy(nonce[:], boxed[:24])
+	return box.OpenAfterPrecomputation(nil, boxed[24:], &nonce, c.sharedKey)
 }
 
 func (c *Circuit) Write(msg []byte) (int, error) {

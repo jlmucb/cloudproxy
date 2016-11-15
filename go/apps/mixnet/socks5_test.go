@@ -26,7 +26,7 @@ import (
 )
 
 // Run proxy server.
-func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResult) {
+func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResult, exitKey *[32]byte) {
 	c, err := proxy.Accept()
 	if err != nil {
 		ch <- testResult{err, nil}
@@ -38,7 +38,7 @@ func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResul
 	circuit := make([]string, len(rAddrs)+1)
 	copy(circuit, rAddrs)
 	circuit[len(rAddrs)] = addr
-	_, id, err := proxy.CreateCircuit(circuit)
+	_, id, err := proxy.CreateCircuit(circuit, exitKey)
 	if err != nil {
 		ch <- testResult{err, nil}
 		return
@@ -60,7 +60,7 @@ func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResul
 }
 
 // Run a proxy server that accepts more than one message
-func runSocksServer(proxy *ProxyContext, rAddrs []string, ch chan<- testResult) {
+func runSocksServer(proxy *ProxyContext, rAddrs []string, ch chan<- testResult, exitKey *[32]byte) {
 	c, err := proxy.Accept()
 	if err != nil {
 		ch <- testResult{err, nil}
@@ -73,7 +73,7 @@ func runSocksServer(proxy *ProxyContext, rAddrs []string, ch chan<- testResult) 
 	copy(circuit, rAddrs)
 	circuit[len(rAddrs)] = addr
 
-	ch <- testResult{proxy.ServeClient(c, circuit), []byte(addr)}
+	ch <- testResult{proxy.ServeClient(c, circuit, exitKey), []byte(addr)}
 }
 
 // Connect to a destination through a mixnet proxy, send a message,

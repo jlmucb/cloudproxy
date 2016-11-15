@@ -22,10 +22,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/nacl/box"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -34,9 +37,11 @@ import (
 
 // RouterContext stores the runtime environment for a Tao-delegated router.
 type RouterContext struct {
-	keys     *tao.Keys    // Signing keys of this hosted program.
-	domain   *tao.Domain  // Policy guard and public key.
-	listener net.Listener // Socket where server listens for proxies/routers
+	keys       *tao.Keys    // Signing keys of this hosted program.
+	domain     *tao.Domain  // Policy guard and public key.
+	listener   net.Listener // Socket where server listens for proxies/routers
+	publicKey  *[32]byte
+	privateKey *[32]byte
 
 	addr string
 
@@ -144,6 +149,12 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 		return nil, err
 	}
 
+	// NaCl keys
+	r.publicKey, r.privateKey, err = box.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
 	// Instantiate the queues.
 	r.queue = NewQueue(network, t, batchSize, timeout)
 	r.proxyReq = NewQueue(network, t, batchSize, timeout)
@@ -200,7 +211,7 @@ func (r *RouterContext) Register(dirAddr string) error {
 	if err != nil {
 		return err
 	}
-	err = RegisterRouter(c, []string{r.addr})
+	err = RegisterRouter(c, []string{r.addr}, [][]byte{(*r.publicKey)[:]})
 	if err != nil {
 		return err
 	}
@@ -454,9 +465,6 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 	r.nextIds[id] = newId
 	r.prevIds[newId] = id
 
-	circuit := NewCircuit(c, id)
-	c.AddCircuit(circuit)
-
 	r.circuits[id] = c
 	r.entry[id] = entry
 
@@ -470,6 +478,9 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 	}
 	if relayIdx != len(d.Addrs)-2 { // last addr is the final dest, so check -2
 		// Relay the CREATE message
+		circuit := NewCircuit(c, id, nil, nil, nil)
+		c.AddCircuit(circuit)
+
 		r.exit[id] = false
 		if err != nil {
 			return err
@@ -485,15 +496,11 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 		} else {
 			nextConn = r.conns[d.Addrs[relayIdx+1]]
 		}
-		newCirc := NewCircuit(c, id)
+		newCirc := NewCircuit(c, id, nil, nil, nil)
 		nextConn.AddCircuit(newCirc)
 		r.circuits[newId] = nextConn
 
-		dir := &Directive{
-			Type:  DirectiveType_CREATE.Enum(),
-			Addrs: d.Addrs,
-		}
-		nextCell, err := marshalDirective(newId, dir)
+		nextCell, err := marshalDirective(newId, &d)
 		if err != nil {
 			return err
 		}
@@ -504,11 +511,20 @@ func (r *RouterContext) handleCreate(d Directive, c *Conn, entry bool, id uint64
 		sendQ.EnqueueMsg(sId, nextCell, nextConn, c)
 	} else {
 		// Response id should be just id here not rId if it's not an entry
+		var key [32]byte
+		copy(key[:], d.Key)
+		circuit := NewCircuit(c, id, &key, r.publicKey, r.privateKey)
+		c.AddCircuit(circuit)
 		if !entry {
 			sId = newId
 			rId = id
 		}
-		go r.handleMessage(d.Addrs[len(d.Addrs)-1], c.GetCircuit(id), id, newId, c, sendQ, respQ, sId, rId)
+
+		dest, ok := circuit.Decrypt([]byte(d.Addrs[len(d.Addrs)-1]))
+		if !ok {
+			log.Fatal("Misauthenticated ciphertext")
+		}
+		go r.handleMessage(string(dest), circuit, id, newId, c, sendQ, respQ, sId, rId)
 		r.exit[id] = true
 		// Tell the previous hop (proxy or router) it's created
 		cell, err := marshalDirective(id, dirCreated)

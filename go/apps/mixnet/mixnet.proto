@@ -30,9 +30,10 @@ message Directive {
   // corresponds to a mixnet router except the last, which is the service the
   // proxy would like to contact.
   repeated string addrs = 2;
+  optional bytes key = 3;
 
   // ERROR or FATAL, an error message.
-  optional string error = 3;
+  optional string error = 4;
 }
 
 enum DirectoryMessageType {
@@ -48,6 +49,7 @@ message DirectoryMessage {
   // Addresses to register to or delete from the directory,
   // or list of all available mixnets
   repeated string addrs = 2;
+  repeated bytes keys = 3;
   // Possible error message
-  optional string error = 3;
+  optional string error = 4;
 }

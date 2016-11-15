@@ -242,8 +242,8 @@ func runRouterHandleConns(router *RouterContext, connCt int, ch chan<- testResul
 
 // Proxy dials a router, creates a circuit, and sends a message over
 // the circuit.
-func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte) ([]byte, error) {
-	circ, _, err := proxy.CreateCircuit([]string{rAddr, dAddr})
+func runProxySendMessage(proxy *ProxyContext, rAddr, dAddr string, msg []byte, exitKey *[32]byte) ([]byte, error) {
+	circ, _, err := proxy.CreateCircuit([]string{rAddr, dAddr}, exitKey)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +348,7 @@ func TestCreateDestroy(t *testing.T) {
 	ch := make(chan testResult)
 	go runRouterHandleOneConn(router, ch)
 
-	_, id, err := proxy.CreateCircuit([]string{rAddr, fakeAddr})
+	_, id, err := proxy.CreateCircuit([]string{rAddr, fakeAddr}, router.publicKey)
 	if err != nil {
 		t.Error("Error creating circuit:", err)
 	}
@@ -398,6 +398,8 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
 	setupDirectory([]*RouterContext{router1, router2, router3}, directory)
 	rAddr1 := router1.listener.Addr().String()
+	rAddr2 := router2.listener.Addr().String()
+	rAddr3 := router3.listener.Addr().String()
 
 	// The address doesn't matter here because no packets will be sent on
 	// the established circuit.
@@ -409,7 +411,8 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 	go runRouterHandleOneConn(router2, ch2)
 	go runRouterHandleOneConn(router3, ch3)
 
-	_, id, err := proxy.CreateCircuit([]string{rAddr1, "", "", fakeAddr})
+	_, id, err := proxy.CreateCircuit([]string{rAddr1, rAddr2, rAddr3, fakeAddr},
+		router3.publicKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -469,7 +472,7 @@ func TestMultiplexProxyCircuit(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			var e error
-			_, ids[i], e = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]})
+			_, ids[i], e = proxy.CreateCircuit([]string{rAddr, fakeAddrs[i]}, router.publicKey)
 			if e != nil {
 				t.Error("Couldn't create circuit:", err)
 			}
@@ -579,7 +582,7 @@ func TestProxyRouterRelay(t *testing.T) {
 	go runRouterHandleOneConnMultCircuits(router, routerCh)
 
 	for _, l := range trials {
-		reply, err := runProxySendMessage(proxy, rAddr, dstAddr, msg[:l])
+		reply, err := runProxySendMessage(proxy, rAddr, dstAddr, msg[:l], router.publicKey)
 		if err != nil {
 			t.Errorf("relay (length=%d): %s", l, err)
 		}
@@ -616,7 +619,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 
 	go runRouterHandleOneConn(router, ch)
 	fakeAddr := "127.0.0.1:0"
-	circ, id, err := proxy.CreateCircuit([]string{routerAddr, fakeAddr})
+	circ, id, err := proxy.CreateCircuit([]string{routerAddr, fakeAddr}, router.publicKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -681,7 +684,7 @@ func TestCreateTimeout(t *testing.T) {
 	// The proxy should get a timeout if it's the only connecting client.
 	go runRouterHandleConns(router, 1, ch)
 	hostAddr := genHostname() + ":80"
-	_, _, err = proxy.CreateCircuit([]string{routerAddr, hostAddr})
+	_, _, err = proxy.CreateCircuit([]string{routerAddr, hostAddr}, router.publicKey)
 	if err == nil {
 		t.Errorf("proxy.CreateCircuit(%s, %s) incorrectly succeeded when it should have timed out", routerAddr, hostAddr)
 	}
@@ -718,7 +721,7 @@ func TestSendMessageTimeout(t *testing.T) {
 
 	// Proxy 1 creates a circuit, sends a message and awaits a reply.
 	go func() {
-		circ, _, err := proxy.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
+		circ, _, err := proxy.CreateCircuit([]string{routerAddr, genHostname() + ":80"}, router.publicKey)
 		if err != nil {
 			t.Error(err)
 		}
@@ -734,7 +737,7 @@ func TestSendMessageTimeout(t *testing.T) {
 
 	// Proxy 2 just creates a circuit.
 	go func() {
-		_, _, err = proxy2.CreateCircuit([]string{routerAddr, genHostname() + ":80"})
+		_, _, err = proxy2.CreateCircuit([]string{routerAddr, genHostname() + ":80"}, router.publicKey)
 		if err != nil {
 			t.Error(err)
 		}
@@ -778,7 +781,7 @@ func TestMixnetSingleHop(t *testing.T) {
 			}
 			defer proxy.Close()
 			proxyAddr := proxy.listener.Addr().String()
-			go runSocksServerOne(proxy, []string{routerAddr}, proxyCh)
+			go runSocksServerOne(proxy, []string{routerAddr}, proxyCh, router.publicKey)
 
 			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
 			ch <- runSocksClient(proxyAddr, dstAddr, msg)
@@ -854,7 +857,7 @@ func TestMixnetSingleHopTLS(t *testing.T) {
 			}
 			defer proxy.Close()
 			proxyAddr := proxy.listener.Addr().String()
-			go runSocksServer(proxy, []string{routerAddr}, proxyCh)
+			go runSocksServer(proxy, []string{routerAddr}, proxyCh, router.publicKey)
 
 			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
 			ch <- runTLSClient(proxyAddr, dstAddr, msg)
@@ -922,6 +925,7 @@ func TestMixnetMultiHop(t *testing.T) {
 	setupDirectory([]*RouterContext{router, router2, router3}, directory)
 	routerAddr := router.listener.Addr().String()
 	routerAddr2 := router2.listener.Addr().String()
+	routerAddr3 := router3.listener.Addr().String()
 
 	var res testResult
 	clientCh := make(chan testResult, clientCt)
@@ -948,7 +952,7 @@ func TestMixnetMultiHop(t *testing.T) {
 			}
 			defer proxy.Close()
 			proxyAddr := proxy.listener.Addr().String()
-			go runSocksServerOne(proxy, []string{routerAddr, routerAddr2, ""}, proxyCh)
+			go runSocksServerOne(proxy, []string{routerAddr, routerAddr2, routerAddr3}, proxyCh, router3.publicKey)
 
 			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
 			ch <- runSocksClient(proxyAddr, dstAddr, msg)
@@ -1054,19 +1058,21 @@ func TestMixnetMultiPath(t *testing.T) {
 			defer proxy.Close()
 			proxyAddr := proxy.listener.Addr().String()
 			circuit := make([]string, pathLen)
+			var exitKey *[32]byte
 			if pid%2 == 0 {
 				copy(circuit, routerAddrs[:3])
 				if pid%4 == 2 {
 					circuit[1] = routerAddrs[4]
 				}
+				exitKey = routers[2].publicKey
 			} else {
 				copy(circuit, routerAddrs[3:])
 				if pid%4 == 3 {
 					circuit[1] = routerAddrs[1]
-				} else {
 				}
+				exitKey = routers[5].publicKey
 			}
-			go runSocksServerOne(proxy, circuit, proxyCh)
+			go runSocksServerOne(proxy, circuit, proxyCh, exitKey)
 
 			msg := []byte(fmt.Sprintf("Hello, my name is %d", pid))
 			ch <- runSocksClient(proxyAddr, dstAddr, msg)

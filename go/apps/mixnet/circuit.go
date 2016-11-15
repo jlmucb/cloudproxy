@@ -205,7 +205,10 @@ func (c *Circuit) ReceiveMessage() ([]byte, error) {
 				return nil, errCellType
 			}
 			boxed := cell[BODY:n]
-			body, _ := c.Decrypt(boxed)
+			body, ok := c.Decrypt(boxed)
+			if !ok {
+				return nil, errors.New("Misauthenticated ciphertext")
+			}
 			bytes += copy(msg[bytes:], body)
 		}
 		return msg, nil

@@ -108,12 +108,12 @@ func (c *Circuit) Close() error {
 }
 
 func breakMessages(msg []byte, res chan []byte) {
-	body := make([]byte, CellBytes-BODY)
+	body := make([]byte, BODY_SIZE)
 	binary.LittleEndian.PutUint64(body, uint64(len(msg)))
 	bytes := copy(body[LEN_SIZE:], msg)
 	res <- body
 	for bytes < len(msg) {
-		body := make([]byte, CellBytes-BODY)
+		body := make([]byte, BODY_SIZE)
 		bytes += copy(body, msg[bytes:])
 		res <- body
 	}
@@ -137,7 +137,8 @@ func (c *Circuit) SendMessage(msg []byte) error {
 		if !ok {
 			break
 		}
-		copy(cell[BODY:], body)
+		boxed := c.Encrypt(body)
+		copy(cell[BODY:], boxed)
 		if _, err := c.Write(cell); err != nil {
 			return err
 		}
@@ -180,26 +181,37 @@ func (c *Circuit) ReceiveMessage() ([]byte, error) {
 		return nil, errCellType
 	}
 
-	msgBytes := binary.LittleEndian.Uint64(cell[BODY:])
-	if msgBytes > MaxMsgBytes {
-		return nil, errMsgLength
-	}
-
-	msg := make([]byte, msgBytes)
-	bytes := copy(msg, cell[BODY+LEN_SIZE:n])
-
-	for uint64(bytes) < msgBytes {
-		tao.ZeroBytes(cell)
-		n, err = c.Read(cell)
-		if err != nil {
-			return nil, err
-		} else if cell[TYPE] != msgCell {
-			return nil, errCellType
+	boxed := cell[BODY:n]
+	if len(boxed) > 0 {
+		body, ok := c.Decrypt(boxed)
+		if !ok {
+			return nil, errors.New("Misauthenticated ciphertext")
 		}
-		bytes += copy(msg[bytes:], cell[BODY:n])
-	}
 
-	return msg, nil
+		msgBytes := binary.LittleEndian.Uint64(body)
+		if msgBytes > MaxMsgBytes {
+			return nil, errMsgLength
+		}
+
+		msg := make([]byte, msgBytes)
+		bytes := copy(msg, body[LEN_SIZE:])
+
+		for uint64(bytes) < msgBytes {
+			tao.ZeroBytes(cell)
+			n, err = c.Read(cell)
+			if err != nil {
+				return nil, err
+			} else if cell[TYPE] != msgCell {
+				return nil, errCellType
+			}
+			boxed := cell[BODY:n]
+			body, _ := c.Decrypt(boxed)
+			bytes += copy(msg[bytes:], body)
+		}
+		return msg, nil
+	} else {
+		return nil, nil
+	}
 }
 
 // ReceiveDirective awaits a reply from the peer and returns the directive

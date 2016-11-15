@@ -593,7 +593,7 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 			r.circuits[nextId] = &Conn{conn, 0, r.timeout, nil, nil, false}
 			r.mapLock.Unlock()
 			// Create handler for responses from the destination
-			go r.handleResponse(conn, prevConn, respQ, rId, id)
+			go r.handleResponse(conn, circ, prevConn, respQ, rId, id)
 		}
 		sendQ.EnqueueMsg(sId, msg, conn, prevConn)
 	}
@@ -604,7 +604,7 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 
 // handleResponse receives a message from the final destination, breaks it down
 // into cells, and sends it back to the user
-func (r *RouterContext) handleResponse(conn net.Conn, prevConn *Conn, queue *Queue, queueId, id uint64) {
+func (r *RouterContext) handleResponse(conn net.Conn, circ *Circuit, prevConn *Conn, queue *Queue, queueId, id uint64) {
 	for {
 		resp := make([]byte, MaxMsgBytes+1)
 		conn.SetDeadline(time.Now().Add(r.timeout))
@@ -639,7 +639,8 @@ func (r *RouterContext) handleResponse(conn net.Conn, prevConn *Conn, queue *Que
 			if !ok {
 				break
 			}
-			copy(cell[BODY:], body)
+			boxed := circ.Encrypt(body)
+			copy(cell[BODY:], boxed)
 			queue.EnqueueMsg(queueId, cell, prevConn, nil)
 		}
 	}

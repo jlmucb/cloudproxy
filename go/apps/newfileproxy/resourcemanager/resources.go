@@ -172,7 +172,7 @@ func (m *ResourceMasterInfo) DeleteResource(resourceName string) error {
 }
 
 func (p *PrincipalInfo) PrintPrincipal() {
-	fmt.Printf("Name: %s, Certificate: %x\n", p.Name, p.Cert)
+	fmt.Printf("Name: %s, Certificate: %x\n", *p.Name, p.Cert)
 }
 
 func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
@@ -190,9 +190,9 @@ func PrintPrincipalList(pl []*CombinedPrincipal) {
 
 // PrintResource prints a resource to the log.
 func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
-	fmt.Printf("Name: %s\n", r.Name)
-	fmt.Printf("Type: %d, size: %d\n", r.Type, r.Size)
-	fmt.Printf("Created: %s, modified: %s\n", r.DateCreated, r.DateModified)
+	fmt.Printf("Name: %s\n", *r.Name)
+	fmt.Printf("Type: %d, size: %d\n", *r.Type, *r.Size)
+	fmt.Printf("Created: %s, modified: %s\n", *r.DateCreated, *r.DateModified)
 	fmt.Printf("Owners: ")
 	PrintPrincipalList(r.Owners)
 	fmt.Printf("\n")
@@ -213,8 +213,8 @@ func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
 
 // PrintMaster prints the ResourceMaster into the log.
 func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
-	fmt.Printf("ServiceName: %s\n", m.ServiceName)
-	fmt.Printf("BaseDirectoryName: %s\n", m.BaseDirectoryName)
+	fmt.Printf("ServiceName: %s\n", *m.ServiceName)
+	fmt.Printf("BaseDirectoryName: %s\n", *m.BaseDirectoryName)
 	fmt.Printf("PolicyCert: %s\n", m.PolicyCert)
 	fmt.Printf("Number of resources: %d\n", len(m.Resources))
 	if printResources {

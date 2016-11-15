@@ -218,17 +218,48 @@ func TestTableFunctions(t *testing.T) {
 	}
 	PrintPrincipalList(res2.Readers)
 
-	// FindCombinedPrincipalPosition(toDelete CombinedPrincipal, cpList []*CombinedPrincipal)
-	// resourceMaster.FindResource(resourceName string)
-	// fileContents1 := []byte{1,3,5}
-	// fileContents2 := []byte{2,4,6}
-	// err = info.Write(directory string, fileContents []byte)
-	// out, err := info.Read(directory string)
-	// (r *ResourceInfo) PrintResource(directory string, printContents bool) 
-	// (m *ResourceMasterInfo) PrintMaster(printResources bool)
-	// (info *ResourceInfo) IsOwner(p CombinedPrincipal)
-	// (info *ResourceInfo) IsReader(p CombinedPrincipal)
-	// (info *ResourceInfo) IsWriter(p CombinedPrincipal)
+	n := FindCombinedPrincipalPosition(*cp2, res2.Readers)
+	if n < 0 {
+		t.Fatal("FindCombinedPrincipalPosition fails")
+	}
+	x := resourceMaster.FindResource("TestFile1")
+	if x == nil {
+		t.Fatal("resourceMaster.FindResource TestFile1 fails")
+	}
+	x.PrintResource(*resourceMaster.BaseDirectoryName, true)
+	
+	y := resourceMaster.FindResource("TestFile2")
+	if y == nil {
+		t.Fatal("resourceMaster.FindResource TestFile2 fails")
+	}
+
+	fileContents1 := []byte{1,3,5}
+	fileContents2 := []byte{2,4,6}
+	err = res1.Write(*resourceMaster.BaseDirectoryName, fileContents1)
+	if err != nil {
+		t.Fatal("res1.Write fails")
+	}
+	err = res2.Write(*resourceMaster.BaseDirectoryName, fileContents2)
+	if err != nil {
+		t.Fatal("res2.Write fails")
+	}
+	out1, err := res1.Read(*resourceMaster.BaseDirectoryName)
+	if err != nil {
+		t.Fatal("res1.Read fails")
+	}
+	fmt.Printf("out1: %x\n", out1)
+	out2, err := res2.Read(*resourceMaster.BaseDirectoryName)
+	if err != nil {
+		t.Fatal("res2.Read fails")
+	}
+	fmt.Printf("out2: %x\n", out2)
+	res1.PrintResource(*resourceMaster.BaseDirectoryName, true)
+	if !res1.IsOwner(*cp1) {
+		t.Fatal("res1.IsOwnwer fails")
+	}
+	if res1.IsOwner(*cp2) {
+		t.Fatal("res1.IsOwnwer succeeds")
+	}
 }
 
 func TestResourceInfo(t *testing.T) {

@@ -104,9 +104,9 @@ func (info *ResourceInfo) AddWriter(p CombinedPrincipal) error {
 }
 
 // FindCombinedPrincipalPosition looks up the resource by its name and returns position in stack.
-func FindCombinedPrincipalPosition(toDelete CombinedPrincipal, cpList []*CombinedPrincipal) int {
+func FindCombinedPrincipalPosition(toFind CombinedPrincipal, cpList []*CombinedPrincipal) int {
 	for i := 0; i < len(cpList); i++ {
-		if SameCombinedPrincipal(toDelete, *cpList[i]) {
+		if SameCombinedPrincipal(toFind, *cpList[i]) {
 			return i
 		}
 	}

@@ -15,7 +15,6 @@
 package resourcemanager;
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -45,6 +44,7 @@ func TestTimeEncode(t *testing.T) {
 
 func TestTableFunctions(t *testing.T) {
 
+	// Generate Certificates and keys for test.
 	notBefore := time.Now()
 	validFor := 365 * 24 * time.Hour
 	notAfter := notBefore.Add(validFor)
@@ -60,8 +60,8 @@ func TestTableFunctions(t *testing.T) {
         policyPriv = policyKey
         policyPub = policyKey.Public()
 	policyCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
-			  	"US", policyPub, nil, "", "TestPolicyCert", "US",
-				policyPriv.(crypto.Signer), notBefore, notAfter,
+				"US", policyPriv, nil, "", "TestPolicyCert", "US",
+				policyPub, notBefore, notAfter,
 				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
 	if err != nil {
 		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
@@ -70,37 +70,37 @@ func TestTableFunctions(t *testing.T) {
 	if err != nil {
 		t.Fatal("TestTableFunctions: ParseCertificate fails\n")
 	}
-	fmt.Printf("PolicyCert: %x\n", policyCert)
-	fmt.Printf("Policy Certificate: %x\n", policyCertificate)
-
-/*
+	fmt.Printf("\nPolicyCert: %x\n", policyCert)
 
 	programKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal("TestTableFunctions: ecdsa.GenerateKey fails\n")
 	}
+        var programPub interface{}
+	programPub = programKey.Public()
 	programCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
-			  	"US", policyKey, policyCertificate, "", "TestPolicyCert", "US", programKey,
-			  	notBefore, notAfter,
+				"US", policyPriv, policyCertificate, "", "TestProgramCert", "US",
+				programPub, notBefore, notAfter,
 				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
 	if err != nil {
 		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
 	}
-	fmt.Printf("ProgramCert: %x\n", programCert)
+	fmt.Printf("\nProgramCert: %x\n", programCert)
 
 	userKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal("TestTableFunctions: ecdsa.GenerateKey fails\n")
 	}
+        var userPub interface{}
+	userPub = userKey.Public()
 	userCert, err := CreateKeyCertificate(*serialNumber, "Google", "Google",
-			  	"US", policyKey, policyCertificate, "", "TestPolicyCert", "US", userKey,
-			  	notBefore, notAfter,
+				"US", policyKey, policyCertificate, "", "TestPolicyCert", "US",
+				userPub, notBefore, notAfter,
 				x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature)
 	if err != nil {
 		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
 	}
-	fmt.Printf("UserCert: %x\n", userCert)
-*/
+	fmt.Printf("\nUserCert: %x\n", userCert)
 
 /*
 	a := new(PrincipalInfo)

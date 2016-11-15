@@ -15,28 +15,39 @@
 package mixnet
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"io"
-	"net"
+
+	"golang.org/x/crypto/nacl/box"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 // A circuit carries cells
 type Circuit struct {
-	conn  net.Conn
+	conn  *Conn
 	id    uint64
 	cells chan []byte
 	errs  chan error
+	next  *Circuit
+	prev  *Circuit
+
+	key        *[32]byte
+	publicKey  *[32]byte
+	privateKey *[32]byte
 }
 
-func NewCircuit(conn net.Conn, id uint64) *Circuit {
+func NewCircuit(conn *Conn, id uint64) *Circuit {
+	pub, priv, _ := box.GenerateKey(rand.Reader)
 	return &Circuit{
-		conn:  conn,
-		id:    id,
-		cells: make(chan []byte, 2),
-		errs:  make(chan error, 2),
+		conn:       conn,
+		id:         id,
+		cells:      make(chan []byte, 2),
+		errs:       make(chan error, 2),
+		publicKey:  pub,
+		privateKey: priv,
 	}
 }
 

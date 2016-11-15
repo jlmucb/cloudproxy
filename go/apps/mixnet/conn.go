@@ -67,22 +67,26 @@ func (c *Conn) Member(id uint64) bool {
 
 func (c *Conn) GetCircuit(id uint64) *Circuit {
 	c.cLock.RLock()
-	circuit := c.circuits[id]
-	c.cLock.RUnlock()
-	return circuit
+	defer c.cLock.RUnlock()
+	return c.circuits[id]
 }
 
 func (c *Conn) AddCircuit(circuit *Circuit) {
 	c.cLock.Lock()
+	defer c.cLock.Unlock()
 	c.circuits[circuit.id] = circuit
-	c.cLock.Unlock()
 }
 
 func (c *Conn) DeleteCircuit(circuit *Circuit) bool {
 	c.cLock.Lock()
+	defer c.cLock.Unlock()
 	close(circuit.cells)
 	delete(c.circuits, circuit.id)
-	empty := len(c.circuits) == 0
-	c.cLock.Unlock()
-	return empty
+	return len(c.circuits) == 0
+}
+
+func (c *Conn) Empty() bool {
+	c.cLock.RLock()
+	defer c.cLock.RUnlock()
+	return len(c.circuits) == 0
 }

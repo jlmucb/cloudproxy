@@ -216,6 +216,8 @@ func TestTableFunctions(t *testing.T) {
 	if err != nil {
 		t.Fatal("InsertResource fails")
 	}
+
+	fmt.Printf("\nReaders list: \n")
 	PrintPrincipalList(res2.Readers)
 
 	n := FindCombinedPrincipalPosition(*cp2, res2.Readers)
@@ -226,8 +228,10 @@ func TestTableFunctions(t *testing.T) {
 	if x == nil {
 		t.Fatal("resourceMaster.FindResource TestFile1 fails")
 	}
+	fmt.Printf("\n")
 	x.PrintResource(*resourceMaster.BaseDirectoryName, true)
 	
+	fmt.Printf("\n")
 	y := resourceMaster.FindResource("TestFile2")
 	if y == nil {
 		t.Fatal("resourceMaster.FindResource TestFile2 fails")
@@ -253,13 +257,17 @@ func TestTableFunctions(t *testing.T) {
 		t.Fatal("res2.Read fails")
 	}
 	fmt.Printf("out2: %x\n", out2)
-	res1.PrintResource(*resourceMaster.BaseDirectoryName, true)
+	fmt.Printf("\n")
 	if !res1.IsOwner(*cp1) {
 		t.Fatal("res1.IsOwnwer fails")
 	}
 	if res1.IsOwner(*cp2) {
 		t.Fatal("res1.IsOwnwer succeeds")
 	}
+	fmt.Printf("\n")
+	res1.PrintResource(*resourceMaster.BaseDirectoryName, true)
+	fmt.Printf("\n")
+	res2.PrintResource(*resourceMaster.BaseDirectoryName, true)
 }
 
 func TestResourceInfo(t *testing.T) {

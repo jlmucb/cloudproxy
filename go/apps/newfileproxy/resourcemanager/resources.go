@@ -172,7 +172,7 @@ func (m *ResourceMasterInfo) DeleteResource(resourceName string) error {
 }
 
 func (p *PrincipalInfo) PrintPrincipal() {
-	fmt.Printf("Name: %s, Certificate: %x\n", *p.Name, p.Cert)
+	fmt.Printf("Name: %s\nCertificate: %x\n", *p.Name, p.Cert)
 }
 
 func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
@@ -185,21 +185,23 @@ func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
 func PrintPrincipalList(pl []*CombinedPrincipal) {
 	for i := 0; i < len(pl); i++ {
 		pl[i].PrintCombinedPrincipal()
+		fmt.Printf("\n")
 	}
 }
 
 // PrintResource prints a resource to the log.
 func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
+	fmt.Printf("\n")
 	fmt.Printf("Name: %s\n", *r.Name)
 	fmt.Printf("Type: %d, size: %d\n", *r.Type, *r.Size)
 	fmt.Printf("Created: %s, modified: %s\n", *r.DateCreated, *r.DateModified)
-	fmt.Printf("Owners: ")
+	fmt.Printf("Owners: \n")
 	PrintPrincipalList(r.Owners)
 	fmt.Printf("\n")
-	fmt.Printf("Readers: ")
+	fmt.Printf("Readers: \n")
 	PrintPrincipalList(r.Readers)
 	fmt.Printf("\n")
-	fmt.Printf("Writers: ")
+	fmt.Printf("Writers:\n")
 	PrintPrincipalList(r.Writers)
 	fmt.Printf("\n")
 	if printContents {
@@ -219,7 +221,8 @@ func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
 	fmt.Printf("Number of resources: %d\n", len(m.Resources))
 	if printResources {
 		for i := 0; i < len(m.Resources); i++ {
-			m.Resources[i].PrintResource(*m.BaseDirectoryName, false)
+			m.Resources[i].PrintResource(*m.BaseDirectoryName, true)
+			fmt.Printf("\n")
 		}
 	}
 }
@@ -229,13 +232,23 @@ func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
 // been authenticated and the operation has already been authorized.
 func (r *ResourceInfo) Read(directory string) ([]byte, error) {
 	filename := path.Join(directory, *r.Name)
-	return ioutil.ReadFile(filename)
+	out, err := ioutil.ReadFile(filename)
+	size := int32(len(out))
+	if err == nil {
+		r.Size = &size
+	}
+	return out, err
 }
 
 // Write causes the bytes of the file to be encrypted and integrity-protected
 // and written to disk as they are read from the MessageStream.
 func (r *ResourceInfo) Write(directory string, fileContents []byte) error {
 	filename := path.Join(directory, *r.Name)
-	return ioutil.WriteFile(filename, fileContents, 0644)
+	err := ioutil.WriteFile(filename, fileContents, 0644)
+	if err == nil {
+		size := int32(len(fileContents))
+		r.Size = &size
+	}
+	return err
 }
 

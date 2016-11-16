@@ -47,7 +47,7 @@ of this Tao.
 
 - `run.sh`: Script to compile and run the application.
 
-- `server.go`: Code for a simple HTTP server.
+- `server.go`: Code for a simple HTTP server using Tao.
 
 
 Running the example
@@ -55,7 +55,7 @@ Running the example
 
 To run this application, run
 
-    `./run.sh`
+    ./run.sh
 
 This sets up all the necessary files, and runs the server. This
 requires sudo access since the linux hosts run with root privilege. It

@@ -11,13 +11,13 @@
 // limitations under the License.
 
 // This is a simple example of a server that uses Tao.
-// It still uses domains..
 
 package main
 
 import (
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -76,6 +76,7 @@ func NewTaoServer() *TaoServer {
 
 	var secret []byte
 	if _, err = os.Stat(path.Join(*serverPath, *secretName)); os.IsNotExist(err) {
+		fmt.Println("Generating new secret..")
 		// Secret has not been created yet. Create one
 		secret, err = tao.Parent().GetRandomBytes(64)
 		if err != nil {
@@ -90,6 +91,7 @@ func NewTaoServer() *TaoServer {
 			log.Fatal("Could not write out sealed secret:", err)
 		}
 	} else {
+		fmt.Println("Reading old secret..")
 		sealed, err := ioutil.ReadFile(path.Join(*serverPath, *secretName))
 		if err != nil {
 			log.Fatal("Could not read sealed secret:", err)
@@ -116,11 +118,13 @@ func NewNonTaoServer() *TaoServer {
 }
 
 func (s *TaoServer) secretPage(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, hex.EncodeToString(s.Secret))
+	io.WriteString(w, "My secret:"+hex.EncodeToString(s.Secret))
 	//io.WriteString(w, string(s.Secret))
 }
 
 func main() {
+	flag.Parse()
+
 	//server := NewNonTaoServer()
 	server := NewTaoServer()
 
@@ -138,5 +142,7 @@ func main() {
 		Addr:    ":" + *serverPort,
 		Handler: mux,
 	}
+	fmt.Println("Starting simple http server..")
 	httpServer.Serve(server.listener)
+	fmt.Println("Shutting down http server..")
 }

@@ -16,10 +16,13 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"path"
 
@@ -28,11 +31,10 @@ import (
 
 var (
 	cfg        = flag.String("domain_config", "./tao.config", "path to simple tao configuration")
-	serverPath = flag.String("path", "./simpleserver", "path to Server files")
+	serverPath = flag.String("path", "./simple_http_server", "path to Server files")
 	secretName = flag.String("secret", "secret", "file name of the secret")
 	serverHost = flag.String("host", "localhost", "address for client/server")
 	serverPort = flag.String("port", "8123", "port for client/server")
-	serverAddr string
 )
 
 // Basic Tao Server. For this example, we assume all connections are *not*
@@ -49,11 +51,11 @@ type TaoServer struct {
 	// Path for program to read and write files.
 	ProgramFilePath *string
 
+	// HTTP listener
 	listener net.Listener
 }
 
 func NewTaoServer() *TaoServer {
-
 	// Load domain info for this domain.
 	domain, err := tao.LoadDomain(*cfg, nil)
 	if err != nil {
@@ -103,6 +105,38 @@ func NewTaoServer() *TaoServer {
 	return t
 }
 
-func main() {
+// Testing server, in case you want to test just http without any Tao.
+func NewNonTaoServer() *TaoServer {
+	t := &TaoServer{
+		TaoName:         "NonTao",
+		Secret:          []byte("TaoSecret"),
+		ProgramFilePath: serverPath,
+	}
+	return t
+}
 
+func (s *TaoServer) secretPage(w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, hex.EncodeToString(s.Secret))
+	//io.WriteString(w, string(s.Secret))
+}
+
+func main() {
+	//server := NewNonTaoServer()
+	server := NewTaoServer()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", server.secretPage)
+
+	// To use this example as TLS server, use tao.ListenAnonymous
+	var err error
+	server.listener, err = net.Listen("tcp", ":"+*serverPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	httpServer := http.Server{
+		Addr:    ":" + *serverPort,
+		Handler: mux,
+	}
+	httpServer.Serve(server.listener)
 }

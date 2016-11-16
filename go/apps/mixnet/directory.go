@@ -36,8 +36,9 @@ type DirectoryContext struct {
 	network  string        // Network protocol, e.g. "tcp"
 	timeout  time.Duration // Timeout on read/write/dial.
 
-	dirLock   *sync.Mutex
-	directory []string
+	dirLock    *sync.Mutex
+	directory  []string
+	serverKeys [][]byte
 }
 
 func NewDirectoryContext(path, network, addr string, timeout time.Duration,
@@ -140,8 +141,9 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 	if *dm.Type == DirectoryMessageType_REGISTER {
 		if fromRouter {
 			dc.directory = append(dc.directory, dm.Addrs...)
+			dc.serverKeys = append(dc.serverKeys, dm.Keys...)
 		}
-		_, err = c.Write([]byte{1}) // Indicate it was successfully written
+		_, err = c.Write([]byte{0}) // Indicate it was successfully written
 		if err != nil {
 			glog.Error(err)
 		}
@@ -152,6 +154,8 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 					if addr == dc.directory[i] {
 						dc.directory[i] = dc.directory[len(dc.directory)-1]
 						dc.directory = dc.directory[:len(dc.directory)-1]
+						dc.serverKeys[i] = dc.serverKeys[len(dc.serverKeys)-1]
+						dc.serverKeys = dc.serverKeys[:len(dc.serverKeys)-1]
 						break
 					}
 				}

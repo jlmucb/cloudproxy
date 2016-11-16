@@ -40,7 +40,9 @@ type Circuit struct {
 	sharedKey  *[32]byte
 }
 
-// SET THE CORRECT KEYS
+// A circuit now encrypts for the exit circuit. The key is assumed to be available
+// through "peerKey", and publicKey and privateKey are the keys are local keys
+// used to perform diffiehellman with peerKey. The keys are optional.
 func NewCircuit(conn *Conn, id uint64, peerKey, publicKey, privateKey *[32]byte) *Circuit {
 	if peerKey != nil && privateKey != nil {
 		var sharedKey [32]byte

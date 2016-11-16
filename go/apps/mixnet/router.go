@@ -574,7 +574,9 @@ func (r *RouterContext) handleMessage(dest string, circ *Circuit, id, nextId uin
 	var conn net.Conn = nil
 	for {
 		msg, err := circ.ReceiveMessage()
-		if err != nil {
+		if err == io.EOF {
+			break
+		} else if err != nil {
 			if err = r.SendError(respQ, rId, id, err, prevConn); err != nil {
 				r.errs <- err
 			}

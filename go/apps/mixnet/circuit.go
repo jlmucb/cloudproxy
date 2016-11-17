@@ -44,7 +44,7 @@ type Circuit struct {
 // through "peerKey", and publicKey and privateKey are the keys are local keys
 // used to perform diffiehellman with peerKey. The keys are optional.
 func NewCircuit(conn *Conn, id uint64, peerKey, publicKey, privateKey *[32]byte) *Circuit {
-	if peerKey != nil && privateKey != nil {
+	if len(peerKey) != 0 && len(privateKey) != 0 {
 		var sharedKey [32]byte
 		box.Precompute(&sharedKey, peerKey, privateKey)
 		return &Circuit{

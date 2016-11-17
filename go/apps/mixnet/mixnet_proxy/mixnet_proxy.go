@@ -16,7 +16,9 @@ package main
 
 import (
 	"bufio"
+	"encoding/pem"
 	"flag"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -29,7 +31,7 @@ import (
 
 // serveClient runs the SOCKS5 proxy for clients and connects them
 // to the mixnet.
-func serveClients(routerAddrs []string, proxy *mixnet.ProxyContext) error {
+func serveClients(routerAddrs []string, exitKey *[32]byte, proxy *mixnet.ProxyContext) error {
 	for {
 		c, err := proxy.Accept()
 		if err != nil {
@@ -40,7 +42,7 @@ func serveClients(routerAddrs []string, proxy *mixnet.ProxyContext) error {
 			defer c.Close()
 			// Length of the slice determines path length,
 			// so insert some empty strings
-			err := proxy.ServeClient(c, append(routerAddrs, c.(*mixnet.SocksConn).DestinationAddr()))
+			err := proxy.ServeClient(c, append(routerAddrs, c.(*mixnet.SocksConn).DestinationAddr()), exitKey)
 			if err != nil {
 				glog.Fatal(err)
 			}
@@ -51,9 +53,10 @@ func serveClients(routerAddrs []string, proxy *mixnet.ProxyContext) error {
 // Command line arguments.
 var proxyAddr = flag.String("addr", ":1080", "Address and port to listen to client's connections.")
 
-// TODO(kwonalbert) Shouldn't need a router addr here
+// TODO(kwonalbert) Shouldn't need a router addr or the key here
 // Should download it automatically from the directory
 var routerAddr = flag.String("router_addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
+var keyFIle = flag.String("exit_key", "exit.pem", "PEM encoded exit key")
 var circuit = flag.String("circuit", "", "A file with pre-built circuit.")
 var network = flag.String("network", "tcp", "Network protocol for the mixnet proxy and router.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
@@ -82,8 +85,16 @@ func main() {
 		os.Exit(0x80 + signo)
 	}()
 
+	kb, err := ioutil.ReadFile(*keyFIle)
+	if err != nil {
+		glog.Errorf("No exit key file..")
+	}
+	var exitKey [32]byte
+	block, _ := pem.Decode(kb)
+	copy(exitKey[:], block.Bytes)
+
 	if *circuit == "" {
-		if err = serveClients([]string{*routerAddr}, proxy); err != nil {
+		if err = serveClients([]string{*routerAddr}, &exitKey, proxy); err != nil {
 			glog.Errorf("proxy: error while serving: %s", err)
 		}
 	} else {
@@ -96,7 +107,7 @@ func main() {
 		for scan.Scan() {
 			routers = append(routers, scan.Text())
 		}
-		if err = serveClients(routers, proxy); err != nil {
+		if err = serveClients(routers, &exitKey, proxy); err != nil {
 			glog.Errorf("proxy: error while serving: %s", err)
 		}
 	}

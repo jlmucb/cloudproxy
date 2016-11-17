@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// this is an adapted version of the server code in the roughtime for cloudproxy
-// biggest difference is probably the listening
+// this is an adapted version of the server code in the roughtime for cloudproxy.
+// it uses Tao to prove its identity.
 package main
 
 import (

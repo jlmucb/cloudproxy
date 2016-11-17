@@ -17,13 +17,8 @@
 package common;
 
 import (
-	// "crypto/rand"
-	// "crypto/x509"
-	//"errors"
-	// "fmt"
-	// "io/ioutil"
-	// "os"
-	// "path"
+	"errors"
+	"fmt"
 
 	// "github.com/jlmucb/cloudproxy/go/tao"
 	// "github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -35,24 +30,35 @@ import (
 
 // SendFile reads a file from disk and streams it to a receiver across a
 // MessageStream. 
-func SendFile(ms *util.MessageStream, dir string, filename string, keys []byte) error {
-	// Read file from disk
-	// out, err := ioutil.ReadFile(filename)
-	// Unprotect it
-	// taosupport.Unprotect(keys []byte, in []byte) ([]byte, error)
-	// Write file bytes to channel
-	// SendMessage
+func SendFile(ms *util.MessageStream, m *resourcemanager.ResourceMasterInfo,
+		resourceName string, keys []byte) error {
+	// Look up resource
+	info := m.FindResource(resourceName)
+	if info == nil {
+		return errors.New("No such file")
+	}
+	fileContents, err := info.Read(*m.BaseDirectoryName)
+	if err != nil {
+	}
+	fmt.Printf("File contents: %x\n", fileContents)
+	// Format response and write file response to channel
+	// taosupport.SendMessage(msg)
 	return nil
 }
 
 // GetFile receives bytes from a sender and optionally encrypts them and adds
 // integrity protection, and writes them to disk.
-func GetFile(ms *util.MessageStream, dir string, filename string, keys []byte) error {
+func GetFile(ms *util.MessageStream, resourceMaster *resourcemanager.ResourceMasterInfo,
+		resourceName string, keys []byte) error {
+	// Look up resource
+	info := m.FindResource(resourceName)
+	if info == nil {
+		return errors.New("No such file")
+	}
 	// Read bytes from channel
 	// outerMessage, nil := taosupport.GetMessage(ms)
 	// Right response? No errors?
 	// Unmarshal
-	// Protect them with keys
 	// taosupport.Protect(keys []byte, in []byte) ([]byte, error)
 	// Write them to disk (doesn't support large files for now)
 	// err := ioutil.WriteFile(filename, fileContents, 0644)

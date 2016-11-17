@@ -1,0 +1,64 @@
+//  Copyright (c) 2016, Google Inc.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package common;
+
+enum MessageType {
+   REQUEST_CHALLENGE = 1;
+   CHALLENGE = 2;
+   VERIFY_CHALLENGE = 3;
+   CREATE = 4;
+   DELETE = 5;
+   ADDREADER = 6;
+   ADDOWNER= 7;
+   ADDWRITER = 8;
+   DELETEREADER = 9;
+   DELETEOWNER= 10;
+   DELETEWRITER = 11;
+   READ = 12;
+   WRITE = 13;
+}  
+
+// A FileproxyMessage is a message sent between fileproxy programs
+// as the data payload of a taosupport SimpleMessage.
+message FileproxyMessage {
+  required MessageType type = 1;
+  // For READ and WRITE, this is the total number of buffers constituting file.
+  optional int32 num_total_buffers = 2;
+  // For READ and WRITE, this is the sequence number of this buffer.
+  optional int32 current_buffer = 3;
+  // Arguments apply to the following calls and are call dependent.
+  // For CREATE, resource, name, type ("File" or "Directory")
+  // For DELETE, resource name
+  // For READ, resource name
+  // For WRITE, resource name
+  // For ADDREADER, resource name
+  // For ADDOWNER, resource name
+  // For ADDWRITER, resource name
+  // For DELETEREADER, resource name
+  // For DELETEOWNER, resource name
+  // For DELETEWRITER, resource name
+  repeated string arguments = 4;
+  // data is message specific
+  // For REQUEST_CHALLENGE, no data or arguments.
+  // For CHALLENGE, there should be one data blob which is the user x509 cert.
+  // For SIGNED_CHALLENGE, there should be two data blobs: a x509 cert and the signed nonce.
+  // For CREATE, list of compound certs
+  // For ADDREADER, list of compound certs
+  // For ADDOWNER, list of compound certs
+  // For ADDWRITER, list of compound certs
+  repeated bytes data = 5;
+}
+

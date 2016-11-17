@@ -12,7 +12,7 @@
 //
 // File: resources.go
 
-package resourcemanager;
+package resourcemanager
 
 import (
 	"fmt"
@@ -87,19 +87,19 @@ func (info *ResourceInfo) IsWriter(p CombinedPrincipal) bool {
 
 // Add Owner
 func (info *ResourceInfo) AddOwner(p CombinedPrincipal) error {
-	info.Owners= append(info.Owners, &p)
+	info.Owners = append(info.Owners, &p)
 	return nil
 }
 
 // Add Reader
 func (info *ResourceInfo) AddReader(p CombinedPrincipal) error {
-	info.Readers= append(info.Readers, &p)
+	info.Readers = append(info.Readers, &p)
 	return nil
 }
 
 // Add Writer
 func (info *ResourceInfo) AddWriter(p CombinedPrincipal) error {
-	info.Writers= append(info.Writers, &p)
+	info.Writers = append(info.Writers, &p)
 	return nil
 }
 
@@ -110,39 +110,41 @@ func FindCombinedPrincipalPosition(toFind CombinedPrincipal, cpList []*CombinedP
 			return i
 		}
 	}
-	return -1 
+	return -1
 }
-
+// TODO(jlm): add test
 // Delete Owner
 func (info *ResourceInfo) DeleteOwner(p CombinedPrincipal) error {
 	n := FindCombinedPrincipalPosition(p, info.Owners)
 	if n < 0 {
 		return nil
 	}
-	info.Owners[n] = info.Owners[len(info.Owners) - 1]
-	info.Owners = info.Owners[:len(info.Owners) - 1]
+	info.Owners[n] = info.Owners[len(info.Owners)-1]
+	info.Owners = info.Owners[:len(info.Owners)-1]
 	return nil
 }
-
+// TODO(jlm): add test
 // Delete Reader
 func (info *ResourceInfo) DeleteReader(p CombinedPrincipal) error {
 	n := FindCombinedPrincipalPosition(p, info.Readers)
 	if n < 0 {
 		return nil
 	}
-	info.Readers[n] = info.Readers[len(info.Readers) - 1]
-	info.Readers = info.Readers[:len(info.Readers) - 1]
+	info.Readers[n] = info.Readers[len(info.Readers)-1]
+	info.Readers = info.Readers[:len(info.Readers)-1]
 	return nil
 }
 
+// TODO(jlm): add test
 // Delete Writer.
 func (info *ResourceInfo) DeleteWriter(p CombinedPrincipal) error {
 	n := FindCombinedPrincipalPosition(p, info.Writers)
 	if n < 0 {
 		return nil
 	}
-	info.Writers[n] = info.Owners[len(info.Owners) - 1]
-	info.Writers = info.Owners[:len(info.Owners) - 1]
+	// TODO(jlm): add test
+	info.Writers[n] = info.Writers[len(info.Owners)-1]
+	info.Writers = info.Writers[:len(info.Owners)-1]
 	return nil
 }
 
@@ -160,7 +162,7 @@ func (m *ResourceMasterInfo) FindResource(resourceName string) *ResourceInfo {
 func (m *ResourceMasterInfo) InsertResource(info *ResourceInfo) error {
 	l := m.FindResource(*info.Name)
 	if l != nil {
-		return nil 
+		return nil
 	}
 	m.Resources = append(m.Resources, info)
 	return nil
@@ -251,4 +253,3 @@ func (r *ResourceInfo) Write(directory string, fileContents []byte) error {
 	}
 	return err
 }
-

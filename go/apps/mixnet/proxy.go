@@ -163,7 +163,8 @@ func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circui
 	}
 	p.circuits[id] = c
 	pub, priv, _ := box.GenerateKey(rand.Reader)
-	circuit := NewCircuit(c, id, exitKey, pub, priv)
+	circuit := NewCircuit(c, id, false, false, false)
+	circuit.SetKeys(exitKey, pub, priv)
 	c.AddCircuit(circuit)
 	p.conns.Unlock()
 

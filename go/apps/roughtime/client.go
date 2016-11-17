@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -87,9 +89,13 @@ type Client struct {
 
 	network string
 	domain  *tao.Domain
+
+	//Number of servers to query
+	quorum  int
+	servers []config.Server
 }
 
-func NewClient(domainPath, network string) (*Client, error) {
+func NewClient(domainPath, network string, quorum int, servers []config.Server) (*Client, error) {
 	// Load domain from a local configuration.
 	domain, err := tao.LoadDomain(domainPath, nil)
 	if err != nil {
@@ -99,6 +105,8 @@ func NewClient(domainPath, network string) (*Client, error) {
 	c := &Client{
 		network: network,
 		domain:  domain,
+		quorum:  quorum,
+		servers: servers,
 	}
 	return c, nil
 }
@@ -558,4 +566,42 @@ func (c *Client) EstablishTime(chain *config.Chain, quorum int, servers []config
 	result.MonoUTCDelta = &monoUTCDelta
 
 	return result, nil
+}
+
+func (c *Client) Do(chain *config.Chain) (*config.Chain, error) {
+	result, err := c.EstablishTime(chain, c.quorum, c.servers)
+	if err != nil {
+		return nil, err
+	}
+
+	for serverName, err := range result.ServerErrors {
+		fmt.Fprintf(os.Stderr, "Failed to query %q: %s\n", serverName, err)
+	}
+
+	maxLenServerName := 0
+	for name := range result.ServerInfo {
+		if len(name) > maxLenServerName {
+			maxLenServerName = len(name)
+		}
+	}
+
+	for name, info := range result.ServerInfo {
+		fmt.Printf("%s:%s %d–%d (answered in %s)\n", name, strings.Repeat(" ", maxLenServerName-len(name)), info.Min, info.Max, info.QueryDuration)
+	}
+
+	if result.MonoUTCDelta == nil {
+		fmt.Fprintf(os.Stderr, "Failed to get %d servers to agree on the time.\n", c.quorum)
+	} else {
+		nowUTC := time.Unix(0, int64(monotime.Now()+*result.MonoUTCDelta))
+		nowRealTime := time.Now()
+
+		fmt.Printf("real-time delta: %s\n", nowRealTime.Sub(nowUTC))
+	}
+
+	if result.OutOfRangeAnswer {
+		fmt.Fprintf(os.Stderr, "One or more of the answers was significantly out of range.\n")
+	}
+
+	trimChain(chain, maxChainSize)
+	return chain, nil
 }

@@ -22,23 +22,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"path"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 
-	"roughtime.googlesource.com/go/client/monotime"
 	"roughtime.googlesource.com/go/config"
 )
 
 var (
 	domainPath             = "roughttime_test_domain"
-	network                = "tcp"
-	maxChainSize           = 8
 	x509Identity pkix.Name = pkix.Name{
 		Organization:       []string{"Google Inc."},
 		OrganizationalUnit: []string{"Cloud Security"},
@@ -65,7 +60,7 @@ func TestCreateChain(t *testing.T) {
 	}
 	st, err := tao.NewSoftTao(tmpDir, []byte("xxx"))
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	numServers := 2
@@ -87,50 +82,14 @@ func TestCreateChain(t *testing.T) {
 	time.Sleep(time.Second)
 
 	quorum := numServers
-	if quorum > len(servers) {
-		fmt.Fprintf(os.Stderr, "Quorum set to %d servers because not enough valid servers were found to meet the default (%d)!\n", len(servers), quorum)
-		quorum = len(servers)
+	client, err := NewClient(domain.ConfigPath, network, quorum, servers)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	chain := &config.Chain{}
-	client, err := NewClient(domain.ConfigPath, network)
+	chain, err = client.Do(chain)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	result, err := client.EstablishTime(chain, quorum, servers)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for serverName, err := range result.ServerErrors {
-		fmt.Fprintf(os.Stderr, "Failed to query %q: %s\n", serverName, err)
-	}
-
-	maxLenServerName := 0
-	for name := range result.ServerInfo {
-		if len(name) > maxLenServerName {
-			maxLenServerName = len(name)
-		}
-	}
-
-	for name, info := range result.ServerInfo {
-		fmt.Printf("%s:%s %d–%d (answered in %s)\n", name, strings.Repeat(" ", maxLenServerName-len(name)), info.Min, info.Max, info.QueryDuration)
-	}
-
-	if result.MonoUTCDelta == nil {
-		fmt.Fprintf(os.Stderr, "Failed to get %d servers to agree on the time.\n", quorum)
-	} else {
-		nowUTC := time.Unix(0, int64(monotime.Now()+*result.MonoUTCDelta))
-		nowRealTime := time.Now()
-
-		fmt.Printf("real-time delta: %s\n", nowRealTime.Sub(nowUTC))
-	}
-
-	if result.OutOfRangeAnswer {
-		fmt.Fprintf(os.Stderr, "One or more of the answers was significantly out of range.\n")
-	}
-
-	trimChain(chain, maxChainSize)
-
-	fmt.Println(chain)
 }

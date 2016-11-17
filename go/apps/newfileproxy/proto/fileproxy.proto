@@ -1,0 +1,54 @@
+// Copyright (c) 2014, Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package newfileproxy;
+
+enum MessageType {
+   AUTH_CERT = 1;
+   NONCE_CHALL = 2;
+   SIGNED_NONCE = 3;
+   OP_RES = 4;
+   CREATE = 5;
+   DELETE = 6;
+   READ = 7;
+   WRITE = 8;
+   FILE_NEXT = 9;
+   FILE_LAST = 10;
+}  
+
+// A Message is a message sent like an RPC between fileproxy hosts. The
+// data is sometimes simply data and is sometimes a serialized protobuf,
+// depending on the message type.
+message Message {
+  required MessageType type = 1;
+  required bytes data = 2;
+}
+
+// A FileOperation contains the information needed to perform a file operation
+// (CREATE, DELETE, READ, WRITE).
+message FileOperation {
+  // The subject is the public key (in certificate form) of the principal taking
+  // the action.
+  required bytes subject = 1;
+
+  // The name is the name of the file. The action is already specified by the
+  // message type in the containing protobuf.
+  required string name = 2;
+}
+
+// An OperationResult is the final return value from a sequence of operations,
+// like the authentication of a principal.
+message OperationResult {
+  required bool result = 1;
+}

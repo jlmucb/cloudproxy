@@ -19,6 +19,8 @@ import (
 	"io/ioutil"
 	"path"
 	"time"
+
+	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
 func EncodeTime(t time.Time) (string, error) {
@@ -233,8 +235,18 @@ func (m *ResourceMasterInfo) PrintMaster(printResources bool) {
 // stream. By the time this function is called, the remote principal has already
 // been authenticated and the operation has already been authorized.
 func (r *ResourceInfo) Read(directory string) ([]byte, error) {
+	var err error
+	var out []byte
 	filename := path.Join(directory, *r.Name)
-	out, err := ioutil.ReadFile(filename)
+	bytes_read, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	if len(r.Keys) >= 32 {
+		out, err = taosupport.Unprotect(r.Keys, bytes_read)
+	} else {
+		out = bytes_read
+	}
 	size := int32(len(out))
 	if err == nil {
 		r.Size = &size
@@ -246,10 +258,23 @@ func (r *ResourceInfo) Read(directory string) ([]byte, error) {
 // and written to disk as they are read from the MessageStream.
 func (r *ResourceInfo) Write(directory string, fileContents []byte) error {
 	filename := path.Join(directory, *r.Name)
-	err := ioutil.WriteFile(filename, fileContents, 0644)
-	if err == nil {
-		size := int32(len(fileContents))
-		r.Size = &size
+	if len(r.Keys) >= 32 {
+		// Encrypt
+		encrypted, err := taosupport.Protect(r.Keys, fileContents)
+		if err != nil {
+		}
+		err = ioutil.WriteFile(filename, encrypted, 0644)
+		if err == nil {
+			size := int32(len(fileContents))
+			r.Size = &size
+		}
+		return err
+	} else {
+		err := ioutil.WriteFile(filename, fileContents, 0644)
+		if err == nil {
+			size := int32(len(fileContents))
+			r.Size = &size
+		}
+		return err
 	}
-	return err
 }

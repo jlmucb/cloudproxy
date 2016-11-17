@@ -60,7 +60,7 @@ func GetFile(ms *util.MessageStream, dir string, filename string, keys []byte) e
 }
 
 type AuthentictedPrincipals struct {
-	ValidPrincipals []resourcemanager.PrincipalInfo
+	ValidPrincipals []resourcemanager.CombinedPrincipal
 };
 
 func FailureResponse() *taosupport.SimpleMessage {
@@ -73,7 +73,35 @@ func SuccessResponse() *taosupport.SimpleMessage {
 
 func IsAuthorized(action MessageType, resourceInfo *resourcemanager.ResourceInfo,
 		policyKey []byte, principals* AuthentictedPrincipals) bool {
-	return false
+	switch(action) {
+	default:
+		return false
+	case MessageType_REQUEST_CHALLENGE:
+		return false
+	case MessageType_CREATE:
+		return false
+	case MessageType_DELETE, MessageType_ADDWRITER, MessageType_DELETEWRITER, MessageType_WRITE:
+		for p := range principals.ValidPrincipals {
+			if resourceInfo.IsOwner(principals.ValidPrincipals[p]) || resourceInfo.IsWriter(principals.ValidPrincipals[p]) {
+				return true
+			}
+		}
+		return false
+	case MessageType_ADDREADER, MessageType_DELETEREADER, MessageType_READ:
+		for p := range principals.ValidPrincipals {
+			if resourceInfo.IsOwner(principals.ValidPrincipals[p]) || resourceInfo.IsReader(principals.ValidPrincipals[p]) {
+				return true
+			}
+		}
+		return false
+	case MessageType_ADDOWNER, MessageType_DELETEOWNER:
+		for p := range principals.ValidPrincipals {
+			if resourceInfo.IsOwner(principals.ValidPrincipals[p]) {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 func RequestChallenge(ms *util.MessageStream, cert []byte) error {

@@ -17,8 +17,8 @@ and services that to any clients.
 This application does not really have any meaningful security as the
 connection is on plaintext HTTP and provides no authentication (i.e.,
 no TLS); it is meant as a simplest demonstration of getting a server
-running on top of CloudProxy and linux_host in particular. This will
-be shown in another example.
+running on top of CloudProxy and linux_host in particular. Running
+with TLS will be shown in another example.
 
 
 Dependencies

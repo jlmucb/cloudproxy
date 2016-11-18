@@ -16,6 +16,7 @@ package mixnet
 
 import (
 	"errors"
+	"time"
 
 	"golang.org/x/crypto/nacl/box"
 )
@@ -26,6 +27,13 @@ const (
 
 	// MaxMsgBytes specifies the maximum length of a message.
 	MaxMsgBytes = 1 << 16
+)
+
+const (
+	// Update directory every x amount of time
+	DefaultUpdateFrequency = 3600 * time.Second
+	DefaultHopCount        = 3
+	DefaultTimeout         = 10 * time.Second
 )
 
 const (

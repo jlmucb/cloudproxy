@@ -27,8 +27,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-var routerAddr = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
-var routerNetwork = flag.String("network", "tcp", "Network protocol for the Tao-delegated mixnet router.")
+var directoryAddr = flag.String("addr", "127.0.0.1:8123", "Address and port of this directory.")
+var network = flag.String("network", "tcp", "Network protocol.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
 var timeoutDuration = flag.String("timeout", "10s", "Timeout on TCP connections, e.g. \"10s\".")
 
@@ -42,6 +42,7 @@ func serveRouters(dir *mixnet.DirectoryContext) error {
 	for {
 		_, err := dir.Accept()
 		if err != nil {
+			glog.Infoln(err)
 			return err
 		}
 	}
@@ -53,7 +54,7 @@ func main() {
 		glog.Fatalf("router: failed to parse timeout duration: %s", err)
 	}
 
-	dir, err := mixnet.NewDirectoryContext(*configPath, *routerNetwork, *routerAddr,
+	dir, err := mixnet.NewDirectoryContext(*configPath, *network, *directoryAddr,
 		timeout, &x509Identity, tao.Parent())
 	if err != nil {
 		glog.Fatalf("failed to configure directory: %s", err)
@@ -64,6 +65,7 @@ func main() {
 	go func() {
 		sig := <-sigs
 		glog.Infof("directory: closing on signal: %s", sig)
+		dir.Close()
 		signo := int(sig.(syscall.Signal))
 		os.Exit(0x80 + signo)
 	}()

@@ -60,7 +60,11 @@ type RouterContext struct {
 		m map[uint32]bool
 	}
 
-	directory []string
+	// address of the directories
+	directories []string
+	// list of available servers and their keys for exit encryption
+	directory  []string
+	serverKeys [][]byte
 
 	mapLock *sync.RWMutex
 
@@ -81,7 +85,8 @@ type RouterContext struct {
 // It also creates a regular listener socket for other routers to connect to.
 // A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
-func NewRouterContext(path, network, addr string, batchSize int, timeout time.Duration,
+func NewRouterContext(path, network, addr string, timeout time.Duration,
+	directories []string, batchSize int,
 	x509Identity *pkix.Name, t tao.Tao) (r *RouterContext, err error) {
 
 	r = new(RouterContext)
@@ -145,6 +150,10 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 		return nil, err
 	}
 
+	r.directories = directories
+	r.register()
+	go r.updateDirectory()
+
 	// Instantiate the queues.
 	r.queue = NewQueue(network, t, batchSize, timeout)
 	r.proxyReq = NewQueue(network, t, batchSize, timeout)
@@ -159,6 +168,35 @@ func NewRouterContext(path, network, addr string, batchSize int, timeout time.Du
 	go r.proxyResp.DoQueueErrorHandler(r.queue, r.killQueueErrorHandler)
 
 	return r, nil
+}
+
+func (r *RouterContext) register() {
+	for _, dirAddr := range r.directories {
+		err := r.Register(dirAddr)
+		if err != nil {
+			log.Println("Register err:", err)
+		}
+	}
+}
+
+func (r *RouterContext) directoryConsensus() {
+	for _, dirAddr := range r.directories {
+		directory, keys, err := r.GetDirectory(dirAddr)
+		if err != nil {
+			log.Println("GetDirectory err:", err)
+		}
+		//fmt.Println("Got directory")
+		// TODO(kwonalbert): Check directory consensus
+		r.directory = directory
+		r.serverKeys = keys
+	}
+}
+
+func (r *RouterContext) updateDirectory() {
+	for {
+		r.directoryConsensus()
+		time.Sleep(DefaultUpdateFrequency)
+	}
 }
 
 // AcceptRouter Waits for connectons from other routers.
@@ -210,17 +248,16 @@ func (r *RouterContext) Register(dirAddr string) error {
 }
 
 // Read the directory from a directory server
-func (r *RouterContext) GetDirectory(dirAddr string) error {
+func (r *RouterContext) GetDirectory(dirAddr string) ([]string, [][]byte, error) {
 	c, err := tao.Dial(r.network, dirAddr, r.domain.Guard, r.domain.Keys.VerifyingKey, r.keys)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	directory, err := GetDirectory(c)
+	directory, keys, err := GetDirectory(c)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	r.directory = directory
-	return c.Close()
+	return directory, keys, c.Close()
 }
 
 // Close releases any resources held by the hosted program.
@@ -414,6 +451,8 @@ func member(s string, set []string) bool {
 func (r *RouterContext) handleCreate(d Directive, c *Conn, id uint64,
 	sendQ, respQ *Queue, sId, rId uint64) error {
 	if c.withProxy && len(r.directory) > 0 {
+		// Get the most recent directory before forming a circuit
+		r.directoryConsensus()
 		// A fresh path of the same length if user has no preference
 		// (Random selection without replacement)
 		directory := make([]string, len(r.directory))

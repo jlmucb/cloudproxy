@@ -18,6 +18,7 @@ import (
 	"container/list"
 	"crypto/rand"
 	"encoding/binary"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -32,12 +33,12 @@ import (
 // adddress or connection of a sender, add a message or request for reply
 // to the queue, or destroy any resources associated with the connection.
 type Queueable struct {
-	id       uint64 // circuit id
-	msg      []byte
-	conn     net.Conn
-	prevConn net.Conn
-	remove   bool
-	destroy  bool
+	id      uint64 // circuit id
+	msg     []byte
+	conn    net.Conn
+	errConn net.Conn
+	remove  bool
+	destroy bool
 }
 
 type sendQueueError struct {
@@ -90,19 +91,19 @@ func (sq *Queue) Enqueue(q *Queueable) {
 
 // EnqueueMsg copies a byte slice into a queueable object and adds it to
 // the queue.
-func (sq *Queue) EnqueueMsg(id uint64, msg []byte, conn, prevConn net.Conn) {
+func (sq *Queue) EnqueueMsg(id uint64, msg []byte, conn, errConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
 	q.msg = make([]byte, len(msg))
 	copy(q.msg, msg)
 	q.conn = conn
-	q.prevConn = prevConn
+	q.errConn = errConn
 	sq.queue <- q
 }
 
 // Close creates a queueable object that sends the last msg in the circuit,
 // closes the connection and deletes all associated resources.
-func (sq *Queue) Close(id uint64, msg []byte, destroy bool, conn, prevConn net.Conn) {
+func (sq *Queue) Close(id uint64, msg []byte, destroy bool, conn, errConn net.Conn) {
 	q := new(Queueable)
 	q.id = id
 	if msg != nil {
@@ -112,33 +113,34 @@ func (sq *Queue) Close(id uint64, msg []byte, destroy bool, conn, prevConn net.C
 	q.remove = true
 	q.destroy = destroy
 	q.conn = conn
-	q.prevConn = prevConn
+	q.errConn = errConn
 	sq.queue <- q
 }
 
 func (sq *Queue) delete(q *Queueable) {
-	// // Close the connection and delete all resources. Any subsequent
-	// // messages or reply requests will cause an error.
-	// if q.destroy {
-	// 	// Wait for the client to kill the connection or timeout
-	// 	if q.msg == nil {
-	// 		q.conn.Close()
-	// 	} else {
-	// 		_, err := q.conn.Read([]byte{0})
-	// 		if err != nil {
-	// 			e, ok := err.(net.Error)
-	// 			if err == io.EOF || (ok && e.Timeout()) {
-	// 				// If it times out, and the connection
-	// 				// is supposed to be closed,
-	// 				// ignore it..
-	// 				q.conn.Close()
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// if _, def := sq.sendBuffer[q.id]; def {
-	// 	delete(sq.sendBuffer, q.id)
-	// }
+	// Close the connection and delete all resources. Any subsequent
+	// messages or reply requests will cause an error.
+	if q.destroy {
+		// Wait for the client to kill the connection or timeout
+		if q.msg == nil {
+			q.conn.Close()
+		} else {
+			q.conn.SetDeadline(time.Now().Add(sq.timeout))
+			_, err := q.conn.Read([]byte{0})
+			if err != nil {
+				e, ok := err.(net.Error)
+				if err == io.EOF || (ok && e.Timeout()) {
+					// If it times out, and the connection
+					// is supposed to be closed,
+					// ignore it..
+					q.conn.Close()
+				}
+			}
+		}
+	}
+	if _, def := sq.sendBuffer[q.id]; def {
+		delete(sq.sendBuffer, q.id)
+	}
 }
 
 // DoQueue adds messages to a queue and transmits messages in batches. It also
@@ -151,7 +153,6 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 		select {
 		case <-kill:
 			return
-
 		case q := <-sq.queue:
 			if q.msg != nil {
 				// Create a send buffer for the sender ID if it doesn't exist.
@@ -302,7 +303,7 @@ func senderWorker(network string, q *Queueable,
 		// 	}
 		// }
 		if _, e := q.conn.Write(q.msg); e != nil {
-			err <- sendQueueError{q.id, q.prevConn, e}
+			err <- sendQueueError{q.id, q.errConn, e}
 			res <- senderResult{q.conn, q.id}
 			return
 		}

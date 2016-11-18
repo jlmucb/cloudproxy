@@ -14,7 +14,11 @@
 
 package mixnet
 
-import "errors"
+import (
+	"errors"
+
+	"golang.org/x/crypto/nacl/box"
+)
 
 const (
 	// CellBytes specifies the length of a cell.
@@ -30,8 +34,9 @@ const (
 )
 
 const (
-	ID_SIZE  = 8
-	LEN_SIZE = 8
+	ID_SIZE   = 8
+	LEN_SIZE  = 8
+	BODY_SIZE = CellBytes - BODY - box.Overhead - 24
 )
 
 const (

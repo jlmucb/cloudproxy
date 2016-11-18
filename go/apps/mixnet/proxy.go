@@ -23,6 +23,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/nacl/box"
+
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
@@ -125,12 +127,12 @@ func (p *ProxyContext) handleConn(c *Conn) {
 		if err == nil {
 			id := getID(cell)
 			circuit := c.GetCircuit(id)
-			circuit.cells <- Cell{cell, err}
+			circuit.BufferCell(cell, err)
 		} else {
 			// Relay other errors (mostly timeout) to all circuits in this connection
 			for _, circuit := range c.circuits {
 				go func(circuit *Circuit) {
-					circuit.cells <- Cell{nil, err}
+					circuit.BufferCell(nil, err)
 				}(circuit)
 			}
 			break
@@ -141,7 +143,7 @@ func (p *ProxyContext) handleConn(c *Conn) {
 // CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
-func (p *ProxyContext) CreateCircuit(addrs []string) (*Circuit, uint64, error) {
+func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circuit, uint64, error) {
 	id, err := p.newID()
 	if err != nil {
 		return nil, id, err
@@ -160,13 +162,19 @@ func (p *ProxyContext) CreateCircuit(addrs []string) (*Circuit, uint64, error) {
 		c = p.conns.m[addrs[0]]
 	}
 	p.circuits[id] = c
-	circuit := &Circuit{c, id, make(chan Cell)}
+	pub, priv, _ := box.GenerateKey(rand.Reader)
+	circuit := NewCircuit(c, id, false, false, false)
+	circuit.SetKeys(exitKey, pub, priv)
 	c.AddCircuit(circuit)
 	p.conns.Unlock()
+
+	boxedDest := circuit.Encrypt([]byte(addrs[len(addrs)-1]))
+	addrs[len(addrs)-1] = string(boxedDest)
 
 	d := &Directive{
 		Type:  DirectiveType_CREATE.Enum(),
 		Addrs: addrs,
+		Key:   pub[:],
 	}
 
 	// Send CREATE directive to router.
@@ -194,6 +202,7 @@ func (p *ProxyContext) DestroyCircuit(id uint64) error {
 	if _, err := circuit.SendDirective(dirDestroy); err != nil {
 		return err
 	}
+
 	// Wait for DESTROYED directive from router.
 	var d Directive
 	if err := circuit.ReceiveDirective(&d); err != nil {
@@ -260,8 +269,8 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // Read a message from the client, send it over the mixnet, wait for a reply,
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
-func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
-	circuit, id, err := p.CreateCircuit(addrs)
+func (p *ProxyContext) ServeClient(c net.Conn, addrs []string, exitKey *[32]byte) error {
+	circuit, id, err := p.CreateCircuit(addrs, exitKey)
 	if err != nil {
 		return err
 	}
@@ -278,7 +287,7 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 			bytes, err := c.Read(msg)
 			if err != nil {
 				proxyErrs <- err
-				d.circuits[id].cells <- Cell{nil, io.EOF}
+				d.circuits[id].BufferCell(nil, io.EOF)
 				return
 			}
 
@@ -304,7 +313,7 @@ func (p *ProxyContext) ServeClient(c net.Conn, addrs []string) error {
 			c.SetDeadline(time.Now().Add(p.timeout))
 			if _, err = c.Write(reply); err != nil {
 				proxyErrs <- err
-				d.circuits[id].cells <- Cell{nil, io.EOF}
+				d.circuits[id].BufferCell(nil, io.EOF)
 				return
 			}
 		}

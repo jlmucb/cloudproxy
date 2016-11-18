@@ -13,7 +13,6 @@ and trust in the owner of that key.
 
 Security goals and threat model
 -------------------------------
-
 There are three principals in our protocol: the sender, recipient, and the
 policy owner. Our goal is to design a protocol that provides anonymity for
 senders without requiring the recipient to execute the protocol. The policy
@@ -25,55 +24,54 @@ platform generates a public key, which is attested to by the policy owner by
 signing it with the private policy key. When the machine boots, the OS is
 measured and generates a private/public key pair, which is attested to by the
 TPM; finally, the mixnet code itself is measured and generates a private/public
-key pair, which is attested to by the OS. Hence, trust in the mixnet routers to
-faithfully carry out the protocol is reduced to correct provisioning of the
-policy key.
+key pair, which is attested to by the OS. Hence, trust in the mixnet
+routers to faithfully carry out the protocol is reduced to correct
+provisioning of the policy key.
 
-We consider a global adversary who observes all communications between senders
-and mixnet routers, mixnet routers and other mixnet routers, and mixnet routers
-and recipients. The adversary can also control many senders and recipients, and
-therefore could send and receive messages. The effect is that the state of that
-peer is exposed, including any and all cryptographic keys. We assume that the
-policy key was correctly provisioned and the code is written correctly. We claim
-this precludes the possibility of exposing routers' private states. (This is a
-strong claim offered here without proof. CloudProxy provides assurance that the
-expected program is running; assuming the code does not contain any bugs that
-allow it to be compromised, a formal treatment of our protocol should reduce the
-adversary's control of the routers to standard cryptographic assumptions: in
-particular, CDH on elliptic curves, as well as the integrity and confidentiality
-of the cipher suite underlying TLS.) The adversary may also try to inject
-packets into the network, though any packets injected through an invalid channel
-(i.e., not via a sender or recipient) will not be authenticated and thus
-ignored by the routers.
+We consider a global passive adversary who observes all communications between
+senders and mixnet routers, mixnet routers and other mixnet routers, and mixnet
+routers and recipients. The adversary may also send messages on channels it
+observes. Since the service is anonymous, the adversary is allowed to control
+any number of senders or recipients. The effect is that the state of that peer
+is exposed, including any and all cryptographic keys. We assume that the policy
+key was correctly provisioned; if the code implements the protocol correctly and
+is properly isolated during its execution, we claim this precludes the
+possibility of exposing a router’s state. (This is a strong claim offered here
+without proof. CloudProxy provides assurance that the expected program is
+running; assuming the code does not contain any bugs that allow it to be
+comprimised, a formal treatment of our protocol should reduce the adversary's
+control of the routers to standard cryptographic assumptions: in particular,
+CDH on elliptic curves, as well as the integrity and confidentiality of the
+cipher suite underyling TLS.)
 
-The desired security property of communications over the mixnet is called
-_unlinkability_ in the sense of [1]. Consider a set of senders _S_ where _|S| =
-n_ and a set of recipients _T_. Each sender chooses one recipient as well as a
-message to send so that _M : S → T_ is an onto mapping. The messages are
-transmitted to their respective recipients over the mixnet; the adversary
-succeeds if it outputs _(s, t)_ such that _M(s) = t_, unless it controls both
-_s_ and _t_. We say that communication over the mixnet is _unlinkable_ if for
-any adversary the probability of success is less than _1/n_ plus some negligible
-value.
+The intended property of communications over the mixnet is unlinkability in the
+sense of [1]. Consider a set of senders _S_ where _|S| = n_ and a set of
+recipients _T_. Each sender chooses one recipient as well as a message to send
+so that _M : S → T_ is an onto mapping. The messages are transmitted to their
+respective recipients over the mixnet; the adversary succeeds if it outputs
+_(s, t)_ such that _M(s) = t_, unless it controls both _s_ and _t_. We say that
+communication over the mixnet is _unlinkable_ if for any adversary the
+probability of success is less than _1/n_ plus some negligible value.
 
 _Alternative definition:_ as above, except the adversary chooses the messages to
 be sent. This change may make it easier to analyze the unlinkability of a
 particular protocol. However, this would require the recipients to participate
-in the protocol, since messages exiting the mixnet must be encrypted. We could
-instead have a challenger that randomly assigns messages to avoid involving the
-recipients, or model the senders via an oracle to avoid this problem.
+in the protocol, since messages exiting the mixnet must be encrypted.
 
 For a protocol to achieve security in this sense, the messages must all have the
-same length. Mixnets address this by splitting messages into fixed-length cells;
-messages are broken in to multiple cells, and shorter messages are padded.
-Generally, mixnets guarantees are proved for one cell of communication, and also
-in a synchronous matter. That is, mixnets provide the unlinkability within the
-cells submitted at the same time. Extending the security notion to multiple
-rounds of communication that involves different number of cells in each
-connection is challenging. The presence of variable-length messages exposes
-traffic patterns to the adversary. One way to mitigate this problem is to
-zero-pad all messages to the length of the longest message. This achieves a
-property called _unobservability_ [1] which is too expensive for our purposes.
+same length; of course, this is not always reasonable in practice. Mixnets
+address this by splitting messages into fixed-length cells. Senders split
+messages into cells (zero-padding the last cell as needed) and send them to the
+first router where they are added to a queue. At each round the router waits
+until there are _m_ cells in the queue from _m_ distinct senders and transmits
+these simultaneously to achieve anonymity.
+
+Extending the definition of unlinkability to a mixnet that divides messages into
+cells and transmits at rounds is challenging: the presence of
+variable-length messages exposes traffic patterns to the adversary. One way to
+mitigate this problem is to zero-pad all messages to the length of the longest
+message. This achieves a property called _unobservability_ [1] which is too
+expensive for our purposes.
 
 Another appraoch is to weaken the security model to one in which the adversary
 may only observe a fraction of the network at any one time; relaying messages
@@ -100,8 +98,6 @@ messages to be routed through different paths through the network of mixes. It
 is also asynchronous in the sense that each mix makes their own routing
 decisions without coordinating with rest of the mixes in the network.
 
-All mixnet routers occasionally check-in to a directory, and the directories
-if there are more than one, reach a consensus every fixed period of time.
 A typical messaging session for two end-to-end users, Alice and Bob, works as
 follows.
 
@@ -134,16 +130,10 @@ follows.
 6. Bob can respond to the message, and the message will traverse the mixnet
    using the same circuit in reverse.
 
-The design and the implementation assumes sufficient number of Alices and Bobs
-for availability. If there is only one Alice and Bob, then routers may not
-be able to collect sufficient number of messages, and will not execute step 5.
-
 Note that in step 3, the entry mix picks the circuit through the network, not
 Bob. This is because the entry mix, which is CloudProxy authenticated, is
 assumed to be secure, and disabling malicious users (who are not authenticated)
-from selecting the path will likely enable better security. We currently allow
-users to pick the circuit as well. This is done for testing, as randomized paths
-do not work well for smaller scale tests.
+from selecting the path will likely enable better security.
 
 The design also made several design decisions that trades-off security and
 performance. For instance, it may result in less latency to allow a mix in step
@@ -162,13 +152,13 @@ Some of the important files are
   a queue from `queue.go` to maintain 3 different queues for (1) cells sent from
   proxies, (2) cells sent to proxies, and (3) cells to/from other routers. This
   is required to be run in CloudProxy environment.
-* `socks5.go`: Implements a simple SOCKS5[3] proxy that proxy uses to listen to
+* `socks5.go`: Implements a simple SOCKS5 proxy that proxy uses to listen to
   end users.
-* `proxy.go`: Uses SOCKS5 to receive messages from end-users, breaks the
+* `proxy.go`: Uses socks5 to receive messages from end-users, breaks the
   messages into cells, and handles communication with the entry mix.
 * `conn.go`, `listener.go`, `circuit.go`: Used to manage different network
   connections and circuits.
-* `mixnet.proto`: Specifies the directives (e.g., creating/destroying circuits)
+* `mixnet_proto`: Specifies the directives (e.g., creating/destroying circuits)
   used by proxies and routers.
 
 Parameters
@@ -189,6 +179,7 @@ of the system.
 * Cell size: Each cell is fixed at 1024B currently. This should be at most 65KB,
   the maximum packet length for TCP.
 
+
 Tests
 -----
 
@@ -200,7 +191,7 @@ end of the circuit.
 
 The scripts in `scripts` runs a full Tao test (currently with soft-tao). It
 implements essentially the same integration test as the one in `mixnet_test.go`,
-except it runs it with Tao. The script assumes that typical Tao testing
+except it runs it with real Tao. The script assumes that typical Tao testing
 environment is setup (i.e., Tao is installed, `/Domains` exists, etc.). To run
 the test, simple run
 

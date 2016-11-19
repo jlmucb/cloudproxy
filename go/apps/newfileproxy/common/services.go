@@ -148,7 +148,19 @@ func RequestChallenge(ms *util.MessageStream, cert []byte) error {
 		return err
 	}
 	outerMessage.Data[0] = payload
-	return taosupport.SendMessage(ms, &outerMessage)
+	err = taosupport.SendMessage(ms, &outerMessage)
+	// Get response
+	responseOuter, err := taosupport.GetMessage(ms)
+	if err != nil {
+		return err
+	}
+	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+		return errors.New("RequestChallenge failed")
+	}
+	// Get Nonce and sign it
+	// Return signed nonce
+	// Success?
+	return nil
 }
 
 func Create(ms *util.MessageStream, name string, cert []byte) error {
@@ -165,52 +177,152 @@ func Create(ms *util.MessageStream, name string, cert []byte) error {
 		return err
 	}
 	outerMessage.Data[0] = payload
-	return taosupport.SendMessage(ms, &outerMessage)
+	err = taosupport.SendMessage(ms, &outerMessage)
+	if err != nil {
+		return err
+	}
+	responseOuter, err := taosupport.GetMessage(ms)
+	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+		return errors.New("RequestChallenge failed")
+	}
+	return nil
 }
 
 func Delete(ms *util.MessageStream, name string) error {
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+	var msg FileproxyMessage
+	msgType := MessageType_DELETE
+	msg.Type = &msgType
+	msg.Arguments[0] = name
+	payload, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
+	}
+	outerMessage.Data[0] = payload
+	err = taosupport.SendMessage(ms, &outerMessage)
+	if err != nil {
+		return err
+	}
+	responseOuter, err := taosupport.GetMessage(ms)
+	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+		return errors.New("RequestChallenge failed")
+	}
 	return nil
 }
 
-func AddOwner(ms *util.MessageStream, certs [][]byte) error {
+func AddDelete(ms *util.MessageStream, msgType MessageType, resourceName string, certs [][]byte) error {
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+	var msg FileproxyMessage
+	msg.Type = &msgType
+	msg.Arguments[0] = resourceName
+	for i := 0; i < len(certs); i++ {
+		msg.Data[i] = certs[i]
+	}
+	var payload []byte;
+	payload, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
+	}
+	outerMessage.Data[0] = payload
+	err = taosupport.SendMessage(ms, &outerMessage)
+	if err != nil {
+		return err
+	}
+	responseOuter, err := taosupport.GetMessage(ms)
+	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+		return errors.New("RequestChallenge failed")
+	}
 	return nil
 }
 
-func AddReader(ms *util.MessageStream, certs [][]byte) error {
-	return nil
+func AddOwner(ms *util.MessageStream, resourceName string, certs [][]byte) error {
+	return AddDelete(ms, MessageType_ADDOWNER, resourceName, certs)
 }
 
-func AddWriter(ms *util.MessageStream, certs [][]byte, nonce []byte) error {
-	return nil
+func AddReader(ms *util.MessageStream, resourceName string, certs [][]byte) error {
+	return AddDelete(ms, MessageType_ADDREADER, resourceName, certs)
 }
 
-func DeleteOwner(ms *util.MessageStream, certs [][]byte) error {
-	return nil
+func AddWriter(ms *util.MessageStream, resourceName string, certs [][]byte, nonce []byte) error {
+	return AddDelete(ms, MessageType_ADDWRITER, resourceName, certs)
 }
 
-func DeleteReader(ms *util.MessageStream, certs [][]byte) error {
-	return nil
+func DeleteOwner(ms *util.MessageStream, resourceName string, certs [][]byte) error {
+	return AddDelete(ms, MessageType_DELETEOWNER, resourceName, certs)
 }
 
-func DeleteWriter(ms *util.MessageStream, certs [][]byte) error {
-	return nil
+func DeleteReader(ms *util.MessageStream, resourceName string, certs [][]byte) error {
+	return AddDelete(ms, MessageType_DELETEREADER, resourceName, certs)
 }
 
-func ReadResource(ms *util.MessageStream, resourceName string) error {
-	return nil
+func DeleteWriter(ms *util.MessageStream, resourceName string, certs [][]byte) error {
+	return AddDelete(ms, MessageType_DELETEWRITER, resourceName, certs)
 }
 
-func WriteResource(ms *util.MessageStream, resourceName string) error {
-	return nil
+func ReadResource(ms *util.MessageStream, resourceName string) ([]byte, error) {
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+	var msg FileproxyMessage
+	msgType := MessageType_READ
+	msg.Type = &msgType
+	msg.Arguments[0] = resourceName
+	payload, err := proto.Marshal(&msg)
+	if err != nil {
+		return nil, err
+	}
+	outerMessage.Data[0] = payload
+	err = taosupport.SendMessage(ms, &outerMessage)
+	if err != nil {
+		return nil, err
+	}
+	responseOuter, err := taosupport.GetMessage(ms)
+	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+		return nil, errors.New("RequestChallenge failed")
+	}
+	// Response should have fileContents
+	var respMsg FileproxyMessage
+	err = proto.Unmarshal(responseOuter.Data[0], &respMsg)
+	if err != nil {
+		return nil, errors.New("Bad payload message")
+	}
+	if respMsg.Type == nil || *respMsg.Type != MessageType_READ {
+		return nil, errors.New("Wrong message response")
+	}
+	if len(respMsg.Data[0]) == 0 {
+		return nil, errors.New("No file contents")
+	}
+	fileContents := respMsg.Data[0]
+	return fileContents, nil
 }
 
-func DoVerifyChallenge(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
-		principals *AuthentictedPrincipals, msg FileproxyMessage) bool {
-	return false
+func WriteResource(ms *util.MessageStream, resourceName string, fileContents []byte) error {
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+	var msg FileproxyMessage
+	msgType := MessageType_READ
+	msg.Type = &msgType
+	msg.Arguments[0] = resourceName
+	msg.Data[0] = fileContents
+	payload, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
+	}
+	outerMessage.Data[0] = payload
+	err = taosupport.SendMessage(ms, &outerMessage)
+	if err != nil {
+		return err
+	}
+	responseOuter, err := taosupport.GetMessage(ms)
+	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+		return errors.New("RequestChallenge failed")
+	}
+	return nil
 }
 
 // This is actually done by the server.
-func DoChallenge(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoChallenge(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals *AuthentictedPrincipals, msg FileproxyMessage) error {
 	// Construct challenge
 	// Send it
@@ -221,52 +333,133 @@ func DoChallenge(ms *util.MessageStream, policyKey []byte, resourceMaster *resou
 	return nil
 }
 
-func DoCreate(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoCreate(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
-	// Authorized?
-	// Put it in table.
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info != nil {
+		FailureResponse(ms, int(MessageType_CREATE), "resource exists")
+		return
+	}
+	infoNew := new(resourcemanager.ResourceInfo)
+	if !IsAuthorized(*msg.Type, infoNew, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_CREATE), "not authorized")
+		return
+	}
 	// Send response
+	//m.InsertResource(infoNew *ResourceInfo)
 	return
 }
 
-func DoDelete(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoDelete(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
-	// Authorized?
-	// Remove it from table.
-	// Send response
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_DELETE), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_DELETE), "not authorized")
+		return
+	}
+	m.DeleteResource(resourceName)
 	return
 }
 
-func DoAddOwner(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoAddOwner(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
-	// Authorized?
-	// Add it
-	// Send response
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_ADDOWNER), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_ADDOWNER), "not authorized")
+		return
+	}
+	// info.AddOwner(p CombinedPrincipal)
 	return
 }
 
-func DoAddReader(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoAddReader(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_ADDREADER), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_ADDREADER), "not authorized")
+		return
+	}
+	// info.AddOwner(p CombinedPrincipal)
 	return
 }
 
-func DoAddWriter(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoAddWriter(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_ADDWRITER), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_ADDWRITER), "not authorized")
+		return
+	}
+	// info.AddOwner(p CombinedPrincipal)
 	return
 }
 
-func DoDeleteOwner(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoDeleteOwner(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_DELETEOWNER), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_DELETEOWNER), "not authorized")
+		return
+	}
+	// info.AddOwner(p CombinedPrincipal)
 	return
 }
 
-func DoDeleteReader(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoDeleteReader(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_DELETEREADER), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_DELETEREADER), "not authorized")
+		return
+	}
+	// info.DeleteWriter(p CombinedPrincipal)
 	return
 }
 
-func DoDeleteWriter(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoDeleteWriter(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_DELETEWRITER), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_DELETEWRITER), "not authorized")
+		return
+	}
+	// info.DeleteWriter(p CombinedPrincipal)
 	return
 }
 

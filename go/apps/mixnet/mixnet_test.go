@@ -86,7 +86,7 @@ func makeContext(batchSize int) (*RouterContext, *ProxyContext, *DirectoryContex
 	}
 
 	// Create a proxy context. This just loads the domain.
-	proxy, err := makeProxyContext(localAddr, d)
+	proxy, err := makeProxyContext(localAddr, []string{directory.listener.Addr().String()}, d)
 	if err != nil {
 		router.Close()
 		return nil, nil, nil, nil, err
@@ -115,9 +115,9 @@ func makeRouterContext(dir, rAddr string, directories []string,
 	return router, nil
 }
 
-func makeProxyContext(proxyAddr string, domain *tao.Domain) (*ProxyContext, error) {
+func makeProxyContext(proxyAddr string, directories []string, domain *tao.Domain) (*ProxyContext, error) {
 	// Create a proxy context. This just loads the domain.
-	proxy, err := NewProxyContext(domain.ConfigPath, network, proxyAddr, timeout)
+	proxy, err := NewProxyContext(domain.ConfigPath, network, proxyAddr, directories, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -636,11 +636,11 @@ func TestCreateTimeout(t *testing.T) {
 
 // Test timeout on ReceiveMessage().
 func TestSendMessageTimeout(t *testing.T) {
-	router, proxy, _, domain, err := makeContext(2)
+	router, proxy, directory, domain, err := makeContext(2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	proxy2, err := makeProxyContext(localAddr, domain)
+	proxy2, err := makeProxyContext(localAddr, []string{directory.listener.Addr().String()}, domain)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -686,7 +686,7 @@ func TestSendMessageTimeout(t *testing.T) {
 // The client sends the server a message and the server echoes it back.
 func TestMixnetSingleHop(t *testing.T) {
 	clientCt := 10
-	router, proxy, _, domain, err := makeContext(clientCt)
+	router, proxy, directory, domain, err := makeContext(clientCt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -709,7 +709,7 @@ func TestMixnetSingleHop(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		go func(pid int, ch chan<- testResult) {
 			pa := "127.0.0.1:0"
-			proxy, err := makeProxyContext(pa, domain)
+			proxy, err := makeProxyContext(pa, []string{directory.listener.Addr().String()}, domain)
 			if err != nil {
 				ch <- testResult{err, nil}
 				return
@@ -762,7 +762,7 @@ func TestMixnetSingleHop(t *testing.T) {
 // Test routing TLS connection with mixnet
 func TestMixnetSingleHopTLS(t *testing.T) {
 	clientCt := 4
-	router, proxy, _, domain, err := makeContext(clientCt)
+	router, proxy, directory, domain, err := makeContext(clientCt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -785,7 +785,7 @@ func TestMixnetSingleHopTLS(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		go func(pid int, ch chan<- testResult) {
 			pa := "127.0.0.1:0"
-			proxy, err := makeProxyContext(pa, domain)
+			proxy, err := makeProxyContext(pa, []string{directory.listener.Addr().String()}, domain)
 			if err != nil {
 				ch <- testResult{err, nil}
 				return
@@ -882,7 +882,7 @@ func TestMixnetMultiHop(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		go func(pid int, ch chan<- testResult) {
 			pa := "127.0.0.1:0"
-			proxy, err := makeProxyContext(pa, domain)
+			proxy, err := makeProxyContext(pa, []string{directory.listener.Addr().String()}, domain)
 			if err != nil {
 				ch <- testResult{err, nil}
 				return
@@ -989,7 +989,7 @@ func TestMixnetMultiPath(t *testing.T) {
 	for i := 0; i < clientCt; i++ {
 		go func(pid int, ch chan<- testResult) {
 			pa := "127.0.0.1:0"
-			proxy, err := makeProxyContext(pa, domain)
+			proxy, err := makeProxyContext(pa, []string{directory.listener.Addr().String()}, domain)
 			if err != nil {
 				ch <- testResult{err, nil}
 				return

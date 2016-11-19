@@ -169,6 +169,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 		result := &DirectoryMessage{
 			Type:  DirectoryMessageType_DIRECTORY.Enum(),
 			Addrs: dc.directory,
+			Keys:  dc.serverKeys,
 		}
 		ret, err := proto.Marshal(result)
 		if err != nil {

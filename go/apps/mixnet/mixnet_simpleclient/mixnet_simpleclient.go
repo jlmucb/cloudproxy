@@ -55,6 +55,8 @@ func main() {
 
 	msg := []byte(fmt.Sprintf("My name is %d.", *id))
 
+	fmt.Println("Writing")
+
 	if _, err = tlsConn.Write(msg); err != nil {
 		glog.Fatal(err)
 	}
@@ -68,7 +70,8 @@ func main() {
 	if string(msg) != string(res[:bytes]) {
 		glog.Fatal(errors.New("Expected:" + string(msg) + ". Got: " + string(res[:bytes]) + "."))
 	} else {
-		glog.Info("Got: ", string(res[:bytes]))
+		fmt.Println("Here:", string(res[:bytes]))
+		glog.Infoln("Got: ", string(res[:bytes]))
 	}
 
 	glog.Flush()

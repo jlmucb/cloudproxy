@@ -56,7 +56,8 @@ var proxyAddr = flag.String("addr", ":1080", "Address and port to listen to clie
 // TODO(kwonalbert) Shouldn't need a router addr or the key here
 // Should download it automatically from the directory
 var routerAddr = flag.String("router_addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
-var keyFIle = flag.String("exit_key", "exit.pem", "PEM encoded exit key")
+var dirAddr = flag.String("dir_addr", "127.0.0.1:8000", "Address and port of the router directory.")
+var keyFile = flag.String("exit_key", "", "PEM encoded exit key")
 var circuit = flag.String("circuit", "", "A file with pre-built circuit.")
 var network = flag.String("network", "tcp", "Network protocol for the mixnet proxy and router.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
@@ -69,7 +70,7 @@ func main() {
 		glog.Fatalf("proxy: failed to parse timeout duration: %s", err)
 	}
 
-	proxy, err := mixnet.NewProxyContext(*configPath, *network, *proxyAddr, timeout)
+	proxy, err := mixnet.NewProxyContext(*configPath, *network, *proxyAddr, []string{*dirAddr}, timeout)
 	if err != nil {
 		glog.Fatalf("failed to configure proxy: %s", err)
 	}
@@ -85,16 +86,20 @@ func main() {
 		os.Exit(0x80 + signo)
 	}()
 
-	kb, err := ioutil.ReadFile(*keyFIle)
-	if err != nil {
-		glog.Errorf("No exit key file..")
+	var exitKey *[32]byte = nil
+	if *keyFile != "" {
+		var key [32]byte
+		kb, err := ioutil.ReadFile(*keyFile)
+		if err != nil {
+			glog.Errorf("No exit key file..")
+		}
+		block, _ := pem.Decode(kb)
+		copy(key[:], block.Bytes)
+		exitKey = &key
 	}
-	var exitKey [32]byte
-	block, _ := pem.Decode(kb)
-	copy(exitKey[:], block.Bytes)
 
 	if *circuit == "" {
-		if err = serveClients([]string{*routerAddr}, &exitKey, proxy); err != nil {
+		if err = serveClients([]string{*routerAddr}, exitKey, proxy); err != nil {
 			glog.Errorf("proxy: error while serving: %s", err)
 		}
 	} else {
@@ -107,7 +112,7 @@ func main() {
 		for scan.Scan() {
 			routers = append(routers, scan.Text())
 		}
-		if err = serveClients(routers, &exitKey, proxy); err != nil {
+		if err = serveClients(routers, exitKey, proxy); err != nil {
 			glog.Errorf("proxy: error while serving: %s", err)
 		}
 	}

@@ -185,7 +185,6 @@ func (r *RouterContext) directoryConsensus() {
 		if err != nil {
 			log.Println("GetDirectory err:", err)
 		}
-		//fmt.Println("Got directory")
 		// TODO(kwonalbert): Check directory consensus
 		r.directory = directory
 		r.serverKeys = keys

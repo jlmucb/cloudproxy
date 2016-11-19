@@ -146,7 +146,7 @@ func TestSocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	proxy, err := makeProxyContext(localAddr, d)
+	proxy, err := makeProxyContext(localAddr, nil, d)
 	if err != nil {
 		t.Fatal(err)
 	}

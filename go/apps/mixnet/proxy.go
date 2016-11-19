@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -56,12 +57,18 @@ type ProxyContext struct {
 		m map[uint32]bool
 	}
 
+	// address of the directories
+	directories []string
+	// list of available servers and their keys for exit encryption
+	directory  []string
+	serverKeys [][]byte
+
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on read/write.
 }
 
 // NewProxyContext loads a domain from a local configuration.
-func NewProxyContext(path, network, addr string, timeout time.Duration) (p *ProxyContext, err error) {
+func NewProxyContext(path, network, addr string, directories []string, timeout time.Duration) (p *ProxyContext, err error) {
 	p = new(ProxyContext)
 	p.network = network
 	p.timeout = timeout
@@ -91,7 +98,36 @@ func NewProxyContext(path, network, addr string, timeout time.Duration) (p *Prox
 		m map[uint32]bool
 	}{m: make(map[uint32]bool)}
 
+	p.directories = directories
+
 	return p, nil
+}
+
+func (p *ProxyContext) directoryConsensus() {
+	for _, dirAddr := range p.directories {
+		directory, keys, err := p.GetDirectory(dirAddr)
+		if err != nil {
+			log.Println("GetDirectory err:", err)
+		}
+		// TODO(kwonalbert): Check directory consensus
+		p.directory = directory
+		p.serverKeys = keys
+	}
+}
+
+// Read the directory from a directory server
+// TODO(kwonalbert): This is more or less a duplicate of the router get dir..
+// Combine them..
+func (p *ProxyContext) GetDirectory(dirAddr string) ([]string, [][]byte, error) {
+	c, err := tao.Dial(p.network, dirAddr, p.domain.Guard, p.domain.Keys.VerifyingKey, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	directory, keys, err := GetDirectory(c)
+	if err != nil {
+		return nil, nil, err
+	}
+	return directory, keys, c.Close()
 }
 
 // Close unbinds the proxy server socket.
@@ -144,6 +180,20 @@ func (p *ProxyContext) handleConn(c *Conn) {
 // specified by addrs[0]. It directs the router to construct a circuit to a
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
 func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circuit, uint64, error) {
+	p.directoryConsensus()
+	if exitKey == nil {
+		exit := addrs[len(addrs)-2]
+		idx := -1
+		for s, server := range p.directory {
+			if server == exit {
+				idx = s
+			}
+		}
+		var key [32]byte
+		copy(key[:], p.serverKeys[idx])
+		exitKey = &key
+	}
+
 	id, err := p.newID()
 	if err != nil {
 		return nil, id, err

@@ -28,53 +28,78 @@ import (
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
 
+func stringIntoPointer(s1 string) *string {
+        return &s1
+}
+
+func intIntoPointer(i int) *int32 {
+	ii := int32(i)
+        return &ii
+}
+
 // SendFile reads a file from disk and streams it to a receiver across a
 // MessageStream. 
 func SendFile(ms *util.MessageStream, m *resourcemanager.ResourceMasterInfo,
-		resourceName string, keys []byte) error {
-	// Look up resource
-	info := m.FindResource(resourceName)
-	if info == nil {
-		return errors.New("No such file")
-	}
+		info *resourcemanager.ResourceInfo) error {
 	fileContents, err := info.Read(*m.BaseDirectoryName)
 	if err != nil {
+		return errors.New("No message payload")
 	}
 	fmt.Printf("File contents: %x\n", fileContents)
-	// Format response and write file response to channel
-	// taosupport.SendMessage(msg)
-	return nil
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_RESPONSE))
+	var msg FileproxyMessage
+	msgtype := MessageType(MessageType_READ)
+	msg.Type = &msgtype
+	msg.NumTotalBuffers = intIntoPointer(1)
+	msg.CurrentBuffer = intIntoPointer(1)
+	msg.Data[0] = fileContents
+	var payload []byte
+	payload, err = proto.Marshal(&msg)
+	outerMessage.Data[0] = payload
+	return taosupport.SendMessage(ms, &outerMessage)
 }
 
 // GetFile receives bytes from a sender and optionally encrypts them and adds
 // integrity protection, and writes them to disk.
-func GetFile(ms *util.MessageStream, resourceMaster *resourcemanager.ResourceMasterInfo,
-		resourceName string, keys []byte) error {
-	// Look up resource
-	info := m.FindResource(resourceName)
-	if info == nil {
-		return errors.New("No such file")
-	}
+func GetFile(ms *util.MessageStream, m *resourcemanager.ResourceMasterInfo,
+		info *resourcemanager.ResourceInfo) error {
 	// Read bytes from channel
-	// outerMessage, nil := taosupport.GetMessage(ms)
-	// Right response? No errors?
-	// Unmarshal
-	// taosupport.Protect(keys []byte, in []byte) ([]byte, error)
-	// Write them to disk (doesn't support large files for now)
-	// err := ioutil.WriteFile(filename, fileContents, 0644)
-	return nil
+	outerMessage, err := taosupport.GetMessage(ms)
+	if err != nil {
+		return errors.New("Bad message")
+	}
+	if *outerMessage.MessageType != *intIntoPointer(int(taosupport.MessageType_RESPONSE)) {
+		return errors.New("Bad message")
+	}
+	if len(outerMessage.Data) == 0 {
+		return errors.New("No message payload")
+	}
+	var msg FileproxyMessage
+	err = proto.Unmarshal(outerMessage.Data[0], &msg)
+	if err != nil {
+		return errors.New("Bad payload message")
+	}
+	if msg.Type == nil || *msg.Type != MessageType_READ {
+		return errors.New("Wrong message response")
+	}
+	if len(msg.Data[0]) == 0 {
+		return errors.New("No file contents")
+	}
+	fileContents := msg.Data[0]
+	return info.Write(*m.BaseDirectoryName, fileContents)
 }
 
 type AuthentictedPrincipals struct {
 	ValidPrincipals []resourcemanager.CombinedPrincipal
 };
 
-func FailureResponse() *taosupport.SimpleMessage {
-	return nil
-}
-
-func SuccessResponse() *taosupport.SimpleMessage {
-	return nil
+func FailureResponse(ms *util.MessageStream, msgType int, err_string string) {
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(msgType)
+	outerMessage.Err = stringIntoPointer(err_string)
+	taosupport.SendMessage(ms, &outerMessage)
+	return
 }
 
 func IsAuthorized(action MessageType, resourceInfo *resourcemanager.ResourceInfo,
@@ -111,11 +136,36 @@ func IsAuthorized(action MessageType, resourceInfo *resourcemanager.ResourceInfo
 }
 
 func RequestChallenge(ms *util.MessageStream, cert []byte) error {
-	return nil
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+	var msg FileproxyMessage
+	msgType := MessageType_REQUEST_CHALLENGE
+	msg.Type = &msgType
+	msg.Data[0] = cert
+	var payload []byte
+	payload, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
+	}
+	outerMessage.Data[0] = payload
+	return taosupport.SendMessage(ms, &outerMessage)
 }
 
 func Create(ms *util.MessageStream, name string, cert []byte) error {
-	return nil
+	var outerMessage taosupport.SimpleMessage
+	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+	var msg FileproxyMessage
+	msgType := MessageType_CREATE
+	msg.Type = &msgType
+	msg.Arguments[0] = name
+	msg.Data[0] = cert
+	var payload []byte;
+	payload, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
+	}
+	outerMessage.Data[0] = payload
+	return taosupport.SendMessage(ms, &outerMessage)
 }
 
 func Delete(ms *util.MessageStream, name string) error {
@@ -220,19 +270,38 @@ func DoDeleteWriter(ms *util.MessageStream, policyKey []byte, resourceMaster *re
 	return
 }
 
-func DoReadResource(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoReadResource(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
-	// In table?
-	// Authorized?
-	// Read and decrypt file
+
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_READ), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_READ), "not authorized")
+		return
+	}
+	// Send file
+	_ = SendFile(ms, m, info)
 	return
 }
 
-func DoWriteResource(ms *util.MessageStream, policyKey []byte, resourceMaster *resourcemanager.ResourceMasterInfo,
+func DoWriteResource(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
                 principals* AuthentictedPrincipals, msg FileproxyMessage) {
-	// In table?
-	// Authorized?
-	// Encrypt and write file
+	resourceName := msg.Arguments[0]
+	info := m.FindResource(resourceName)
+	if info == nil {
+		FailureResponse(ms, int(MessageType_WRITE), "no such resource")
+		return
+	}
+	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+		FailureResponse(ms, int(MessageType_WRITE), "not authorized")
+		return
+	}
+	// Send file
+	_ = SendFile(ms, m, info)
 	return
 }
 

@@ -23,6 +23,11 @@ import (
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
+
+/* 
+ *	TODO(jlm): Don't forget hpm sync.RWMutex in calls
+ */
+
 func EncodeTime(t time.Time) (string, error) {
 	const longForm = "2006-01-02T15:04:05.999999999Z07:00"
 	return t.Format(longForm), nil

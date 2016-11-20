@@ -17,8 +17,10 @@
 package common;
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"sync"
 
 	// "github.com/jlmucb/cloudproxy/go/tao"
 	// "github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -27,6 +29,25 @@ import (
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
+
+type AuthentictedPrincipals struct {
+	ValidPrincipals []resourcemanager.CombinedPrincipal
+}
+
+type ServerData struct {
+	policyCert	*x509.Certificate
+	principalsMutex sync.RWMutex
+	principals AuthentictedPrincipals
+	resourceMutex  sync.RWMutex
+	resourceManager *resourcemanager.ResourceMasterInfo
+}
+
+type ClientData struct {
+	policyCert	*x509.Certificate
+	userMutex	sync.RWMutex
+	certs		[][]byte
+	privateKeys	[]taosupport.PrivateKeyMessage
+}
 
 func stringIntoPointer(s1 string) *string {
         return &s1
@@ -39,9 +60,9 @@ func intIntoPointer(i int) *int32 {
 
 // SendFile reads a file from disk and streams it to a receiver across a
 // MessageStream. 
-func SendFile(ms *util.MessageStream, m *resourcemanager.ResourceMasterInfo,
+func SendFile(ms *util.MessageStream, serverData *ServerData,
 		info *resourcemanager.ResourceInfo) error {
-	fileContents, err := info.Read(*m.BaseDirectoryName)
+	fileContents, err := info.Read(*serverData.resourceManager.BaseDirectoryName)
 	if err != nil {
 		return errors.New("No message payload")
 	}
@@ -62,7 +83,7 @@ func SendFile(ms *util.MessageStream, m *resourcemanager.ResourceMasterInfo,
 
 // GetFile receives bytes from a sender and optionally encrypts them and adds
 // integrity protection, and writes them to disk.
-func GetFile(ms *util.MessageStream, m *resourcemanager.ResourceMasterInfo,
+func GetFile(ms *util.MessageStream, serverData *ServerData, 
 		info *resourcemanager.ResourceInfo) error {
 	// Read bytes from channel
 	outerMessage, err := taosupport.GetMessage(ms)
@@ -87,12 +108,8 @@ func GetFile(ms *util.MessageStream, m *resourcemanager.ResourceMasterInfo,
 		return errors.New("No file contents")
 	}
 	fileContents := msg.Data[0]
-	return info.Write(*m.BaseDirectoryName, fileContents)
+	return info.Write(*serverData.resourceManager.BaseDirectoryName, fileContents)
 }
-
-type AuthentictedPrincipals struct {
-	ValidPrincipals []resourcemanager.CombinedPrincipal
-};
 
 func FailureResponse(ms *util.MessageStream, msgType int, err_string string) {
 	var outerMessage taosupport.SimpleMessage
@@ -102,8 +119,8 @@ func FailureResponse(ms *util.MessageStream, msgType int, err_string string) {
 	return
 }
 
-func IsAuthorized(action MessageType, resourceInfo *resourcemanager.ResourceInfo,
-		policyKey []byte, principals* AuthentictedPrincipals) bool {
+func IsAuthorized(action MessageType, serverData *ServerData,
+		resourceInfo *resourcemanager.ResourceInfo) bool {
 	switch(action) {
 	default:
 		return false
@@ -112,22 +129,24 @@ func IsAuthorized(action MessageType, resourceInfo *resourcemanager.ResourceInfo
 	case MessageType_CREATE:
 		return false
 	case MessageType_DELETE, MessageType_ADDWRITER, MessageType_DELETEWRITER, MessageType_WRITE:
-		for p := range principals.ValidPrincipals {
-			if resourceInfo.IsOwner(principals.ValidPrincipals[p]) || resourceInfo.IsWriter(principals.ValidPrincipals[p]) {
+		for p := range serverData.principals.ValidPrincipals {
+			if resourceInfo.IsOwner(serverData.principals.ValidPrincipals[p]) ||
+					resourceInfo.IsWriter(serverData.principals.ValidPrincipals[p]) {
 				return true
 			}
 		}
 		return false
 	case MessageType_ADDREADER, MessageType_DELETEREADER, MessageType_READ:
-		for p := range principals.ValidPrincipals {
-			if resourceInfo.IsOwner(principals.ValidPrincipals[p]) || resourceInfo.IsReader(principals.ValidPrincipals[p]) {
+		for p := range serverData.principals.ValidPrincipals {
+			if resourceInfo.IsOwner(serverData.principals.ValidPrincipals[p]) ||
+					resourceInfo.IsReader(serverData.principals.ValidPrincipals[p]) {
 				return true
 			}
 		}
 		return false
 	case MessageType_ADDOWNER, MessageType_DELETEOWNER:
-		for p := range principals.ValidPrincipals {
-			if resourceInfo.IsOwner(principals.ValidPrincipals[p]) {
+		for p := range serverData.principals.ValidPrincipals {
+			if resourceInfo.IsOwner(serverData.principals.ValidPrincipals[p]) {
 				return true
 			}
 		}
@@ -322,8 +341,7 @@ func WriteResource(ms *util.MessageStream, resourceName string, fileContents []b
 }
 
 // This is actually done by the server.
-func DoChallenge(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals *AuthentictedPrincipals, msg FileproxyMessage) error {
+func DoChallenge(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) error {
 	// Construct challenge
 	// Send it
 	// Get response
@@ -333,16 +351,15 @@ func DoChallenge(ms *util.MessageStream, policyKey []byte, m *resourcemanager.Re
 	return nil
 }
 
-func DoCreate(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoCreate(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info != nil {
 		FailureResponse(ms, int(MessageType_CREATE), "resource exists")
 		return
 	}
 	infoNew := new(resourcemanager.ResourceInfo)
-	if !IsAuthorized(*msg.Type, infoNew, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, infoNew) {
 		FailureResponse(ms, int(MessageType_CREATE), "not authorized")
 		return
 	}
@@ -351,31 +368,29 @@ func DoCreate(ms *util.MessageStream, policyKey []byte, m *resourcemanager.Resou
 	return
 }
 
-func DoDelete(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoDelete(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETE), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_DELETE), "not authorized")
 		return
 	}
-	m.DeleteResource(resourceName)
+	serverData.resourceManager.DeleteResource(resourceName)
 	return
 }
 
-func DoAddOwner(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoAddOwner(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_ADDOWNER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_ADDOWNER), "not authorized")
 		return
 	}
@@ -383,15 +398,14 @@ func DoAddOwner(ms *util.MessageStream, policyKey []byte, m *resourcemanager.Res
 	return
 }
 
-func DoAddReader(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoAddReader(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_ADDREADER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_ADDREADER), "not authorized")
 		return
 	}
@@ -399,15 +413,14 @@ func DoAddReader(ms *util.MessageStream, policyKey []byte, m *resourcemanager.Re
 	return
 }
 
-func DoAddWriter(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoAddWriter(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_ADDWRITER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_ADDWRITER), "not authorized")
 		return
 	}
@@ -415,15 +428,14 @@ func DoAddWriter(ms *util.MessageStream, policyKey []byte, m *resourcemanager.Re
 	return
 }
 
-func DoDeleteOwner(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETEOWNER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_DELETEOWNER), "not authorized")
 		return
 	}
@@ -431,15 +443,14 @@ func DoDeleteOwner(ms *util.MessageStream, policyKey []byte, m *resourcemanager.
 	return
 }
 
-func DoDeleteReader(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETEREADER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_DELETEREADER), "not authorized")
 		return
 	}
@@ -447,15 +458,14 @@ func DoDeleteReader(ms *util.MessageStream, policyKey []byte, m *resourcemanager
 	return
 }
 
-func DoDeleteWriter(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETEWRITER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_DELETEWRITER), "not authorized")
 		return
 	}
@@ -463,46 +473,42 @@ func DoDeleteWriter(ms *util.MessageStream, policyKey []byte, m *resourcemanager
 	return
 }
 
-func DoReadResource(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoReadResource(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_READ), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_READ), "not authorized")
 		return
 	}
 	// Send file
-	_ = SendFile(ms, m, info)
+	_ = SendFile(ms, serverData, info)
 	return
 }
 
-func DoWriteResource(ms *util.MessageStream, policyKey []byte, m *resourcemanager.ResourceMasterInfo,
-                principals* AuthentictedPrincipals, msg FileproxyMessage) {
+func DoWriteResource(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := m.FindResource(resourceName)
+	info := serverData.resourceManager.FindResource(resourceName)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_WRITE), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, info, policyKey, principals) {
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_WRITE), "not authorized")
 		return
 	}
 	// Send file
-	_ = SendFile(ms, m, info)
+	_ = SendFile(ms, serverData, info)
 	return
 }
 
 // Dispatch
 
-func DoRequest(ms *util.MessageStream, policyKey []byte,
-		resourceMaster *resourcemanager.ResourceMasterInfo,
-		principals* AuthentictedPrincipals, req []byte) {
+func DoRequest(ms *util.MessageStream, serverData *ServerData, req []byte) {
 	msg := new(FileproxyMessage);
 	err := proto.Unmarshal(req, msg)
 	if err != nil {
@@ -518,37 +524,37 @@ func DoRequest(ms *util.MessageStream, policyKey []byte,
 		taosupport.SendMessage(ms, resp)
 		return
 	case MessageType_REQUEST_CHALLENGE:
-		DoChallenge(ms, policyKey, resourceMaster, principals, *msg)
+		DoChallenge(ms, serverData, *msg)
 		return
 	case MessageType_CREATE:
-		DoCreate(ms, policyKey, resourceMaster, principals, *msg)
+		DoCreate(ms, serverData, *msg)
 		return
 	case MessageType_DELETE:
-		DoDelete(ms, policyKey, resourceMaster, principals, *msg)
+		DoDelete(ms, serverData, *msg)
 		return
 	case MessageType_ADDREADER:
-		DoAddReader(ms, policyKey, resourceMaster, principals, *msg)
+		DoAddReader(ms, serverData, *msg)
 		return
 	case MessageType_ADDOWNER:
-		DoAddOwner(ms, policyKey, resourceMaster, principals, *msg)
+		DoAddOwner(ms, serverData, *msg)
 		return
 	case MessageType_ADDWRITER:
-		DoAddWriter(ms, policyKey, resourceMaster, principals, *msg)
+		DoAddWriter(ms, serverData, *msg)
 		return
 	case MessageType_DELETEREADER:
-		DoDeleteReader(ms, policyKey, resourceMaster, principals, *msg)
+		DoDeleteReader(ms, serverData, *msg)
 		return
 	case MessageType_DELETEOWNER:
-		DoDeleteOwner(ms, policyKey, resourceMaster, principals, *msg)
+		DoDeleteOwner(ms, serverData, *msg)
 		return
 	case MessageType_DELETEWRITER:
-		DoDeleteWriter(ms, policyKey, resourceMaster, principals, *msg)
+		DoDeleteWriter(ms, serverData, *msg)
 		return
 	case MessageType_READ:
-		DoReadResource(ms, policyKey, resourceMaster, principals, *msg)
+		DoReadResource(ms, serverData, *msg)
 		return
 	case MessageType_WRITE:
-		DoWriteResource(ms, policyKey, resourceMaster, principals, *msg)
+		DoWriteResource(ms, serverData, *msg)
 		return
 	}
 }

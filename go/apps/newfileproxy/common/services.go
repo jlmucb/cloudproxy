@@ -683,20 +683,28 @@ func DoWriteResource(ms *util.MessageStream, serverData *ServerData, msg Filepro
 
 // Dispatch
 
-func DoRequest(ms *util.MessageStream, serverData *ServerData, req []byte) {
+func OuterFailureMessage(ms *util.MessageStream, errStr string) {
+	resp := new(taosupport.SimpleMessage)
+	mt := int32(taosupport.MessageType_RESPONSE)
+	resp.MessageType = &mt
+	resp.Err = &errStr
+	taosupport.SendMessage(ms, resp)
+}
+
+func DoRequest(ms *util.MessageStream, serverData *ServerData, req taosupport.SimpleMessage) {
+	// check that req is a request and has data
+	if req.MessageType == nil || *req.MessageType != int32(taosupport.MessageType_REQUEST) || len(req.Data) <1 {
+		OuterFailureMessage(ms, "Malformed request")
+		return
+	}
 	msg := new(FileproxyMessage);
-	err := proto.Unmarshal(req, msg)
+	err := proto.Unmarshal(req.Data[0], msg)
 	if err != nil {
 		return
 	}
 	switch(*msg.Type) {
 	default:
-		resp := new(taosupport.SimpleMessage)
-		mt := int32(taosupport.MessageType_RESPONSE)
-		resp.MessageType = &mt
-		errString := "Unsupported request"
-		resp.Err = &errString
-		taosupport.SendMessage(ms, resp)
+		OuterFailureMessage(ms, "Unsupported request")
 		return
 	case MessageType_REQUEST_CHALLENGE:
 		DoChallenge(ms, serverData, *msg)

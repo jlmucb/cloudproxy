@@ -24,22 +24,16 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
+var configPath = flag.String("configPath", "/Domains/domain.simpleexample/tao.config", "The Tao domain config")
+var domainPass = flag.String("password", "xxx", "The domain password")
+var keyPath = flag.String("path", "./tmptest", "path to user keys files")
+var numKeys = flag.Int("numKeys", 3, "number of keys to generate")
+var baseName = flag.String("baseUserName", "TestUser", "generic user name")
+
 // Generate some user keys
-var simpleCfg = flag.String("domain_config",
-	"./tao.config",
-	"path to tao configuration")
-var keyPath = flag.String("path",
-	"./tmptest",
-	"path to FileClient files")
-var numKeys = flag.Int("numKeys", 3, 
-        "number of keys to generate")
-var baseName = flag.String("baseUserName",
-        "TestUser",
-        "generic user name")
-
-
 func main() {
 
 	// Parse flags
@@ -48,9 +42,23 @@ func main() {
 	fmt.Printf("Make user keys, destination: %s\n", outputFileName)
 
 	// Get policy key and cert.
+	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
+        if domain == nil {
+                fmt.Printf("keyUtil: no domain path - %s, pass - %s, err - %s\n",
+                        *configPath, *domainPass, err)
+                return
+        } else if err != nil {
+                fmt.Printf("keyUtil: Couldn't load the config path %s: %s\n",
+                        *configPath, err)
+                return
+        }
+        fmt.Printf("key_util: Loaded domain\n")
+	policyKey := domain.Keys
+
 	var signerPriv interface{}
+	signerPriv = policyKey.SigningKey.GetSigner()
 	var signerCertificate *x509.Certificate
-	signerCertificate = nil // FIX
+	signerCertificate = policyKey.Cert
 
 	userKeys := new(common.UserKeysMessage)
 

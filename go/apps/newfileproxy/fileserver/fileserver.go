@@ -48,27 +48,9 @@ var serverAddr string
 // service request/response buffers but we don't want to introduce complexity
 // into this example.  The single request response buffer is defined in
 // taosupport/taosupport.proto.
-func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData,
-	clientProgramName string, req *taosupport.SimpleMessage) (bool, error) {
-
-	//  The somewhat boring secret is the corresponding simpleclient's program name || 43
-	secret := clientProgramName + "43"
-
-	if *req.RequestType == "SecretRequest" {
-		req.Data = append(req.Data, []byte(secret))
-		taosupport.SendResponse(ms, req)
-		log.Printf("HandleServiceRequest response buffer: ")
-		taosupport.PrintMessage(req)
-		return true, nil
-	} else {
-		log.Printf("HandleServiceRequest response is bad request\n")
-		errmsg := "BadRequest"
-		req.Err = &errmsg
-		return false, nil
-	}
-}
 
 func serviceThead(ms *util.MessageStream, clientProgramName string,
+	// serverData common.ServerData
 	serverProgramData *taosupport.TaoProgramData) {
 
 	for {
@@ -79,11 +61,8 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		log.Printf("serviceThread, got message: ")
 		taosupport.PrintMessage(req)
 
-		terminate, _ := HandleServiceRequest(ms, serverProgramData,
-			clientProgramName, req)
-		if terminate {
-			break
-		}
+		// DoRequest(ms *util.MessageStream, serverData *ServerData, req []byte)
+
 	}
 	log.Printf("fileserver: client thread terminating\n")
 }

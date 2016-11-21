@@ -22,7 +22,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"os"
+	"path"
 	"sync"
+	"time"
 
 	// "github.com/jlmucb/cloudproxy/go/tao"
 	// "github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -436,21 +439,66 @@ func DoChallenge(ms *util.MessageStream, serverData *ServerData, msg FileproxyMe
 }
 
 func DoCreate(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+	// Should have two arguments: resourceName, type
+	if len(msg.Arguments) < 2 {
+		FailureResponse(ms, int(MessageType_CREATE), "resource type not specified")
+		return
+	}
 	resourceName := msg.Arguments[0]
+
+	// Already there?
 	info := serverData.ResourceManager.FindResource(resourceName)
 	if info != nil {
 		FailureResponse(ms, int(MessageType_CREATE), "resource exists")
 		return
 	}
-	infoNew := new(resourcemanager.ResourceInfo)
-	if !IsAuthorized(*msg.Type, serverData, infoNew) {
+
+	// Create ResourceInfo
+	info = new(resourcemanager.ResourceInfo)
+	info.Name = &msg.Arguments[0]
+	encodedTime, err := resourcemanager.EncodeTime(time.Now())
+	if err != nil {
+	}
+	info.DateCreated = &encodedTime
+	info.DateModified = &encodedTime
+	size := int32(0)
+	info.Size = &size
+
+	p := new(resourcemanager.PrincipalInfo)
+
+	// Parse cert to get principal name.
+	p.Cert = msg.Data[0]
+	certificate, err := x509.ParseCertificate(p.Cert)
+	if err != nil {
+	}
+	p.Name = &certificate.Subject.CommonName
+	cp := resourcemanager.MakeCombinedPrincipalFromOne(p)
+	err = info.AddOwner(*cp)
+	if err != nil {
+	}
+
+	// Authorized?
+	if !IsAuthorized(*msg.Type, serverData, info) {
 		FailureResponse(ms, int(MessageType_CREATE), "not authorized")
 		return
 	}
+
+	// If it's a directory, create it.
+	if msg.Arguments[1] == "directory" {
+		rType := int32(resourcemanager.ResourceType_DIRECTORY)
+		info.Type = &rType
+		fileName := path.Join(*serverData.ResourceManager.BaseDirectoryName, resourceName)
+		os.Mkdir(fileName, 0666)
+	} else {
+		rType := int32(resourcemanager.ResourceType_DIRECTORY)
+		info.Type = &rType
+	}
+
+	// Put new resource in table.
+	err = serverData.ResourceManager.InsertResource(info)
+
 	// Send response
-	//m.InsertResource(infoNew *ResourceInfo)
-	suc := bool(true)
-	if suc {
+	if err == nil {
 		SuccessResponse(ms, int(MessageType_CREATE))
 	} else {
 		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")

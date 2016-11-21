@@ -40,7 +40,7 @@ message FileproxyMessage {
   // For READ and WRITE, this is the sequence number of this buffer.
   optional int32 current_buffer = 3;
   // Arguments apply to the following calls and are call dependent.
-  // For CREATE, resource, name, type ("File" or "Directory")
+  // For CREATE, resourcename, type ("file" or "directory")
   // For DELETE, resource name
   // For READ, resource name
   // For WRITE, resource name

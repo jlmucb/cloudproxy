@@ -23,11 +23,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
-
-/* 
- *	TODO(jlm): Don't forget hpm sync.RWMutex in calls
- */
-
 func EncodeTime(t time.Time) (string, error) {
 	const longForm = "2006-01-02T15:04:05.999999999Z07:00"
 	return t.Format(longForm), nil
@@ -42,8 +37,15 @@ func DecodeTime(s string) (*time.Time, error) {
 	return &tt, nil
 }
 
-// MakeCombinedPrincipal
-func MakeCombinedPrincipal(appPrincipal *PrincipalInfo, userPrincipal *PrincipalInfo) *CombinedPrincipal {
+// MakeCombinedPrincipalFromOne
+func MakeCombinedPrincipalFromOne(appPrincipal *PrincipalInfo) *CombinedPrincipal {
+	cp := new(CombinedPrincipal)
+	cp.Principals = append(cp.Principals, appPrincipal)
+	return cp
+}
+
+// MakeCombinedPrincipalFromTwo
+func MakeCombinedPrincipalFromTwo(appPrincipal *PrincipalInfo, userPrincipal *PrincipalInfo) *CombinedPrincipal {
 	cp := new(CombinedPrincipal)
 	cp.Principals = append(cp.Principals, appPrincipal)
 	cp.Principals = append(cp.Principals, userPrincipal)

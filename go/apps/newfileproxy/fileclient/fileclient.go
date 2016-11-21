@@ -15,6 +15,8 @@
 package main
 
 import (
+	"crypto"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -65,6 +67,11 @@ func main() {
 	clientData := new(common.ClientData)
 	if clientData == nil {
 	}
+	certificate, err := x509.ParseCertificate(clientProgramData.PolicyCert)
+	if err != nil {
+	}
+	clientData.PolicyCert = &certificate
+	// initialize user keys
 
 	// Get File Secrets
 	// User Certificates

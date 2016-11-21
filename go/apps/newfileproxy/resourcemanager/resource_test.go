@@ -82,6 +82,7 @@ func TestTableFunctions(t *testing.T) {
 		t.Fatal("TestTableFunctions: ParseCertificate fails\n")
 	}
 	fmt.Printf("\nPolicyCert: %x\n", policyCert)
+	fmt.Printf("\nPolicyCertificate: %x\n", policyCertificate)
 
 	programKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -144,8 +145,8 @@ func TestTableFunctions(t *testing.T) {
 	resourceMaster.PolicyCert = policyCert
 	resourceMaster.BaseDirectoryName = StringIntoPointer("./tmptest")
 
-	cp1 := MakeCombinedPrincipal(programPrincipal, user1Principal)
-	cp2 := MakeCombinedPrincipal(programPrincipal, user2Principal)
+	cp1 := MakeCombinedPrincipalFromTwo(programPrincipal, user1Principal)
+	cp2 := MakeCombinedPrincipalFromTwo(programPrincipal, user2Principal)
 	if cp1 == nil || cp2 == nil {
 		t.Fatal("Can't make combined principal")
 	}

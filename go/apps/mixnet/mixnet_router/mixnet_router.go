@@ -15,14 +15,15 @@
 package main
 
 import (
+	"bufio"
 	"crypto/x509/pkix"
 	"flag"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/apps/mixnet"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
@@ -41,12 +42,14 @@ func serveMixnetProxies(r *mixnet.RouterContext) error {
 }
 
 // Command line arguments.
-var routerAddr = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
-var dirAddr = flag.String("dir_addr", "127.0.0.1:8000", "Address and port of the router directory.")
-var routerNetwork = flag.String("network", "tcp", "Network protocol for the Tao-delegated mixnet router.")
-var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
-var batchSize = flag.Int("batch", 1, "Number of senders in a batch.")
-var timeoutDuration = flag.String("timeout", "10s", "Timeout on TCP connections, e.g. \"10s\".")
+var (
+	routerAddr      = flag.String("addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
+	directories     = flag.String("dirs", "directories", "File containing addresses of directories.")
+	routerNetwork   = flag.String("network", "tcp", "Network protocol for the Tao-delegated mixnet router.")
+	configPath      = flag.String("config", "tao.config", "Path to domain configuration file.")
+	batchSize       = flag.Int("batch", 1, "Number of senders in a batch.")
+	timeoutDuration = flag.String("timeout", "10s", "Timeout on TCP connections, e.g. \"10s\".")
+)
 
 // x509 identity of the mixnet router.
 var x509Identity pkix.Name = pkix.Name{
@@ -58,13 +61,23 @@ func main() {
 	flag.Parse()
 	timeout, err := time.ParseDuration(*timeoutDuration)
 	if err != nil {
-		glog.Fatalf("router: failed to parse timeout duration: %s", err)
+		log.Fatalf("router: failed to parse timeout duration: %s\n", err)
+	}
+
+	f, err := os.Open(*directories)
+	if err != nil {
+		log.Fatal(err)
+	}
+	scan := bufio.NewScanner(f)
+	dirs := []string{}
+	for scan.Scan() {
+		dirs = append(dirs, scan.Text())
 	}
 
 	r, err := mixnet.NewRouterContext(*configPath, *routerNetwork, *routerAddr,
-		timeout, []string{*dirAddr}, *batchSize, &x509Identity, tao.Parent())
+		timeout, dirs, *batchSize, &x509Identity, tao.Parent())
 	if err != nil {
-		glog.Fatalf("failed to configure router: %s", err)
+		log.Fatalln("failed to configure router:", err)
 	}
 
 	sigs := make(chan os.Signal, 1)
@@ -72,14 +85,12 @@ func main() {
 	go func() {
 		sig := <-sigs
 		r.Close()
-		glog.Infof("router: closing on signal: %s", sig)
+		log.Println("router: closing on signal:", sig)
 		signo := int(sig.(syscall.Signal))
 		os.Exit(0x80 + signo)
 	}()
 
 	if err := serveMixnetProxies(r); err != nil {
-		glog.Errorf("router: error while serving: %s", err)
+		log.Fatalln("router: error while serving:", err)
 	}
-
-	glog.Flush()
 }

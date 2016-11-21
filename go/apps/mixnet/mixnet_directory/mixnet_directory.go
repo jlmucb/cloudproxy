@@ -17,17 +17,17 @@ package main
 import (
 	"crypto/x509/pkix"
 	"flag"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/apps/mixnet"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-var directoryAddr = flag.String("addr", "127.0.0.1:8123", "Address and port of this directory.")
+var addr = flag.String("addr", "127.0.0.1:9000", "Address and port of this directory.")
 var network = flag.String("network", "tcp", "Network protocol.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
 var timeoutDuration = flag.String("timeout", "10s", "Timeout on TCP connections, e.g. \"10s\".")
@@ -42,7 +42,7 @@ func serveRouters(dir *mixnet.DirectoryContext) error {
 	for {
 		_, err := dir.Accept()
 		if err != nil {
-			glog.Infoln(err)
+			log.Println(err)
 			return err
 		}
 	}
@@ -51,28 +51,26 @@ func main() {
 	flag.Parse()
 	timeout, err := time.ParseDuration(*timeoutDuration)
 	if err != nil {
-		glog.Fatalf("router: failed to parse timeout duration: %s", err)
+		log.Fatalf("router: failed to parse timeout duration: %s\n", err)
 	}
 
-	dir, err := mixnet.NewDirectoryContext(*configPath, *network, *directoryAddr,
+	dir, err := mixnet.NewDirectoryContext(*configPath, *network, *addr,
 		timeout, &x509Identity, tao.Parent())
 	if err != nil {
-		glog.Fatalf("failed to configure directory: %s", err)
+		log.Fatalf("failed to configure directory: %s\n", err)
 	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	go func() {
 		sig := <-sigs
-		glog.Infof("directory: closing on signal: %s", sig)
+		log.Printf("directory: closing on signal: %s\n", sig)
 		dir.Close()
 		signo := int(sig.(syscall.Signal))
 		os.Exit(0x80 + signo)
 	}()
 
 	if err := serveRouters(dir); err != nil {
-		glog.Errorf("directory: error while serving: %s", err)
+		log.Fatalf("directory: error while serving: %s\n", err)
 	}
-
-	glog.Flush()
 }

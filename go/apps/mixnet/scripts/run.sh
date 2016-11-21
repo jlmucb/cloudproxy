@@ -17,12 +17,15 @@ echo "Starting directory..."
 $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_directory --addr $dir_addr --config $DOMAIN/tao.config &
 sleep 0.5
 
+directory_file=/tmp/directories
+echo $dir_addr > $directory_file
+
 # Start 6 routers
 echo "Starting routers..."
 for i in `seq 0 5`;
 do
   port=$[$start_port+$i]
-  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_router --addr 127.0.0.1:$port --dir_addr $dir_addr --config $DOMAIN/tao.config --batch 8 &
+  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_router --addr 127.0.0.1:$port --dirs $directory_file --config $DOMAIN/tao.config --batch 8 &
   sleep 0.3
 done
 
@@ -46,7 +49,7 @@ do
   elif [[ $(( $i % 4 )) == 3 ]]; then
     circuit="4.circuit"
   fi
-  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$port --config $DOMAIN/tao.config --circuit $DOMAIN/mixnet_proxy/$circuit &
+  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$port --dirs $directory_file --config $DOMAIN/tao.config --circuit $DOMAIN/mixnet_proxy/$circuit &
   sleep 0.3
 done
 

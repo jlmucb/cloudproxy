@@ -31,7 +31,7 @@ var simpleCfg = flag.String("domain_config",
 	"./tao.config",
 	"path to tao configuration")
 var keyPath = flag.String("path",
-	"./FileClient",
+	"./tmptest",
 	"path to FileClient files")
 var numKeys = flag.Int("numKeys", 3, 
         "number of keys to generate")
@@ -50,6 +50,7 @@ func main() {
 	// Get policy key and cert.
 	var signerPriv interface{}
 	var signerCertificate *x509.Certificate
+	signerCertificate = nil // FIX
 
 	userKeys := new(common.UserKeysMessage)
 
@@ -57,20 +58,29 @@ func main() {
 		userName := *baseName + strconv.Itoa(i)
 		key, err := common.GenerateUserPublicKey(userName)
 		if err != nil {
+			fmt.Printf("Can't generate user key %d\n", i)
+			return
 		}
 		signerPriv = key //FIX
 		keyData, err := common.MakeUserKeyStructute(key, userName, signerPriv, signerCertificate)
 		serializedKey, err := common.SerializeUserKey(keyData)
 		if err != nil {
+			fmt.Printf("Can't serialize user key %d\n", i)
+			return
 		}
-		if serializedKey == nil {
+		userCertificate, err := x509.ParseCertificate(keyData.Cert)
+		if err != nil {
 		}
-		// userKeys.m.SerializedKeys = m.SerializedKeys 
+		fmt.Printf("User cert %d:\n", i)
+		fmt.Printf("%x\n\n", userCertificate)
+		userKeys.SerializedKeys = append(userKeys.SerializedKeys, serializedKey)
 	}
 	serializedKeys, err := proto.Marshal(userKeys)
 	if err != nil {
 	}
 	err = ioutil.WriteFile(outputFileName, serializedKeys, 0666)
 	if err != nil {
+		fmt.Printf("Can't write %s\n", outputFileName)
+		return
 	}
 }

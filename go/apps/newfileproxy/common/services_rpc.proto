@@ -62,3 +62,12 @@ message FileproxyMessage {
   repeated bytes data = 5;
 }
 
+message UserKeyDataMessage {
+	optional bytes cert = 1;
+	optional bytes der_key = 2;
+}
+
+// User keys
+message UserKeysMessage {
+  repeated bytes serialized_keys = 1;
+}

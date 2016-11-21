@@ -17,7 +17,7 @@
 package common;
 
 import (
-	// "crypto/ecdsa"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"errors"
@@ -42,7 +42,7 @@ type AuthentictedPrincipals struct {
 type KeyData struct {
 	Cert []byte
 	Certificate *x509.Certificate
-	Key	taosupport.PrivateKeyMessage
+	Key *ecdsa.PrivateKey
 }
 
 type ServerData struct {

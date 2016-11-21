@@ -16,6 +16,7 @@ package main
 
 import (
 	"crypto"
+	"crypto/rand"
 	"crypto/x509"
 	"flag"
 	"fmt"
@@ -74,46 +75,21 @@ func main() {
 	// initialize user keys
 
 	// Get File Secrets
-	// User Certificates
-	// User Private keys
-
-	if *testRollback {
-		err = tao.Parent().InitCounter("label", 0)
+	var fileSecrets []byte
+	encryptedFileSecrets, err = ioutil.ReadFile(path.Join(*fileClientPath, "FileSecrets.bin")
+	if err != nil {
+		rand.Read(fileSecrets[0:32])
+	} else {
+		fileSecrets, err := taosupport.Unprotect(clientProgramData.ProgramSymKeys, encryptedFileSecrets)
 		if err != nil {
-			fmt.Printf("fileClient: Error return from InitCounter %s\n", err)
-		} else {
-			fmt.Printf("fileClient: InitCounter, no error\n")
+		log.Fatalln("fileclient: Error protecting data\n")
 		}
-		c,  err := tao.Parent().GetCounter("label")
-		if err != nil {
-			fmt.Printf("fileClient: Error Return from GetCounter %d %s\n", c, err)
-		} else {
-			fmt.Printf("fileclient: GetCounter successful %d\n", c)
-		}
-		data := []byte {
-			0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
-			0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5, }
-		sealed,  err := tao.Parent().RollbackProtectedSeal("label", data,
-			tao.SealPolicyDefault)  // REMOVE
-		if err != nil {
-			fmt.Printf("fileClient: Error Return from RollbackProtectedSeal %s\n", err)
-		} else {
-			fmt.Printf("fileClient: RollbackProtectedSeal successful %x\n", sealed)
-		}
-		c,  err = tao.Parent().GetCounter("label")
-		if err != nil {
-			fmt.Printf("fileClient: Error Return from GetCounter %d %s\n", c, err)
-		} else {
-			fmt.Printf("fileclient: GetCounter successful %d\n", c)
-		}
-		recoveredData,  _, err := tao.Parent().RollbackProtectedUnseal(sealed)
-		if err != nil {
-			fmt.Printf("fileClient: Error Return from RollbackProtectedUnseal %s\n", err)
-		} else {
-			fmt.Printf("fileClient: RollbackProtectedUnseal successful %x\n", recoveredData)
-		}
-		fmt.Printf("data: %x, recovered data: %x\n", data, recoveredData)
 	}
+	if fileSecrets == nil {
+	}
+
+	// Get User Certificates and Private keys
+
 
 	// Open the Tao Channel using the Program key. This program does all the
 	// standard channel negotiation and presents the secure server name
@@ -126,47 +102,30 @@ func main() {
 	log.Printf("fileclient: establish Tao Channel with %s, %s\n",
 		serverAddr, serverName)
 
-	/*
-    	 *  taoInit
-    	 *  Init Certs need Utility for User certs (tool)
-	 *  Init Keys and save them or retrieve existing keys.
-	 *  Read User certs and keys
-   	 *  Authenticate each principal
-   	 *  Create a few resources
-   	 *  Write to them
-   	 *  Read from them
-   	 *  Add a few owners, readers, writers
-   	 *  Test read
-	 *  Encrypt files and store keys
-	 */
+	// Authenticate Principals
+	// common.RequestChallenge(ms *util.MessageStream, key KeyData)
 
-	// Send a simple request and get response.
-	// We have a simple service protobuf for requests and reponsed between
-	// fileclient and simpleserver.  There's only on request: tell me the
-	// secret.
-	secretRequest := "SecretRequest"
+	// Create a resource.
+	// common.Create(ms *util.MessageStream, name string, cert []byte)
 
-	msg := new(taosupport.SimpleMessage)
-	msg.RequestType = &secretRequest
-	taosupport.SendRequest(ms, msg)
-	if err != nil {
-		log.Fatalln("fileclient: Error in response to SendRequest\n")
-	}
-	respmsg, err := taosupport.GetResponse(ms)
-	if err != nil {
-		log.Fatalln("fileclient: Error in response to GetResponse\n")
-	}
+	// Add a few owners, readers, writers
+	// common.
+	// common.AddOwner(ms *util.MessageStream, resourceName string, certs [][]byte) error
 
-	// This is the secret.
-	retrieveSecret := respmsg.Data[0]
+	// Write a resource.
+	// common.WriteResource(ms *util.MessageStream, resourceName string, fileContents []byte) error
+
+	// Read a resource.
+	// common.ReadResource(ms *util.MessageStream, resourceName string) ([]byte, error)
+
+	// Encrypt files and store keys
 
 	// Encrypt and store the secret in fileclient's save area.
-	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)
+	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, fileSecrets)
 	if err != nil {
 		log.Fatalln("fileclient: Error protecting data\n")
 	}
-	err = ioutil.WriteFile(path.Join(*fileClientPath,
-		"retrieved_secret"), out, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(*fileClientPath, "FileSecrets.bin", out, 0666)
 	if err != nil {
 		log.Fatalln("fileclient: error saving retrieved secret\n")
 	}

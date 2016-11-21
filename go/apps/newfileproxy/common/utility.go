@@ -17,13 +17,70 @@
 package common;
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"log"
 	"math/big"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 )
+
+
+
+func GenerateUserPublicKey(userName string) (*ecdsa.PrivateKey, error) {
+	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+}
+
+func MakeUserKeyStructute(key *ecdsa.PrivateKey, userName string, signerPriv interface{},
+		signerCertificate *x509.Certificate) (*KeyData, error) {
+	keyData := new(KeyData)
+	notBefore := time.Now()
+	validFor := 365 * 24 * time.Hour
+	notAfter := notBefore.Add(validFor)
+	serialNumber := new(big.Int).SetInt64(1)
+	var subjectPub interface{}
+	subjectPub = key.Public()
+ 	cert, err := CreateKeyCertificate(*serialNumber, "Google", "", "US",
+			  signerPriv, signerCertificate, "", userName, "US", subjectPub,
+			  notBefore, notAfter,
+			  x509.KeyUsageCertSign|x509.KeyUsageKeyAgreement|x509.KeyUsageDigitalSignature)
+	if err != nil {
+		return nil, err
+	}
+	keyData.Cert = cert
+	keyData.Key = key
+	return keyData, nil
+}
+
+func SerializeUserKey(key *KeyData) ([]byte, error) {
+	keyMessage := new(UserKeyDataMessage)
+	keyMessage.Cert = key.Cert
+	blob, err := x509.MarshalECPrivateKey(key.Key)
+	if err != nil {
+		return nil, err
+	}
+	keyMessage.DerKey = blob
+	return proto.Marshal(keyMessage)
+}
+
+func ParseUserKey(in []byte) (*KeyData, error) {
+	key := new(KeyData)
+	keyMessage := new(UserKeyDataMessage)
+	err := proto.Unmarshal(in, keyMessage)
+	if err != nil {
+		return nil, err
+	}
+	key.Cert = keyMessage.Cert
+	key.Key, err = x509.ParseECPrivateKey(keyMessage.DerKey)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
 
 // policyKey.SigningKey.GetSigner())
 // KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,

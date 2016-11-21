@@ -46,9 +46,10 @@ type KeyData struct {
 }
 
 type ServerData struct {
-	PolicyCert	*x509.Certificate
+	PolicyCert []byte
+	PolicyCertificate *x509.Certificate
 	PrincipalsMutex sync.RWMutex
-	Principals AuthentictedPrincipals
+	Principals *AuthentictedPrincipals
 	PesourceMutex  sync.RWMutex
 	ResourceManager *resourcemanager.ResourceMasterInfo
 }

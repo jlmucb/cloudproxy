@@ -27,7 +27,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
-	// "github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
+	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
 
 var simpleCfg = flag.String("domain_config",
@@ -40,15 +40,7 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
 
-// Handle service request, req and return response over channel (ms).
-// This handles the one valid service request: "SecretRequest"
-// and terminates the channel after the first successful request
-// which is not generally what would happen in most channels.
-// Note that in the future, we might want to use grpc rather than custom
-// service request/response buffers but we don't want to introduce complexity
-// into this example.  The single request response buffer is defined in
-// taosupport/taosupport.proto.
-
+// Handles service request, req and return response over channel (ms).
 func serviceThead(ms *util.MessageStream, clientProgramName string,
 	// serverData common.ServerData
 	serverProgramData *taosupport.TaoProgramData) {
@@ -68,10 +60,8 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 }
 
 // This is the server. It implements the server Tao Channel negotiation corresponding
-// to the client's taosupport.OpenTaoChannel.  It's possible we should move this into
-// taosupport/taosupport.go since it should not vary very much from implementation to
-// implementation.
-func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
+// to the client's taosupport.OpenTaoChannel.
+func server(serverAddr string, serverData *common.ServerData, serverProgramData *taosupport.TaoProgramData) {
 
 	var sock net.Listener
 
@@ -95,11 +85,6 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		Certificates:       []tls.Certificate{*tlsc},
 		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
-	}
-
-	// Fill ServerData
-	serverData := new(common.ServerData)
-	if serverData == nil {
 	}
 
 	// Listen for clients.
@@ -153,7 +138,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
 func main() {
 
-	// main is very similar to the initial parts of main in simpleclient.
+	// main is very similar to the initial parts of main in simpleclient,
 	// see the comments there.
 	var serverProgramData taosupport.TaoProgramData
 	defer taosupport.ClearTaoProgramData(&serverProgramData)
@@ -168,13 +153,24 @@ func main() {
 	}
 	log.Printf("fileserver name is %s\n", serverProgramData.TaoName)
 
-	/*
-    	 *  taoInit
-	 *  Init Keys and save them or retrieve existing keys.
-	 *  Read User certs and keys
-	 *  Encrypt files and store keys
-	 */
+	// Get or initialize encryption keys for table
 
-	server(serverAddr, &serverProgramData)
+	// Save encryption keys for table
+
+	// Initialize serverData
+	serverData := new(common.ServerData)
+	if serverData == nil {
+	}
+
+	serverData.PolicyCert = serverProgramData.PolicyCert
+	serverData.PolicyCertificate, err = x509.ParseCertificate(serverData.PolicyCert)
+	if err != nil {
+	}
+	serverData.Principals = new(common.AuthentictedPrincipals)
+	serverData.ResourceManager = new(resourcemanager.ResourceMasterInfo)
+
+	// Read resource table.
+
+	server(serverAddr, serverData, &serverProgramData)
 	log.Printf("fileserver: done\n")
 }

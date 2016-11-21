@@ -230,7 +230,7 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 	return nil
 }
 
-func Create(ms *util.MessageStream, name string, cert []byte) error {
+func Create(ms *util.MessageStream, name string, resourceType resourcemanager.ResourceType, cert []byte) error {
 	var outerMessage taosupport.SimpleMessage
 	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
 	var msg FileproxyMessage
@@ -312,7 +312,7 @@ func AddReader(ms *util.MessageStream, resourceName string, certs [][]byte) erro
 	return AddDelete(ms, MessageType_ADDREADER, resourceName, certs)
 }
 
-func AddWriter(ms *util.MessageStream, resourceName string, certs [][]byte, nonce []byte) error {
+func AddWriter(ms *util.MessageStream, resourceName string, certs [][]byte) error {
 	return AddDelete(ms, MessageType_ADDWRITER, resourceName, certs)
 }
 

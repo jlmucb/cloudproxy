@@ -271,17 +271,17 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 func Create(ms *util.MessageStream, name string, resourceType resourcemanager.ResourceType, cert []byte) error {
 	var outerMessage taosupport.SimpleMessage
 	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+
 	var msg FileproxyMessage
 	msgType := MessageType_CREATE
 	msg.Type = &msgType
 	msg.Arguments[0] = name
 	msg.Data[0] = cert
-	var payload []byte;
 	payload, err := proto.Marshal(&msg)
 	if err != nil {
 		return err
 	}
-	outerMessage.Data[0] = payload
+	outerMessage.Data = append(outerMessage.Data, payload)
 	err = taosupport.SendMessage(ms, &outerMessage)
 	if err != nil {
 		return err

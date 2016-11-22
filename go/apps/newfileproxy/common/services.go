@@ -226,17 +226,17 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 
 	// Error?
 	if len(outerChallengeResponse.Data) < 1 {
+		return errors.New("malformed response")
 	}
 	var challengeMessage FileproxyMessage
 	err = proto.Unmarshal(outerChallengeResponse.Data[0], &challengeMessage);
 	if err != nil {
+		return err
 	}
 	if len(challengeMessage.Data) < 1 {
+		return errors.New("malformed payload")
 	}
 	nonce := challengeMessage.Data[0]
-	if nonce == nil {
-		return errors.New("No nonce in server response")
-	}
 
 	// Sign Nonce and send it back
 	var nonceOuterMessage taosupport.SimpleMessage
@@ -245,16 +245,19 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 
 	s1, s2, err := SignNonce(nonce, key.Key)
 	if err != nil {
+		return err
 	}
 	nonceInnerMessage.Type = &msgType
 	nonceInnerMessage.Data = append(nonceInnerMessage.Data, s1)
 	nonceInnerMessage.Data = append(nonceInnerMessage.Data, s2)
 	payload, err = proto.Marshal(&nonceInnerMessage)
 	if err != nil {
+		return err
 	}
 	nonceOuterMessage.Data = append(nonceOuterMessage.Data, payload)
 	err = taosupport.SendMessage(ms, &nonceOuterMessage)
 	if err != nil {
+		return err
 	}
 
 	// Success?

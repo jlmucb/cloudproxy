@@ -15,12 +15,15 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"path"
 
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -33,7 +36,7 @@ import (
 var simpleCfg = flag.String("domain_config",
 	"./tao.config",
 	"path to simple tao configuration")
-var simpleServerPath = flag.String("path", 
+var fileServerPath = flag.String("path", 
 	"./FileServer",
 	"path to Server files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -42,9 +45,7 @@ var serverAddr string
 
 // Handles service request, req and return response over channel (ms).
 func serviceThead(ms *util.MessageStream, clientProgramName string,
-	// serverData common.ServerData
-	serverProgramData *taosupport.TaoProgramData) {
-
+	serverData *common.ServerData, serverProgramData *taosupport.TaoProgramData) {
 	for {
 		req, err := taosupport.GetRequest(ms)
 		if err != nil {
@@ -53,8 +54,8 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		log.Printf("serviceThread, got message: ")
 		taosupport.PrintMessage(req)
 
-		// DoRequest(ms *util.MessageStream, serverData *ServerData, req []byte)
-
+		common.DoRequest(ms, serverData, *req)
+		// Save table.
 	}
 	log.Printf("fileserver: client thread terminating\n")
 }
@@ -132,7 +133,7 @@ func server(serverAddr string, serverData *common.ServerData, serverProgramData 
 		// to communicate with this simpleclient.  ms is the bi-directional
 		// confidentiality and integrity protected channel corresponding to the
 		// channel opened by OpenTaoChannel.
-		go serviceThead(ms, clientName, serverProgramData)
+		go serviceThead(ms, clientName, serverData, serverProgramData)
 	}
 }
 
@@ -147,15 +148,33 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	err := taosupport.TaoParadigm(simpleCfg, simpleServerPath, &serverProgramData)
+	err := taosupport.TaoParadigm(simpleCfg, fileServerPath, &serverProgramData)
 	if err != nil {
 		log.Fatalln("fileserver: Can't establish Tao", err)
 	}
 	log.Printf("fileserver name is %s\n", serverProgramData.TaoName)
 
 	// Get or initialize encryption keys for table
-
-	// Save encryption keys for table
+	var fileSecrets []byte
+	secretsFileName := path.Join(*fileServerPath, "FileSecrets.bin")
+	encryptedFileSecrets, err := ioutil.ReadFile(secretsFileName)
+	if err != nil {
+		rand.Read(fileSecrets[0:32])
+		// Save encryption keys for table
+		encryptedFileSecrets, err = taosupport.Protect(serverProgramData.ProgramSymKeys, fileSecrets)
+		if err != nil {
+				fmt.Printf("fileserver: Error protecting data\n")
+		}
+		err = ioutil.WriteFile(secretsFileName, encryptedFileSecrets, 0666)
+		if err != nil {
+			fmt.Printf("fileserver: error saving retrieved secret\n")
+		}
+	} else {
+		fileSecrets, err = taosupport.Unprotect(serverProgramData.ProgramSymKeys, encryptedFileSecrets)
+		if err != nil {
+			fmt.Printf("fileserver: Error protecting data\n")
+		}
+	}
 
 	// Initialize serverData
 	serverData := new(common.ServerData)
@@ -165,11 +184,17 @@ func main() {
 	serverData.PolicyCert = serverProgramData.PolicyCert
 	serverData.PolicyCertificate, err = x509.ParseCertificate(serverData.PolicyCert)
 	if err != nil {
+		fmt.Printf("fileserver: error parsing policy certificate\n")
+		return
 	}
 	serverData.Principals = new(common.AuthentictedPrincipals)
 	serverData.ResourceManager = new(resourcemanager.ResourceMasterInfo)
+	serverData.FileSecrets= fileSecrets
 
 	// Read resource table.
+	tableFileName := path.Join(*fileServerPath, "EncryptedTable.bin")
+	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets) {
+	}
 
 	server(serverAddr, serverData, &serverProgramData)
 	log.Printf("fileserver: done\n")

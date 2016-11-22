@@ -52,6 +52,7 @@ type ServerData struct {
 	Principals *AuthentictedPrincipals
 	PesourceMutex  sync.RWMutex
 	ResourceManager *resourcemanager.ResourceMasterInfo
+	FileSecrets []byte
 }
 
 type ClientData struct {

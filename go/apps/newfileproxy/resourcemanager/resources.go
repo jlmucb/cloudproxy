@@ -20,6 +20,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
@@ -284,4 +285,35 @@ func (r *ResourceInfo) Write(directory string, fileContents []byte) error {
 		}
 		return err
 	}
+}
+
+func ReadTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []byte) bool {
+	encryptedTable, err := ioutil.ReadFile(tableFileName)
+	if err == nil {
+		serializedTable, err := taosupport.Unprotect(fileSecrets, encryptedTable)
+		if err != nil {
+			return false
+		}
+		err = proto.Unmarshal(serializedTable, table)
+		if err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func SaveTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []byte) bool {
+	serializedTable, err := proto.Marshal(table)
+	if err != nil {
+		return false
+	}
+	encryptedTable, err := taosupport.Unprotect(fileSecrets, serializedTable)
+	if err != nil {
+		return false
+	}	
+	err = ioutil.WriteFile(tableFileName, encryptedTable, 0666)
+	if err != nil {
+		return false
+	}	
+	return true
 }

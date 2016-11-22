@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"sync"
 	"time"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
@@ -53,7 +54,25 @@ func IntIntoPointer(i1 int) *int32 {
 	return &i
 }
 
+func TestAuthorization(t *testing.T) {
+	serverData := new(common.ServerData)
+	connectionData := new(common.ServerConnectionData)
+	if serverData == nil {
+		t.Fatal("TestAuthorization: bad serverData init\n")
+	}
+	if connectionData == nil {
+		t.Fatal("TestAuthorization: bad connectionData init\n")
+	}
+	// Make up 6 principals
+	// Add three resources
+	// Test owner authorization
+	// Test reader authorization
+	// Test writer authorization
+	// IsAuthorized(*msg.Type, serverData, connectionData, info)
+}
+
 func TestTableFunctions(t *testing.T) {
+	mutex := new(sync.RWMutex)
 
 	// Generate Certificates and keys for test.
 	notBefore := time.Now()
@@ -168,20 +187,20 @@ func TestTableFunctions(t *testing.T) {
 	res1.DateModified = &str_time1
 	res1.Size = IntIntoPointer(0)
 	res1.Keys = nil
-	err = res1.AddOwner(*cp1)
+	err = res1.AddOwner(*cp1, mutex)
 	if err != nil {
 		t.Fatal("AddOwner fails")
 	}
-	err = res1.AddReader(*cp2)
+	err = res1.AddReader(*cp2, mutex)
 	if err != nil {
 		t.Fatal("AddReader fails")
 	}
-	err = res1.AddWriter(*cp2)
+	err = res1.AddWriter(*cp2, mutex)
 	if err != nil {
 		t.Fatal("AddWriter fails")
 	}
 
-	err = resourceMaster.InsertResource(res1)
+	err = resourceMaster.InsertResource(res1, mutex)
 	if err != nil {
 		t.Fatal("InsertResource fails")
 	}
@@ -194,28 +213,28 @@ func TestTableFunctions(t *testing.T) {
 	res2.DateModified = &str_time2
 	res2.Size = IntIntoPointer(0)
 	res2.Keys = nil
-	err = res2.AddOwner(*cp2)
+	err = res2.AddOwner(*cp2, mutex)
 	if err != nil {
 		t.Fatal("AddOwner fails")
 	}
-	err = res2.AddReader(*cp1)
+	err = res2.AddReader(*cp1, mutex)
 	if err != nil {
 		t.Fatal("AddReader fails")
 	}
-	err = res2.AddWriter(*cp1)
+	err = res2.AddWriter(*cp1, mutex)
 	if err != nil {
 		t.Fatal("AddWriter fails")
 	}
-	err = res2.AddReader(*cp2)
+	err = res2.AddReader(*cp2, mutex)
 	if err != nil {
 		t.Fatal("AddReader fails")
 	}
-	err = res2.AddWriter(*cp2)
+	err = res2.AddWriter(*cp2, mutex)
 	if err != nil {
 		t.Fatal("AddReader fails")
 	}
 
-	err = resourceMaster.InsertResource(res2)
+	err = resourceMaster.InsertResource(res2, mutex)
 	if err != nil {
 		t.Fatal("InsertResource fails")
 	}
@@ -227,7 +246,7 @@ func TestTableFunctions(t *testing.T) {
 	if n < 0 {
 		t.Fatal("FindCombinedPrincipalPosition fails")
 	}
-	x := resourceMaster.FindResource("TestFile1")
+	x := resourceMaster.FindResource("TestFile1", mutex)
 	if x == nil {
 		t.Fatal("resourceMaster.FindResource TestFile1 fails")
 	}
@@ -235,7 +254,7 @@ func TestTableFunctions(t *testing.T) {
 	x.PrintResource(*resourceMaster.BaseDirectoryName, true)
 
 	fmt.Printf("\n")
-	y := resourceMaster.FindResource("TestFile2")
+	y := resourceMaster.FindResource("TestFile2", mutex)
 	if y == nil {
 		t.Fatal("resourceMaster.FindResource TestFile2 fails")
 	}
@@ -261,10 +280,10 @@ func TestTableFunctions(t *testing.T) {
 	}
 	fmt.Printf("out2: %x\n", out2)
 	fmt.Printf("\n")
-	if !res1.IsOwner(*cp1) {
+	if !res1.IsOwner(*cp1, mutex) {
 		t.Fatal("res1.IsOwnwer fails")
 	}
-	if res1.IsOwner(*cp2) {
+	if res1.IsOwner(*cp2, mutex) {
 		t.Fatal("res1.IsOwnwer succeeds")
 	}
 	// TODO(jlm): consider removing

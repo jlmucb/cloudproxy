@@ -49,11 +49,14 @@ type KeyData struct {
 type ServerData struct {
 	PolicyCert []byte
 	PolicyCertificate *x509.Certificate
-	PrincipalsMutex sync.RWMutex
-	Principals *AuthentictedPrincipals
-	PesourceMutex  sync.RWMutex
+	ResourceMutex  sync.RWMutex
 	ResourceManager *resourcemanager.ResourceMasterInfo
 	FileSecrets []byte
+}
+
+type ServerConnectionData struct {
+	PrincipalsMutex sync.RWMutex
+	Principals *AuthentictedPrincipals
 }
 
 type ClientData struct {
@@ -140,7 +143,7 @@ func SuccessResponse(ms *util.MessageStream, msgType int) {
 	return
 }
 
-func IsAuthorized(action MessageType, serverData *ServerData,
+func IsAuthorized(action MessageType, serverData *ServerData, connectionData *ServerConnectionData,
 		resourceInfo *resourcemanager.ResourceInfo) bool {
 	switch(action) {
 	default:
@@ -150,24 +153,24 @@ func IsAuthorized(action MessageType, serverData *ServerData,
 	case MessageType_CREATE:
 		return false
 	case MessageType_DELETE, MessageType_ADDWRITER, MessageType_DELETEWRITER, MessageType_WRITE:
-		for p := range serverData.Principals.ValidPrincipals {
-			if resourceInfo.IsOwner(serverData.Principals.ValidPrincipals[p]) ||
-					resourceInfo.IsWriter(serverData.Principals.ValidPrincipals[p]) {
+		for p := range connectionData.Principals.ValidPrincipals {
+			if resourceInfo.IsOwner(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) ||
+					resourceInfo.IsWriter(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) {
 				return true
 			}
 		}
 		return false
 	case MessageType_ADDREADER, MessageType_DELETEREADER, MessageType_READ:
-		for p := range serverData.Principals.ValidPrincipals {
-			if resourceInfo.IsOwner(serverData.Principals.ValidPrincipals[p]) ||
-					resourceInfo.IsReader(serverData.Principals.ValidPrincipals[p]) {
+		for p := range connectionData.Principals.ValidPrincipals {
+			if resourceInfo.IsOwner(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) ||
+					resourceInfo.IsReader(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) {
 				return true
 			}
 		}
 		return false
 	case MessageType_ADDOWNER, MessageType_DELETEOWNER:
-		for p := range serverData.Principals.ValidPrincipals {
-			if resourceInfo.IsOwner(serverData.Principals.ValidPrincipals[p]) {
+		for p := range connectionData.Principals.ValidPrincipals {
+			if resourceInfo.IsOwner(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) {
 				return true
 			}
 		}
@@ -427,7 +430,7 @@ func WriteResource(ms *util.MessageStream, resourceName string, fileContents []b
 }
 
 // This is actually done by the server.
-func DoChallenge(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) error {
+func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) error {
 
 	if len(msg.Data) < 1 {
 	}
@@ -488,7 +491,7 @@ func DoChallenge(ms *util.MessageStream, serverData *ServerData, msg FileproxyMe
 	return nil
 }
 
-func DoCreate(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	// Should have two arguments: resourceName, type
 	if len(msg.Arguments) < 2 {
 		FailureResponse(ms, int(MessageType_CREATE), "resource type not specified")
@@ -497,7 +500,7 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessa
 	resourceName := msg.Arguments[0]
 
 	// Already there?
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info != nil {
 		FailureResponse(ms, int(MessageType_CREATE), "resource exists")
 		return
@@ -523,12 +526,12 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessa
 	}
 	p.Name = &certificate.Subject.CommonName
 	cp := resourcemanager.MakeCombinedPrincipalFromOne(p)
-	err = info.AddOwner(*cp)
+	err = info.AddOwner(*cp, &serverData.ResourceMutex)
 	if err != nil {
 	}
 
 	// Authorized?
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_CREATE), "not authorized")
 		return
 	}
@@ -545,7 +548,7 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessa
 	}
 
 	// Put new resource in table.
-	err = serverData.ResourceManager.InsertResource(info)
+	err = serverData.ResourceManager.InsertResource(info, &serverData.ResourceMutex)
 
 	// Send response
 	if err == nil {
@@ -556,30 +559,30 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessa
 	return
 }
 
-func DoDelete(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoDelete(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETE), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_DELETE), "not authorized")
 		return
 	}
-	serverData.ResourceManager.DeleteResource(resourceName)
+	serverData.ResourceManager.DeleteResource(resourceName, &serverData.ResourceMutex)
 	SuccessResponse(ms, int(MessageType_CREATE))
 	return
 }
 
-func DoAddOwner(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_ADDOWNER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_ADDOWNER), "not authorized")
 		return
 	}
@@ -593,14 +596,14 @@ func DoAddOwner(ms *util.MessageStream, serverData *ServerData, msg FileproxyMes
 	return
 }
 
-func DoAddReader(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_ADDREADER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_ADDREADER), "not authorized")
 		return
 	}
@@ -614,14 +617,14 @@ func DoAddReader(ms *util.MessageStream, serverData *ServerData, msg FileproxyMe
 	return
 }
 
-func DoAddWriter(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_ADDWRITER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_ADDWRITER), "not authorized")
 		return
 	}
@@ -635,14 +638,14 @@ func DoAddWriter(ms *util.MessageStream, serverData *ServerData, msg FileproxyMe
 	return
 }
 
-func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETEOWNER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_DELETEOWNER), "not authorized")
 		return
 	}
@@ -656,14 +659,14 @@ func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, msg Fileproxy
 	return
 }
 
-func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETEREADER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_DELETEREADER), "not authorized")
 		return
 	}
@@ -677,14 +680,14 @@ func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, msg Fileprox
 	return
 }
 
-func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_DELETEWRITER), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_DELETEWRITER), "not authorized")
 		return
 	}
@@ -698,15 +701,15 @@ func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, msg Fileprox
 	return
 }
 
-func DoReadResource(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_READ), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_READ), "not authorized")
 		return
 	}
@@ -715,14 +718,14 @@ func DoReadResource(ms *util.MessageStream, serverData *ServerData, msg Fileprox
 	return
 }
 
-func DoWriteResource(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) {
+func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	resourceName := msg.Arguments[0]
-	info := serverData.ResourceManager.FindResource(resourceName)
+	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
 		FailureResponse(ms, int(MessageType_WRITE), "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, info) {
+	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
 		FailureResponse(ms, int(MessageType_WRITE), "not authorized")
 		return
 	}
@@ -741,7 +744,7 @@ func OuterFailureMessage(ms *util.MessageStream, errStr string) {
 	taosupport.SendMessage(ms, resp)
 }
 
-func DoRequest(ms *util.MessageStream, serverData *ServerData, req taosupport.SimpleMessage) {
+func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, req taosupport.SimpleMessage) {
 	// check that req is a request and has data
 	if req.MessageType == nil || *req.MessageType != int32(taosupport.MessageType_REQUEST) || len(req.Data) <1 {
 		OuterFailureMessage(ms, "Malformed request")
@@ -757,37 +760,37 @@ func DoRequest(ms *util.MessageStream, serverData *ServerData, req taosupport.Si
 		OuterFailureMessage(ms, "Unsupported request")
 		return
 	case MessageType_REQUEST_CHALLENGE:
-		DoChallenge(ms, serverData, *msg)
+		DoChallenge(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_CREATE:
-		DoCreate(ms, serverData, *msg)
+		DoCreate(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_DELETE:
-		DoDelete(ms, serverData, *msg)
+		DoDelete(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_ADDREADER:
-		DoAddReader(ms, serverData, *msg)
+		DoAddReader(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_ADDOWNER:
-		DoAddOwner(ms, serverData, *msg)
+		DoAddOwner(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_ADDWRITER:
-		DoAddWriter(ms, serverData, *msg)
+		DoAddWriter(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_DELETEREADER:
-		DoDeleteReader(ms, serverData, *msg)
+		DoDeleteReader(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_DELETEOWNER:
-		DoDeleteOwner(ms, serverData, *msg)
+		DoDeleteOwner(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_DELETEWRITER:
-		DoDeleteWriter(ms, serverData, *msg)
+		DoDeleteWriter(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_READ:
-		DoReadResource(ms, serverData, *msg)
+		DoReadResource(ms, serverData, connectionData, *msg)
 		return
 	case MessageType_WRITE:
-		DoWriteResource(ms, serverData, *msg)
+		DoWriteResource(ms, serverData, connectionData, *msg)
 		return
 	}
 }

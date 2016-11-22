@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -66,7 +67,11 @@ func SameCombinedPrincipal(p1 CombinedPrincipal, p2 CombinedPrincipal) bool {
 }
 
 // IsOwner
-func (info *ResourceInfo) IsOwner(p CombinedPrincipal) bool {
+func (info *ResourceInfo) IsOwner(p CombinedPrincipal, mutex *sync.RWMutex) bool {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	for i := 0; i < len(info.Owners); i++ {
 		if SameCombinedPrincipal(*info.Owners[i], p) {
 			return true
@@ -76,7 +81,11 @@ func (info *ResourceInfo) IsOwner(p CombinedPrincipal) bool {
 }
 
 // IsReader
-func (info *ResourceInfo) IsReader(p CombinedPrincipal) bool {
+func (info *ResourceInfo) IsReader(p CombinedPrincipal, mutex *sync.RWMutex) bool {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	for i := 0; i < len(info.Readers); i++ {
 		if SameCombinedPrincipal(*info.Readers[i], p) {
 			return true
@@ -86,7 +95,11 @@ func (info *ResourceInfo) IsReader(p CombinedPrincipal) bool {
 }
 
 // IsWriter
-func (info *ResourceInfo) IsWriter(p CombinedPrincipal) bool {
+func (info *ResourceInfo) IsWriter(p CombinedPrincipal, mutex *sync.RWMutex) bool {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	for i := 0; i < len(info.Writers); i++ {
 		if SameCombinedPrincipal(*info.Writers[i], p) {
 			return true
@@ -96,25 +109,38 @@ func (info *ResourceInfo) IsWriter(p CombinedPrincipal) bool {
 }
 
 // Add Owner
-func (info *ResourceInfo) AddOwner(p CombinedPrincipal) error {
+func (info *ResourceInfo) AddOwner(p CombinedPrincipal, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	info.Owners = append(info.Owners, &p)
 	return nil
 }
 
 // Add Reader
-func (info *ResourceInfo) AddReader(p CombinedPrincipal) error {
+func (info *ResourceInfo) AddReader(p CombinedPrincipal, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	info.Readers = append(info.Readers, &p)
 	return nil
 }
 
 // Add Writer
-func (info *ResourceInfo) AddWriter(p CombinedPrincipal) error {
+func (info *ResourceInfo) AddWriter(p CombinedPrincipal, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	info.Writers = append(info.Writers, &p)
 	return nil
 }
 
 // FindCombinedPrincipalPosition looks up the resource by its name and returns position in stack.
 func FindCombinedPrincipalPosition(toFind CombinedPrincipal, cpList []*CombinedPrincipal) int {
+	// No mutex is needed since enclosing function should lock.
 	for i := 0; i < len(cpList); i++ {
 		if SameCombinedPrincipal(toFind, *cpList[i]) {
 			return i
@@ -124,7 +150,11 @@ func FindCombinedPrincipalPosition(toFind CombinedPrincipal, cpList []*CombinedP
 }
 // TODO(jlm): add test
 // Delete Owner
-func (info *ResourceInfo) DeleteOwner(p CombinedPrincipal) error {
+func (info *ResourceInfo) DeleteOwner(p CombinedPrincipal, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	n := FindCombinedPrincipalPosition(p, info.Owners)
 	if n < 0 {
 		return nil
@@ -135,7 +165,11 @@ func (info *ResourceInfo) DeleteOwner(p CombinedPrincipal) error {
 }
 // TODO(jlm): add test
 // Delete Reader
-func (info *ResourceInfo) DeleteReader(p CombinedPrincipal) error {
+func (info *ResourceInfo) DeleteReader(p CombinedPrincipal, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	n := FindCombinedPrincipalPosition(p, info.Readers)
 	if n < 0 {
 		return nil
@@ -147,7 +181,11 @@ func (info *ResourceInfo) DeleteReader(p CombinedPrincipal) error {
 
 // TODO(jlm): add test
 // Delete Writer.
-func (info *ResourceInfo) DeleteWriter(p CombinedPrincipal) error {
+func (info *ResourceInfo) DeleteWriter(p CombinedPrincipal, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	n := FindCombinedPrincipalPosition(p, info.Writers)
 	if n < 0 {
 		return nil
@@ -159,7 +197,11 @@ func (info *ResourceInfo) DeleteWriter(p CombinedPrincipal) error {
 }
 
 // FindResource looks up the resource by its name.
-func (m *ResourceMasterInfo) FindResource(resourceName string) *ResourceInfo {
+func (m *ResourceMasterInfo) FindResource(resourceName string, mutex *sync.RWMutex) *ResourceInfo {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	for i := 0; i < len(m.Resources); i++ {
 		if *m.Resources[i].Name == resourceName {
 			return m.Resources[i]
@@ -169,8 +211,12 @@ func (m *ResourceMasterInfo) FindResource(resourceName string) *ResourceInfo {
 }
 
 // InsertResource adds a resource.
-func (m *ResourceMasterInfo) InsertResource(info *ResourceInfo) error {
-	l := m.FindResource(*info.Name)
+func (m *ResourceMasterInfo) InsertResource(info *ResourceInfo, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
+	l := m.FindResource(*info.Name, nil)
 	if l != nil {
 		return nil
 	}
@@ -179,7 +225,11 @@ func (m *ResourceMasterInfo) InsertResource(info *ResourceInfo) error {
 }
 
 // DeleteResource deletes a resource.
-func (m *ResourceMasterInfo) DeleteResource(resourceName string) error {
+func (m *ResourceMasterInfo) DeleteResource(resourceName string, mutex *sync.RWMutex) error {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	return nil
 }
 
@@ -287,7 +337,11 @@ func (r *ResourceInfo) Write(directory string, fileContents []byte) error {
 	}
 }
 
-func ReadTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []byte) bool {
+func ReadTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []byte, mutex *sync.RWMutex) bool {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	encryptedTable, err := ioutil.ReadFile(tableFileName)
 	if err == nil {
 		serializedTable, err := taosupport.Unprotect(fileSecrets, encryptedTable)
@@ -302,7 +356,11 @@ func ReadTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []by
 	return true
 }
 
-func SaveTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []byte) bool {
+func SaveTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []byte, mutex *sync.RWMutex) bool {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	serializedTable, err := proto.Marshal(table)
 	if err != nil {
 		return false

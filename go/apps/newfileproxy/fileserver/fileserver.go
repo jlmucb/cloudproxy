@@ -45,7 +45,8 @@ var serverAddr string
 
 // Handles service request, req and return response over channel (ms).
 func serviceThead(ms *util.MessageStream, clientProgramName string,
-	serverData *common.ServerData, serverProgramData *taosupport.TaoProgramData) {
+	serverData *common.ServerData, connectionData *common.ServerConnectionData,
+	serverProgramData *taosupport.TaoProgramData) {
 	for {
 		req, err := taosupport.GetRequest(ms)
 		if err != nil {
@@ -54,7 +55,7 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		log.Printf("serviceThread, got message: ")
 		taosupport.PrintMessage(req)
 
-		common.DoRequest(ms, serverData, *req)
+		common.DoRequest(ms, serverData, connectionData, *req)
 		// Save table.
 	}
 	log.Printf("fileserver: client thread terminating\n")
@@ -133,7 +134,9 @@ func server(serverAddr string, serverData *common.ServerData, serverProgramData 
 		// to communicate with this simpleclient.  ms is the bi-directional
 		// confidentiality and integrity protected channel corresponding to the
 		// channel opened by OpenTaoChannel.
-		go serviceThead(ms, clientName, serverData, serverProgramData)
+		connectionData := new(common.ServerConnectionData)
+		connectionData.Principals = new(common.AuthentictedPrincipals)
+		go serviceThead(ms, clientName, serverData, connectionData, serverProgramData)
 	}
 }
 
@@ -187,13 +190,12 @@ func main() {
 		fmt.Printf("fileserver: error parsing policy certificate\n")
 		return
 	}
-	serverData.Principals = new(common.AuthentictedPrincipals)
 	serverData.ResourceManager = new(resourcemanager.ResourceMasterInfo)
 	serverData.FileSecrets= fileSecrets
 
 	// Read resource table.
 	tableFileName := path.Join(*fileServerPath, "EncryptedTable.bin")
-	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets) {
+	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets, &serverData.ResourceMutex) {
 	}
 
 	server(serverAddr, serverData, &serverProgramData)

@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path"
 	"sync"
@@ -174,20 +175,42 @@ func IsAuthorized(action MessageType, serverData *ServerData,
 	}
 }
 
+func SignNonce(nonce []byte, signKey *ecdsa.PrivateKey) ([]byte, []byte, error) {
+	r, s, err := ecdsa.Sign(rand.Reader, signKey, nonce)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r.Bytes(), s.Bytes(), nil
+}
+
+func Verify(nonce []byte, s1 []byte, s2 []byte, certificate *x509.Certificate) bool {
+	r := new(big.Int)
+	s := new(big.Int)
+	r.SetBytes(s1)
+	s.SetBytes(s2)
+	return ecdsa.Verify(certificate.PublicKey.(*ecdsa.PublicKey), nonce, r, s)
+}
+
 func RequestChallenge(ms *util.MessageStream, key KeyData) error {
+
+	// Nonce message
 	var outerMessage taosupport.SimpleMessage
 	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+
 	var msg FileproxyMessage
 	msgType := MessageType_REQUEST_CHALLENGE
 	msg.Type = &msgType
-	msg.Data[0] = key.Cert
-	var payload []byte
+	msg.Data = append(msg.Data, key.Cert)
 	payload, err := proto.Marshal(&msg)
 	if err != nil {
 		return err
 	}
-	outerMessage.Data[0] = payload
+	outerMessage.Data = append(outerMessage.Data, payload)
 	err = taosupport.SendMessage(ms, &outerMessage)
+	if err != nil {
+		return err
+	}
+
 	// Get response
 	responseOuter, err := taosupport.GetMessage(ms)
 	if err != nil {
@@ -196,14 +219,19 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 	if responseOuter.Err != nil && *responseOuter.Err != "success" {
 		return errors.New("RequestChallenge failed")
 	}
-	outerChallengeMessage, err := taosupport.GetMessage(ms)
+	outerChallengeResponse, err := taosupport.GetMessage(ms)
 	if err != nil {
 		return err
 	}
+
 	// Error?
+	if len(outerChallengeResponse.Data) < 1 {
+	}
 	var challengeMessage FileproxyMessage
-	err = proto.Unmarshal(outerChallengeMessage.Data[0], &challengeMessage);
+	err = proto.Unmarshal(outerChallengeResponse.Data[0], &challengeMessage);
 	if err != nil {
+	}
+	if len(challengeMessage.Data) < 1 {
 	}
 	nonce := challengeMessage.Data[0]
 	if nonce == nil {
@@ -214,15 +242,20 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 	var nonceOuterMessage taosupport.SimpleMessage
 	var nonceInnerMessage FileproxyMessage
 	nonceInnerMessage.Type = &msgType
-	signedNonce := []byte{0,1,2}
-	// r, s, err := ecdsa.Sign(rand.Reader, priv *PrivateKey, nonce)
-	nonceInnerMessage.Data[0] = signedNonce
-	payload, err = proto.Marshal(&msg)
+
+	s1, s2, err := SignNonce(nonce, key.Key)
 	if err != nil {
-		return err
 	}
-	nonceOuterMessage.Data[0] = payload
+	nonceInnerMessage.Type = &msgType
+	nonceInnerMessage.Data = append(nonceInnerMessage.Data, s1)
+	nonceInnerMessage.Data = append(nonceInnerMessage.Data, s2)
+	payload, err = proto.Marshal(&nonceInnerMessage)
+	if err != nil {
+	}
+	nonceOuterMessage.Data = append(nonceOuterMessage.Data, payload)
 	err = taosupport.SendMessage(ms, &nonceOuterMessage)
+	if err != nil {
+	}
 
 	// Success?
 	completionMessage, err := taosupport.GetMessage(ms)
@@ -392,26 +425,36 @@ func WriteResource(ms *util.MessageStream, resourceName string, fileContents []b
 
 // This is actually done by the server.
 func DoChallenge(ms *util.MessageStream, serverData *ServerData, msg FileproxyMessage) error {
+
+	if len(msg.Data) < 1 {
+	}
+	userCert := msg.Data[0]
+
+	// Format response message
 	var outerMessage taosupport.SimpleMessage
 	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_RESPONSE))
 	var respMsg FileproxyMessage
 	msgType := MessageType_CHALLENGE
 	respMsg.Type = &msgType
+
+	// Generate challenge and send it.
 	var nonce [32]byte
 	n, err := rand.Read(nonce[:])
 	if err != nil || n < 32 {
 		return errors.New("RequestChallenge can't generate nonce")
 	}
-	respMsg.Data[0] = nonce[:]
+	respMsg.Data = append(respMsg.Data, nonce[:])
 	payload, err := proto.Marshal(&respMsg)
 	if err != nil {
 		return err
 	}
-	outerMessage.Data[0] = payload
+	outerMessage.Data = append(outerMessage.Data, payload)
 	err = taosupport.SendMessage(ms, &outerMessage)
 	if err != nil {
 		return err
 	}
+
+	// Signed response.
 	responseOuter, err := taosupport.GetMessage(ms)
 	if responseOuter.Err != nil && *responseOuter.Err != "success" {
 		return errors.New("RequestChallenge failed")
@@ -424,15 +467,17 @@ func DoChallenge(ms *util.MessageStream, serverData *ServerData, msg FileproxyMe
 	if responseMsg.Type == nil || *responseMsg.Type != MessageType_CHALLENGE{
 		return errors.New("Wrong message response")
 	}
-	if len(respMsg.Data[0]) == 0 {
+	if len(respMsg.Data) < 2 {
 		return errors.New("No file contents")
 	}
-	signedMessage := respMsg.Data[0]
-	if signedMessage == nil {
-	}
+
 	// Verify signature
-	verified := bool(true)
-	if verified {
+	s1 := respMsg.Data[0]
+	s2 := respMsg.Data[0]
+	certificate, err := x509.ParseCertificate(userCert)
+	if err != nil {
+	}
+	if Verify(nonce[:], s1, s2, certificate) {
 		SuccessResponse(ms, int(MessageType_CHALLENGE))
 	} else {
 		FailureResponse(ms, int(MessageType_CHALLENGE), "verify failed")

@@ -64,7 +64,7 @@ func main() {
 
 	for i := 0; i < *numKeys; i++ {
 		userName := *baseName + strconv.Itoa(i)
-		key, err := common.GenerateUserPublicKey(userName)
+		key, err := common.GenerateUserPublicKey()
 		if err != nil {
 			fmt.Printf("Can't generate user key %d\n", i)
 			return

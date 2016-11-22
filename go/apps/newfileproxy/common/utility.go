@@ -31,7 +31,7 @@ import (
 
 
 
-func GenerateUserPublicKey(userName string) (*ecdsa.PrivateKey, error) {
+func GenerateUserPublicKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
 

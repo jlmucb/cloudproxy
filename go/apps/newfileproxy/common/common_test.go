@@ -15,15 +15,41 @@
 package common
 
 import (
-	//"crypto/ecdsa"
-	//"crypto/elliptic"
-	//"crypto/rand"
-	//"crypto/x509"
+	// "crypto/ecdsa"
+	// "crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"fmt"
-	//"math/big"
+	// "math/big"
 	"testing"
-	//"time"
+	// "time"
 )
+
+func TestNonceSignVerify(t *testing.T) {
+	privateKey, err := GenerateUserPublicKey()
+	if err != nil {
+		t.Fatal("Can't generate key")
+	}
+	keyData, err := MakeUserKeyStructute(privateKey, "TestUser", privateKey, nil)
+	if err != nil {
+		t.Fatal("Can't get keyData")
+	}
+	certificate, err := x509.ParseCertificate(keyData.Cert)
+	if err != nil {
+		t.Fatal("Can't parse certificate")
+	}
+	var nonce [32]byte
+	rand.Read(nonce[:])
+	s1, s2, err := SignNonce(nonce[:], privateKey)
+	if err != nil {
+		t.Fatal("Can't sign nonce")
+	}
+	if !Verify(nonce[:], s1, s2, certificate) {
+		t.Fatal("Can't verify")
+	} else {
+		fmt.Printf("Verifies")
+	}
+}
 
 func TestServices(t *testing.T) {
 	fmt.Printf("TestServices succeeds")

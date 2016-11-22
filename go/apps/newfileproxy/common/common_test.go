@@ -21,8 +21,11 @@ import (
 	"crypto/x509"
 	"fmt"
 	// "math/big"
+	"strconv"
 	"testing"
 	// "time"
+
+	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
 
 func TestNonceSignVerify(t *testing.T) {
@@ -48,6 +51,66 @@ func TestNonceSignVerify(t *testing.T) {
 		t.Fatal("Can't verify")
 	} else {
 		fmt.Printf("Verifies")
+	}
+}
+
+func TestAuthorization(t *testing.T) {
+	serverData := new(ServerData)
+	serverData.InitServerData()
+	connectionData := new(ServerConnectionData)
+	connectionData.InitConnectionData()
+	if serverData == nil {
+		t.Fatal("TestAuthorization: bad serverData init\n")
+	}
+	if connectionData == nil {
+		t.Fatal("TestAuthorization: bad connectionData init\n")
+	}
+
+	// Make up 6 principals
+	var p[6] *resourcemanager.PrincipalInfo
+	for i := 0; i < 6; i++ {
+		userName := "TestUser" + strconv.Itoa(i)
+		key, err := GenerateUserPublicKey()
+		if err != nil {
+			t.Fatal("TestAuthorization: Can't generate public key\n")
+		}
+		keyData, err:= MakeUserKeyStructute(key, userName, key, nil)
+		if err != nil {
+			t.Fatal("TestAuthorization: Can't make key structure\n")
+		}
+		keyData.Certificate, err = x509.ParseCertificate(keyData.Cert)
+		if err != nil {
+			t.Fatal("TestAuthorization: parse certificate\n")
+		}
+		p[i] = new(resourcemanager.PrincipalInfo)
+		p[i].Name = &userName
+		p[i].Cert = keyData.Cert
+		if i < 3 {
+			cp := resourcemanager.MakeCombinedPrincipalFromOne(p[i])
+			connectionData.Principals.ValidPrincipals= append(connectionData.Principals.ValidPrincipals, *cp)
+		}
+	}
+
+	// Add three resources
+	var r[3] *resourcemanager.ResourceInfo
+	for i := 0; i < 3; i++ {
+		r[i] = new(resourcemanager.ResourceInfo)
+		resourceName := "Resource" + strconv.Itoa(i)
+		r[i].Name = &resourceName
+		rType := int32(resourcemanager.ResourceType_FILE)
+		r[i].Type = &rType
+		cp := resourcemanager.MakeCombinedPrincipalFromOne(p[2 * i])
+		r[i].Owners = append(r[i].Owners, cp)
+	}
+
+
+	// Test owner authorization
+	msgType := MessageType(MessageType_ADDOWNER)
+	if (!IsAuthorized(msgType, serverData, connectionData, r[0])) {
+		t.Fatal("TestAuthorization: access to Resource0 doesn't pass but should\n")
+	}
+	if (IsAuthorized(msgType, serverData, connectionData, r[2])) {
+		t.Fatal("TestAuthorization: access to Resource5 passes but shouldn't\n")
 	}
 }
 

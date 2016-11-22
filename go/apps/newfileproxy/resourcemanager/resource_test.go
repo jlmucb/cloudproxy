@@ -54,23 +54,6 @@ func IntIntoPointer(i1 int) *int32 {
 	return &i
 }
 
-func TestAuthorization(t *testing.T) {
-	serverData := new(common.ServerData)
-	connectionData := new(common.ServerConnectionData)
-	if serverData == nil {
-		t.Fatal("TestAuthorization: bad serverData init\n")
-	}
-	if connectionData == nil {
-		t.Fatal("TestAuthorization: bad connectionData init\n")
-	}
-	// Make up 6 principals
-	// Add three resources
-	// Test owner authorization
-	// Test reader authorization
-	// Test writer authorization
-	// IsAuthorized(*msg.Type, serverData, connectionData, info)
-}
-
 func TestTableFunctions(t *testing.T) {
 	mutex := new(sync.RWMutex)
 

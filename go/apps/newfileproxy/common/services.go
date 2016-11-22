@@ -33,17 +33,17 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
-	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
+	resourcemanager "github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
-
-type AuthentictedPrincipals struct {
-	ValidPrincipals []resourcemanager.CombinedPrincipal
-}
 
 type KeyData struct {
 	Cert []byte
 	Certificate *x509.Certificate
 	Key *ecdsa.PrivateKey
+}
+
+type AuthentictedPrincipals struct {
+	ValidPrincipals []resourcemanager.CombinedPrincipal
 }
 
 type ServerData struct {
@@ -63,6 +63,14 @@ type ClientData struct {
 	PolicyCert	*x509.Certificate
 	UserMutex	sync.RWMutex
 	Userkeys	[]KeyData
+}
+
+func (s *ServerData) InitServerData() {
+	s.ResourceManager= new(resourcemanager.ResourceMasterInfo)
+}
+
+func (c *ServerConnectionData) InitConnectionData() {
+	c.Principals = new(AuthentictedPrincipals)
 }
 
 func stringIntoPointer(s1 string) *string {

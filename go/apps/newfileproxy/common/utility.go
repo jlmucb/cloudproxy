@@ -35,7 +35,7 @@ func GenerateUserPublicKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
 
-func MakeUserKeyStructute(key *ecdsa.PrivateKey, userName string, signerPriv interface{},
+func MakeUserKeyStructure(key *ecdsa.PrivateKey, userName string, signerPriv interface{},
 		signerCertificate *x509.Certificate) (*KeyData, error) {
 	keyData := new(KeyData)
 	notBefore := time.Now()
@@ -131,5 +131,35 @@ func CreateKeyCertificate(serialNumber big.Int,
 		return nil, err
 	}
 	return cert, err
+}
+
+func VerifyNonceSignature(nonce []byte, s1 []byte, s2 []byte, certificate *x509.Certificate) bool {
+	r := new(big.Int)
+	s := new(big.Int)
+	r.SetBytes(s1)
+	s.SetBytes(s2)
+	return ecdsa.Verify(certificate.PublicKey.(*ecdsa.PublicKey), nonce, r, s)
+}
+
+func VerifyCertificateChain(root *x509.Certificate, intermediateCerts []*x509.Certificate, cert *x509.Certificate) bool {
+	rootsPool := x509.NewCertPool()
+	rootsPool.AddCert(root)
+	intermediatesPool := x509.NewCertPool()
+	for i := 0; i< len(intermediateCerts); i++ {
+		intermediatesPool.AddCert(intermediateCerts[i])
+	}
+
+	opts := x509.VerifyOptions {
+		Intermediates: intermediatesPool,
+		Roots:   rootsPool,
+		// CurrentTime:
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}
+
+	_, err := cert.Verify(opts)
+	if err == nil {
+		return true
+	}
+	return false
 }
 

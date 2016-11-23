@@ -22,7 +22,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"path"
 	"sync"
@@ -211,14 +210,6 @@ func SignNonce(nonce []byte, signKey *ecdsa.PrivateKey) ([]byte, []byte, error) 
 		return nil, nil, err
 	}
 	return r.Bytes(), s.Bytes(), nil
-}
-
-func Verify(nonce []byte, s1 []byte, s2 []byte, certificate *x509.Certificate) bool {
-	r := new(big.Int)
-	s := new(big.Int)
-	r.SetBytes(s1)
-	s.SetBytes(s2)
-	return ecdsa.Verify(certificate.PublicKey.(*ecdsa.PublicKey), nonce, r, s)
 }
 
 func RequestChallenge(ms *util.MessageStream, key KeyData) error {
@@ -464,6 +455,11 @@ func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData 
 	userCert := msg.Data[0]
 
 	// TODO(jlm): Check cert chain.
+	userCertificate, err := x509.ParseCertificate(userCert)
+	if err != nil {
+	}
+	if !VerifyCertificateChain(serverData.PolicyCertificate, nil, userCertificate) {
+	}
 
 	// Format response message
 	var outerMessage taosupport.SimpleMessage
@@ -509,10 +505,7 @@ func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData 
 	// Verify signature
 	s1 := respMsg.Data[0]
 	s2 := respMsg.Data[0]
-	certificate, err := x509.ParseCertificate(userCert)
-	if err != nil {
-	}
-	if Verify(nonce[:], s1, s2, certificate) {
+	if VerifyNonceSignature(nonce[:], s1, s2, userCertificate) {
 		SuccessResponse(ms, int(MessageType_CHALLENGE))
 	} else {
 		FailureResponse(ms, int(MessageType_CHALLENGE), "verify failed")

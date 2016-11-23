@@ -33,7 +33,7 @@ func TestNonceSignVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate key")
 	}
-	keyData, err := MakeUserKeyStructute(privateKey, "TestUser", privateKey, nil)
+	keyData, err := MakeUserKeyStructure(privateKey, "TestUser", privateKey, nil)
 	if err != nil {
 		t.Fatal("Can't get keyData")
 	}
@@ -47,7 +47,7 @@ func TestNonceSignVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't sign nonce")
 	}
-	if !Verify(nonce[:], s1, s2, certificate) {
+	if !VerifyNonceSignature(nonce[:], s1, s2, certificate) {
 		t.Fatal("Can't verify")
 	} else {
 		fmt.Printf("Verifies")
@@ -73,7 +73,7 @@ func TestAuthorization(t *testing.T) {
 		if err != nil {
 			t.Fatal("TestAuthorization: Can't generate public key\n")
 		}
-		keyData, err:= MakeUserKeyStructute(key, userName, key, nil)
+		keyData, err:= MakeUserKeyStructure(key, userName, key, nil)
 		if err != nil {
 			t.Fatal("TestAuthorization: Can't make key structure\n")
 		}

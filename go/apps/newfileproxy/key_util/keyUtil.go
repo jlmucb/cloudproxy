@@ -70,7 +70,7 @@ func main() {
 			return
 		}
 		signerPriv = key //FIX
-		keyData, err := common.MakeUserKeyStructute(key, userName, signerPriv, signerCertificate)
+		keyData, err := common.MakeUserKeyStructure(key, userName, signerPriv, signerCertificate)
 		serializedKey, err := common.SerializeUserKey(keyData)
 		if err != nil {
 			fmt.Printf("Can't serialize user key %d\n", i)

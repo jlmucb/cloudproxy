@@ -58,7 +58,6 @@ func TestAuthorization(t *testing.T) {
 	serverData := new(ServerData)
 	serverData.InitServerData()
 	connectionData := new(ServerConnectionData)
-	connectionData.InitConnectionData()
 	if serverData == nil {
 		t.Fatal("TestAuthorization: bad serverData init\n")
 	}
@@ -86,8 +85,7 @@ func TestAuthorization(t *testing.T) {
 		p[i].Name = &userName
 		p[i].Cert = keyData.Cert
 		if i < 3 {
-			cp := resourcemanager.MakeCombinedPrincipalFromOne(p[i])
-			connectionData.Principals.ValidPrincipals= append(connectionData.Principals.ValidPrincipals, *cp)
+			connectionData.Principals = append(connectionData.Principals, p[i])
 		}
 	}
 

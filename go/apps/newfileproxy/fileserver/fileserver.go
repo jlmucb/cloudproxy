@@ -135,7 +135,6 @@ func server(serverAddr string, serverData *common.ServerData, serverProgramData 
 		// confidentiality and integrity protected channel corresponding to the
 		// channel opened by OpenTaoChannel.
 		connectionData := new(common.ServerConnectionData)
-		connectionData.Principals = new(common.AuthentictedPrincipals)
 		go serviceThead(ms, clientName, serverData, connectionData, serverProgramData)
 	}
 }

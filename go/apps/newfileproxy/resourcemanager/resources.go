@@ -66,48 +66,6 @@ func SameCombinedPrincipal(p1 CombinedPrincipal, p2 CombinedPrincipal) bool {
 	return true
 }
 
-// IsOwner
-func (info *ResourceInfo) IsOwner(p CombinedPrincipal, mutex *sync.RWMutex) bool {
-	if mutex != nil {
-		mutex.Lock()
-		defer mutex.Unlock()
-	}
-	for i := 0; i < len(info.Owners); i++ {
-		if SameCombinedPrincipal(*info.Owners[i], p) {
-			return true
-		}
-	}
-	return false
-}
-
-// IsReader
-func (info *ResourceInfo) IsReader(p CombinedPrincipal, mutex *sync.RWMutex) bool {
-	if mutex != nil {
-		mutex.Lock()
-		defer mutex.Unlock()
-	}
-	for i := 0; i < len(info.Readers); i++ {
-		if SameCombinedPrincipal(*info.Readers[i], p) {
-			return true
-		}
-	}
-	return false
-}
-
-// IsWriter
-func (info *ResourceInfo) IsWriter(p CombinedPrincipal, mutex *sync.RWMutex) bool {
-	if mutex != nil {
-		mutex.Lock()
-		defer mutex.Unlock()
-	}
-	for i := 0; i < len(info.Writers); i++ {
-		if SameCombinedPrincipal(*info.Writers[i], p) {
-			return true
-		}
-	}
-	return false
-}
-
 // Add Owner
 func (info *ResourceInfo) AddOwner(p CombinedPrincipal, mutex *sync.RWMutex) error {
 	if mutex != nil {

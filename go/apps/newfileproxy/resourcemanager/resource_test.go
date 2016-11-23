@@ -263,12 +263,6 @@ func TestTableFunctions(t *testing.T) {
 	}
 	fmt.Printf("out2: %x\n", out2)
 	fmt.Printf("\n")
-	if !res1.IsOwner(*cp1, mutex) {
-		t.Fatal("res1.IsOwnwer fails")
-	}
-	if res1.IsOwner(*cp2, mutex) {
-		t.Fatal("res1.IsOwnwer succeeds")
-	}
 	// TODO(jlm): consider removing
 	fmt.Printf("\n")
 	res1.PrintResource(*resourceMaster.BaseDirectoryName, true)

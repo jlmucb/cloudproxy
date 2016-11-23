@@ -42,10 +42,6 @@ type KeyData struct {
 	Key *ecdsa.PrivateKey
 }
 
-type AuthentictedPrincipals struct {
-	ValidPrincipals []resourcemanager.CombinedPrincipal
-}
-
 type ServerData struct {
 	PolicyCert []byte
 	PolicyCertificate *x509.Certificate
@@ -56,7 +52,7 @@ type ServerData struct {
 
 type ServerConnectionData struct {
 	PrincipalsMutex sync.RWMutex
-	Principals *AuthentictedPrincipals
+	Principals []*resourcemanager.PrincipalInfo
 }
 
 type ClientData struct {
@@ -69,10 +65,6 @@ func (s *ServerData) InitServerData() {
 	s.ResourceManager= new(resourcemanager.ResourceMasterInfo)
 }
 
-func (c *ServerConnectionData) InitConnectionData() {
-	c.Principals = new(AuthentictedPrincipals)
-}
-
 func stringIntoPointer(s1 string) *string {
         return &s1
 }
@@ -80,6 +72,40 @@ func stringIntoPointer(s1 string) *string {
 func intIntoPointer(i int) *int32 {
 	ii := int32(i)
         return &ii
+}
+
+func IsPrincipalOnList(principals []*resourcemanager.PrincipalInfo, principal *resourcemanager.PrincipalInfo) bool {
+	for i := 0; i < len(principals); i++ {
+		if principal.Name != nil && principals[i].Name != nil && principal.Name == principals[i].Name {
+			return true
+		}
+	}
+	return false
+}
+
+func IsVerifiedCombinedPrincipal(combinedPrincipal *resourcemanager.CombinedPrincipal,
+		principals []*resourcemanager.PrincipalInfo) bool {
+
+	for i := 0; i < len(combinedPrincipal.Principals); i++ {
+		if !IsPrincipalOnList(principals, combinedPrincipal.Principals[i]) {
+			return false;
+		}
+	}
+	return true
+}
+
+func HasSatisfyingCombinedPrincipal(combinedPrincipals []*resourcemanager.CombinedPrincipal,
+		principals []*resourcemanager.PrincipalInfo, mutex *sync.RWMutex) bool {
+	if mutex != nil {
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
+	for i := 0; i < len(combinedPrincipals); i++ {
+		if IsVerifiedCombinedPrincipal(combinedPrincipals[i], principals) {
+			return true;
+		}
+	}
+	return false
 }
 
 // SendFile reads a file from disk and streams it to a receiver across a
@@ -161,29 +187,22 @@ func IsAuthorized(action MessageType, serverData *ServerData, connectionData *Se
 	case MessageType_CREATE:
 		return false
 	case MessageType_DELETE, MessageType_ADDWRITER, MessageType_DELETEWRITER, MessageType_WRITE:
-		for p := range connectionData.Principals.ValidPrincipals {
-			if resourceInfo.IsOwner(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) ||
-					resourceInfo.IsWriter(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) {
-				return true
-			}
-		}
-		return false
+		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
+					&serverData.ResourceMutex) ||
+				HasSatisfyingCombinedPrincipal(resourceInfo.Writers, connectionData.Principals,
+					&serverData.ResourceMutex)
 	case MessageType_ADDREADER, MessageType_DELETEREADER, MessageType_READ:
-		for p := range connectionData.Principals.ValidPrincipals {
-			if resourceInfo.IsOwner(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) ||
-					resourceInfo.IsReader(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) {
-				return true
-			}
-		}
+		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
+					&serverData.ResourceMutex) ||
+				HasSatisfyingCombinedPrincipal(resourceInfo.Readers, connectionData.Principals,
+					&serverData.ResourceMutex)
+			return true
 		return false
 	case MessageType_ADDOWNER, MessageType_DELETEOWNER:
-		for p := range connectionData.Principals.ValidPrincipals {
-			if resourceInfo.IsOwner(connectionData.Principals.ValidPrincipals[p], &serverData.ResourceMutex) {
-				return true
-			}
-		}
-		return false
+		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
+			&serverData.ResourceMutex)
 	}
+	return false
 }
 
 func SignNonce(nonce []byte, signKey *ecdsa.PrivateKey) ([]byte, []byte, error) {
@@ -443,6 +462,8 @@ func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData 
 	if len(msg.Data) < 1 {
 	}
 	userCert := msg.Data[0]
+
+	// TODO(jlm): Check cert chain.
 
 	// Format response message
 	var outerMessage taosupport.SimpleMessage

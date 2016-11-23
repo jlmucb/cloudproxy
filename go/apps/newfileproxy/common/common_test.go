@@ -84,9 +84,6 @@ func TestAuthorization(t *testing.T) {
 		p[i] = new(resourcemanager.PrincipalInfo)
 		p[i].Name = &userName
 		p[i].Cert = keyData.Cert
-		if i < 3 {
-			connectionData.Principals = append(connectionData.Principals, p[i])
-		}
 	}
 
 	// Add three resources
@@ -97,18 +94,30 @@ func TestAuthorization(t *testing.T) {
 		r[i].Name = &resourceName
 		rType := int32(resourcemanager.ResourceType_FILE)
 		r[i].Type = &rType
-		cp := resourcemanager.MakeCombinedPrincipalFromOne(p[2 * i])
-		r[i].Owners = append(r[i].Owners, cp)
 	}
 
+	// Principals 0, 1, 2 are verified; 3, 4, 5 aren't.
+	for i := 0; i < 3; i++ {
+		connectionData.Principals = append(connectionData.Principals, p[i])
+	}
+
+	cp := resourcemanager.MakeCombinedPrincipalFromOne(p[0])
+	r[0].Owners = append(r[0].Owners, cp)
+	cp = resourcemanager.MakeCombinedPrincipalFromOne(p[5])
+	r[1].Owners = append(r[1].Owners, cp)
+	cp = resourcemanager.MakeCombinedPrincipalFromTwo(p[0], p[1])
+	r[2].Owners = append(r[2].Owners, cp)
 
 	// Test owner authorization
 	msgType := MessageType(MessageType_ADDOWNER)
 	if (!IsAuthorized(msgType, serverData, connectionData, r[0])) {
 		t.Fatal("TestAuthorization: access to Resource0 doesn't pass but should\n")
 	}
-	if (IsAuthorized(msgType, serverData, connectionData, r[2])) {
-		t.Fatal("TestAuthorization: access to Resource5 passes but shouldn't\n")
+	if (IsAuthorized(msgType, serverData, connectionData, r[1])) {
+		t.Fatal("TestAuthorization: access to Resource1 passes but shouldn't\n")
+	}
+	if (!IsAuthorized(msgType, serverData, connectionData, r[2])) {
+		t.Fatal("TestAuthorization: access to Resource0 doesn't pass but should\n")
 	}
 }
 

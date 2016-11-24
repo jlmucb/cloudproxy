@@ -444,16 +444,27 @@ fmt.Printf("\n")
 	nonce := make([]byte, 32)
 	n, err := rand.Read(nonce)
 	if err != nil || n < 32 {
+fmt.Printf("DoChallenge 0\n")
 		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "Can't generate challenge")
 		return errors.New("RequestChallenge can't generate nonce")
 	}
+fmt.Printf("DoChallenge 1\n")
 	challengeMessage.Data = append(challengeMessage.Data, nonce)
+	challengeMessage.Err = stringIntoPointer("success")
+	serviceType := ServiceType_REQUEST_CHALLENGE
+	challengeMessage.TypeOfService = &serviceType
+	err = SendMessage(ms, &challengeMessage)
+	if err != nil {
+		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "Can't send challenge")
+		return errors.New("RequestChallenge can't send challenge ")
+	}
 
 	// Signed response.
 	signedResponseMsg, err := GetMessage(ms)
 	if signedResponseMsg.Err != nil && *signedResponseMsg.Err != "success" {
 		return errors.New("RequestChallenge failed")
 	}
+fmt.Printf("DoChallenge 3\n")
 
 	// Verify signature
 	s1 := signedResponseMsg.Data[0]

@@ -141,6 +141,8 @@ func main() {
 			return
 		}
 	}
+fmt.Printf("All common.RequestChallenge's succeeded\n")
+return
 
 	// Create a directory.
 	err = common.Create(ms, "directory1", resourcemanager.ResourceType_DIRECTORY, UserKeyArray[0].Cert)

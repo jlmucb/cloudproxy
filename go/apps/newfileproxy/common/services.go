@@ -31,7 +31,6 @@ import (
 	// "github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/util"
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 	resourcemanager "github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
 
@@ -119,11 +118,17 @@ func PrintMessage(msg *FileproxyMessage) {
 		}
 	}
 	if msg.Err != nil {
-		fmt.Printf("\tError: %s\n", msg.Err)
+		fmt.Printf("\tError: %s\n", *msg.Err)
 	}
-	fmt.Printf("\tArguments: ")
+	fmt.Printf("\t%d Arguments:\n", len(msg.Arguments))
+	for i := 0; i < len(msg.Arguments); i++ {
+		fmt.Printf("\t\tArgument[%d]: %s\n", len(msg.Arguments), msg.Arguments[i])
+	}
 	fmt.Printf("\n")
-	fmt.Printf("\tData: ")
+	fmt.Printf("\t%d Data:\n", len(msg.Data))
+	for i := 0; i < len(msg.Data); i++ {
+		fmt.Printf("\t\tData[%d]: %x\n", len(msg.Data), msg.Data[i])
+	}
 	fmt.Printf("\n")
 }
 
@@ -279,21 +284,24 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 	SendMessage(ms, &initialRequestMsg)
 
 	// Get response
-	initialResponse, err := taosupport.GetMessage(ms)
+	initialResponse, err := GetMessage(ms)
 	if err != nil {
+fmt.Printf("RequestChallenge: bad GetMessage\n")
 		return err
 	}
 	// Check message type and service type
 	if initialResponse.Err != nil && *initialResponse.Err != "success" {
+fmt.Printf("RequestChallenge: not success\n")
+PrintMessage(initialResponse)
 		return errors.New("RequestChallenge failed")
 	}
+fmt.Printf("RequestChallenge initial response\n")
+PrintMessage(initialResponse);
 
 	// Error?
 	if len(initialResponse.Data) < 1 {
+fmt.Printf("RequestChallenge: malformed 1\n")
 		return errors.New("malformed response")
-	}
-	if len(initialResponse.Data) < 1 {
-		return errors.New("malformed payload")
 	}
 	nonce := initialResponse.Data[0]
 
@@ -302,20 +310,26 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 
 	s1, s2, err := SignNonce(nonce, key.Key)
 	if err != nil {
+fmt.Printf("RequestChallenge: SignNonce fails\n")
 		return err
 	}
 	serviceType = ServiceType_SIGNED_CHALLENGE
 	signedChallengeMessage.TypeOfService = &serviceType
 	signedChallengeMessage.Data = append(signedChallengeMessage.Data, s1)
 	signedChallengeMessage.Data = append(signedChallengeMessage.Data, s2)
+fmt.Printf("RequestChallenge response\n")
+PrintMessage(&signedChallengeMessage);
+
 	err = SendMessage(ms, &signedChallengeMessage)
 	if err != nil {
+fmt.Printf("RequestChallenge: SendMessagefails\n")
 		return err
 	}
 
 	// Success?
-	completionMessage, err := taosupport.GetMessage(ms)
+	completionMessage, err := GetMessage(ms)
 	if err != nil || (completionMessage.Err != nil && *completionMessage.Err != "success") {
+fmt.Printf("RequestChallenge: verify failed\n")
 		return errors.New("Verify failed")
 	}
 	return nil
@@ -347,7 +361,7 @@ func Delete(ms *util.MessageStream, name string) error {
 	if err != nil {
 		return err
 	}
-	responseMessage, err := taosupport.GetMessage(ms)
+	responseMessage, err := GetMessage(ms)
 	if responseMessage.Err != nil && *responseMessage.Err != "success" {
 		return errors.New("Delete failed")
 	}
@@ -365,7 +379,7 @@ func AddDelete(ms *util.MessageStream, serviceType ServiceType, resourceName str
 	if err != nil {
 		return err
 	}
-	responseMessage, err := taosupport.GetMessage(ms)
+	responseMessage, err := GetMessage(ms)
 	if responseMessage.Err != nil && *responseMessage.Err != "success" {
 		return errors.New("AddDelete failed")
 	}
@@ -406,7 +420,9 @@ func WriteResource(ms *util.MessageStream, resourceName string, fileContents []b
 
 // This is actually done by the server.
 func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) error {
-
+fmt.Printf("DoChallenge\n")
+PrintMessage(&msg)
+fmt.Printf("\n")
 	if len(msg.Data) < 1 {
 		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "No cert included")
 		return nil
@@ -713,6 +729,9 @@ func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionD
 }
 
 func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, req *FileproxyMessage) {
+	fmt.Printf("\nDoRequest:\n")
+	PrintMessage(req)
+	fmt.Printf("\n")
 	if req.TypeOfService == nil {
 		FailureResponse(ms, ServiceType_NONE, "Unsupported request")
 	}

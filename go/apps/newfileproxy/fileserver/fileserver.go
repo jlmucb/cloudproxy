@@ -48,14 +48,14 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 	serverData *common.ServerData, connectionData *common.ServerConnectionData,
 	serverProgramData *taosupport.TaoProgramData) {
 	for {
-		req, err := taosupport.GetRequest(ms)
+		req, err := common.GetMessage(ms)
 		if err != nil {
 			return
 		}
 		log.Printf("serviceThread, got message: ")
-		taosupport.PrintMessage(req)
+		common.PrintMessage(req)
 
-		common.DoRequest(ms, serverData, connectionData, *req)
+		common.DoRequest(ms, serverData, connectionData, req)
 		// Save table.
 	}
 	log.Printf("fileserver: client thread terminating\n")

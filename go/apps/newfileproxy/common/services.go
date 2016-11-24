@@ -435,8 +435,8 @@ fmt.Printf("\n")
 		return err
 	}
 	if !VerifyCertificateChain(serverData.PolicyCertificate, nil, userCertificate) {
-		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "User Cert invalid")
-		return nil
+		//FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "User Cert invalid")
+		//return nil
 	}
 
 	var challengeMessage FileproxyMessage

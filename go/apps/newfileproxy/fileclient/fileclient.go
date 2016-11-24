@@ -62,7 +62,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("fileclient: Can't establish Tao: ", err)
 	}
-	fmt.Printf("fileclient: TaoParadigm complete, name: %s\n",
+	fmt.Printf("newfileclient: TaoParadigm complete, name: %s\n",
 		clientProgramData.TaoName)
 
 	// Fill Client data
@@ -79,11 +79,11 @@ func main() {
 	secretsFileName := path.Join(*fileClientPath, "FileSecrets.bin")
 
 	// fileSecrets is used to encrypt/decrypt client files.
-	var fileSecrets []byte
+	fileSecrets := make([]byte, 32)
 
 	encryptedFileSecrets, err := ioutil.ReadFile(secretsFileName)
 	if err != nil {
-		rand.Read(fileSecrets[0:32])
+		rand.Read(fileSecrets)
 	} else {
 		fileSecrets, err = taosupport.Unprotect(clientProgramData.ProgramSymKeys, encryptedFileSecrets)
 		if err != nil {

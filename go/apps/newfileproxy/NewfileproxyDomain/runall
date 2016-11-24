@@ -14,7 +14,8 @@ sleep 5
 #
 $BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleDomainService -password xxx &
 sleep 1
+echo "$BINPATH/tao run -tao_domain $DOMAIN /Domains/FileServer -domain_config \"/Domains/domain.fileproxy/tao.config\" -path \"/Domains/domain.fileproxy/FileServer\" &"
 $BINPATH/tao run -tao_domain $DOMAIN /Domains/FileServer -domain_config "/Domains/domain.fileproxy/tao.config" -path "/Domains/domain.fileproxy/FileServer" &
 sleep 1
+echo "$BINPATH/tao run -tao_domain $DOMAIN /Domains/FileClient -domain_config \"/Domains/domain.fileproxy/tao.config\" -path \"/Domains/domain.fileproxy/FileClient\" &"
 $BINPATH/tao run -tao_domain $DOMAIN /Domains/FileClient -domain_config "/Domains/domain.fileproxy/tao.config" -path "/Domains/domain.fileproxy/FileClient" &
-

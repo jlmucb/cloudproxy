@@ -35,7 +35,7 @@ import (
 
 var simpleCfg = flag.String("domain_config",
 	"./tao.config",
-	"path to simple tao configuration")
+	"path to fileproxy tao configuration")
 var fileServerPath = flag.String("path", 
 	"./FileServer",
 	"path to Server files")
@@ -154,16 +154,18 @@ func main() {
 	if err != nil {
 		log.Fatalln("fileserver: Can't establish Tao", err)
 	}
-	log.Printf("fileserver name is %s\n", serverProgramData.TaoName)
+	log.Printf("newfileserver name is %s\n", serverProgramData.TaoName)
 
 	// Get or initialize encryption keys for table
-	var fileSecrets []byte
+	fileSecrets := make([]byte, 32)
 	secretsFileName := path.Join(*fileServerPath, "FileSecrets.bin")
+fmt.Printf("newfileserver, secrets: %s\n", secretsFileName)
 	encryptedFileSecrets, err := ioutil.ReadFile(secretsFileName)
 	if err != nil {
-		rand.Read(fileSecrets[0:32])
+fmt.Printf("initializing\n")
+		rand.Read(fileSecrets)
 		// Save encryption keys for table
-		encryptedFileSecrets, err = taosupport.Protect(serverProgramData.ProgramSymKeys, fileSecrets)
+		encryptedFileSecrets, err = taosupport.Protect(serverProgramData.ProgramSymKeys, fileSecrets[:])
 		if err != nil {
 				fmt.Printf("fileserver: Error protecting data\n")
 		}
@@ -190,11 +192,11 @@ func main() {
 		return
 	}
 	serverData.ResourceManager = new(resourcemanager.ResourceMasterInfo)
-	serverData.FileSecrets= fileSecrets
+	serverData.FileSecrets= fileSecrets[:]
 
 	// Read resource table.
 	tableFileName := path.Join(*fileServerPath, "EncryptedTable.bin")
-	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets, &serverData.ResourceMutex) {
+	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets[:], &serverData.ResourceMutex) {
 	}
 
 	server(serverAddr, serverData, &serverProgramData)

@@ -109,14 +109,14 @@ func TestAuthorization(t *testing.T) {
 	r[2].Owners = append(r[2].Owners, cp)
 
 	// Test owner authorization
-	msgType := MessageType(MessageType_ADDOWNER)
-	if (!IsAuthorized(msgType, serverData, connectionData, r[0])) {
+	serviceType := ServiceType(ServiceType_ADDOWNER)
+	if (!IsAuthorized(serviceType, serverData, connectionData, r[0])) {
 		t.Fatal("TestAuthorization: access to Resource0 doesn't pass but should\n")
 	}
-	if (IsAuthorized(msgType, serverData, connectionData, r[1])) {
+	if (IsAuthorized(serviceType, serverData, connectionData, r[1])) {
 		t.Fatal("TestAuthorization: access to Resource1 passes but shouldn't\n")
 	}
-	if (!IsAuthorized(msgType, serverData, connectionData, r[2])) {
+	if (!IsAuthorized(serviceType, serverData, connectionData, r[2])) {
 		t.Fatal("TestAuthorization: access to Resource0 doesn't pass but should\n")
 	}
 }

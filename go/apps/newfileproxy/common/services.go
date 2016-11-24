@@ -73,6 +73,86 @@ func intIntoPointer(i int) *int32 {
         return &ii
 }
 
+func PrintMessage(msg *FileproxyMessage) {
+	/*
+	 *  required MessageType Type = 1;
+	 *  // For CREATE, resourcename, type ("file" or "directory")
+	 *  // For DELETE, resource name
+	 *  // For READ, resource name
+	 *  // For WRITE, resource name
+	 *  // For ADDREADER, resource name
+	 *  // For ADDOWNER, resource name
+	 *  // For ADDWRITER, resource name
+	 *  // For DELETEREADER, resource name
+	 *  // For DELETEOWNER, resource name
+	 *  // For DELETEWRITER, resource name
+	 */
+	fmt.Printf("FileproxyMessage\n")
+	if msg.TypeOfService!= nil {
+		switch(*msg.TypeOfService) {
+		case ServiceType_REQUEST_CHALLENGE:
+			fmt.Printf("\tREQUEST_CHALLENGE message\n");
+		case ServiceType_CHALLENGE_RESPONSE:
+			fmt.Printf("\t_RESPONSE message\n");
+		case ServiceType_SIGNED_CHALLENGE:
+			fmt.Printf("\tSIGNED_CHALLENGE message\n");
+		case ServiceType_CREATE:
+			fmt.Printf("\tCREATE message\n");
+		case ServiceType_DELETE:
+			fmt.Printf("\tDELETE message\n");
+		case ServiceType_ADDREADER:
+			fmt.Printf("\tADD_READER message\n");
+		case ServiceType_ADDOWNER:
+			fmt.Printf("\tADDOWNER message\n");
+		case ServiceType_ADDWRITER:
+			fmt.Printf("\tADDWRITER message\n");
+		case ServiceType_DELETEREADER:
+			fmt.Printf("\tDELETEREADER message\n");
+		case ServiceType_DELETEOWNER:
+			fmt.Printf("\tDELETEOWNER message\n");
+		case ServiceType_DELETEWRITER:
+			fmt.Printf("\tDELETEWRITER message\n");
+		case ServiceType_READ:
+			fmt.Printf("\tREAD message\n");
+		case ServiceType_WRITE:
+			fmt.Printf("\tWRITE message\n");
+		}
+	}
+	if msg.Err != nil {
+		fmt.Printf("\tError: %s\n", msg.Err)
+	}
+	fmt.Printf("\tArguments: ")
+	fmt.Printf("\n")
+	fmt.Printf("\tData: ")
+	fmt.Printf("\n")
+}
+
+func SendMessage(ms *util.MessageStream, msg *FileproxyMessage) error {
+	out, err := proto.Marshal(msg)
+	if err != nil {
+		return errors.New("SendRequest: Can't encode response")
+	}
+	send := string(out)
+	_, err = ms.WriteString(send)
+	if err != nil {
+		return errors.New("SendResponse: Writestring error")
+	}
+	return nil
+}
+
+func GetMessage(ms *util.MessageStream) (*FileproxyMessage, error) {
+	resp, err := ms.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	msg := new(FileproxyMessage)
+	err = proto.Unmarshal([]byte(resp), msg)
+	if err != nil {
+		return nil, errors.New("GetResponse: Can't unmarshal message")
+	}
+	return msg, nil
+}
+
 func IsPrincipalOnList(principals []*resourcemanager.PrincipalInfo, principal *resourcemanager.PrincipalInfo) bool {
 	for i := 0; i < len(principals); i++ {
 		if principal.Name != nil && principals[i].Name != nil && principal.Name == principals[i].Name {
@@ -109,95 +189,72 @@ func HasSatisfyingCombinedPrincipal(combinedPrincipals []*resourcemanager.Combin
 
 // SendFile reads a file from disk and streams it to a receiver across a
 // MessageStream. 
-func SendFile(ms *util.MessageStream, serverData *ServerData,
-		info *resourcemanager.ResourceInfo) error {
+func SendFile(ms *util.MessageStream, serverData *ServerData, info *resourcemanager.ResourceInfo) error {
 	fileContents, err := info.Read(*serverData.ResourceManager.BaseDirectoryName)
 	if err != nil {
 		return errors.New("No message payload")
 	}
 	fmt.Printf("File contents: %x\n", fileContents)
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_RESPONSE))
 	var msg FileproxyMessage
-	msgtype := MessageType(MessageType_READ)
-	msg.Type = &msgtype
-	msg.NumTotalBuffers = intIntoPointer(1)
-	msg.CurrentBuffer = intIntoPointer(1)
-	msg.Data[0] = fileContents
-	var payload []byte
-	payload, err = proto.Marshal(&msg)
-	outerMessage.Data[0] = payload
-	return taosupport.SendMessage(ms, &outerMessage)
+	serviceType := ServiceType(ServiceType_WRITE)
+	msg.TypeOfService = &serviceType
+	msg.Data = append(msg.Data, fileContents)
+	return SendMessage(ms, &msg)
 }
 
 // GetFile receives bytes from a sender and optionally encrypts them and adds
 // integrity protection, and writes them to disk.
 func GetFile(ms *util.MessageStream, serverData *ServerData, 
 		info *resourcemanager.ResourceInfo) error {
-	// Read bytes from channel
-	outerMessage, err := taosupport.GetMessage(ms)
+	msg, err := GetMessage(ms)
 	if err != nil {
 		return errors.New("Bad message")
 	}
-	if *outerMessage.MessageType != *intIntoPointer(int(taosupport.MessageType_RESPONSE)) {
-		return errors.New("Bad message")
-	}
-	if len(outerMessage.Data) == 0 {
-		return errors.New("No message payload")
-	}
-	var msg FileproxyMessage
-	err = proto.Unmarshal(outerMessage.Data[0], &msg)
-	if err != nil {
-		return errors.New("Bad payload message")
-	}
-	if msg.Type == nil || *msg.Type != MessageType_READ {
+	if msg.TypeOfService == nil || *msg.TypeOfService != ServiceType_READ {
 		return errors.New("Wrong message response")
-	}
-	if len(msg.Data[0]) == 0 {
-		return errors.New("No file contents")
 	}
 	fileContents := msg.Data[0]
 	return info.Write(*serverData.ResourceManager.BaseDirectoryName, fileContents)
 }
 
-func FailureResponse(ms *util.MessageStream, msgType int, err_string string) {
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(msgType)
-	outerMessage.Err = stringIntoPointer(err_string)
-	taosupport.SendMessage(ms, &outerMessage)
+func FailureResponse(ms *util.MessageStream, serviceType ServiceType, err_string string) {
+	var responseMsg FileproxyMessage
+	responseMsg.TypeOfService = &serviceType
+	responseMsg.Err = stringIntoPointer(err_string)
+	SendMessage(ms, &responseMsg)
 	return
 }
 
-func SuccessResponse(ms *util.MessageStream, msgType int) {
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(msgType)
-	outerMessage.Err = stringIntoPointer("success")
-	taosupport.SendMessage(ms, &outerMessage)
+func SuccessResponse(ms *util.MessageStream, serviceType ServiceType) {
+	var responseMsg FileproxyMessage
+	responseMsg.TypeOfService = &serviceType
+	responseMsg.Err = stringIntoPointer("success")
+	SendMessage(ms, &responseMsg)
 	return
 }
 
-func IsAuthorized(action MessageType, serverData *ServerData, connectionData *ServerConnectionData,
+func IsAuthorized(action ServiceType, serverData *ServerData, connectionData *ServerConnectionData,
 		resourceInfo *resourcemanager.ResourceInfo) bool {
 	switch(action) {
 	default:
 		return false
-	case MessageType_REQUEST_CHALLENGE:
+	case ServiceType_REQUEST_CHALLENGE:
 		return false
-	case MessageType_CREATE:
+	case ServiceType_CREATE:
 		return false
-	case MessageType_DELETE, MessageType_ADDWRITER, MessageType_DELETEWRITER, MessageType_WRITE:
+	case ServiceType_DELETE, ServiceType_ADDWRITER, ServiceType_DELETEWRITER, ServiceType_WRITE:
 		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
 					&serverData.ResourceMutex) ||
 				HasSatisfyingCombinedPrincipal(resourceInfo.Writers, connectionData.Principals,
 					&serverData.ResourceMutex)
-	case MessageType_ADDREADER, MessageType_DELETEREADER, MessageType_READ:
+	case ServiceType_ADDREADER, ServiceType_DELETEREADER, ServiceType_READ:
 		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
 					&serverData.ResourceMutex) ||
 				HasSatisfyingCombinedPrincipal(resourceInfo.Readers, connectionData.Principals,
 					&serverData.ResourceMutex)
 			return true
 		return false
-	case MessageType_ADDOWNER, MessageType_DELETEOWNER:
+	case ServiceType_ADDOWNER, ServiceType_DELETEOWNER:
 		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
 			&serverData.ResourceMutex)
 	}
@@ -215,68 +272,43 @@ func SignNonce(nonce []byte, signKey *ecdsa.PrivateKey) ([]byte, []byte, error) 
 func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 
 	// Nonce message
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
-
-	var msg FileproxyMessage
-	msgType := MessageType_REQUEST_CHALLENGE
-	msg.Type = &msgType
-	msg.Data = append(msg.Data, key.Cert)
-	payload, err := proto.Marshal(&msg)
-	if err != nil {
-		return err
-	}
-	outerMessage.Data = append(outerMessage.Data, payload)
-	err = taosupport.SendMessage(ms, &outerMessage)
-	if err != nil {
-		return err
-	}
+	var initialRequestMsg FileproxyMessage
+	serviceType := ServiceType_REQUEST_CHALLENGE
+	initialRequestMsg.TypeOfService = &serviceType
+	initialRequestMsg.Data = append(initialRequestMsg.Data, key.Cert)
+	SendMessage(ms, &initialRequestMsg)
 
 	// Get response
-	responseOuter, err := taosupport.GetMessage(ms)
+	initialResponse, err := taosupport.GetMessage(ms)
 	if err != nil {
 		return err
 	}
-	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+	// Check message type and service type
+	if initialResponse.Err != nil && *initialResponse.Err != "success" {
 		return errors.New("RequestChallenge failed")
-	}
-	outerChallengeResponse, err := taosupport.GetMessage(ms)
-	if err != nil {
-		return err
 	}
 
 	// Error?
-	if len(outerChallengeResponse.Data) < 1 {
+	if len(initialResponse.Data) < 1 {
 		return errors.New("malformed response")
 	}
-	var challengeMessage FileproxyMessage
-	err = proto.Unmarshal(outerChallengeResponse.Data[0], &challengeMessage);
-	if err != nil {
-		return err
-	}
-	if len(challengeMessage.Data) < 1 {
+	if len(initialResponse.Data) < 1 {
 		return errors.New("malformed payload")
 	}
-	nonce := challengeMessage.Data[0]
+	nonce := initialResponse.Data[0]
 
 	// Sign Nonce and send it back
-	var nonceOuterMessage taosupport.SimpleMessage
-	var nonceInnerMessage FileproxyMessage
-	nonceInnerMessage.Type = &msgType
+	var signedChallengeMessage FileproxyMessage
 
 	s1, s2, err := SignNonce(nonce, key.Key)
 	if err != nil {
 		return err
 	}
-	nonceInnerMessage.Type = &msgType
-	nonceInnerMessage.Data = append(nonceInnerMessage.Data, s1)
-	nonceInnerMessage.Data = append(nonceInnerMessage.Data, s2)
-	payload, err = proto.Marshal(&nonceInnerMessage)
-	if err != nil {
-		return err
-	}
-	nonceOuterMessage.Data = append(nonceOuterMessage.Data, payload)
-	err = taosupport.SendMessage(ms, &nonceOuterMessage)
+	serviceType = ServiceType_SIGNED_CHALLENGE
+	signedChallengeMessage.TypeOfService = &serviceType
+	signedChallengeMessage.Data = append(signedChallengeMessage.Data, s1)
+	signedChallengeMessage.Data = append(signedChallengeMessage.Data, s2)
+	err = SendMessage(ms, &signedChallengeMessage)
 	if err != nil {
 		return err
 	}
@@ -290,160 +322,85 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 }
 
 func Create(ms *util.MessageStream, name string, resourceType resourcemanager.ResourceType, cert []byte) error {
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
-
-	var msg FileproxyMessage
-	msgType := MessageType_CREATE
-	msg.Type = &msgType
-	msg.Arguments[0] = name
-	msg.Data[0] = cert
-	payload, err := proto.Marshal(&msg)
+	var requestMessage FileproxyMessage
+	serviceType := ServiceType_CREATE
+	requestMessage.TypeOfService = &serviceType
+	requestMessage.Arguments = append(requestMessage.Arguments, name)
+	requestMessage.Data = append(requestMessage.Data, cert)
+	err := SendMessage(ms, &requestMessage)
 	if err != nil {
 		return err
 	}
-	outerMessage.Data = append(outerMessage.Data, payload)
-	err = taosupport.SendMessage(ms, &outerMessage)
-	if err != nil {
-		return err
-	}
-	responseOuter, err := taosupport.GetMessage(ms)
-	if responseOuter.Err != nil && *responseOuter.Err != "success" {
-		return errors.New("RequestChallenge failed")
+	responseMessage, err := GetMessage(ms)
+	if responseMessage.Err != nil && *responseMessage.Err != "success" {
+		return errors.New("Create failed")
 	}
 	return nil
 }
 
 func Delete(ms *util.MessageStream, name string) error {
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
 	var msg FileproxyMessage
-	msgType := MessageType_DELETE
-	msg.Type = &msgType
-	msg.Arguments[0] = name
-	payload, err := proto.Marshal(&msg)
+	serviceType := ServiceType_DELETE
+	msg.TypeOfService = &serviceType
+	msg.Arguments = append(msg.Arguments, name)
+	err := SendMessage(ms, &msg)
 	if err != nil {
 		return err
 	}
-	outerMessage.Data[0] = payload
-	err = taosupport.SendMessage(ms, &outerMessage)
-	if err != nil {
-		return err
-	}
-	responseOuter, err := taosupport.GetMessage(ms)
-	if responseOuter.Err != nil && *responseOuter.Err != "success" {
-		return errors.New("RequestChallenge failed")
+	responseMessage, err := taosupport.GetMessage(ms)
+	if responseMessage.Err != nil && *responseMessage.Err != "success" {
+		return errors.New("Delete failed")
 	}
 	return nil
 }
 
-func AddDelete(ms *util.MessageStream, msgType MessageType, resourceName string, certs [][]byte) error {
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
+func AddDelete(ms *util.MessageStream, serviceType ServiceType, resourceName string, certs [][]byte) error {
 	var msg FileproxyMessage
-	msg.Type = &msgType
-	msg.Arguments[0] = resourceName
+	msg.TypeOfService = &serviceType
+	msg.Arguments = append(msg.Arguments, resourceName)
 	for i := 0; i < len(certs); i++ {
-		msg.Data[i] = certs[i]
+		msg.Data = append(msg.Data, certs[i])
 	}
-	var payload []byte;
-	payload, err := proto.Marshal(&msg)
+	err := SendMessage(ms, &msg)
 	if err != nil {
 		return err
 	}
-	outerMessage.Data[0] = payload
-	err = taosupport.SendMessage(ms, &outerMessage)
-	if err != nil {
-		return err
-	}
-	responseOuter, err := taosupport.GetMessage(ms)
-	if responseOuter.Err != nil && *responseOuter.Err != "success" {
-		return errors.New("RequestChallenge failed")
+	responseMessage, err := taosupport.GetMessage(ms)
+	if responseMessage.Err != nil && *responseMessage.Err != "success" {
+		return errors.New("AddDelete failed")
 	}
 	return nil
 }
 
 func AddOwner(ms *util.MessageStream, resourceName string, certs [][]byte) error {
-	return AddDelete(ms, MessageType_ADDOWNER, resourceName, certs)
+	return AddDelete(ms, ServiceType_ADDOWNER, resourceName, certs)
 }
 
 func AddReader(ms *util.MessageStream, resourceName string, certs [][]byte) error {
-	return AddDelete(ms, MessageType_ADDREADER, resourceName, certs)
+	return AddDelete(ms, ServiceType_ADDREADER, resourceName, certs)
 }
 
 func AddWriter(ms *util.MessageStream, resourceName string, certs [][]byte) error {
-	return AddDelete(ms, MessageType_ADDWRITER, resourceName, certs)
+	return AddDelete(ms, ServiceType_ADDWRITER, resourceName, certs)
 }
 
 func DeleteOwner(ms *util.MessageStream, resourceName string, certs [][]byte) error {
-	return AddDelete(ms, MessageType_DELETEOWNER, resourceName, certs)
+	return AddDelete(ms, ServiceType_DELETEOWNER, resourceName, certs)
 }
 
 func DeleteReader(ms *util.MessageStream, resourceName string, certs [][]byte) error {
-	return AddDelete(ms, MessageType_DELETEREADER, resourceName, certs)
+	return AddDelete(ms, ServiceType_DELETEREADER, resourceName, certs)
 }
 
 func DeleteWriter(ms *util.MessageStream, resourceName string, certs [][]byte) error {
-	return AddDelete(ms, MessageType_DELETEWRITER, resourceName, certs)
+	return AddDelete(ms, ServiceType_DELETEWRITER, resourceName, certs)
 }
 
 func ReadResource(ms *util.MessageStream, resourceName string) ([]byte, error) {
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
-	var msg FileproxyMessage
-	msgType := MessageType_READ
-	msg.Type = &msgType
-	msg.Arguments[0] = resourceName
-	payload, err := proto.Marshal(&msg)
-	if err != nil {
-		return nil, err
-	}
-	outerMessage.Data[0] = payload
-	err = taosupport.SendMessage(ms, &outerMessage)
-	if err != nil {
-		return nil, err
-	}
-	responseOuter, err := taosupport.GetMessage(ms)
-	if responseOuter.Err != nil && *responseOuter.Err != "success" {
-		return nil, errors.New("RequestChallenge failed")
-	}
-	// Response should have fileContents
-	var respMsg FileproxyMessage
-	err = proto.Unmarshal(responseOuter.Data[0], &respMsg)
-	if err != nil {
-		return nil, errors.New("Bad payload message")
-	}
-	if respMsg.Type == nil || *respMsg.Type != MessageType_READ {
-		return nil, errors.New("Wrong message response")
-	}
-	if len(respMsg.Data[0]) == 0 {
-		return nil, errors.New("No file contents")
-	}
-	fileContents := respMsg.Data[0]
-	return fileContents, nil
+	return nil, nil
 }
 
 func WriteResource(ms *util.MessageStream, resourceName string, fileContents []byte) error {
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_REQUEST))
-	var msg FileproxyMessage
-	msgType := MessageType_READ
-	msg.Type = &msgType
-	msg.Arguments[0] = resourceName
-	msg.Data[0] = fileContents
-	payload, err := proto.Marshal(&msg)
-	if err != nil {
-		return err
-	}
-	outerMessage.Data[0] = payload
-	err = taosupport.SendMessage(ms, &outerMessage)
-	if err != nil {
-		return err
-	}
-	responseOuter, err := taosupport.GetMessage(ms)
-	if responseOuter.Err != nil && *responseOuter.Err != "success" {
-		return errors.New("RequestChallenge failed")
-	}
 	return nil
 }
 
@@ -451,64 +408,44 @@ func WriteResource(ms *util.MessageStream, resourceName string, fileContents []b
 func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) error {
 
 	if len(msg.Data) < 1 {
+		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "No cert included")
+		return nil
 	}
 	userCert := msg.Data[0]
 
-	// TODO(jlm): Check cert chain.
 	userCertificate, err := x509.ParseCertificate(userCert)
 	if err != nil {
+		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "Bad cert")
+		return err
 	}
 	if !VerifyCertificateChain(serverData.PolicyCertificate, nil, userCertificate) {
+		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "User Cert invalid")
+		return nil
 	}
 
-	// Format response message
-	var outerMessage taosupport.SimpleMessage
-	outerMessage.MessageType = intIntoPointer(int(taosupport.MessageType_RESPONSE))
-	var respMsg FileproxyMessage
-	msgType := MessageType_CHALLENGE
-	respMsg.Type = &msgType
-
+	var challengeMessage FileproxyMessage
 	// Generate challenge and send it.
-	var nonce [32]byte
-	n, err := rand.Read(nonce[:])
+	nonce := make([]byte, 32)
+	n, err := rand.Read(nonce)
 	if err != nil || n < 32 {
+		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "Can't generate challenge")
 		return errors.New("RequestChallenge can't generate nonce")
 	}
-	respMsg.Data = append(respMsg.Data, nonce[:])
-	payload, err := proto.Marshal(&respMsg)
-	if err != nil {
-		return err
-	}
-	outerMessage.Data = append(outerMessage.Data, payload)
-	err = taosupport.SendMessage(ms, &outerMessage)
-	if err != nil {
-		return err
-	}
+	challengeMessage.Data = append(challengeMessage.Data, nonce)
 
 	// Signed response.
-	responseOuter, err := taosupport.GetMessage(ms)
-	if responseOuter.Err != nil && *responseOuter.Err != "success" {
+	signedResponseMsg, err := GetMessage(ms)
+	if signedResponseMsg.Err != nil && *signedResponseMsg.Err != "success" {
 		return errors.New("RequestChallenge failed")
-	}
-	var responseMsg FileproxyMessage
-	err = proto.Unmarshal(responseOuter.Data[0], &responseMsg)
-	if err != nil {
-		return errors.New("Bad payload message")
-	}
-	if responseMsg.Type == nil || *responseMsg.Type != MessageType_CHALLENGE{
-		return errors.New("Wrong message response")
-	}
-	if len(respMsg.Data) < 2 {
-		return errors.New("No file contents")
 	}
 
 	// Verify signature
-	s1 := respMsg.Data[0]
-	s2 := respMsg.Data[0]
-	if VerifyNonceSignature(nonce[:], s1, s2, userCertificate) {
-		SuccessResponse(ms, int(MessageType_CHALLENGE))
+	s1 := signedResponseMsg.Data[0]
+	s2 := signedResponseMsg.Data[1]
+	if VerifyNonceSignature(nonce, s1, s2, userCertificate) {
+		SuccessResponse(ms, ServiceType_SIGNED_CHALLENGE)
 	} else {
-		FailureResponse(ms, int(MessageType_CHALLENGE), "verify failed")
+		FailureResponse(ms, ServiceType_SIGNED_CHALLENGE, "verify failed")
 	}
 	return nil
 }
@@ -516,15 +453,17 @@ func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData 
 func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
 	// Should have two arguments: resourceName, type
 	if len(msg.Arguments) < 2 {
-		FailureResponse(ms, int(MessageType_CREATE), "resource type not specified")
+		FailureResponse(ms, ServiceType_CREATE, "resource type not specified")
 		return
 	}
 	resourceName := msg.Arguments[0]
+	if msg.TypeOfService == nil {
+	}
 
 	// Already there?
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info != nil {
-		FailureResponse(ms, int(MessageType_CREATE), "resource exists")
+		FailureResponse(ms, ServiceType_CREATE, "resource exists")
 		return
 	}
 
@@ -553,8 +492,8 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 	}
 
 	// Authorized?
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_CREATE), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_CREATE, "not authorized")
 		return
 	}
 
@@ -574,165 +513,180 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 
 	// Send response
 	if err == nil {
-		SuccessResponse(ms, int(MessageType_CREATE))
+		SuccessResponse(ms, ServiceType_CREATE)
 	} else {
-		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")
+		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
 	}
 	return
 }
 
 func DoDelete(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_DELETE), "no such resource")
+		FailureResponse(ms, ServiceType_DELETE, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_DELETE), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_DELETE, "not authorized")
 		return
 	}
 	serverData.ResourceManager.DeleteResource(resourceName, &serverData.ResourceMutex)
-	SuccessResponse(ms, int(MessageType_CREATE))
+	SuccessResponse(ms, ServiceType_DELETE)
 	return
 }
 
 func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_ADDOWNER), "no such resource")
+		FailureResponse(ms, ServiceType_ADDOWNER, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_ADDOWNER), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_ADDOWNER, "not authorized")
 		return
 	}
 	// info.AddOwner(p CombinedPrincipal)
 	suc := bool(true)
 	if suc {
-		SuccessResponse(ms, int(MessageType_CREATE))
+		SuccessResponse(ms, ServiceType_ADDOWNER)
 	} else {
-		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")
+		FailureResponse(ms, ServiceType_ADDOWNER, "Can't insert resource")
 	}
 	return
 }
 
 func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_ADDREADER), "no such resource")
+		FailureResponse(ms, ServiceType_ADDREADER, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_ADDREADER), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_ADDREADER, "not authorized")
 		return
 	}
 	// info.AddReader(p CombinedPrincipal)
 	suc := bool(true)
 	if suc {
-		SuccessResponse(ms, int(MessageType_CREATE))
+		SuccessResponse(ms, ServiceType_CREATE)
 	} else {
-		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")
+		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
 	}
 	return
 }
 
 func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_ADDWRITER), "no such resource")
+		FailureResponse(ms, ServiceType_ADDWRITER, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_ADDWRITER), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_ADDWRITER, "not authorized")
 		return
 	}
 	// info.AddWriter(p CombinedPrincipal)
 	suc := bool(true)
 	if suc {
-		SuccessResponse(ms, int(MessageType_CREATE))
+		SuccessResponse(ms, ServiceType_CREATE)
 	} else {
-		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")
+		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
 	}
 	return
 }
 
 func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_DELETEOWNER), "no such resource")
+		FailureResponse(ms, ServiceType_DELETEOWNER, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_DELETEOWNER), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_DELETEOWNER, "not authorized")
 		return
 	}
 	// info.DeleteOwner(p CombinedPrincipal)
 	suc := bool(true)
 	if suc {
-		SuccessResponse(ms, int(MessageType_CREATE))
+		SuccessResponse(ms, ServiceType_CREATE)
 	} else {
-		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")
+		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
 	}
 	return
 }
 
 func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_DELETEREADER), "no such resource")
+		FailureResponse(ms, ServiceType_DELETEREADER, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_DELETEREADER), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_DELETEREADER, "not authorized")
 		return
 	}
 	// info.DeleteWriter(p CombinedPrincipal)
 	suc := bool(true)
 	if suc {
-		SuccessResponse(ms, int(MessageType_CREATE))
+		SuccessResponse(ms, ServiceType_CREATE)
 	} else {
-		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")
+		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
 	}
 	return
 }
 
 func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_DELETEWRITER), "no such resource")
+		FailureResponse(ms, ServiceType_DELETEWRITER, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_DELETEWRITER), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_DELETEWRITER, "not authorized")
 		return
 	}
 	// info.DeleteWriter(p CombinedPrincipal)
 	suc := bool(true)
 	if suc {
-		SuccessResponse(ms, int(MessageType_CREATE))
+		SuccessResponse(ms, ServiceType_CREATE)
 	} else {
-		FailureResponse(ms, int(MessageType_CREATE), "Can't insert resource")
+		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
 	}
 	return
 }
 
 func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
-
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_READ), "no such resource")
+		FailureResponse(ms, ServiceType_READ, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_READ), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_READ, "not authorized")
 		return
 	}
 	// Send file
@@ -741,14 +695,16 @@ func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionDa
 }
 
 func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+	if len(msg.Arguments) < 1 {
+	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
 	if info == nil {
-		FailureResponse(ms, int(MessageType_WRITE), "no such resource")
+		FailureResponse(ms, ServiceType_WRITE, "no such resource")
 		return
 	}
-	if !IsAuthorized(*msg.Type, serverData, connectionData, info) {
-		FailureResponse(ms, int(MessageType_WRITE), "not authorized")
+	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
+		FailureResponse(ms, ServiceType_WRITE, "not authorized")
 		return
 	}
 	// Send file
@@ -756,63 +712,46 @@ func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionD
 	return
 }
 
-// Dispatch
-
-func OuterFailureMessage(ms *util.MessageStream, errStr string) {
-	resp := new(taosupport.SimpleMessage)
-	mt := int32(taosupport.MessageType_RESPONSE)
-	resp.MessageType = &mt
-	resp.Err = &errStr
-	taosupport.SendMessage(ms, resp)
-}
-
-func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, req taosupport.SimpleMessage) {
-	// check that req is a request and has data
-	if req.MessageType == nil || *req.MessageType != int32(taosupport.MessageType_REQUEST) || len(req.Data) <1 {
-		OuterFailureMessage(ms, "Malformed request")
-		return
+func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, req *FileproxyMessage) {
+	if req.TypeOfService == nil {
+		FailureResponse(ms, ServiceType_NONE, "Unsupported request")
 	}
-	msg := new(FileproxyMessage);
-	err := proto.Unmarshal(req.Data[0], msg)
-	if err != nil {
-		return
-	}
-	switch(*msg.Type) {
+	switch(*req.TypeOfService) {
 	default:
-		OuterFailureMessage(ms, "Unsupported request")
+		FailureResponse(ms, *req.TypeOfService, "Unsupported request")
 		return
-	case MessageType_REQUEST_CHALLENGE:
-		DoChallenge(ms, serverData, connectionData, *msg)
+	case ServiceType_REQUEST_CHALLENGE:
+		DoChallenge(ms, serverData, connectionData, *req)
 		return
-	case MessageType_CREATE:
-		DoCreate(ms, serverData, connectionData, *msg)
+	case ServiceType_CREATE:
+		DoCreate(ms, serverData, connectionData, *req)
 		return
-	case MessageType_DELETE:
-		DoDelete(ms, serverData, connectionData, *msg)
+	case ServiceType_DELETE:
+		DoDelete(ms, serverData, connectionData, *req)
 		return
-	case MessageType_ADDREADER:
-		DoAddReader(ms, serverData, connectionData, *msg)
+	case ServiceType_ADDREADER:
+		DoAddReader(ms, serverData, connectionData, *req)
 		return
-	case MessageType_ADDOWNER:
-		DoAddOwner(ms, serverData, connectionData, *msg)
+	case ServiceType_ADDOWNER:
+		DoAddOwner(ms, serverData, connectionData, *req)
 		return
-	case MessageType_ADDWRITER:
-		DoAddWriter(ms, serverData, connectionData, *msg)
+	case ServiceType_ADDWRITER:
+		DoAddWriter(ms, serverData, connectionData, *req)
 		return
-	case MessageType_DELETEREADER:
-		DoDeleteReader(ms, serverData, connectionData, *msg)
+	case ServiceType_DELETEREADER:
+		DoDeleteReader(ms, serverData, connectionData, *req)
 		return
-	case MessageType_DELETEOWNER:
-		DoDeleteOwner(ms, serverData, connectionData, *msg)
+	case ServiceType_DELETEOWNER:
+		DoDeleteOwner(ms, serverData, connectionData, *req)
 		return
-	case MessageType_DELETEWRITER:
-		DoDeleteWriter(ms, serverData, connectionData, *msg)
+	case ServiceType_DELETEWRITER:
+		DoDeleteWriter(ms, serverData, connectionData, *req)
 		return
-	case MessageType_READ:
-		DoReadResource(ms, serverData, connectionData, *msg)
+	case ServiceType_READ:
+		DoReadResource(ms, serverData, connectionData, *req)
 		return
-	case MessageType_WRITE:
-		DoWriteResource(ms, serverData, connectionData, *msg)
+	case ServiceType_WRITE:
+		DoWriteResource(ms, serverData, connectionData, *req)
 		return
 	}
 }

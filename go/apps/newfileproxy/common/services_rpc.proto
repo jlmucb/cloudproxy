@@ -15,30 +15,32 @@
 syntax = "proto2";
 package common;
 
-enum MessageType {
-   REQUEST_CHALLENGE = 1;
-   CHALLENGE = 2;
-   VERIFY_CHALLENGE = 3;
-   CREATE = 4;
-   DELETE = 5;
-   ADDREADER = 6;
-   ADDOWNER= 7;
-   ADDWRITER = 8;
-   DELETEREADER = 9;
-   DELETEOWNER= 10;
-   DELETEWRITER = 11;
-   READ = 12;
-   WRITE = 13;
+enum ServiceType {
+  REQUEST_CHALLENGE = 1;
+  CHALLENGE_RESPONSE = 2;
+  SIGNED_CHALLENGE = 3;
+  CREATE = 4;
+  DELETE = 5;
+  ADDREADER = 6;
+  ADDOWNER = 7;
+  ADDWRITER = 8;
+  DELETEREADER = 9;
+  DELETEOWNER = 10;
+  DELETEWRITER = 11;
+  READ = 12;
+  WRITE = 13;
+  NONE = 14;
 }  
 
 // A FileproxyMessage is a message sent between fileproxy programs
 // as the data payload of a taosupport SimpleMessage.
 message FileproxyMessage {
-  required MessageType type = 1;
+  required ServiceType type_of_service = 1;
+  optional string err = 2;
   // For READ and WRITE, this is the total number of buffers constituting file.
-  optional int32 num_total_buffers = 2;
+  optional int32 num_total_buffers = 3;
   // For READ and WRITE, this is the sequence number of this buffer.
-  optional int32 current_buffer = 3;
+  optional int32 current_buffer = 4;
   // Arguments apply to the following calls and are call dependent.
   // For CREATE, resourcename, type ("file" or "directory")
   // For DELETE, resource name
@@ -50,7 +52,7 @@ message FileproxyMessage {
   // For DELETEREADER, resource name
   // For DELETEOWNER, resource name
   // For DELETEWRITER, resource name
-  repeated string arguments = 4;
+  repeated string arguments = 5;
   // data is message specific
   // For REQUEST_CHALLENGE, no data or arguments.
   // For CHALLENGE, there should be one data blob which is the user x509 cert.
@@ -59,7 +61,7 @@ message FileproxyMessage {
   // For ADDREADER, list of compound certs
   // For ADDOWNER, list of compound certs
   // For ADDWRITER, list of compound certs
-  repeated bytes data = 5;
+  repeated bytes data = 6;
 }
 
 message UserKeyDataMessage {

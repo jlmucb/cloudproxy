@@ -68,9 +68,13 @@ func main() {
 	// Fill Client data
 	clientData := new(common.ClientData)
 	if clientData == nil {
+		fmt.Printf("fileclient: bad clientData init ")
+		return
 	}
 	certificate, err := x509.ParseCertificate(clientProgramData.PolicyCert)
 	if err != nil {
+		fmt.Printf("fileclient: bad ParseCertificate: ", err)
+		return
 	}
 	clientData.PolicyCert = certificate
 	// initialize user keys
@@ -95,10 +99,14 @@ func main() {
 	userKeysFileName := path.Join(*fileClientPath, "serialized_user_keys")
 	userKeyFile, err := ioutil.ReadFile(userKeysFileName)
 	if err != nil {
+		fmt.Printf("fileclient: bad user certs: ", err)
+		return
 	}
 	userKeys := new(common.UserKeysMessage)
 	err = proto.Unmarshal(userKeyFile, userKeys)
 	if err != nil {
+		fmt.Printf("fileclient: bad user certs unmarshal: ", err)
+		return
 	}
 
 	// Deserialize keys.
@@ -117,12 +125,12 @@ func main() {
 	// Open the Tao Channel using the Program key. This program does all the
 	// standard channel negotiation and presents the secure server name
 	// after negotiation is complete.
-	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData,
-		&serverAddr)
+	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData, &serverAddr)
 	if err != nil {
 		fmt.Printf("fileclient: Can't establish Tao Channel")
+		return
 	}
-	fmt.Printf("fileclient: establish Tao Channel with %s, %s\n",
+	fmt.Printf("fileclient: established Tao Channel with %s, %s\n",
 		serverAddr, serverName)
 
 	// Authenticate Principals

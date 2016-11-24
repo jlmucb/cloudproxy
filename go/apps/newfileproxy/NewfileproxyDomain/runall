@@ -12,7 +12,7 @@ sleep 5
 # to provide isolation.
 # We run as root for conveniencea to avoid script clutter.
 #
-$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleDomainService -password xxx &
+$BINPATH/tao run -tao_domain $DOMAIN /Domains/SimpleDomainService -password xxx -config "/Domains/domain.fileproxy/tao.config" -service_path "/Domains/domain.fileproxy/SimpleDomainService" &
 sleep 1
 echo "$BINPATH/tao run -tao_domain $DOMAIN /Domains/FileServer -domain_config \"/Domains/domain.fileproxy/tao.config\" -path \"/Domains/domain.fileproxy/FileServer\" &"
 $BINPATH/tao run -tao_domain $DOMAIN /Domains/FileServer -domain_config "/Domains/domain.fileproxy/tao.config" -path "/Domains/domain.fileproxy/FileServer" &

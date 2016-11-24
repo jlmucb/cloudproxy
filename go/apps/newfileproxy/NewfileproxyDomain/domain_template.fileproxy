@@ -45,7 +45,7 @@ host_predicate_name: "TrustedHost"
 # Note we reuse simpledomainservice
 program_paths: "/Domains/simpledomainservice"
 program_paths: "/Domains/fileclient"
-program_paths: "/Domains/sfileserver"
+program_paths: "/Domains/fileserver"
 program_predicate_name: "TrustedProgramHash"
 
 container_paths: "demo_server.img.tgz"

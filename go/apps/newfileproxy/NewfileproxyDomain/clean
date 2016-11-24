@@ -1,0 +1,10 @@
+#
+source ./defines
+
+rm $DOMAIN/linux_tao_host/admin_socket
+rm $DOMAIN/FileClient/*
+rm $DOMAIN/FileServer/*
+
+ps aux | fgrep "file"
+ps aux | fgrep "File"
+

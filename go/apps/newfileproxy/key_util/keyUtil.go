@@ -27,9 +27,9 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-var configPath = flag.String("configPath", "/Domains/domain.simpleexample/tao.config", "The Tao domain config")
+var configPath = flag.String("configPath", "/Domains/domain.fileproxy/tao.config", "The Tao domain config")
 var domainPass = flag.String("password", "xxx", "The domain password")
-var keyPath = flag.String("path", "./tmptest", "path to user keys files")
+var keyPath = flag.String("path", "./FileClient", "path to user keys files")
 var numKeys = flag.Int("numKeys", 3, "number of keys to generate")
 var baseName = flag.String("baseUserName", "TestUser", "generic user name")
 

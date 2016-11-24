@@ -1,0 +1,6 @@
+#
+source ./defines
+cd $DOMAIN
+$BINPATH/key_util
+
+

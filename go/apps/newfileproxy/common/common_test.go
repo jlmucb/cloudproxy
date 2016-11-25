@@ -147,7 +147,8 @@ func TestSignature(t *testing.T) {
 		t.Fatal("TestSignature: Can't parse root certificate\n");
 	}
 	fmt.Printf("Root cert : %x\n", signerCertificate)
-	if !VerifyCertificateChain(signerCertificate, nil, signerCertificate) {
+	ok, _, err := VerifyCertificateChain(signerCertificate, nil, signerCertificate)
+	if !ok {
 		t.Fatal("TestSignature: root certificate fails verify: ", err);
 	}
 
@@ -169,7 +170,8 @@ func TestSignature(t *testing.T) {
 	if err != nil {
 		t.Fatal("TestSignature: Can't parse subject certificate\n");
 	}
-	if !VerifyCertificateChain(signerCertificate, nil, subjectCertificate) {
+	ok, _, err = VerifyCertificateChain(signerCertificate, nil, subjectCertificate)
+	if !ok {
 		t.Fatal("TestSignature: subject certificate fails verify: ", err);
 	}
 	fmt.Printf("TestSignature succeeds")

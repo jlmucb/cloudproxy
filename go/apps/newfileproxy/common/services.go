@@ -434,7 +434,9 @@ fmt.Printf("\n")
 		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "Bad cert")
 		return err
 	}
-	if !VerifyCertificateChain(serverData.PolicyCertificate, nil, userCertificate) {
+	ok, _, err := VerifyCertificateChain(serverData.PolicyCertificate, nil, userCertificate)
+	if !ok {
+		fmt.Printf("VerifyCertificateChain fails %s\n", err)
 		//FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "User Cert invalid")
 		//return nil
 	}

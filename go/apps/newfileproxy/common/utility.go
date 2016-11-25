@@ -22,7 +22,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"fmt"
 	"log"
 	"math/big"
 	"time"
@@ -147,7 +146,8 @@ func VerifyNonceSignature(nonce []byte, s1 []byte, s2 []byte, certificate *x509.
 	return ecdsa.Verify(certificate.PublicKey.(*ecdsa.PublicKey), nonce, r, s)
 }
 
-func VerifyCertificateChain(root *x509.Certificate, intermediateCerts []*x509.Certificate, cert *x509.Certificate) bool {
+func VerifyCertificateChain(root *x509.Certificate, intermediateCerts []*x509.Certificate,
+		cert *x509.Certificate) (bool, [][]*x509.Certificate, error) {
 	rootsPool := x509.NewCertPool()
 	rootsPool.AddCert(root)
 	intermediatesPool := x509.NewCertPool()
@@ -158,15 +158,13 @@ func VerifyCertificateChain(root *x509.Certificate, intermediateCerts []*x509.Ce
 	opts := x509.VerifyOptions {
 		Intermediates: intermediatesPool,
 		Roots:   rootsPool,
-		// CurrentTime:
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
-	_, err := cert.Verify(opts)
+	chain, err := cert.Verify(opts)
 	if err == nil {
-		return true
+		return true, chain, err
 	}
-	fmt.Printf("Verify err: ", err)
-	return false
+	return false, nil, err
 }
 

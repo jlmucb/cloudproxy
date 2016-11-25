@@ -20,10 +20,11 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"fmt"
-	// "math/big"
+	"io/ioutil"
+	"math/big"
 	"strconv"
 	"testing"
-	// "time"
+	"time"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
@@ -119,6 +120,59 @@ func TestAuthorization(t *testing.T) {
 	if (!IsAuthorized(serviceType, serverData, connectionData, r[2])) {
 		t.Fatal("TestAuthorization: access to Resource0 doesn't pass but should\n")
 	}
+}
+
+func TestSignature(t *testing.T) {
+	serialNumber := new(big.Int).SetInt64(1)
+	userName := "RootKey"
+	notBefore := time.Now()
+	validFor := 365 * 24 * time.Hour
+	notAfter := notBefore.Add(validFor)
+
+	rootKey, err :=  GenerateUserPublicKey()
+	if err != nil {
+		t.Fatal("TestSignature: Generate root key fails\n");
+	}
+	signerPriv := interface{}(rootKey)
+	subjectPub := interface{}(rootKey.Public())
+	rootCert, err := CreateKeyCertificate(*serialNumber, userName, "", "US",
+		signerPriv, nil, "", userName, "US", subjectPub,
+		notBefore, notAfter, true, x509.KeyUsageCertSign)
+	if err != nil {
+		t.Fatal("TestSignature: CreateKeyCertificate fails: ", err);
+	}
+	_ = ioutil.WriteFile("./tmptest/rootCert", rootCert, 0666)
+	signerCertificate, err := x509.ParseCertificate(rootCert)
+	if err != nil {
+		t.Fatal("TestSignature: Can't parse root certificate\n");
+	}
+	fmt.Printf("Root cert : %x\n", signerCertificate)
+	if !VerifyCertificateChain(signerCertificate, nil, signerCertificate) {
+		t.Fatal("TestSignature: root certificate fails verify: ", err);
+	}
+
+	serialNumber.SetInt64(2)
+	subjectKey, err :=  GenerateUserPublicKey()
+	if err != nil {
+		t.Fatal("TestSignature: Generate subject key fails\n");
+	}
+	subjectPub = interface{}(subjectKey.Public())
+	subjectUserName := "SubjectUser"
+	subjectCert, err := CreateKeyCertificate(*serialNumber, "Google", "", "US",
+		signerPriv, signerCertificate, "", subjectUserName, "US", subjectPub,
+		notBefore, notAfter, false,
+		x509.KeyUsageCertSign|x509.KeyUsageKeyAgreement|x509.KeyUsageDigitalSignature)
+	if err != nil {
+		t.Fatal("TestSignature: CreateKeyCertificate fails\n");
+	}
+	subjectCertificate, err := x509.ParseCertificate(subjectCert)
+	if err != nil {
+		t.Fatal("TestSignature: Can't parse subject certificate\n");
+	}
+	if !VerifyCertificateChain(signerCertificate, nil, subjectCertificate) {
+		t.Fatal("TestSignature: subject certificate fails verify: ", err);
+	}
+	fmt.Printf("TestSignature succeeds")
 }
 
 func TestServices(t *testing.T) {

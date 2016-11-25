@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	"log"
 	"math/big"
 	"time"
@@ -46,7 +47,7 @@ func MakeUserKeyStructure(key *ecdsa.PrivateKey, userName string, signerPriv int
 	subjectPub = key.Public()
  	cert, err := CreateKeyCertificate(*serialNumber, "Google", "", "US",
 			  signerPriv, signerCertificate, "", userName, "US", subjectPub,
-			  notBefore, notAfter,
+			  notBefore, notAfter, false,
 			  x509.KeyUsageCertSign|x509.KeyUsageKeyAgreement|x509.KeyUsageDigitalSignature)
 	if err != nil {
 		return nil, err
@@ -97,6 +98,7 @@ func CreateKeyCertificate(serialNumber big.Int,
 			  subjectKey interface{},
 			  notBefore time.Time,
 			  notAfter time.Time,
+			  isCA bool,
 			  keyUsage x509.KeyUsage) ([]byte, error)  {
 
 	x509SubjectName := &pkix.Name{
@@ -118,6 +120,10 @@ func CreateKeyCertificate(serialNumber big.Int,
 		NotBefore:    notBefore,
 		NotAfter:     notAfter,
 		KeyUsage:     keyUsage,
+	}
+	if isCA {
+		certificateTemplate.BasicConstraintsValid = true
+		certificateTemplate.IsCA = true
 	}
 
 	if parentCert == nil {
@@ -160,6 +166,7 @@ func VerifyCertificateChain(root *x509.Certificate, intermediateCerts []*x509.Ce
 	if err == nil {
 		return true
 	}
+	fmt.Printf("Verify err: ", err)
 	return false
 }
 

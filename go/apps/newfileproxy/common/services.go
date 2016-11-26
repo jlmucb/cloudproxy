@@ -355,6 +355,7 @@ func Create(ms *util.MessageStream, name string, resourceType resourcemanager.Re
 }
 
 func Delete(ms *util.MessageStream, name string) error {
+fmt.Printf("\nDelete\n")
 	var msg FileproxyMessage
 	serviceType := ServiceType_DELETE
 	msg.TypeOfService = &serviceType
@@ -371,6 +372,8 @@ func Delete(ms *util.MessageStream, name string) error {
 }
 
 func AddDelete(ms *util.MessageStream, serviceType ServiceType, resourceName string, certs [][]byte) error {
+fmt.Printf("\nAdd/Delete\n")
+
 	var msg FileproxyMessage
 	msg.TypeOfService = &serviceType
 	msg.Arguments = append(msg.Arguments, resourceName)
@@ -413,10 +416,41 @@ func DeleteWriter(ms *util.MessageStream, resourceName string, certs [][]byte) e
 }
 
 func ReadResource(ms *util.MessageStream, resourceName string) ([]byte, error) {
-	return nil, nil
+fmt.Printf("\nReadResource\n")
+	var msg FileproxyMessage
+	serviceType := ServiceType_READ
+	msg.TypeOfService = &serviceType
+	msg.Arguments = append(msg.Arguments, resourceName)
+	err := SendMessage(ms, &msg)
+	if err != nil {
+		return nil, err
+	}
+	responseMessage, err := GetMessage(ms)
+	if responseMessage.Err != nil && *responseMessage.Err != "success" {
+		return nil, errors.New("ReadResource failed")
+	}
+	if len(responseMessage.Data) < 1 {
+		return nil, errors.New("No file contents")
+	}
+	return responseMessage.Data[0], err
 }
 
-func WriteResource(ms *util.MessageStream, resourceName string, fileContents []byte) error {
+func WriteResource(ms *util.MessageStream, resourceName string,
+		fileContents []byte) error {
+fmt.Printf("\nWriteResource\n")
+	var msg FileproxyMessage
+	serviceType := ServiceType_WRITE
+	msg.TypeOfService = &serviceType
+	msg.Arguments = append(msg.Arguments, resourceName)
+	msg.Data = append(msg.Data, fileContents)
+	err := SendMessage(ms, &msg)
+	if err != nil {
+		return err
+	}
+	responseMessage, err := GetMessage(ms)
+	if responseMessage.Err != nil && *responseMessage.Err != "success" {
+		return errors.New("ReadResource failed")
+	}
 	return nil
 }
 

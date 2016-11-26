@@ -157,7 +157,6 @@ func main() {
 		return
 	}
 	fmt.Printf("Creates succeeded\n")
-return
 
 	// Add a few owners, readers, writers
 	var newcerts  [][]byte

@@ -244,9 +244,9 @@ func IsAuthorized(action ServiceType, serverData *ServerData, connectionData *Se
 	default:
 		return false
 	case ServiceType_REQUEST_CHALLENGE:
-		return false
+		return true
 	case ServiceType_CREATE:
-		return false
+		return true
 	case ServiceType_DELETE, ServiceType_ADDWRITER, ServiceType_DELETEWRITER, ServiceType_WRITE:
 		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
 					&serverData.ResourceMutex) ||
@@ -286,21 +286,15 @@ func RequestChallenge(ms *util.MessageStream, key KeyData) error {
 	// Get response
 	initialResponse, err := GetMessage(ms)
 	if err != nil {
-fmt.Printf("RequestChallenge: bad GetMessage\n")
 		return err
 	}
 	// Check message type and service type
 	if initialResponse.Err != nil && *initialResponse.Err != "success" {
-fmt.Printf("RequestChallenge: not success\n")
-PrintMessage(initialResponse)
 		return errors.New("RequestChallenge failed")
 	}
-fmt.Printf("RequestChallenge initial response\n")
-PrintMessage(initialResponse);
 
 	// Error?
 	if len(initialResponse.Data) < 1 {
-fmt.Printf("RequestChallenge: malformed 1\n")
 		return errors.New("malformed response")
 	}
 	nonce := initialResponse.Data[0]
@@ -310,26 +304,21 @@ fmt.Printf("RequestChallenge: malformed 1\n")
 
 	s1, s2, err := SignNonce(nonce, key.Key)
 	if err != nil {
-fmt.Printf("RequestChallenge: SignNonce fails\n")
 		return err
 	}
 	serviceType = ServiceType_SIGNED_CHALLENGE
 	signedChallengeMessage.TypeOfService = &serviceType
 	signedChallengeMessage.Data = append(signedChallengeMessage.Data, s1)
 	signedChallengeMessage.Data = append(signedChallengeMessage.Data, s2)
-fmt.Printf("RequestChallenge response\n")
-PrintMessage(&signedChallengeMessage);
 
 	err = SendMessage(ms, &signedChallengeMessage)
 	if err != nil {
-fmt.Printf("RequestChallenge: SendMessagefails\n")
 		return err
 	}
 
 	// Success?
 	completionMessage, err := GetMessage(ms)
 	if err != nil || (completionMessage.Err != nil && *completionMessage.Err != "success") {
-fmt.Printf("RequestChallenge: verify failed\n")
 		return errors.New("Verify failed")
 	}
 	return nil
@@ -337,15 +326,28 @@ fmt.Printf("RequestChallenge: verify failed\n")
 
 func Create(ms *util.MessageStream, name string, resourceType resourcemanager.ResourceType, cert []byte) error {
 	var requestMessage FileproxyMessage
+
 	serviceType := ServiceType_CREATE
 	requestMessage.TypeOfService = &serviceType
 	requestMessage.Arguments = append(requestMessage.Arguments, name)
+
+	if resourceType == resourcemanager.ResourceType_DIRECTORY {
+		requestMessage.Arguments = append(requestMessage.Arguments, "directory")
+	} else if resourceType == resourcemanager.ResourceType_FILE {
+		requestMessage.Arguments = append(requestMessage.Arguments, "file")
+	} else {
+		return errors.New("No resource type specified")
+	}
+
 	requestMessage.Data = append(requestMessage.Data, cert)
 	err := SendMessage(ms, &requestMessage)
 	if err != nil {
 		return err
 	}
 	responseMessage, err := GetMessage(ms)
+	if err != nil {
+		return err
+	}
 	if responseMessage.Err != nil && *responseMessage.Err != "success" {
 		return errors.New("Create failed")
 	}
@@ -446,11 +448,9 @@ fmt.Printf("\n")
 	nonce := make([]byte, 32)
 	n, err := rand.Read(nonce)
 	if err != nil || n < 32 {
-fmt.Printf("DoChallenge 0\n")
 		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "Can't generate challenge")
 		return errors.New("RequestChallenge can't generate nonce")
 	}
-fmt.Printf("DoChallenge 1\n")
 	challengeMessage.Data = append(challengeMessage.Data, nonce)
 	challengeMessage.Err = stringIntoPointer("success")
 	serviceType := ServiceType_REQUEST_CHALLENGE
@@ -466,7 +466,6 @@ fmt.Printf("DoChallenge 1\n")
 	if signedResponseMsg.Err != nil && *signedResponseMsg.Err != "success" {
 		return errors.New("RequestChallenge failed")
 	}
-fmt.Printf("DoChallenge 3\n")
 
 	// Verify signature
 	s1 := signedResponseMsg.Data[0]
@@ -479,15 +478,15 @@ fmt.Printf("DoChallenge 3\n")
 	return nil
 }
 
-func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
+
 	// Should have two arguments: resourceName, type
 	if len(msg.Arguments) < 2 {
-		FailureResponse(ms, ServiceType_CREATE, "resource type not specified")
+		FailureResponse(ms, ServiceType_CREATE, "Not enough arguments")
 		return
 	}
 	resourceName := msg.Arguments[0]
-	if msg.TypeOfService == nil {
-	}
 
 	// Already there?
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -501,7 +500,9 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 	info.Name = &msg.Arguments[0]
 	encodedTime, err := resourcemanager.EncodeTime(time.Now())
 	if err != nil {
+		fmt.Printf("Cannot encode time\n")
 	}
+
 	info.DateCreated = &encodedTime
 	info.DateModified = &encodedTime
 	size := int32(0)
@@ -510,14 +511,22 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 	p := new(resourcemanager.PrincipalInfo)
 
 	// Parse cert to get principal name.
+	if len(msg.Data) < 1 {
+		FailureResponse(ms, ServiceType_CREATE, "No owner certificate")
+		return
+	}
 	p.Cert = msg.Data[0]
 	certificate, err := x509.ParseCertificate(p.Cert)
 	if err != nil {
+		FailureResponse(ms, ServiceType_CREATE, "Cannot parse create certificatet")
+		return
 	}
 	p.Name = &certificate.Subject.CommonName
 	cp := resourcemanager.MakeCombinedPrincipalFromOne(p)
 	err = info.AddOwner(*cp, &serverData.ResourceMutex)
 	if err != nil {
+		FailureResponse(ms, ServiceType_CREATE, "Cannot AddOwner")
+		return
 	}
 
 	// Authorized?
@@ -549,8 +558,11 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 	return
 }
 
-func DoDelete(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoDelete(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_DELETE, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -567,8 +579,26 @@ func DoDelete(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 	return
 }
 
-func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func GetCombinedPrincipal(data [][]byte) (*resourcemanager.CombinedPrincipal, error) {
+	combinedPrincipal := new(resourcemanager.CombinedPrincipal)
+	for i := 0; i < len(data); i++ {
+		pr := new(resourcemanager.PrincipalInfo)
+		pr.Cert = data[i]
+		certificate, err := x509.ParseCertificate(pr.Cert)
+		if err != nil {
+			return nil, errors.New("Can't parse principal")
+		}
+		pr.Name = &certificate.Subject.CommonName
+		combinedPrincipal.Principals = append(combinedPrincipal.Principals, pr)
+	}
+	return combinedPrincipal, nil
+}
+
+func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -580,9 +610,14 @@ func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *
 		FailureResponse(ms, ServiceType_ADDOWNER, "not authorized")
 		return
 	}
-	// info.AddOwner(p CombinedPrincipal)
-	suc := bool(true)
-	if suc {
+	
+	combinedPrincipal, err :=  GetCombinedPrincipal(msg.Data)
+	if err != nil {
+		FailureResponse(ms, ServiceType_ADDOWNER, "Can't parse combined principal")
+		return
+	}
+	err = info.AddOwner(*combinedPrincipal, &serverData.ResourceMutex)
+	if err == nil {
 		SuccessResponse(ms, ServiceType_ADDOWNER)
 	} else {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Can't insert resource")
@@ -590,8 +625,11 @@ func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *
 	return
 }
 
-func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -603,18 +641,25 @@ func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData 
 		FailureResponse(ms, ServiceType_ADDREADER, "not authorized")
 		return
 	}
-	// info.AddReader(p CombinedPrincipal)
-	suc := bool(true)
-	if suc {
-		SuccessResponse(ms, ServiceType_CREATE)
+	combinedPrincipal, err :=  GetCombinedPrincipal(msg.Data)
+	if err != nil {
+		FailureResponse(ms, ServiceType_ADDREADER, "Can't parse combined principal")
+		return
+	}
+	err = info.AddReader(*combinedPrincipal, &serverData.ResourceMutex)
+	if err == nil {
+		SuccessResponse(ms, ServiceType_ADDREADER)
 	} else {
-		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
+		FailureResponse(ms, ServiceType_ADDREADER, "Can't insert resource")
 	}
 	return
 }
 
-func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -626,18 +671,25 @@ func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData 
 		FailureResponse(ms, ServiceType_ADDWRITER, "not authorized")
 		return
 	}
-	// info.AddWriter(p CombinedPrincipal)
-	suc := bool(true)
-	if suc {
-		SuccessResponse(ms, ServiceType_CREATE)
+	combinedPrincipal, err :=  GetCombinedPrincipal(msg.Data)
+	if err != nil {
+		FailureResponse(ms, ServiceType_ADDWRITER, "Can't parse combined principal")
+		return
+	}
+	err = info.AddWriter(*combinedPrincipal, &serverData.ResourceMutex)
+	if err == nil {
+		SuccessResponse(ms, ServiceType_ADDWRITER)
 	} else {
-		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
+		FailureResponse(ms, ServiceType_ADDWRITER, "Can't insert resource")
 	}
 	return
 }
 
-func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_DELETEOWNER, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -649,18 +701,25 @@ func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, connectionDat
 		FailureResponse(ms, ServiceType_DELETEOWNER, "not authorized")
 		return
 	}
-	// info.DeleteOwner(p CombinedPrincipal)
-	suc := bool(true)
-	if suc {
-		SuccessResponse(ms, ServiceType_CREATE)
+	combinedPrincipal, err :=  GetCombinedPrincipal(msg.Data)
+	if err != nil {
+		FailureResponse(ms, ServiceType_DELETEOWNER, "Can't parse combined principal")
+		return
+	}
+	err = info.DeleteOwner(*combinedPrincipal, &serverData.ResourceMutex)
+	if err == nil {
+		SuccessResponse(ms, ServiceType_DELETEOWNER)
 	} else {
-		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
+		FailureResponse(ms, ServiceType_DELETEOWNER, "Can't insert resource")
 	}
 	return
 }
 
-func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_DELETEREADER, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -672,18 +731,25 @@ func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, connectionDa
 		FailureResponse(ms, ServiceType_DELETEREADER, "not authorized")
 		return
 	}
-	// info.DeleteWriter(p CombinedPrincipal)
-	suc := bool(true)
-	if suc {
-		SuccessResponse(ms, ServiceType_CREATE)
+	combinedPrincipal, err :=  GetCombinedPrincipal(msg.Data)
+	if err != nil {
+		FailureResponse(ms, ServiceType_DELETEREADER, "Can't parse combined principal")
+		return
+	}
+	err = info.DeleteWriter(*combinedPrincipal, &serverData.ResourceMutex)
+	if err == nil {
+		SuccessResponse(ms, ServiceType_DELETEREADER)
 	} else {
-		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
+		FailureResponse(ms, ServiceType_DELETEREADER, "Can't delete")
 	}
 	return
 }
 
-func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_DELETEWRITER, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -695,18 +761,25 @@ func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionDa
 		FailureResponse(ms, ServiceType_DELETEWRITER, "not authorized")
 		return
 	}
-	// info.DeleteWriter(p CombinedPrincipal)
-	suc := bool(true)
-	if suc {
-		SuccessResponse(ms, ServiceType_CREATE)
+	combinedPrincipal, err :=  GetCombinedPrincipal(msg.Data)
+	if err != nil {
+		FailureResponse(ms, ServiceType_DELETEWRITER, "Can't parse combined principal")
+		return
+	}
+	err = info.DeleteWriter(*combinedPrincipal, &serverData.ResourceMutex)
+	if err == nil {
+		SuccessResponse(ms, ServiceType_DELETEWRITER)
 	} else {
-		FailureResponse(ms, ServiceType_CREATE, "Can't insert resource")
+		FailureResponse(ms, ServiceType_DELETEWRITER, "Can't delete resource")
 	}
 	return
 }
 
-func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_READ, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -723,8 +796,11 @@ func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionDa
 	return
 }
 
-func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) {
+func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
+		FailureResponse(ms, ServiceType_WRITE, "Not enough arguments")
+		return
 	}
 	resourceName := msg.Arguments[0]
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -741,10 +817,14 @@ func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionD
 	return
 }
 
-func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, req *FileproxyMessage) {
-	fmt.Printf("\nDoRequest:\n")
-	PrintMessage(req)
-	fmt.Printf("\n")
+func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		req *FileproxyMessage) {
+fmt.Printf("\nDoRequest:\n")
+PrintMessage(req)
+fmt.Printf("\n")
+serverData.ResourceManager.PrintMaster(true)
+fmt.Printf("\n")
+
 	if req.TypeOfService == nil {
 		FailureResponse(ms, ServiceType_NONE, "Unsupported request")
 	}

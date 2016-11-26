@@ -141,8 +141,7 @@ func main() {
 			return
 		}
 	}
-fmt.Printf("All common.RequestChallenge's succeeded\n")
-return
+	fmt.Printf("All common.RequestChallenge's succeeded\n")
 
 	// Create a directory.
 	err = common.Create(ms, "directory1", resourcemanager.ResourceType_DIRECTORY, UserKeyArray[0].Cert)
@@ -157,6 +156,8 @@ return
 		fmt.Printf("fileclient: common.Create 2 fails\n")
 		return
 	}
+	fmt.Printf("Creates succeeded\n")
+return
 
 	// Add a few owners, readers, writers
 	var newcerts  [][]byte

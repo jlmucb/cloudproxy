@@ -142,7 +142,7 @@ func server(serverAddr string, serverData *common.ServerData, serverProgramData 
 func main() {
 
 	// main is very similar to the initial parts of main in simpleclient,
-	// see the comments there.
+	// See the comments there.
 	var serverProgramData taosupport.TaoProgramData
 	defer taosupport.ClearTaoProgramData(&serverProgramData)
 
@@ -159,10 +159,8 @@ func main() {
 	// Get or initialize encryption keys for table
 	fileSecrets := make([]byte, 32)
 	secretsFileName := path.Join(*fileServerPath, "FileSecrets.bin")
-fmt.Printf("newfileserver, secrets: %s\n", secretsFileName)
 	encryptedFileSecrets, err := ioutil.ReadFile(secretsFileName)
 	if err != nil {
-fmt.Printf("initializing\n")
 		rand.Read(fileSecrets)
 		// Save encryption keys for table
 		encryptedFileSecrets, err = taosupport.Protect(serverProgramData.ProgramSymKeys, fileSecrets[:])
@@ -183,7 +181,9 @@ fmt.Printf("initializing\n")
 	// Initialize serverData
 	serverData := new(common.ServerData)
 	if serverData == nil {
-	}
+		fmt.Printf("fileserver: error parsing policy certificate\n")
+		return
+	} 
 
 	serverData.PolicyCert = serverProgramData.PolicyCert
 	serverData.PolicyCertificate, err = x509.ParseCertificate(serverData.PolicyCert)
@@ -193,10 +193,18 @@ fmt.Printf("initializing\n")
 	}
 	serverData.ResourceManager = new(resourcemanager.ResourceMasterInfo)
 	serverData.FileSecrets= fileSecrets[:]
+	serviceName := "fileserver"
+	serverData.ResourceManager.ServiceName = &serviceName
+	serverData.ResourceManager.BaseDirectoryName = fileServerPath
+	serverData.PolicyCert = serverProgramData.PolicyCert
 
+fmt.Printf("Initializing Table\n")
 	// Read resource table.
 	tableFileName := path.Join(*fileServerPath, "EncryptedTable.bin")
-	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets[:], &serverData.ResourceMutex) {
+	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets[:],
+		&serverData.ResourceMutex) {
+		fmt.Printf("fileserver: error parsing policy certificate\n")
+		return
 	}
 
 	server(serverAddr, serverData, &serverProgramData)

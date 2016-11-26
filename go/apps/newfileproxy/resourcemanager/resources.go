@@ -192,10 +192,16 @@ func (m *ResourceMasterInfo) DeleteResource(resourceName string, mutex *sync.RWM
 }
 
 func (p *PrincipalInfo) PrintPrincipal() {
+	if p.Name == nil || p.Cert == nil {
+		return
+	}
 	fmt.Printf("Name: %s\nCertificate: %x\n", *p.Name, p.Cert)
 }
 
 func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
+	if cp == nil {
+		return
+	}
 	// principals
 	for i := 0; i < len(cp.Principals); i++ {
 		cp.Principals[i].PrintPrincipal()
@@ -203,6 +209,9 @@ func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
 }
 
 func PrintPrincipalList(pl []*CombinedPrincipal) {
+	if pl == nil {
+		return
+	}
 	for i := 0; i < len(pl); i++ {
 		pl[i].PrintCombinedPrincipal()
 		fmt.Printf("\n")
@@ -211,10 +220,30 @@ func PrintPrincipalList(pl []*CombinedPrincipal) {
 
 // PrintResource prints a resource to the log.
 func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
+	if r == nil {
+		return
+	}
 	fmt.Printf("\n")
-	fmt.Printf("Name: %s\n", *r.Name)
-	fmt.Printf("Type: %d, size: %d\n", *r.Type, *r.Size)
-	fmt.Printf("Created: %s, modified: %s\n", *r.DateCreated, *r.DateModified)
+	if r.Name != nil {
+		fmt.Printf("Name: %s\n", *r.Name)
+	} else {
+		fmt.Printf("Name: empty\n");
+	}
+	if r.Type!= nil {
+	fmt.Printf("Type: %d, ", *r.Type)
+	} else {
+		fmt.Printf("Type: empty, ");
+	}
+	if r.Size!= nil {
+		fmt.Printf("size: %d\n", *r.Size)
+	} else {
+		fmt.Printf("Size: empty\n");
+	}
+	if r.DateCreated != nil && r.DateModified != nil {
+		fmt.Printf("Created: %s, modified: %s\n", *r.DateCreated, *r.DateModified)
+	} else {
+		fmt.Printf("Created adn Modified names are empty\n")
+	}
 	fmt.Printf("Owners: \n")
 	PrintPrincipalList(r.Owners)
 	fmt.Printf("\n")

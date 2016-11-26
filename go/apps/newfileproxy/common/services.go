@@ -159,7 +159,7 @@ func GetMessage(ms *util.MessageStream) (*FileproxyMessage, error) {
 
 func IsPrincipalOnList(principals []*resourcemanager.PrincipalInfo, principal *resourcemanager.PrincipalInfo) bool {
 	for i := 0; i < len(principals); i++ {
-		if principal.Name != nil && principals[i].Name != nil && principal.Name == principals[i].Name {
+		if principal.Name != nil && principals[i].Name != nil && *principal.Name == *principals[i].Name {
 			return true
 		}
 	}
@@ -168,7 +168,6 @@ func IsPrincipalOnList(principals []*resourcemanager.PrincipalInfo, principal *r
 
 func IsVerifiedCombinedPrincipal(combinedPrincipal *resourcemanager.CombinedPrincipal,
 		principals []*resourcemanager.PrincipalInfo) bool {
-
 	for i := 0; i < len(combinedPrincipal.Principals); i++ {
 		if !IsPrincipalOnList(principals, combinedPrincipal.Principals[i]) {
 			return false;
@@ -239,13 +238,6 @@ func SuccessResponse(ms *util.MessageStream, serviceType ServiceType) {
 
 func IsAuthorized(action ServiceType, serverData *ServerData, connectionData *ServerConnectionData,
 		resourceInfo *resourcemanager.ResourceInfo) bool {
-fmt.Printf("Authorized(%d): ", len(connectionData.Principals))
-for  i := 0; i < len(connectionData.Principals); i++ {
-	if connectionData.Principals[i].Name != nil {
-		fmt.Printf("%s ", *connectionData.Principals[i].Name)
-	}
-}
-fmt.Printf("\n")
 	switch(action) {
 	default:
 		return false
@@ -533,13 +525,17 @@ fmt.Printf("\n")
 
 func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-
+fmt.Printf("\nDoCreate\n")
 	// Should have two arguments: resourceName, type
 	if len(msg.Arguments) < 2 {
 		FailureResponse(ms, ServiceType_CREATE, "Not enough arguments")
 		return
 	}
 	resourceName := msg.Arguments[0]
+	if len(msg.Data) < 1 {
+		FailureResponse(ms, ServiceType_CREATE, "No owner certificate")
+		return
+	}
 
 	// Already there?
 	info := serverData.ResourceManager.FindResource(resourceName, &serverData.ResourceMutex)
@@ -550,7 +546,7 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 
 	// Create ResourceInfo
 	info = new(resourcemanager.ResourceInfo)
-	info.Name = &msg.Arguments[0]
+	info.Name = &resourceName
 	encodedTime, err := resourcemanager.EncodeTime(time.Now())
 	if err != nil {
 		fmt.Printf("Cannot encode time\n")
@@ -561,32 +557,23 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 	size := int32(0)
 	info.Size = &size
 
+	// Owner
 	p := new(resourcemanager.PrincipalInfo)
-
-	// Parse cert to get principal name.
-	if len(msg.Data) < 1 {
-		FailureResponse(ms, ServiceType_CREATE, "No owner certificate")
-		return
-	}
 	p.Cert = msg.Data[0]
 	certificate, err := x509.ParseCertificate(p.Cert)
 	if err != nil {
-		FailureResponse(ms, ServiceType_CREATE, "Cannot parse create certificatet")
+		FailureResponse(ms, ServiceType_CREATE, "Cannot parse create certificate")
 		return
 	}
 	p.Name = &certificate.Subject.CommonName
-	cp := resourcemanager.MakeCombinedPrincipalFromOne(p)
-	err = info.AddOwner(*cp, &serverData.ResourceMutex)
-	if err != nil {
-		FailureResponse(ms, ServiceType_CREATE, "Cannot AddOwner")
-		return
-	}
 
-	// Authorized?
-	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
-		FailureResponse(ms, ServiceType_CREATE, "not authorized")
-		return
-	}
+	// Add to Owners list
+fmt.Printf("Adding %s to owners of %s\n", *p.Name, resourceName)
+	cp := resourcemanager.MakeCombinedPrincipalFromOne(p)
+	info.Owners = append(info.Owners, cp)
+
+	// Put new resource in table.
+	err = serverData.ResourceManager.InsertResource(info, &serverData.ResourceMutex)
 
 	// If it's a directory, create it.
 	if msg.Arguments[1] == "directory" {
@@ -594,13 +581,13 @@ func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *Se
 		info.Type = &rType
 		fileName := path.Join(*serverData.ResourceManager.BaseDirectoryName, resourceName)
 		os.Mkdir(fileName, 0666)
-	} else {
-		rType := int32(resourcemanager.ResourceType_DIRECTORY)
+	} else if msg.Arguments[1] == "file" {
+		rType := int32(resourcemanager.ResourceType_FILE)
 		info.Type = &rType
+	} else {
+		FailureResponse(ms, ServiceType_CREATE, "Unknown resource type")
+		return
 	}
-
-	// Put new resource in table.
-	err = serverData.ResourceManager.InsertResource(info, &serverData.ResourceMutex)
 
 	// Send response
 	if err == nil {
@@ -660,6 +647,7 @@ fmt.Printf("DoAddOwner\n")
 		FailureResponse(ms, ServiceType_ADDOWNER, "no such resource")
 		return
 	}
+fmt.Printf("DoAddOwner 2\n")
 	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
 		FailureResponse(ms, ServiceType_ADDOWNER, "not authorized")
 		return

@@ -210,6 +210,7 @@ func (cp *CombinedPrincipal) PrintCombinedPrincipal() {
 
 func PrintPrincipalList(pl []*CombinedPrincipal) {
 	if pl == nil {
+		fmt.Printf("Empty\n")
 		return
 	}
 	for i := 0; i < len(pl); i++ {

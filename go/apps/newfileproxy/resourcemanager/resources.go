@@ -246,13 +246,10 @@ func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
 	}
 	fmt.Printf("Owners: \n")
 	PrintPrincipalList(r.Owners)
-	fmt.Printf("\n")
 	fmt.Printf("Readers: \n")
 	PrintPrincipalList(r.Readers)
-	fmt.Printf("\n")
 	fmt.Printf("Writers:\n")
 	PrintPrincipalList(r.Writers)
-	fmt.Printf("\n")
 	if printContents {
 		fileName := path.Join(directory, *r.Name)
 		contents, err := r.Read(fileName)
@@ -260,6 +257,7 @@ func (r *ResourceInfo) PrintResource(directory string, printContents bool) {
 			fmt.Printf("File: %s\n", contents)
 		}
 	}
+	fmt.Printf("\n")
 }
 
 // PrintMaster prints the ResourceMaster into the log.

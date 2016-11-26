@@ -124,7 +124,6 @@ func PrintMessage(msg *FileproxyMessage) {
 	for i := 0; i < len(msg.Arguments); i++ {
 		fmt.Printf("\t\tArgument[%d]: %s\n", len(msg.Arguments), msg.Arguments[i])
 	}
-	fmt.Printf("\n")
 	fmt.Printf("\t%d Data:\n", len(msg.Data))
 	for i := 0; i < len(msg.Data); i++ {
 		fmt.Printf("\t\tData[%d]: %x\n", len(msg.Data), msg.Data[i])
@@ -240,6 +239,13 @@ func SuccessResponse(ms *util.MessageStream, serviceType ServiceType) {
 
 func IsAuthorized(action ServiceType, serverData *ServerData, connectionData *ServerConnectionData,
 		resourceInfo *resourcemanager.ResourceInfo) bool {
+fmt.Printf("Authorized(%d): ", len(connectionData.Principals))
+for  i := 0; i < len(connectionData.Principals); i++ {
+	if connectionData.Principals[i].Name != nil {
+		fmt.Printf("%s ", *connectionData.Principals[i].Name)
+	}
+}
+fmt.Printf("\n")
 	switch(action) {
 	default:
 		return false
@@ -384,14 +390,23 @@ fmt.Printf("\nAdd/Delete\n")
 	if err != nil {
 		return err
 	}
+
 	responseMessage, err := GetMessage(ms)
+	if err != nil {
+		return err
+	}
+fmt.Printf("Response:\n")
+PrintMessage(responseMessage)
+fmt.Printf("\n")
 	if responseMessage.Err != nil && *responseMessage.Err != "success" {
 		return errors.New("AddDelete failed")
 	}
+fmt.Printf("Add/Delete succeeded\n")
 	return nil
 }
 
 func AddOwner(ms *util.MessageStream, resourceName string, certs [][]byte) error {
+fmt.Printf("AddOwner\n")
 	return AddDelete(ms, ServiceType_ADDOWNER, resourceName, certs)
 }
 
@@ -505,6 +520,10 @@ fmt.Printf("\n")
 	s1 := signedResponseMsg.Data[0]
 	s2 := signedResponseMsg.Data[1]
 	if VerifyNonceSignature(nonce, s1, s2, userCertificate) {
+		pr := new(resourcemanager.PrincipalInfo)
+		pr.Name = &userCertificate.Subject.CommonName
+		pr.Cert = userCert
+		connectionData.Principals = append(connectionData.Principals, pr)
 		SuccessResponse(ms, ServiceType_SIGNED_CHALLENGE)
 	} else {
 		FailureResponse(ms, ServiceType_SIGNED_CHALLENGE, "verify failed")
@@ -630,6 +649,7 @@ func GetCombinedPrincipal(data [][]byte) (*resourcemanager.CombinedPrincipal, er
 
 func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
+fmt.Printf("DoAddOwner\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
 		return
@@ -650,6 +670,8 @@ func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *
 		FailureResponse(ms, ServiceType_ADDOWNER, "Can't parse combined principal")
 		return
 	}
+fmt.Printf("resource adding owners:\n")
+combinedPrincipal.PrintCombinedPrincipal()
 	err = info.AddOwner(*combinedPrincipal, &serverData.ResourceMutex)
 	if err == nil {
 		SuccessResponse(ms, ServiceType_ADDOWNER)

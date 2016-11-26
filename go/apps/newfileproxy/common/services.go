@@ -419,7 +419,8 @@ func WriteResource(ms *util.MessageStream, resourceName string, fileContents []b
 }
 
 // This is actually done by the server.
-func DoChallenge(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData, msg FileproxyMessage) error {
+func DoChallenge(ms *util.MessageStream, serverData *ServerData,
+		connectionData *ServerConnectionData, msg FileproxyMessage) error {
 fmt.Printf("DoChallenge\n")
 PrintMessage(&msg)
 fmt.Printf("\n")
@@ -436,9 +437,8 @@ fmt.Printf("\n")
 	}
 	ok, _, err := VerifyCertificateChain(serverData.PolicyCertificate, nil, userCertificate)
 	if !ok {
-		fmt.Printf("VerifyCertificateChain fails %s\n", err)
-		//FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "User Cert invalid")
-		//return nil
+		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "User Cert invalid")
+		return nil
 	}
 
 	var challengeMessage FileproxyMessage

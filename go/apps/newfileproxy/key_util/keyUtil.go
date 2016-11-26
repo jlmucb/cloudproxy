@@ -69,7 +69,6 @@ func main() {
 			fmt.Printf("Can't generate user key %d\n", i)
 			return
 		}
-		signerPriv = key //FIX
 		keyData, err := common.MakeUserKeyStructure(key, userName, signerPriv, signerCertificate)
 		serializedKey, err := common.SerializeUserKey(keyData)
 		if err != nil {

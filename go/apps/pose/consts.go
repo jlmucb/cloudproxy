@@ -19,10 +19,8 @@ import "time"
 // A global variable, since this should be fixed for ALL clients,
 // and should be a system parameter
 const (
-	GRANULARITY  = 100 // granularity at which a user can wake up
-	MAX          = 1000000
-	CONFIRM_TIME = 6
-	INCREMENT    = time.Microsecond
+	GRANULARITY = 100 // granularity at which a user can wake up
+	INCREMENT   = time.Millisecond
 )
 
 var zero int64 = 0

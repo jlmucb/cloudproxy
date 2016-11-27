@@ -27,6 +27,8 @@ import (
 
 var dbPath string = "/tmp/chain"
 
+var CONFIRM_TIME = 6
+
 func addRandomBlocks(chain *Chain, num int) ([]*Block, error) {
 	gb, err := proto.Marshal(GENESIS)
 	if err != nil {
@@ -60,7 +62,7 @@ func addRandomBlocks(chain *Chain, num int) ([]*Block, error) {
 }
 
 func TestAddChain(t *testing.T) {
-	chain, err := NewChain(dbPath)
+	chain, err := NewChain(dbPath, CONFIRM_TIME)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,7 +94,7 @@ func TestAddChain(t *testing.T) {
 }
 
 func TestFork(t *testing.T) {
-	chain, err := NewChain(dbPath)
+	chain, err := NewChain(dbPath, CONFIRM_TIME)
 	if err != nil {
 		log.Fatal(err)
 	}

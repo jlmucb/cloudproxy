@@ -28,7 +28,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-var minerCount int = 15
+var minerCount int = 30
 var chainPath string = "/tmp/chain"
 var password []byte = make([]byte, 32)
 var network string = "tcp"
@@ -61,6 +61,7 @@ func makeMiner(dir string, domain *tao.Domain, id int) (*Miner, error) {
 		return nil, err
 	}
 	m.id = id
+	m.difficulty = GRANULARITY * (minerCount * minerCount)
 	return m, nil
 }
 
@@ -144,7 +145,8 @@ func TestFullyConnected(t *testing.T) {
 			t.Error(err)
 		}(m)
 	}
-	time.Sleep(5 * time.Second)
+	sleepFor := miners[0].Difficulty()
+	time.Sleep(time.Duration(sleepFor) * INCREMENT)
 
 	err = checkConsensus(miners)
 	if err != nil {

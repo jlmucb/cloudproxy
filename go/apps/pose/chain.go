@@ -26,14 +26,15 @@ import (
 type Chain struct {
 	db *leveldb.DB // Database holding all the blocks
 
-	chainLock *sync.Mutex
-	size      int
-	main      *Block            // Last block in the "main" (i.e., longest) chain
-	others    map[string]*Block // Other blocks that came in to the network in a chain
+	chainLock   *sync.Mutex
+	size        int
+	confirmTime int
+	main        *Block            // Last block in the "main" (i.e., longest) chain
+	others      map[string]*Block // Other blocks that came in to the network in a chain
 }
 
 // TODO: Chain's file probably should be protected using CloudProxy..
-func NewChain(dbFile string) (*Chain, error) {
+func NewChain(dbFile string, confirmTime int) (*Chain, error) {
 	db, err := leveldb.OpenFile(dbFile, nil)
 	if err != nil {
 		return nil, err
@@ -66,14 +67,21 @@ func NewChain(dbFile string) (*Chain, error) {
 	chain := &Chain{
 		db: db,
 
-		size: int(size),
-		main: main,
+		size:        int(size),
+		confirmTime: confirmTime,
+		main:        main,
 
 		chainLock: new(sync.Mutex),
 		others:    make(map[string]*Block),
 	}
 
 	return chain, nil
+}
+
+func (c *Chain) SetConfirmTime(confirmTime int) {
+	c.chainLock.Lock()
+	defer c.chainLock.Unlock()
+	c.confirmTime = confirmTime
 }
 
 func (c *Chain) MainBlock() *Block {

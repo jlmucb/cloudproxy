@@ -40,7 +40,8 @@ type Miner struct {
 	addr    string
 	network string
 
-	peers []string
+	peers    []string
+	peerRPCs []*rpc.Client
 
 	block chan *Block
 
@@ -61,6 +62,9 @@ type Miner struct {
 	chain *Chain
 
 	id int //for debugging
+
+	difficulty  int
+	confirmTime int
 }
 
 // Used to avoid warnings about having wrong number of ins/outs
@@ -118,7 +122,7 @@ func NewMiner(network, addr, domainPath string,
 		return nil, err
 	}
 
-	chain, err := NewChain(dbFile)
+	chain, err := NewChain(dbFile, 6)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +147,9 @@ func NewMiner(network, addr, domainPath string,
 		sentLock: new(sync.Mutex),
 
 		dataLock: new(sync.Mutex),
+
+		difficulty:  1000,
+		confirmTime: 6,
 	}
 
 	return c, nil
@@ -179,7 +186,7 @@ func (m *MinerRPC) SendBlock(bb []byte, _ *int) error {
 	hash := sha256.Sum256(bb)
 
 	if *block.Index > *m.miner.chain.MainBlock().Index {
-		fmt.Println("Received:", m.miner.id, *block.Index, hash[:10])
+		//fmt.Println(m.miner.id, "Received:", *block.Index, hash[:10])
 		m.miner.block <- block
 	}
 
@@ -216,15 +223,30 @@ func (m *MinerRPC) SendData(data []byte, _ *int) error {
 
 func (m *Miner) SetPeers(peers []string) {
 	m.peers = peers
+	m.dialAllPeers()
+}
+
+func (m *Miner) SetDifficulty(difficulty int) {
+	m.difficulty = difficulty
 }
 
 func (m *Miner) Difficulty() int {
-	return -1
+	return m.difficulty
+}
+
+func (m *Miner) SetConfirmTime(confirmTime int) {
+	m.confirmTime = confirmTime
+	m.chain.SetConfirmTime(confirmTime)
 }
 
 func (m *Miner) Close() {
 	if m.listener != nil {
 		m.listener.Close()
+	}
+	for _, peer := range m.peerRPCs {
+		if peer != nil {
+			peer.Close()
+		}
 	}
 }
 
@@ -239,7 +261,8 @@ func (m *Miner) Protocol() error {
 			return err
 		}
 
-		wait := ((binary.LittleEndian.Uint64(r) % uint64(MAX)) / GRANULARITY) * GRANULARITY
+		wait := ((binary.LittleEndian.Uint64(r) % uint64(m.difficulty)) / GRANULARITY) * GRANULARITY
+		//fmt.Println(m.id, "sleeping for ", *m.chain.MainBlock().Index, wait)
 		select {
 		case <-time.After(time.Duration(wait) * INCREMENT):
 			// this client won the lottery
@@ -281,22 +304,38 @@ func (m *Miner) Protocol() error {
 
 func (m *Miner) sendAllPeers(bb []byte) {
 	wg := new(sync.WaitGroup)
-	for _, peer := range m.peers {
+	for p, peer := range m.peers {
 		wg.Add(1)
-		go func(peer string) {
+		go func(p int, peer string) {
 			wg.Done()
-			conn, err := m.dialPeer(peer)
+			err := m.peerRPCs[p].Call("Miner.SendBlock", bb, nil)
 			if err != nil {
 				log.Fatal(err)
 			}
-			r := rpc.NewClient(conn)
-			err = r.Call("Miner.SendBlock", bb, nil)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}(peer)
+		}(p, peer)
 	}
 	wg.Wait()
+}
+
+// Dial all peers in your list.
+// It ignores peers you can't connect to
+func (m *Miner) dialAllPeers() {
+	for _, client := range m.peerRPCs {
+		if client != nil {
+			client.Close()
+		}
+	}
+
+	m.peerRPCs = make([]*rpc.Client, len(m.peers))
+	for p, peer := range m.peers {
+		go func(p int, peer string) {
+			conn, err := m.dialPeer(peer)
+			if err != nil {
+				log.Println(err)
+			}
+			m.peerRPCs[p] = rpc.NewClient(conn)
+		}(p, peer)
+	}
 }
 
 // dial a cloudproxy peer.

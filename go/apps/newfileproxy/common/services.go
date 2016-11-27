@@ -190,36 +190,6 @@ func HasSatisfyingCombinedPrincipal(combinedPrincipals []*resourcemanager.Combin
 	return false
 }
 
-// SendFile reads a file from disk and streams it to a receiver across a
-// MessageStream. 
-func SendFile(ms *util.MessageStream, serverData *ServerData, info *resourcemanager.ResourceInfo) error {
-	fileContents, err := info.Read(*serverData.ResourceManager.BaseDirectoryName)
-	if err != nil {
-		return errors.New("No message payload")
-	}
-	fmt.Printf("File contents: %x\n", fileContents)
-	var msg FileproxyMessage
-	serviceType := ServiceType(ServiceType_WRITE)
-	msg.TypeOfService = &serviceType
-	msg.Data = append(msg.Data, fileContents)
-	return SendMessage(ms, &msg)
-}
-
-// GetFile receives bytes from a sender and optionally encrypts them and adds
-// integrity protection, and writes them to disk.
-func GetFile(ms *util.MessageStream, serverData *ServerData, 
-		info *resourcemanager.ResourceInfo) error {
-	msg, err := GetMessage(ms)
-	if err != nil {
-		return errors.New("Bad message")
-	}
-	if msg.TypeOfService == nil || *msg.TypeOfService != ServiceType_READ {
-		return errors.New("Wrong message response")
-	}
-	fileContents := msg.Data[0]
-	return info.Write(*serverData.ResourceManager.BaseDirectoryName, fileContents)
-}
-
 func FailureResponse(ms *util.MessageStream, serviceType ServiceType, err_string string) {
 	var responseMsg FileproxyMessage
 	responseMsg.TypeOfService = &serviceType
@@ -234,6 +204,43 @@ func SuccessResponse(ms *util.MessageStream, serviceType ServiceType) {
 	responseMsg.Err = stringIntoPointer("success")
 	SendMessage(ms, &responseMsg)
 	return
+}
+
+// SendFile reads a file from disk and streams it to a receiver across a
+// MessageStream. 
+func SendFile(ms *util.MessageStream, serverData *ServerData, info *resourcemanager.ResourceInfo) error {
+	fileContents, err := info.Read(*serverData.ResourceManager.BaseDirectoryName)
+	if err != nil {
+		return errors.New("No message payload")
+	}
+	fmt.Printf("File contents: %x\n", fileContents)
+	var msg FileproxyMessage
+	serviceType := ServiceType(ServiceType_WRITE)
+	msg.TypeOfService = &serviceType
+	msg.Data = append(msg.Data, fileContents)
+	msg.Err = stringIntoPointer("success")
+	return SendMessage(ms, &msg)
+}
+
+// GetFile receives bytes from a sender and optionally encrypts them and adds
+// integrity protection, and writes them to disk.
+func GetFile(ms *util.MessageStream, serverData *ServerData, 
+		info *resourcemanager.ResourceInfo, msg FileproxyMessage) error {
+fmt.Printf("GetFile\n")
+	if len(msg.Data) < 1 {
+		FailureResponse(ms, ServiceType_READ, "No file data")
+	}
+	fileContents := msg.Data[0]
+	err := info.Write(*serverData.ResourceManager.BaseDirectoryName, fileContents)
+fmt.Printf("GetFile fileContents: %x\n", fileContents)
+	if err == nil {
+fmt.Printf("GetFile sending success\n")
+		SuccessResponse(ms, ServiceType_READ)
+	} else {
+fmt.Printf("GetFile sending failuer\n")
+		FailureResponse(ms, ServiceType_READ, "Can't write file")
+	}
+	return err
 }
 
 func IsAuthorized(action ServiceType, serverData *ServerData, connectionData *ServerConnectionData,
@@ -525,7 +532,7 @@ fmt.Printf("\n")
 
 func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-fmt.Printf("\nDoCreate\n")
+fmt.Printf("DoCreate\n")
 	// Should have two arguments: resourceName, type
 	if len(msg.Arguments) < 2 {
 		FailureResponse(ms, ServiceType_CREATE, "Not enough arguments")
@@ -568,7 +575,6 @@ fmt.Printf("\nDoCreate\n")
 	p.Name = &certificate.Subject.CommonName
 
 	// Add to Owners list
-fmt.Printf("Adding %s to owners of %s\n", *p.Name, resourceName)
 	cp := resourcemanager.MakeCombinedPrincipalFromOne(p)
 	info.Owners = append(info.Owners, cp)
 
@@ -647,7 +653,6 @@ fmt.Printf("DoAddOwner\n")
 		FailureResponse(ms, ServiceType_ADDOWNER, "no such resource")
 		return
 	}
-fmt.Printf("DoAddOwner 2\n")
 	if !IsAuthorized(*msg.TypeOfService, serverData, connectionData, info) {
 		FailureResponse(ms, ServiceType_ADDOWNER, "not authorized")
 		return
@@ -658,8 +663,6 @@ fmt.Printf("DoAddOwner 2\n")
 		FailureResponse(ms, ServiceType_ADDOWNER, "Can't parse combined principal")
 		return
 	}
-fmt.Printf("resource adding owners:\n")
-combinedPrincipal.PrintCombinedPrincipal()
 	err = info.AddOwner(*combinedPrincipal, &serverData.ResourceMutex)
 	if err == nil {
 		SuccessResponse(ms, ServiceType_ADDOWNER)
@@ -671,6 +674,7 @@ combinedPrincipal.PrintCombinedPrincipal()
 
 func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
+fmt.Printf("DoAddReader\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
 		return
@@ -701,6 +705,7 @@ func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData 
 
 func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
+fmt.Printf("DoAddWriter\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
 		return
@@ -821,6 +826,7 @@ func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionDa
 
 func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
+fmt.Printf("DoReadResource\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_READ, "Not enough arguments")
 		return
@@ -835,13 +841,14 @@ func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionDa
 		FailureResponse(ms, ServiceType_READ, "not authorized")
 		return
 	}
-	// Send file
-	_ = SendFile(ms, serverData, info)
+fmt.Printf("DoReadResource returning\n")
+	SendFile(ms, serverData, info)
 	return
 }
 
 func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
+fmt.Printf("DoWriteResource\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_WRITE, "Not enough arguments")
 		return
@@ -856,8 +863,8 @@ func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionD
 		FailureResponse(ms, ServiceType_WRITE, "not authorized")
 		return
 	}
-	// Send file
-	_ = GetFile(ms, serverData, info)
+	_ = GetFile(ms, serverData, info, msg)
+fmt.Printf("DoWriteResource done\n")
 	return
 }
 

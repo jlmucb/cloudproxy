@@ -156,7 +156,7 @@ func main() {
 		fmt.Printf("fileclient: common.Create 2 fails\n")
 		return
 	}
-	fmt.Printf("Creates succeeded\n")
+	fmt.Printf("Creates succeeded\n\n")
 
 	// Add a few owners, readers, writers
 	var newcerts  [][]byte
@@ -166,17 +166,22 @@ func main() {
 		fmt.Printf("fileclient: common.AddOwner fails\n")
 		return
 	}
+	fmt.Printf("AddOwner succeeded\n\n")
+
 	newcerts = append(newcerts, UserKeyArray[2].Cert)
 	err  = common.AddReader(ms, "directory1/file1" , newcerts)
 	if err != nil {
 		fmt.Printf("fileclient: common.AddReader fails\n")
 		return
 	}
+	fmt.Printf("AddReader succeeded\n\n")
+
 	err  = common.AddWriter(ms, "directory1/file1" , newcerts)
 	if err != nil {
 		fmt.Printf("fileclient: common.AddWriter fails\n")
 		return
 	}
+	fmt.Printf("AddWriter succeeded\n")
 
 	// Write a resource.
 	file1Contents := []byte {1, 2, 3}
@@ -185,6 +190,7 @@ func main() {
 		fmt.Printf("fileclient: common.WriteResource fails\n")
 		return
 	}
+	fmt.Printf("common.WriteResource succeeded\n")
 
 	// Read a resource.
 	recoverdFile1Contents, err := common.ReadResource(ms, "directory1/file1")
@@ -195,6 +201,7 @@ func main() {
 	if bytes.Compare(file1Contents, recoverdFile1Contents) != 0 {
 		fmt.Printf("fileclient: written file differs from read file\n")
 	}
+	fmt.Printf("common.ReadResource succeeded\n")
 
 	// Encrypt and store the secret in fileclient's save area.
 	encryptedFileSecrets, err = taosupport.Protect(clientProgramData.ProgramSymKeys, fileSecrets)
@@ -205,6 +212,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("fileclient: error saving retrieved secret\n")
 	}
+	fmt.Printf("Secrets and table saved\n\n")
 
 	// Close down.
 	fmt.Printf("fileclient completes with no errors")

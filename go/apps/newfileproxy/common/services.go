@@ -226,18 +226,16 @@ func SendFile(ms *util.MessageStream, serverData *ServerData, info *resourcemana
 // integrity protection, and writes them to disk.
 func GetFile(ms *util.MessageStream, serverData *ServerData, 
 		info *resourcemanager.ResourceInfo, msg FileproxyMessage) error {
-fmt.Printf("GetFile\n")
 	if len(msg.Data) < 1 {
 		FailureResponse(ms, ServiceType_READ, "No file data")
 	}
 	fileContents := msg.Data[0]
+	size := int32(len(fileContents))
+	info.Size = &size
 	err := info.Write(*serverData.ResourceManager.BaseDirectoryName, fileContents)
-fmt.Printf("GetFile fileContents: %x\n", fileContents)
 	if err == nil {
-fmt.Printf("GetFile sending success\n")
 		SuccessResponse(ms, ServiceType_READ)
 	} else {
-fmt.Printf("GetFile sending failuer\n")
 		FailureResponse(ms, ServiceType_READ, "Can't write file")
 	}
 	return err
@@ -360,7 +358,6 @@ func Create(ms *util.MessageStream, name string, resourceType resourcemanager.Re
 }
 
 func Delete(ms *util.MessageStream, name string) error {
-fmt.Printf("\nDelete\n")
 	var msg FileproxyMessage
 	serviceType := ServiceType_DELETE
 	msg.TypeOfService = &serviceType
@@ -377,8 +374,6 @@ fmt.Printf("\nDelete\n")
 }
 
 func AddDelete(ms *util.MessageStream, serviceType ServiceType, resourceName string, certs [][]byte) error {
-fmt.Printf("\nAdd/Delete\n")
-
 	var msg FileproxyMessage
 	msg.TypeOfService = &serviceType
 	msg.Arguments = append(msg.Arguments, resourceName)
@@ -394,18 +389,13 @@ fmt.Printf("\nAdd/Delete\n")
 	if err != nil {
 		return err
 	}
-fmt.Printf("Response:\n")
-PrintMessage(responseMessage)
-fmt.Printf("\n")
 	if responseMessage.Err != nil && *responseMessage.Err != "success" {
 		return errors.New("AddDelete failed")
 	}
-fmt.Printf("Add/Delete succeeded\n")
 	return nil
 }
 
 func AddOwner(ms *util.MessageStream, resourceName string, certs [][]byte) error {
-fmt.Printf("AddOwner\n")
 	return AddDelete(ms, ServiceType_ADDOWNER, resourceName, certs)
 }
 
@@ -430,7 +420,6 @@ func DeleteWriter(ms *util.MessageStream, resourceName string, certs [][]byte) e
 }
 
 func ReadResource(ms *util.MessageStream, resourceName string) ([]byte, error) {
-fmt.Printf("\nReadResource\n")
 	var msg FileproxyMessage
 	serviceType := ServiceType_READ
 	msg.TypeOfService = &serviceType
@@ -451,7 +440,6 @@ fmt.Printf("\nReadResource\n")
 
 func WriteResource(ms *util.MessageStream, resourceName string,
 		fileContents []byte) error {
-fmt.Printf("\nWriteResource\n")
 	var msg FileproxyMessage
 	serviceType := ServiceType_WRITE
 	msg.TypeOfService = &serviceType
@@ -468,12 +456,25 @@ fmt.Printf("\nWriteResource\n")
 	return nil
 }
 
+func SaveState(ms *util.MessageStream) error {
+	var requestMessage FileproxyMessage
+
+	serviceType := ServiceType_SAVESTATE
+	requestMessage.TypeOfService = &serviceType
+	err := SendMessage(ms, &requestMessage)
+	if err != nil {
+		return err
+	}
+	responseMessage, err := GetMessage(ms)
+	if responseMessage.Err != nil && *responseMessage.Err != "success" {
+		return errors.New("SaveState failed")
+	}
+	return nil
+}
+
 // This is actually done by the server.
 func DoChallenge(ms *util.MessageStream, serverData *ServerData,
 		connectionData *ServerConnectionData, msg FileproxyMessage) error {
-fmt.Printf("DoChallenge\n")
-PrintMessage(&msg)
-fmt.Printf("\n")
 	if len(msg.Data) < 1 {
 		FailureResponse(ms, ServiceType_REQUEST_CHALLENGE, "No cert included")
 		return nil
@@ -532,7 +533,6 @@ fmt.Printf("\n")
 
 func DoCreate(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-fmt.Printf("DoCreate\n")
 	// Should have two arguments: resourceName, type
 	if len(msg.Arguments) < 2 {
 		FailureResponse(ms, ServiceType_CREATE, "Not enough arguments")
@@ -642,7 +642,6 @@ func GetCombinedPrincipal(data [][]byte) (*resourcemanager.CombinedPrincipal, er
 
 func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-fmt.Printf("DoAddOwner\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
 		return
@@ -674,7 +673,6 @@ fmt.Printf("DoAddOwner\n")
 
 func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-fmt.Printf("DoAddReader\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
 		return
@@ -705,7 +703,6 @@ fmt.Printf("DoAddReader\n")
 
 func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-fmt.Printf("DoAddWriter\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
 		return
@@ -826,7 +823,6 @@ func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionDa
 
 func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-fmt.Printf("DoReadResource\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_READ, "Not enough arguments")
 		return
@@ -841,14 +837,12 @@ fmt.Printf("DoReadResource\n")
 		FailureResponse(ms, ServiceType_READ, "not authorized")
 		return
 	}
-fmt.Printf("DoReadResource returning\n")
 	SendFile(ms, serverData, info)
 	return
 }
 
 func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
-fmt.Printf("DoWriteResource\n")
 	if len(msg.Arguments) < 1 {
 		FailureResponse(ms, ServiceType_WRITE, "Not enough arguments")
 		return
@@ -864,17 +858,26 @@ fmt.Printf("DoWriteResource\n")
 		return
 	}
 	_ = GetFile(ms, serverData, info, msg)
-fmt.Printf("DoWriteResource done\n")
+	return
+}
+
+func DoSaveState(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
+		msg FileproxyMessage) {
+	tableFileName := path.Join(*serverData.ResourceManager.BaseDirectoryName, "ResourceTable")
+	if resourcemanager.SaveTable(serverData.ResourceManager, tableFileName,
+			serverData.FileSecrets, &serverData.ResourceMutex) {
+		SuccessResponse(ms, ServiceType_SAVESTATE)
+	} else {
+		FailureResponse(ms, ServiceType_SAVESTATE, "Couldn't save state")
+	}
+	fmt.Printf("\nSaved Table at %s\n", tableFileName)
+	serverData.ResourceManager.PrintMaster(true)
+	fmt.Printf("\n")
 	return
 }
 
 func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		req *FileproxyMessage) {
-fmt.Printf("\nDoRequest:\n")
-PrintMessage(req)
-fmt.Printf("\n")
-serverData.ResourceManager.PrintMaster(true)
-fmt.Printf("\n")
 
 	if req.TypeOfService == nil {
 		FailureResponse(ms, ServiceType_NONE, "Unsupported request")
@@ -915,6 +918,9 @@ fmt.Printf("\n")
 		return
 	case ServiceType_WRITE:
 		DoWriteResource(ms, serverData, connectionData, *req)
+		return
+	case ServiceType_SAVESTATE:
+		DoSaveState(ms, serverData, connectionData, *req)
 		return
 	}
 }

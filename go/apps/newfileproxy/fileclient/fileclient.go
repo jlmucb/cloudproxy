@@ -156,7 +156,7 @@ func main() {
 		fmt.Printf("fileclient: common.Create 2 fails\n")
 		return
 	}
-	fmt.Printf("Creates succeeded\n\n")
+	fmt.Printf("Creates succeeded\n")
 
 	// Add a few owners, readers, writers
 	var newcerts  [][]byte
@@ -166,7 +166,7 @@ func main() {
 		fmt.Printf("fileclient: common.AddOwner fails\n")
 		return
 	}
-	fmt.Printf("AddOwner succeeded\n\n")
+	fmt.Printf("AddOwner succeeded\n")
 
 	newcerts = append(newcerts, UserKeyArray[2].Cert)
 	err  = common.AddReader(ms, "directory1/file1" , newcerts)
@@ -174,7 +174,7 @@ func main() {
 		fmt.Printf("fileclient: common.AddReader fails\n")
 		return
 	}
-	fmt.Printf("AddReader succeeded\n\n")
+	fmt.Printf("AddReader succeeded\n")
 
 	err  = common.AddWriter(ms, "directory1/file1" , newcerts)
 	if err != nil {
@@ -203,6 +203,14 @@ func main() {
 	}
 	fmt.Printf("common.ReadResource succeeded\n")
 
+	// Tell Server to save state
+	err = common.SaveState(ms)
+	if err == nil {
+		fmt.Printf("common.SaveState succeeded\n")
+	} else {
+		fmt.Printf("common.SaveState failed\n")
+	}
+
 	// Encrypt and store the secret in fileclient's save area.
 	encryptedFileSecrets, err = taosupport.Protect(clientProgramData.ProgramSymKeys, fileSecrets)
 	if err != nil {
@@ -212,8 +220,8 @@ func main() {
 	if err != nil {
 		fmt.Printf("fileclient: error saving retrieved secret\n")
 	}
-	fmt.Printf("Secrets and table saved\n\n")
+	fmt.Printf("Secrets and table saved\n")
 
 	// Close down.
-	fmt.Printf("fileclient completes with no errors")
+	fmt.Printf("fileclient completes with no errors\n")
 }

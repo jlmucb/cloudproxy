@@ -52,11 +52,9 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		if err != nil {
 			return
 		}
-		log.Printf("serviceThread, got message: ")
-		common.PrintMessage(req)
-
+		// log.Printf("serviceThread, got message: ")
+		// common.PrintMessage(req)
 		common.DoRequest(ms, serverData, connectionData, req)
-		// Save table.
 	}
 	log.Printf("fileserver: client thread terminating\n")
 }

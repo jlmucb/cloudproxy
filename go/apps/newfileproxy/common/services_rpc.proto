@@ -29,7 +29,8 @@ enum ServiceType {
   DELETEWRITER = 11;
   READ = 12;
   WRITE = 13;
-  NONE = 14;
+  SAVESTATE = 14;
+  NONE = 15;
 }  
 
 // A FileproxyMessage is a message sent between fileproxy programs

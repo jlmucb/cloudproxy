@@ -351,7 +351,7 @@ func SaveTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []by
 	if err != nil {
 		return false
 	}
-	encryptedTable, err := taosupport.Unprotect(fileSecrets, serializedTable)
+	encryptedTable, err := taosupport.Protect(fileSecrets, serializedTable)
 	if err != nil {
 		return false
 	}	

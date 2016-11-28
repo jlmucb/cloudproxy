@@ -260,13 +260,10 @@ func IsAuthorized(action ServiceType, serverData *ServerData, connectionData *Se
 					&serverData.ResourceMutex) ||
 				HasSatisfyingCombinedPrincipal(resourceInfo.Readers, connectionData.Principals,
 					&serverData.ResourceMutex)
-			return true
-		return false
 	case ServiceType_ADDOWNER, ServiceType_DELETEOWNER:
 		return HasSatisfyingCombinedPrincipal(resourceInfo.Owners, connectionData.Principals,
 			&serverData.ResourceMutex)
 	}
-	return false
 }
 
 func SignNonce(nonce []byte, signKey *ecdsa.PrivateKey) ([]byte, []byte, error) {
@@ -668,13 +665,12 @@ func DoAddOwner(ms *util.MessageStream, serverData *ServerData, connectionData *
 	} else {
 		FailureResponse(ms, ServiceType_ADDOWNER, "Can't insert resource")
 	}
-	return
 }
 
 func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
-		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
+		FailureResponse(ms, ServiceType_ADDREADER, "Not enough arguments")
 		return
 	}
 	resourceName := msg.Arguments[0]
@@ -698,13 +694,12 @@ func DoAddReader(ms *util.MessageStream, serverData *ServerData, connectionData 
 	} else {
 		FailureResponse(ms, ServiceType_ADDREADER, "Can't insert resource")
 	}
-	return
 }
 
 func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
 		msg FileproxyMessage) {
 	if len(msg.Arguments) < 1 {
-		FailureResponse(ms, ServiceType_ADDOWNER, "Not enough arguments")
+		FailureResponse(ms, ServiceType_ADDWRITER, "Not enough arguments")
 		return
 	}
 	resourceName := msg.Arguments[0]
@@ -728,7 +723,6 @@ func DoAddWriter(ms *util.MessageStream, serverData *ServerData, connectionData 
 	} else {
 		FailureResponse(ms, ServiceType_ADDWRITER, "Can't insert resource")
 	}
-	return
 }
 
 func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
@@ -758,7 +752,6 @@ func DoDeleteOwner(ms *util.MessageStream, serverData *ServerData, connectionDat
 	} else {
 		FailureResponse(ms, ServiceType_DELETEOWNER, "Can't insert resource")
 	}
-	return
 }
 
 func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
@@ -788,7 +781,6 @@ func DoDeleteReader(ms *util.MessageStream, serverData *ServerData, connectionDa
 	} else {
 		FailureResponse(ms, ServiceType_DELETEREADER, "Can't delete")
 	}
-	return
 }
 
 func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
@@ -818,7 +810,6 @@ func DoDeleteWriter(ms *util.MessageStream, serverData *ServerData, connectionDa
 	} else {
 		FailureResponse(ms, ServiceType_DELETEWRITER, "Can't delete resource")
 	}
-	return
 }
 
 func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
@@ -838,7 +829,6 @@ func DoReadResource(ms *util.MessageStream, serverData *ServerData, connectionDa
 		return
 	}
 	SendFile(ms, serverData, info)
-	return
 }
 
 func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
@@ -858,7 +848,6 @@ func DoWriteResource(ms *util.MessageStream, serverData *ServerData, connectionD
 		return
 	}
 	_ = GetFile(ms, serverData, info, msg)
-	return
 }
 
 func DoSaveState(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,
@@ -873,7 +862,6 @@ func DoSaveState(ms *util.MessageStream, serverData *ServerData, connectionData 
 	fmt.Printf("\nSaved Table at %s\n", tableFileName)
 	serverData.ResourceManager.PrintMaster(true)
 	fmt.Printf("\n")
-	return
 }
 
 func DoRequest(ms *util.MessageStream, serverData *ServerData, connectionData *ServerConnectionData,

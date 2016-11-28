@@ -74,7 +74,7 @@ func TestTableFunctions(t *testing.T) {
 	policyPub = policyKey.Public()
 	policyCert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 		"US", policyPriv, nil, "", "TestPolicyCert", "US",
-		policyPub, notBefore, notAfter,
+		policyPub, notBefore, notAfter, true,
 		x509.KeyUsageCertSign|x509.KeyUsageKeyAgreement|x509.KeyUsageDigitalSignature)
 	if err != nil {
 		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
@@ -94,7 +94,7 @@ func TestTableFunctions(t *testing.T) {
 	programPub = programKey.Public()
 	programCert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 		"US", policyPriv, policyCertificate, "", "TestProgramCert", "US",
-		programPub, notBefore, notAfter,
+		programPub, notBefore, notAfter, false,
 		x509.KeyUsageCertSign|x509.KeyUsageKeyAgreement|x509.KeyUsageDigitalSignature)
 	if err != nil {
 		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
@@ -109,7 +109,7 @@ func TestTableFunctions(t *testing.T) {
 	user1Pub = user1Key.Public()
 	user1Cert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 		"US", policyKey, policyCertificate, "", "TestUserCert1", "US",
-		user1Pub, notBefore, notAfter,
+		user1Pub, notBefore, notAfter, true,
 		x509.KeyUsageCertSign|x509.KeyUsageKeyAgreement|x509.KeyUsageDigitalSignature)
 	if err != nil {
 		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")
@@ -124,7 +124,7 @@ func TestTableFunctions(t *testing.T) {
 	user2Pub = user2Key.Public()
 	user2Cert, err := common.CreateKeyCertificate(*serialNumber, "Google", "Google",
 		"US", policyKey, policyCertificate, "", "TestUserCert2", "US",
-		user2Pub, notBefore, notAfter,
+		user2Pub, notBefore, notAfter, false,
 		x509.KeyUsageCertSign|x509.KeyUsageKeyAgreement|x509.KeyUsageDigitalSignature)
 	if err != nil {
 		t.Fatal("TestTableFunctions: CreateKeyCertificate fails\n")

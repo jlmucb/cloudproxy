@@ -2,8 +2,8 @@
 source ./define.sh
 
 # These should be run as root.
-$GOPATH/bin/tao host init -tao_domain $DOMAIN -hosting process -root -pass xxx
-sudo -E $GOPATH/bin/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass xxx &
+$GOPATH/bin/tao host init -tao_domain $DOMAIN -hosting process -root -pass $PASSWORD
+sudo -E $GOPATH/bin/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass $PASSWORD &
 sleep 2
 
 #

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ./initmixnet.sh
 source ./define.sh

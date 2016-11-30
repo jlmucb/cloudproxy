@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 source ./define.sh
 
 mkdir -p $DOMAINROOT

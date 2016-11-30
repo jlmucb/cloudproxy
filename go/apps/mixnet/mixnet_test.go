@@ -331,10 +331,10 @@ func TestCreateDestroy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer directory.Close()
 	defer router.Close()
 	defer proxy.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
-	defer directory.Close()
 	rAddr := router.listener.Addr().String()
 
 	// The address doesn't matter here because no packets will be sent on
@@ -640,6 +640,7 @@ func TestSendMessageTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer directory.Close()
 	proxy2, err := makeProxyContext(localAddr, []string{directory.listener.Addr().String()}, domain)
 	if err != nil {
 		t.Fatal(err)
@@ -690,6 +691,7 @@ func TestMixnetSingleHop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer directory.Close()
 	proxy.Close()
 	defer router.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
@@ -766,6 +768,7 @@ func TestMixnetSingleHopTLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer directory.Close()
 	proxy.Close()
 	defer router.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
@@ -859,6 +862,8 @@ func TestMixnetMultiHop(t *testing.T) {
 	}
 	proxy.Close()
 	defer router.Close()
+	defer router2.Close()
+	defer router3.Close()
 	defer os.RemoveAll(path.Base(domain.ConfigPath))
 	routerAddr := router.listener.Addr().String()
 	routerAddr2 := router2.listener.Addr().String()

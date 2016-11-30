@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 source ./define.sh
 
 # These should be run as root.

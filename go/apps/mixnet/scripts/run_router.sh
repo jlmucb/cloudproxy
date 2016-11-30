@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #The first argument to this script is the batch size
 
 ./initmixnet.sh

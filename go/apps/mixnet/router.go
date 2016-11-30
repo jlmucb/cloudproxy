@@ -171,6 +171,9 @@ func NewRouterContext(path, network, addr string, timeout time.Duration,
 }
 
 func (r *RouterContext) register() {
+	if r.addr == "127.0.0.1:0" {
+		r.addr = r.listener.Addr().String()
+	}
 	for _, dirAddr := range r.directories {
 		err := r.Register(dirAddr)
 		if err != nil {
@@ -259,6 +262,30 @@ func (r *RouterContext) GetDirectory(dirAddr string) ([]string, [][]byte, error)
 	return directory, keys, c.Close()
 }
 
+func (r *RouterContext) DeleteRouter() {
+	dm := &DirectoryMessage{
+		Type:  DirectoryMessageType_DELETE.Enum(),
+		Addrs: []string{r.addr},
+		Keys:  nil,
+	}
+	b, err := proto.Marshal(dm)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for _, dirAddr := range r.directories {
+		c, err := tao.Dial(r.network, dirAddr, r.domain.Guard, r.domain.Keys.VerifyingKey, r.keys)
+		if err != nil {
+			log.Println(err)
+		}
+		_, err = c.Write(b)
+		if err != nil {
+			log.Println(err)
+		}
+		c.Read([]byte{0})
+	}
+}
+
 // Close releases any resources held by the hosted program.
 func (r *RouterContext) Close() {
 	r.killQueue <- true
@@ -277,6 +304,7 @@ func (r *RouterContext) Close() {
 		}
 		conn.Close()
 	}
+	r.DeleteRouter()
 }
 
 // Return a random circuit ID

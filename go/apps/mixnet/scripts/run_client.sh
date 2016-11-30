@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #first arg is the port number for this
 #second arg is the prebuilt circuit for testing
 #third arg is the dest addr

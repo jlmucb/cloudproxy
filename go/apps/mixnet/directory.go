@@ -20,6 +20,7 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -139,6 +140,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 	dc.dirLock.Lock()
 	defer dc.dirLock.Unlock()
 	if *dm.Type == DirectoryMessageType_REGISTER {
+		log.Println("Registering", dm.Addrs)
 		if fromRouter {
 			dc.directory = append(dc.directory, dm.Addrs...)
 			dc.serverKeys = append(dc.serverKeys, dm.Keys...)
@@ -148,6 +150,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 			glog.Error(err)
 		}
 	} else if *dm.Type == DirectoryMessageType_DELETE {
+		log.Println("Deleting", dm.Addrs)
 		if fromRouter {
 			for _, addr := range dm.Addrs {
 				for i := range dc.directory {

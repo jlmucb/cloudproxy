@@ -1,0 +1,47 @@
+#
+source ./defines
+
+if [[ -e $DOMAIN ]]
+then
+  echo "$DOMAIN exists"
+else
+  mkdir $DOMAIN
+  mkdir $DOMAIN/policy_keys
+  echo "$DOMAIN created"
+fi
+
+if [[ -e $DOMAIN/SimpleDomainService ]]
+then
+  echo "$DOMAIN/SimpleDomainService exists"
+  rm $DOMAIN/SimpleDomainService/*
+else
+  mkdir $DOMAIN/SimpleDomainService
+  echo "$DOMAIN/SimpleDomainService created"
+fi
+
+if [[ -e $DOMAIN/FileClient ]]
+then
+  echo "$DOMAIN/FileClient exists"
+  rm $DOMAIN/FileClient/*
+else
+  mkdir $DOMAIN/FileClient
+  echo "$DOMAIN/FileClient created"
+fi
+
+if [[ -e $DOMAIN/FileServer ]]
+then
+  echo "$DOMAIN/FileServer exists"
+  rm $DOMAIN/FileServer/*
+else
+  mkdir $DOMAIN/FileServer
+  echo "$DOMAIN/FileServer created"
+fi
+
+$BINPATH/tao domain init -tao_domain $DOMAIN -config_template $TEMPLATE -pub_domain_address "127.0.0.1" -pass xxx
+
+#
+# The following line is not needed since we have a liberal guard.
+# $BINPATH/tao domain policy -add_host -add_programs -add_linux_host -add_guard -tao_domain \
+#      $DOMAIN -pass xxx -config_template $TEMPLATE
+# If we had a restrictive guard, we'd have to call this command to create rules for the linux_host.
+

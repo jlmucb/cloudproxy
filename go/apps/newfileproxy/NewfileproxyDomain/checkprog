@@ -1,0 +1,10 @@
+#
+ps aux | fgrep linux_host
+ps aux | fgrep SimpleDomainServer
+ps aux | fgrep FileClient
+ps aux | fgrep FileServer
+ps aux | fgrep fileproxy
+ps aux | fgrep simpledomainserver
+ps aux | fgrep fileclient
+ps aux | fgrep fileserver
+

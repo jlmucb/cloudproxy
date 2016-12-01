@@ -1,0 +1,6 @@
+0. SimpleDomainService should already be written
+1. intifileproxy
+2. initdomain
+	copy domains keys from policy_keys
+3. inituserkeys
+4. runall

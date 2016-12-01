@@ -1,0 +1,8 @@
+DOMAINROOT=/Domain
+BINPATH=~/bin
+TAO_HOST_DOMAIN_DIR=~/src/github.com/jlmucb/cloudproxy/go/apps/newfileproxy/NewfileproxyDomain
+#
+DOMAIN=/Domains/domain.fileproxy
+OLD_TEMPLATE=$TAO_HOST_DOMAIN_DIR/domain_template.fileproxy
+TEMPLATE=/Domains/domain_template.fileproxy
+

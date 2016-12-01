@@ -28,7 +28,7 @@ echo -e "127.0.0.1:8001" > $DOMAIN/mixnet_proxy/1.circuit
 # Start mixnet proxies; proxies will pick one of 4 paths
 proxy_start_port=9000
 echo "Starting proxies..."
-$GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$proxy_start_port --dirs $directory_file --config $DOMAIN/tao.config --circuit $DOMAIN/mixnet_proxy/1.circuit &
+$GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$proxy_start_port --dirs $directory_file --config $DOMAIN/tao.config --circuit $DOMAIN/mixnet_proxy/1.circuit --hops 1 &
 sleep 0.3
 
 # Start echo TLS server

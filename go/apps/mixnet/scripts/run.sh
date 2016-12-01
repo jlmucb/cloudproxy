@@ -49,7 +49,7 @@ do
   elif [[ $(( $i % 4 )) == 3 ]]; then
     circuit="4.circuit"
   fi
-  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$port --dirs $directory_file --config $DOMAIN/tao.config --circuit $DOMAIN/mixnet_proxy/$circuit &
+  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$port --dirs $directory_file --config $DOMAIN/tao.config --circuit $DOMAIN/mixnet_proxy/$circuit --hops 3 &
   sleep 0.3
 done
 

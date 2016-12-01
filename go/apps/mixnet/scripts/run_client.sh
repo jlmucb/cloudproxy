@@ -1,7 +1,8 @@
 #!/bin/bash
 #first arg is the port number for this
-#second arg is the prebuilt circuit for testing
-#third arg is the dest addr
+#second arg is the prebuilt circuit for testing (could be empty)
+#third arg is the number of hops in this circuit
+#fourth arg is the dest addr
 
 ./initmixnet.sh
 source ./define.sh
@@ -14,7 +15,7 @@ sleep 2
 directory_file=/tmp/directories
 
 echo "Starting proxy..."
-$GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy -dirs $directory_file --config $DOMAIN/tao.config --addr :$1 --circuit $2&
+$GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy -dirs $directory_file --config $DOMAIN/tao.config --addr :$1 --circuit $2 --hops $3 &
 sleep 0.5
 
-$DOMAINROOT/mixnet_simpleclient --proxy_addr 127.0.0.1:$1 --dest_addr $3
+$DOMAINROOT/mixnet_simpleclient --proxy_addr 127.0.0.1:$1 --dest_addr $4

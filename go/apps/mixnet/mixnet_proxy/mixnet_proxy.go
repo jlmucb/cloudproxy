@@ -16,9 +16,7 @@ package main
 
 import (
 	"bufio"
-	"encoding/pem"
 	"flag"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -31,7 +29,7 @@ import (
 
 // serveClient runs the SOCKS5 proxy for clients and connects them
 // to the mixnet.
-func serveClients(routerAddrs []string, exitKey *[32]byte, proxy *mixnet.ProxyContext) error {
+func serveClients(routerAddrs []string, proxy *mixnet.ProxyContext) error {
 	for {
 		c, err := proxy.Accept()
 		if err != nil {
@@ -42,7 +40,7 @@ func serveClients(routerAddrs []string, exitKey *[32]byte, proxy *mixnet.ProxyCo
 			defer c.Close()
 			// Length of the slice determines path length,
 			// so insert some empty strings
-			err := proxy.ServeClient(c, append(routerAddrs, c.(*mixnet.SocksConn).DestinationAddr()), exitKey)
+			err := proxy.ServeClient(c, append(routerAddrs, c.(*mixnet.SocksConn).DestinationAddr()), nil)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -59,8 +57,6 @@ var (
 	routerAddr      = flag.String("router_addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
 	directories     = flag.String("dirs", "directories", "File containing addresses of directories.")
 
-	//only used if you don't want to download the keys from the directories
-	keyFile = flag.String("exit_key", "", "PEM encoded exit key")
 	//only used for testing, where users pick the circuit
 	circuit = flag.String("circuit", "", "A file with pre-built circuit.")
 )
@@ -98,20 +94,8 @@ func main() {
 		os.Exit(0x80 + signo)
 	}()
 
-	var exitKey *[32]byte = nil
-	if *keyFile != "" {
-		var key [32]byte
-		kb, err := ioutil.ReadFile(*keyFile)
-		if err != nil {
-			log.Fatalln("No exit key file..")
-		}
-		block, _ := pem.Decode(kb)
-		copy(key[:], block.Bytes)
-		exitKey = &key
-	}
-
 	if *circuit == "" {
-		if err = serveClients([]string{*routerAddr}, exitKey, proxy); err != nil {
+		if err = serveClients(nil, proxy); err != nil {
 			log.Fatalln("proxy: error while serving:", err)
 		}
 	} else {
@@ -124,7 +108,7 @@ func main() {
 		for scan.Scan() {
 			routers = append(routers, scan.Text())
 		}
-		if err = serveClients(routers, exitKey, proxy); err != nil {
+		if err = serveClients(routers, proxy); err != nil {
 			log.Fatalln("proxy: error while serving:", err)
 		}
 	}

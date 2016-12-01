@@ -32,7 +32,7 @@ const (
 const (
 	// Update directory every x amount of time
 	DefaultUpdateFrequency = 3600 * time.Second
-	DefaultHopCount        = 3
+	DefaultHopCount        = 2
 	DefaultTimeout         = 10 * time.Second
 )
 

@@ -181,8 +181,24 @@ func (p *ProxyContext) handleConn(c *Conn) {
 // particular destination over the mixnet specified by addrs[len(addrs)-1].
 func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circuit, uint64, error) {
 	p.directoryConsensus()
+
 	if exitKey == nil {
-		exit := addrs[len(addrs)-2]
+		// TODO(kwonalbert): there could be flags to show which servers
+		// are "more" trustworthy
+		exit := ""
+		if len(addrs) == 1 {
+			// only has the final dest, pick a random exit
+			b := make([]byte, LEN_SIZE)
+			if _, err := rand.Read(b); err != nil {
+				return nil, 0, err
+			}
+			exit = p.directory[int(binary.LittleEndian.Uint32(b))%len(p.directory)]
+			addrs = append(addrs, exit)
+		} else {
+			// only has the final dest, pick a random exit
+			exit = addrs[len(addrs)-2]
+		}
+
 		idx := -1
 		for s, server := range p.directory {
 			if server == exit {
@@ -192,6 +208,26 @@ func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circui
 		var key [32]byte
 		copy(key[:], p.serverKeys[idx])
 		exitKey = &key
+	}
+
+	if len(addrs) < 2 {
+		entry := ""
+		exit := addrs[len(addrs)-1]
+		ok := false
+		for !ok {
+			b := make([]byte, LEN_SIZE)
+			if _, err := rand.Read(b); err != nil {
+				return nil, 0, err
+			}
+			entry = p.directory[int(binary.LittleEndian.Uint32(b))%len(p.directory)]
+			ok = entry != exit
+		}
+		newAddrs := make([]string, DefaultHopCount)
+		newAddrs[0] = entry
+		for i := 1; i < DefaultHopCount; i++ {
+			newAddrs[i] = ""
+		}
+		addrs = append(newAddrs, addrs...)
 	}
 
 	id, err := p.newID()

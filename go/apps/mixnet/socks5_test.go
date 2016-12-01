@@ -35,10 +35,9 @@ func runSocksServerOne(proxy *ProxyContext, rAddrs []string, ch chan<- testResul
 	defer c.Close()
 	addr := c.(*SocksConn).dstAddr
 
-	circuit := make([]string, len(rAddrs)+1)
+	circuit := make([]string, len(rAddrs))
 	copy(circuit, rAddrs)
-	circuit[len(rAddrs)] = addr
-	_, id, err := proxy.CreateCircuit(circuit, exitKey)
+	_, id, err := proxy.CreateCircuit(circuit, addr)
 	if err != nil {
 		ch <- testResult{err, nil}
 		return
@@ -69,11 +68,10 @@ func runSocksServer(proxy *ProxyContext, rAddrs []string, ch chan<- testResult, 
 	defer c.Close()
 	addr := c.(*SocksConn).dstAddr
 
-	circuit := make([]string, len(rAddrs)+1)
+	circuit := make([]string, len(rAddrs))
 	copy(circuit, rAddrs)
-	circuit[len(rAddrs)] = addr
 
-	ch <- testResult{proxy.ServeClient(c, circuit, exitKey), []byte(addr)}
+	ch <- testResult{proxy.ServeClient(c, circuit, addr), []byte(addr)}
 }
 
 // Connect to a destination through a mixnet proxy, send a message,
@@ -146,7 +144,7 @@ func TestSocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	proxy, err := makeProxyContext(localAddr, nil, d)
+	proxy, err := makeProxyContext(localAddr, nil, 1, d)
 	if err != nil {
 		t.Fatal(err)
 	}

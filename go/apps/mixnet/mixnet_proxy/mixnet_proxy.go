@@ -38,9 +38,7 @@ func serveClients(routerAddrs []string, proxy *mixnet.ProxyContext) error {
 
 		go func(c net.Conn) {
 			defer c.Close()
-			// Length of the slice determines path length,
-			// so insert some empty strings
-			err := proxy.ServeClient(c, append(routerAddrs, c.(*mixnet.SocksConn).DestinationAddr()), nil)
+			err := proxy.ServeClient(c, routerAddrs, c.(*mixnet.SocksConn).DestinationAddr())
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -53,9 +51,10 @@ var (
 	network         = flag.String("network", "tcp", "Network protocol for the mixnet proxy and router.")
 	configPath      = flag.String("config", "tao.config", "Path to domain configuration file.")
 	timeoutDuration = flag.String("timeout", "10s", "Timeout on TCP connections, e.g. \"10s\".")
+	hopCount        = flag.Int("hops", mixnet.DefaultHopCount, "Number of hops in the circuit")
 	proxyAddr       = flag.String("addr", ":1080", "Address and port to listen to client's connections.")
-	routerAddr      = flag.String("router_addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
-	directories     = flag.String("dirs", "directories", "File containing addresses of directories.")
+
+	directories = flag.String("dirs", "directories", "File containing addresses of directories.")
 
 	//only used for testing, where users pick the circuit
 	circuit = flag.String("circuit", "", "A file with pre-built circuit.")
@@ -78,7 +77,7 @@ func main() {
 		dirs = append(dirs, scan.Text())
 	}
 
-	proxy, err := mixnet.NewProxyContext(*configPath, *network, *proxyAddr, dirs, timeout)
+	proxy, err := mixnet.NewProxyContext(*configPath, *network, *proxyAddr, dirs, *hopCount, timeout)
 	if err != nil {
 		log.Fatalln("failed to configure proxy:", err)
 	}

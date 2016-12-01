@@ -63,6 +63,7 @@ type RouterContext struct {
 	// address of the directories
 	directories []string
 	// list of available servers and their keys for exit encryption
+	dirLock    *sync.Mutex
 	directory  []string
 	serverKeys [][]byte
 
@@ -106,6 +107,7 @@ func NewRouterContext(path, network, addr string, timeout time.Duration,
 		m map[uint32]bool
 	}{m: make(map[uint32]bool)}
 
+	r.dirLock = new(sync.Mutex)
 	r.mapLock = new(sync.RWMutex)
 
 	r.errs = make(chan error)
@@ -182,7 +184,9 @@ func (r *RouterContext) register() {
 	}
 }
 
-func (r *RouterContext) directoryConsensus() {
+func (r *RouterContext) directoryConsensus() []string {
+	r.dirLock.Lock()
+	defer r.dirLock.Unlock()
 	for _, dirAddr := range r.directories {
 		directory, keys, err := r.GetDirectory(dirAddr)
 		if err != nil {
@@ -192,6 +196,9 @@ func (r *RouterContext) directoryConsensus() {
 		r.directory = directory
 		r.serverKeys = keys
 	}
+	directory := make([]string, len(r.directory))
+	copy(directory, r.directory)
+	return directory
 }
 
 func (r *RouterContext) updateDirectory() {
@@ -477,13 +484,19 @@ func member(s string, set []string) bool {
 // if this is an exit.
 func (r *RouterContext) handleCreate(d Directive, c *Conn, id uint64,
 	sendQ, respQ *Queue, sId, rId uint64) error {
-	if c.withProxy && len(r.directory) > 0 {
+	if c.withProxy {
 		// Get the most recent directory before forming a circuit
-		r.directoryConsensus()
+		directory := r.directoryConsensus()
+
+		if len(directory) < len(d.Addrs)-1 {
+			err := errors.New("Not enough servers online")
+			if e := r.SendError(respQ, rId, id, err, c); e != nil {
+				return e
+			}
+		}
+
 		// A fresh path of the same length if user has no preference
 		// (Random selection without replacement)
-		directory := make([]string, len(r.directory))
-		copy(directory, r.directory)
 		for _, router := range d.Addrs {
 			for i, addr := range directory {
 				if addr == router {

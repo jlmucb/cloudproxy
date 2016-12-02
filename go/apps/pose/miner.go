@@ -264,7 +264,7 @@ func (m *Miner) Close() {
 	}
 }
 
-func (m *Miner) Protocol() error {
+func (m *Miner) Mine() error {
 	creator, err := x509.MarshalPKIXPublicKey(m.signer.Public())
 	if err != nil {
 		return err

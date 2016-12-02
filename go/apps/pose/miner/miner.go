@@ -73,7 +73,7 @@ func main() {
 		signo := int(sig.(syscall.Signal))
 		os.Exit(0x80 + signo)
 	}()
-	err = miner.Protocol()
+	err = miner.Mine()
 	if err != nil {
 		log.Println(err)
 	}

@@ -141,7 +141,7 @@ func TestFullyConnected(t *testing.T) {
 
 	for m := range miners {
 		go func(m int) {
-			err := miners[m].Protocol()
+			err := miners[m].Mine()
 			t.Error(err)
 		}(m)
 	}

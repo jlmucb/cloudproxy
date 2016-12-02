@@ -16,7 +16,7 @@ security hosts:
 	2. Support for TPM 2.0.
 	3. Support for the Soft Tao: a software root of trust which can be used
 	   for development on hardware without TPM's.
-In the case of TPM 2.0, the TPM can either be a descrete TPM part or a firmware
+In the case of TPM 2.0, the TPM can either be a discrete TPM part or a firmware
 based TPM.
 
 Cloudproxy runs in or on the following Platforms:
@@ -73,7 +73,7 @@ There are a number of sample applications provided.  These include:
 	1. Newfileproxy, a new version of the very first "real" cloudproxy
 	   application.  The fileproxy applications provide confidentiality
 	   and integrity protection and access control for files
-	   stored in a cloud and used in and access controlled manner by
+	   stored in a cloud, in and access controlled manner, by
 	   a set of cloudproxy service applications.  Fileproxy demonstrates
 	   "insider protection" in a cloud application in an intuitive
 	   setting.  Newfileproxy is a newer version of a fileproxy which
@@ -86,7 +86,7 @@ There are a number of sample applications provided.  These include:
 	   to cloudproxy or non-cloudproxy programs.
 	4. Simple-http-server: A cloudproxy secured http service (server only).
 
-Several older applications remainin the distribution but are not maintained. 
+Several older applications remain the distribution but are not maintained. 
 They include:
 	1. Bidproxy: A secure bidding service that is secure against
 	   tampering by the organization conduncting the bid.  It protects
@@ -96,7 +96,7 @@ They include:
 
 The directory Doc contains older documentation and commentary including the
 original Cloudproxy paper by Manferdelli, Roeder and Schneider.  There is
-also Docker container support, although we do not currently keep this current
+also Docker container support, although we have not kept this current
 nor is there extensive use documentation yet.
 
 Please send feedback, comments and suggestions and bug reports to
@@ -105,6 +105,6 @@ Unless expressly noted in any such submitted material, you agree that any
 feedback, comments or suggestions can be used and distributed under the Apache 
 License in this directory.
 
-The Cloudproxy developers. (John Manferdelli, Tom Roeder, Kevin Walsh, Sid Telang,
-Albert Kwon.)
+The Cloudproxy developers --- John Manferdelli, Tom Roeder, Kevin Walsh, Sid Telang,
+Albert Kwon.  Thanks to Paul England who answered anumber of questions on TPM 2.0.
 

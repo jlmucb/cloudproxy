@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package time_client
+package pose
 
 import (
 	"crypto"
@@ -65,6 +65,8 @@ type Miner struct {
 
 	difficulty  int
 	confirmTime int
+
+	kill chan bool
 }
 
 // Used to avoid warnings about having wrong number of ins/outs
@@ -105,8 +107,9 @@ func NewMiner(network, addr, domainPath string,
 	}
 
 	tlsConfig := &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*cert},
+		RootCAs:      x509.NewCertPool(),
+		Certificates: []tls.Certificate{*cert},
+		// TODO(kwonalbert): change this flag
 		InsecureSkipVerify: true,
 		ClientAuth:         tls.RequestClientCert,
 	}
@@ -122,7 +125,7 @@ func NewMiner(network, addr, domainPath string,
 		return nil, err
 	}
 
-	chain, err := NewChain(dbFile, 6)
+	chain, err := NewChain(dbFile, DEFAULT_CONFIRM_TIME)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +153,8 @@ func NewMiner(network, addr, domainPath string,
 
 		difficulty:  1000,
 		confirmTime: 6,
+
+		kill: make(chan bool),
 	}
 
 	return c, nil
@@ -178,17 +183,17 @@ func (m *MinerRPC) SendBlock(bb []byte, _ *int) error {
 	proto.Unmarshal(bb, block)
 
 	// someone else won the lottery
-	// TODO: check which data can be removed
+	if *block.Index > *m.miner.chain.MainBlock().Index {
+		// fmt.Println(m.miner.id, "Received:", *block.Index, hash[:10])
+		// TODO(kwonalbert): delete/update data field
+		m.miner.block <- block
+	}
+
 	bb, err := proto.Marshal(block)
 	if err != nil {
 		return err
 	}
 	hash := sha256.Sum256(bb)
-
-	if *block.Index > *m.miner.chain.MainBlock().Index {
-		//fmt.Println(m.miner.id, "Received:", *block.Index, hash[:10])
-		m.miner.block <- block
-	}
 
 	// If this block has been sent before,
 	// no need to do anything
@@ -222,6 +227,13 @@ func (m *MinerRPC) SendData(data []byte, _ *int) error {
 }
 
 func (m *Miner) SetPeers(peers []string) {
+	// Close the connection first
+	for _, client := range m.peerRPCs {
+		if client != nil {
+			client.Close()
+		}
+	}
+
 	m.peers = peers
 	m.dialAllPeers()
 }
@@ -240,6 +252,8 @@ func (m *Miner) SetConfirmTime(confirmTime int) {
 }
 
 func (m *Miner) Close() {
+	m.kill <- true
+	m.chain.Close()
 	if m.listener != nil {
 		m.listener.Close()
 	}
@@ -264,6 +278,8 @@ func (m *Miner) Protocol() error {
 		wait := ((binary.LittleEndian.Uint64(r) % uint64(m.difficulty)) / GRANULARITY) * GRANULARITY
 		//fmt.Println(m.id, "sleeping for ", *m.chain.MainBlock().Index, wait)
 		select {
+		case <-m.kill:
+			break
 		case <-time.After(time.Duration(wait) * INCREMENT):
 			// this client won the lottery
 			mb, err := proto.Marshal(m.chain.MainBlock())
@@ -320,12 +336,6 @@ func (m *Miner) sendAllPeers(bb []byte) {
 // Dial all peers in your list.
 // It ignores peers you can't connect to
 func (m *Miner) dialAllPeers() {
-	for _, client := range m.peerRPCs {
-		if client != nil {
-			client.Close()
-		}
-	}
-
 	m.peerRPCs = make([]*rpc.Client, len(m.peers))
 	for p, peer := range m.peers {
 		go func(p int, peer string) {

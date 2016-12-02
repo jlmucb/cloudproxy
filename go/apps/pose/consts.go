@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package time_client
+package pose
 
 import "time"
 
@@ -21,6 +21,8 @@ import "time"
 const (
 	GRANULARITY = 100 // granularity at which a user can wake up
 	INCREMENT   = time.Millisecond
+
+	DEFAULT_CONFIRM_TIME = 6
 )
 
 var zero int64 = 0

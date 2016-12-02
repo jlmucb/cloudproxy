@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package time_client
+package pose
 
 import (
 	"crypto/sha256"
@@ -114,15 +114,20 @@ func (c *Chain) AddBlock(block *Block) error {
 
 	chainLen := 1
 	key := block.PrevBlock
+	idx := *block.Index - 1
 	for {
 		b, ok := c.others[string(key)]
 		if !ok {
-			break
+			b, err = c.Block(int(idx))
+			if err == leveldb.ErrNotFound {
+				break
+			}
 		}
 
 		chainLen++
+		idx--
 		// Confirm blocks longer than certain length
-		if chainLen > CONFIRM_TIME {
+		if chainLen > c.confirmTime {
 			if err := c.StoreBlock(b); err != nil {
 				return err
 			}
@@ -145,7 +150,7 @@ func (c *Chain) Block(idx int) (*Block, error) {
 	return block, err
 }
 
-// Committ a block into our chain
+// Commit a block into our chain
 func (c *Chain) StoreBlock(block *Block) error {
 	key := make([]byte, 8)
 	binary.LittleEndian.PutUint64(key, uint64(*block.Index))

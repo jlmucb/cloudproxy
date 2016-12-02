@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package time_client;
+package pose;
 
 message Block {
   optional bytes prev_block = 1; // Hash of the previous block

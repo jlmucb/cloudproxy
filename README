@@ -50,14 +50,15 @@ configuration information for TPM installations whether directly hosted on
 Linux or hosted in a Linux VM running on KVM.  The instructions are also
 rather comprehensive and may be copied an pasted in a variety of deployment
 scenarios.  "CloudProxy Deployment Nuts and Bolts" also covers important
-Key Management Tools and techniques for Cloudproxy applications and hosts.
-Since programs are "first class" Principals in Cloudproxy and completely
-and unforgeably described identified by Cloudproxy, first time programmers
-often worry about distribution and update of new applications and new
-versions of applications. "CloudProxy Deployment Nuts and Bolts" describes
-several simple mechanisms to do automatic key management and
-provides prototypical tools and infrastructure components to generate keys
-including foundational "policy keys," certify program and data protection
+key management tools and techniques for Cloudproxy applications and hosts.
+Since programs are "first class" principals in Cloudproxy and are completely
+and unforgeably identified by Cloudproxy for the purpose of authentication
+and key management, first time programmers often worry about distribution
+and update of new applications and new versions of applications.
+"CloudProxy Deployment Nuts and Bolts" describes several simple
+mechanisms to do automatic key management and provides prototypical
+tools and infrastructure components to generate keys including
+foundational "policy keys," certify program and data protection
 keys, rotate keys, support key storage hierarchies, provision keys using
 a keystore and transfer keys between applications and different versions
 of the same applications.  All these tools and techniques are implemented

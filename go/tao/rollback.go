@@ -32,13 +32,13 @@ func Protect(keys []byte, in []byte) ([]byte, error) {
 		return nil, nil
 	}
 	out := make([]byte, len(in), len(in))
-	iv := make([]byte, 16, 16)
-	_, err := rand.Read(iv[0:16])
+	iv := make([]byte, RB_IV, RB_IV)
+	_, err := rand.Read(iv[0:RB_IV])
 	if err != nil {
 		return nil, errors.New("Protect: Can't generate iv")
 	}
-	encKey := keys[0:16]
-	macKey := keys[16:32]
+	encKey := keys[0:RB_AESKEY]
+	macKey := keys[RB_AESKEY:RB_HMACKEY]
 	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, errors.New("Protect: Can't make crypter")
@@ -56,22 +56,22 @@ func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
 	}
-	out := make([]byte, len(in)-48, len(in)-48)
+	out := make([]byte, len(in)-RB_OVERHEAD, len(in)-RB_OVERHEAD)
 	var iv []byte
-	iv = in[32:48]
-	encKey := keys[0:16]
-	macKey := keys[16:32]
+	iv = in[RB_HMAC:RB_OVERHEAD]
+	encKey := keys[0:RB_AESKEY]
+	macKey := keys[RB_AESKEY:RB_HMACKEY]
 	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, errors.New("Unprotect: Can't make crypter")
 	}
 	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in[48:])
+	ctr.XORKeyStream(out, in[RB_OVERHEAD:])
 
 	hm := hmac.New(sha256.New, macKey)
-	hm.Write(in[32:])
+	hm.Write(in[RB_HMAC:])
 	calculatedHmac := hm.Sum(nil)
-	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
+	if bytes.Compare(calculatedHmac, in[0:RB_HMAC]) != 0 {
 		return nil, errors.New("Unprotect: Bad mac")
 	}
 	return out, nil
@@ -168,10 +168,10 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 	sealedKeyFileName string, tableFileName string) bool {
 	// TODO(jlm): child argument not used, remove?
 	// Generate new rollback table sealing keys
-	var newKeys [32]byte
-	rand.Read(newKeys[0:32])
+	var newKeys [RB_KEY_LEN]byte
+	rand.Read(newKeys[0:RB_KEY_LEN])
 
-	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:32], "self")
+	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:RB_KEY_LEN], "self")
 	if err != nil {
 		log.Printf("SaveHostRollbackTable: Can't do RollbackProtectedSeal\n")
 		return false

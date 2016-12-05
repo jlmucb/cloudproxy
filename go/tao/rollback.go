@@ -103,7 +103,6 @@ func ReadRollbackTable(fileName string, tableKey []byte) *RollbackCounterTable {
 
 // Write the counter table.
 func WriteRollbackTable(rollBackTable *RollbackCounterTable, fileName string, tableKey []byte) bool {
-
 	// Serialize and encrypt rollback table.
 	blob, err := proto.Marshal(rollBackTable)
 	if err != nil {
@@ -168,10 +167,14 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 	sealedKeyFileName string, tableFileName string) bool {
 	// TODO(jlm): child argument not used, remove?
 	// Generate new rollback table sealing keys
-	var newKeys [32]byte
-	rand.Read(newKeys[0:32])
+	newKeys, err := makeSensitive(32)
+	if err != nil {
+		log.Printf("SaveHostRollbackTable: Couldn't generate sensitive keys")
+	}
+	defer clearSensitive(newKeys)
+	rand.Read(newKeys)
 
-	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:32], "self")
+	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys, "self")
 	if err != nil {
 		log.Printf("SaveHostRollbackTable: Can't do RollbackProtectedSeal\n")
 		return false
@@ -183,7 +186,7 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 	}
 
 	// Save table.
-	if !WriteRollbackTable(t, tableFileName, newKeys[0:32]) {
+	if !WriteRollbackTable(t, tableFileName, newKeys) {
 		log.Printf("WriteRollbackTable failed\n")
 		return false
 	}

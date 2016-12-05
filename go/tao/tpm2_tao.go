@@ -132,8 +132,8 @@ type TPM2Tao struct {
 
 // Loads keys from Blobs.
 func (tt *TPM2Tao) loadKeyFromBlobs(ownerHandle tpm2.Handle, ownerPw string,
-		objectPw string, publicBlob []byte,
-		privateBlob []byte) (tpm2.Handle, error) {
+	objectPw string, publicBlob []byte,
+	privateBlob []byte) (tpm2.Handle, error) {
 	return tpm2.LoadKeyFromBlobs(tt.rw, ownerHandle, ownerPw, objectPw, publicBlob, privateBlob)
 }
 
@@ -609,8 +609,8 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer ZeroBytes(crypter.aesKey)
-	defer ZeroBytes(crypter.hmacKey)
+	defer clearSensitive(crypter.aesKey)
+	defer clearSensitive(crypter.hmacKey)
 
 	c, err := crypter.Encrypt(data)
 	if err != nil {
@@ -621,12 +621,15 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO: because ck.Key is marshaled via proto.Marshal,
+	// it may make copies, and thus is not necessarily secure
 	defer ZeroBytes(ck.Key)
 
 	ckb, err := proto.Marshal(ck)
 	if err != nil {
 		return nil, err
 	}
+	// TODO: same problem as ck.Key
 	defer ZeroBytes(ckb)
 
 	priv, pub, err := tpm2.AssistSeal(tt.rw, rh, ckb,
@@ -669,13 +672,16 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 
 	// Decode buffer containing pub and priv blobs
 	pub, priv := DecodeTwoBytes(h.SealedKey)
-	unsealed, _, err := tpm2.AssistUnseal(tt.rw, sh,
+	unsealed, nonce, err := tpm2.AssistUnsealKey(tt.rw, sh,
 		rh, pub, priv, "", tt.password, policy_digest)
 	if err != nil {
 		return nil, "", err
 	}
-	defer ZeroBytes(unsealed)
+	defer clearSensitive(unsealed)
+	defer clearSensitive(nonce)
 
+	// TODO: tpm2 unseal returns a byte array that could be copied by GC,
+	// so need to do something about that..
 	var ck CryptoKey
 	if err := proto.Unmarshal(unsealed, &ck); err != nil {
 		return nil, "", err

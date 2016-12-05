@@ -557,9 +557,17 @@ func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLe
 
 // GenerateCrypter instantiates a new Crypter with fresh keys.
 func GenerateCrypter() (*Crypter, error) {
+	aesKey, err := makeSensitive(aesKeySize)
+	if err != nil {
+		return nil, err
+	}
+	hmacKey, err := makeSensitive(hmacKeySize)
+	if err != nil {
+		return nil, err
+	}
 	c := &Crypter{
-		aesKey:  make([]byte, aesKeySize),
-		hmacKey: make([]byte, hmacKeySize),
+		aesKey:  aesKey,
+		hmacKey: hmacKey,
 	}
 
 	if _, err := rand.Read(c.aesKey); err != nil {

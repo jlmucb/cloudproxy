@@ -94,10 +94,10 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 
 // RequestDomainServiceCert requests the signed Program
 // Certificate from simpledomainservice.
-//  TODO: This needs to change in a way that is tao supplier dependent.
-//     For tpm2 we need the ekCert and the tao and we need the data
-//     for ActivateCredential.
+// For hosts, this needs to change in a way that is tao supplier dependent.
+//     For tpm2 we need the ekCert and the tao and we need the data for ActivateCredential.
 //     For tpm1.2, we need the aikCert.
+// Since we're only using this at app level in this example, it doesn't matter.
 func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 	v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
 
@@ -397,6 +397,7 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 		log.Printf("PrincipalNameFromDERCert: Can't get name from certificate\n")
 		return nil
 	}
+	// Note that for a program cert, the principal name is actually in the OrgName.
 	cn := cert.Subject.CommonName
 	return &cn
 }
@@ -493,7 +494,6 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*tao.Keys, error) {
 
 	// Recover public key from blob
-
 	k := &tao.Keys{}
 
 	cert, err := x509.ParseCertificate(programCert)
@@ -502,11 +502,12 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*t
 	}
 
 	/*
-		k.Delegation = new(tao.Attestation)
-		err = proto.Unmarshal(delegateBlob, k.Delegation)
-		if err != nil {
-			return nil, err
-		}
+	 * We don't use this now.
+	k.Delegation = new(tao.Attestation)
+	err = proto.Unmarshal(delegateBlob, k.Delegation)
+	if err != nil {
+		return nil, err
+	}
 	*/
 
 	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
@@ -522,6 +523,60 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*t
 	return k, err
 }
 
+func Protect(keys []byte, in []byte) ([]byte, error) {
+	if in == nil {
+		return nil, nil
+	}
+	out := make([]byte, len(in), len(in))
+	iv := make([]byte, 16, 16)
+	_, err := rand.Read(iv[0:16])
+	if err != nil {
+		return nil, errors.New("Protect: Can't generate iv")
+	}
+	encKey := keys[0:16]
+	macKey := keys[16:32]
+	crypter, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, errors.New("Protect: Can't make crypter")
+	}
+	ctr := cipher.NewCTR(crypter, iv)
+	ctr.XORKeyStream(out, in)
+
+	hm := hmac.New(sha256.New, macKey)
+	hm.Write(append(iv, out...))
+	calculatedHmac := hm.Sum(nil)
+	return append(calculatedHmac, append(iv, out...)...), nil
+}
+
+func Unprotect(keys []byte, in []byte) ([]byte, error) {
+	if in == nil {
+		return nil, nil
+	}
+	out := make([]byte, len(in)-48, len(in)-48)
+	var iv []byte
+	iv = in[32:48]
+	encKey := keys[0:16]
+	macKey := keys[16:32]
+	crypter, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, errors.New("Unprotect: Can't make crypter")
+	}
+	ctr := cipher.NewCTR(crypter, iv)
+	ctr.XORKeyStream(out, in[48:])
+
+	hm := hmac.New(sha256.New, macKey)
+	hm.Write(in[32:])
+	calculatedHmac := hm.Sum(nil)
+	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
+		return nil, errors.New("Unprotect: Bad mac")
+	}
+	return out, nil
+}
+
+
+// The following routines are particular to simpleexample messages while
+// up to this point, the support routines were generally useful.  So
+// we should probably put the following in a different library.
 func PrintMessage(msg *SimpleMessage) {
 	log.Printf("Message\n")
 	if msg.MessageType != nil {
@@ -597,54 +652,4 @@ func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
 		return nil, errors.New("GetResponse: reception error")
 	}
 	return msg, nil
-}
-
-func Protect(keys []byte, in []byte) ([]byte, error) {
-	if in == nil {
-		return nil, nil
-	}
-	out := make([]byte, len(in), len(in))
-	iv := make([]byte, 16, 16)
-	_, err := rand.Read(iv[0:16])
-	if err != nil {
-		return nil, errors.New("Protect: Can't generate iv")
-	}
-	encKey := keys[0:16]
-	macKey := keys[16:32]
-	crypter, err := aes.NewCipher(encKey)
-	if err != nil {
-		return nil, errors.New("Protect: Can't make crypter")
-	}
-	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in)
-
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(append(iv, out...))
-	calculatedHmac := hm.Sum(nil)
-	return append(calculatedHmac, append(iv, out...)...), nil
-}
-
-func Unprotect(keys []byte, in []byte) ([]byte, error) {
-	if in == nil {
-		return nil, nil
-	}
-	out := make([]byte, len(in)-48, len(in)-48)
-	var iv []byte
-	iv = in[32:48]
-	encKey := keys[0:16]
-	macKey := keys[16:32]
-	crypter, err := aes.NewCipher(encKey)
-	if err != nil {
-		return nil, errors.New("Unprotect: Can't make crypter")
-	}
-	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in[48:])
-
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(in[32:])
-	calculatedHmac := hm.Sum(nil)
-	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
-		return nil, errors.New("Unprotect: Bad mac")
-	}
-	return out, nil
 }

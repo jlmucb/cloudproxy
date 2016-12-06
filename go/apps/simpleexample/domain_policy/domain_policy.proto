@@ -23,6 +23,7 @@ message DomainCertRequest {
   optional bytes attestation = 1;
   optional string key_type = 2;
   optional bytes subject_public_key = 3;
+  // Consider making this a repeated when it's used.
   optional bytes cert_chain = 4;
 }
 

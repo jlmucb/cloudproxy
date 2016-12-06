@@ -38,7 +38,8 @@ var (
 
 func main() {
 	flag.Parse()
-	err := tpm2_apps.HandleQuote(*network, *addr, *pass, *path, details)
+	s := tpm2_apps.NewQuoteServer(*network, *addr)
+	err := s.HandleQuote(*pass, *path, details)
 	if err != nil {
 		log.Fatal(err)
 	}

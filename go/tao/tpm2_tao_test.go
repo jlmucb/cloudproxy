@@ -17,11 +17,15 @@ package tao
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"os"
 	"runtime"
 	"testing"
 
+	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
+	"github.com/jlmucb/cloudproxy/go/tpm2/tpm2_apps"
 )
 
 // cleanUpTPM2Tao runs the finalizer for TPMTao early then unsets it so it
@@ -31,6 +35,35 @@ import (
 func cleanUpTPM2Tao(tt *TPM2Tao) {
 	FinalizeTPM2Tao(tt)
 	runtime.SetFinalizer(tt, nil)
+}
+
+var test_dir string = "../tpm2/tmptest"
+
+func startQuoteServer() {
+	// Setup testing env
+	us := "US"
+	org := "Google"
+	details := tao.X509Details{
+		Country:            &us,
+		Organization:       &org,
+		OrganizationalUnit: &org,
+		CommonName:         &org,
+	}
+	os.Mkdir(test_dir, 644)
+	quoteServer := tpm2_apps.NewQuoteServer("tcp", "127.0.0.1:8121")
+	go quoteServer.HandleQuote("xxx", test_dir, details)
+}
+
+func tpm2Setup() {
+	err := tpm2_apps.HandlePolicyKey(2048, test_dir+"policy.go.bin", "xxx", test_dir+"policy.cert.go.der")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = tpm2_apps.HandleEndorsement(2048, "endorsement_key", test_dir+"endorsement_cert",
+		test_dir+"policy.cert.go.der", test_dir+"policy.go.bin", "xxx", test_dir, true)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestEncode(t *testing.T) {
@@ -44,7 +77,7 @@ func TestEncode(t *testing.T) {
 
 func TestTPM2Tao(t *testing.T) {
 	// Set up a TPM2 Tao that seals and attests against PCRs 17 and 18.
-	tt, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	tt, err := NewTPM2Tao("/dev/tpm0", test_dir, []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
@@ -57,7 +90,7 @@ func TestTPM2Tao(t *testing.T) {
 
 func TestTPM2TaoSeal(t *testing.T) {
 
-	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", test_dir, []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
@@ -128,7 +161,7 @@ func TestTPM2TaoAttest(t *testing.T) {
 	// Fix
 	hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
 
-	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", test_dir, []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
@@ -190,8 +223,8 @@ func TestTPM2TaoAttest(t *testing.T) {
 }
 
 func TestTPM2TaoGetCounter(t *testing.T) {
-fmt.Printf("TestTPM2TaoGetCounter")
-	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	fmt.Printf("TestTPM2TaoGetCounter")
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", test_dir, []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
@@ -209,7 +242,7 @@ fmt.Printf("TestTPM2TaoGetCounter")
 }
 
 func TestTPM2TaoRollbackSealUnseal(t *testing.T) {
-	tpmtao, err := NewTPM2Tao("/dev/tpm0", "../tpm2/tmptest", []int{17, 18})
+	tpmtao, err := NewTPM2Tao("/dev/tpm0", test_dir, []int{17, 18})
 	if err != nil {
 		t.Skip("Couldn't create a new TPM2 Tao:", err)
 	}
@@ -218,7 +251,6 @@ func TestTPM2TaoRollbackSealUnseal(t *testing.T) {
 		t.Fatal("Failed to create the right kind of Tao object from NewTPM2Tao")
 	}
 	defer cleanUpTPM2Tao(tt)
-
 
 	data := make([]byte, 10000)
 	sealed, err := tpmtao.RollbackProtectedSeal("TestSeal", data, SealPolicyDefault)

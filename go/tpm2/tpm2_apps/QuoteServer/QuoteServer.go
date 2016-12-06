@@ -14,10 +14,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"net"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
-	"github.com/jlmucb/cloudproxy/go/tpm2/tpm2_apps"
+	"github.com/jlmucb/cloudproxy/go/tpm2"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 var (
@@ -36,10 +39,57 @@ var (
 	}
 )
 
+// TODO: probably receive a kill channel to kill this function..
+func HandleQuote(network, addr, pass, path string, details tao.X509Details) error {
+	ln, err := net.Listen(network, addr)
+	if err != nil {
+		log.Fatalln("Quote server: could not listen at port:", err)
+	}
+
+	// Generate/Load policy key
+	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(pass), path,
+		tao.NewX509Name(&details))
+	if err != nil {
+		return fmt.Errorf("Error loading policy key: %s", err)
+	}
+	if policyKey.Cert == nil || policyKey.Cert.Raw == nil {
+		log.Fatalln("Quote server: cert missing in policy key.")
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			return fmt.Errorf("Quote server: could not accept connection: %s", err)
+		}
+		ms := util.NewMessageStream(conn)
+		var request tpm2.AttestCertRequest
+		if err := ms.ReadMessage(&request); err != nil {
+			log.Printf("Quote server: Couldn't read request from channel: %s\n", err)
+			continue
+		}
+		response, err := tpm2.ProcessQuoteDomainRequest(request, policyKey.SigningKey.GetSigner(),
+			policyKey.Cert.Raw)
+		if err != nil {
+			sendError(err, ms)
+			continue
+		}
+		if _, err := ms.WriteMessage(response); err != nil {
+			log.Printf("Quote server: Error sending response on the channel: %s\n ", err)
+		}
+	}
+	return nil
+}
+
+func sendError(err error, ms *util.MessageStream) {
+	errCode := int32(1)
+	resp := &tpm2.AttestCertResponse{Error: &errCode}
+	if _, err := ms.WriteMessage(resp); err != nil {
+		log.Printf("Quote server: Error sending resp on the channel: %s\n ", err)
+	}
+}
+
 func main() {
 	flag.Parse()
-	s := tpm2_apps.NewQuoteServer(*network, *addr)
-	err := s.HandleQuote(*pass, *path, details)
+	err := HandleQuote(*network, *addr, *pass, *path, details)
 	if err != nil {
 		log.Fatal(err)
 	}

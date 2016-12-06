@@ -19,7 +19,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/jlmucb/cloudproxy/go/tpm2/tpm2_apps"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 var (
@@ -42,7 +42,7 @@ var (
 // and makes their handles permanent.
 func main() {
 	flag.Parse()
-	err := tpm2_apps.HandlePolicyKey(*keySize, *policyKeyFile, *policyKeyPassword, *policyCertFile)
+	err := tao.HandlePolicyKey(*keySize, *policyKeyFile, *policyKeyPassword, *policyCertFile)
 	if err != nil {
 		log.Fatal(err)
 	}

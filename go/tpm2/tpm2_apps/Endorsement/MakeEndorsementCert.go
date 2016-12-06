@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jlmucb/cloudproxy/go/tpm2/tpm2_apps"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 var (
@@ -50,7 +50,7 @@ var (
 func main() {
 	flag.Parse()
 	fmt.Printf("Policy key password: %s\n", *policyKeyPassword)
-	err := tpm2_apps.HandleEndorsement(*keySize, *keyName, *endorsementCertFile, *policyCertFile,
+	err := tao.HandleEndorsement(*keySize, *keyName, *endorsementCertFile, *policyCertFile,
 		*policyKeyFile, *policyKeyPassword, *policyKeyDir, *policyKeyIsEcdsa)
 	if err != nil {
 		log.Fatal(err)

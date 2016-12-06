@@ -18,13 +18,11 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"runtime"
 	"testing"
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
-	"github.com/jlmucb/cloudproxy/go/tpm2/tpm2_apps"
 )
 
 // cleanUpTPM2Tao runs the finalizer for TPMTao early then unsets it so it
@@ -48,17 +46,15 @@ func startQuoteServer() {
 		OrganizationalUnit: &org,
 		CommonName:         &org,
 	}
-	os.Mkdir(test_dir, 644)
-	quoteServer := tpm2_apps.NewQuoteServer("tcp", "127.0.0.1:8121")
-	go quoteServer.HandleQuote("xxx", test_dir, details)
+	go HandleQuote("tcp", "127.0.0.1:8121", "xxx", test_dir, details)
 }
 
 func tpm2Setup() {
-	err := tpm2_apps.HandlePolicyKey(2048, test_dir+"policy.go.bin", "xxx", test_dir+"policy.cert.go.der")
+	err := HandlePolicyKey(2048, test_dir+"policy.go.bin", "xxx", test_dir+"policy.cert.go.der")
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = tpm2_apps.HandleEndorsement(2048, "endorsement_key", test_dir+"endorsement_cert",
+	err = HandleEndorsement(2048, "endorsement_key", test_dir+"endorsement_cert",
 		test_dir+"policy.cert.go.der", test_dir+"policy.go.bin", "xxx", test_dir, true)
 	if err != nil {
 		log.Fatal(err)

@@ -22,7 +22,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/tpm2"
 	"github.com/jlmucb/cloudproxy/go/tpm2/tpm2_apps"
@@ -43,7 +42,7 @@ func startQuoteServer() {
 	// Setup testing env
 	us := "US"
 	org := "Google"
-	details := tao.X509Details{
+	details := X509Details{
 		Country:            &us,
 		Organization:       &org,
 		OrganizationalUnit: &org,

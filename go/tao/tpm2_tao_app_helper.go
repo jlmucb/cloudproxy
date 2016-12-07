@@ -31,8 +31,6 @@ import (
 
 func HandleEndorsement(keySize int, keyName, endorsementCertFile, policyCertFile,
 	policyKeyFile, policyKeyPassword, policyKeyDir string, policyKeyIsEcdsa bool) error {
-	// TODO(jlm): Should this be the pcr's measured by the tpm (17, 18) or should it be empty?
-	// In any case, {7} is wrong.
 	pcrs := []int{17, 18}
 
 	// Open tpm

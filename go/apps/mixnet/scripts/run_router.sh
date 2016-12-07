@@ -1,5 +1,6 @@
 #!/bin/bash
-#The first argument to this script is the batch size
+#first arg is the public facing IP of the router
+#second arg is the batch size
 
 ./initmixnet.sh
 source ./define.sh
@@ -13,4 +14,4 @@ port="8000"
 directory_file=/tmp/directories
 
 echo "Starting router..."
-$GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_router --addr 127.0.0.1:$port --dirs $directory_file --config $DOMAIN/tao.config --batch $1
+$GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_router --addr $1:$port --dirs $directory_file --config $DOMAIN/tao.config --batch $2

@@ -26,7 +26,7 @@
 #include <string>
 #include <thread>
 
-#include <taosupport.pb.h>
+#include <messages.pb.h>
 
 using std::string;
 using std::unique_ptr;
@@ -83,11 +83,11 @@ bool WriteFile(string& file_name, string& in) {
 }
 
 bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
-  taosupport::PrivateKeyMessage msg;
+  simpleexample_messages::PrivateKeyMessage msg;
 
   if (key_type == "RSA") {
     RSA* rsa_key = EVP_PKEY_get1_RSA(key);
-    msg.set_allocated_rsa_key(new taosupport::RsaPrivateKeyMessage());
+    msg.set_allocated_rsa_key(new simpleexample_messages::RsaPrivateKeyMessage());
     string* m_str = BN_to_bin(*rsa_key->n);
     msg.mutable_rsa_key()->set_m(*m_str);
     string* e_str = BN_to_bin(*rsa_key->e);
@@ -97,7 +97,7 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
     msg.set_key_type("RSA");
   } else if (key_type == "ECC") {
     EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(key);
-    msg.set_allocated_ec_key(new taosupport::EcPrivateKeyMessage());
+    msg.set_allocated_ec_key(new simpleexample_messages::EcPrivateKeyMessage());
     byte out[4096];
     byte* ptr = out;
     int n = i2d_ECPrivateKey(ec_key, &ptr);
@@ -119,7 +119,7 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
 }
 
 bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
-  taosupport::PrivateKeyMessage msg;
+  simpleexample_messages::PrivateKeyMessage msg;
 
   if (!msg.ParseFromString(in_buf)) {
     return false;

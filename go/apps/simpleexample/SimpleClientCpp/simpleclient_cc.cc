@@ -64,9 +64,10 @@ int main(int argc, char **argv) {
   client_program_data.ClearProgramData();
 
   string tcp("tcp");
+  string cipher_suite("ECC-P-256.aes128.hmacaes256");
   if (!client_program_data.InitTao(msg.get(), tao.get(), FLAGS_config_file,
             FLAGS_client_path, tcp, FLAGS_domain_server_host,
-            FLAGS_domain_server_port)) {
+            FLAGS_domain_server_port, cipher_suite, true)) {
     printf("client_program_data.InitTao failed\n");
     return 1;
   }
@@ -91,17 +92,28 @@ int main(int argc, char **argv) {
          client_channel.peer_name_.c_str()) ;
 
   // Send a simple request and get response.
-  taosupport::SimpleMessage req_message;
-  taosupport::SimpleMessage resp_message;
-  req_message.set_message_type(taosupport::REQUEST);
+  simpleexample_messages::SimpleMessage req_message;
+  simpleexample_messages::SimpleMessage resp_message;
+  req_message.set_message_type(simpleexample_messages::REQUEST);
   req_message.set_request_type("SecretRequest");
-  if (!client_channel.SendRequest(req_message)) {
+  string req_string;
+  if(!req_message.SerializeToString(&req_string)) {
+    printf("simpleclient: Can't serialize request message\n");
+  }
+  if (!client_channel.SendRequest(req_string.size(), (byte*)req_string.data())) {
     printf("simpleclient: Error in response to SendRequest\n");
   }
   printf("Sent request\n");
-  if (!client_channel.GetRequest(&resp_message)) {
+  int size = 8192;
+  byte buf[8192];
+  string resp_string;
+  if (!client_channel.GetRequest(&size, buf)) {
     printf("\nsimpleclient: Error in response to GetRequest\n");
   } else {
+    resp_string.assign((const char*)buf, (size_t)size);
+    if (!resp_message.ParseFromString(req_string)) {
+      printf("simpleclient: Error in parsing request from GetRequest\n");
+    }
     const char* secret = (const char*) resp_message.data(0).data();
     printf("\nsimpleclient: secret is %s, done\n", secret);
   }

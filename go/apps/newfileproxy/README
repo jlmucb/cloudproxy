@@ -1,6 +1,6 @@
 This is a later and simpler version of fileproxy written after simpleexample.  It reuses
-simpleexample libraries and the standard sample domain server rather than a custom one
-(keynegoserver).  The authorization is also simplified to resemble linux file systems and
+support_libraries/tao_support and the standard sample domain server.
+The authorization is also simplified to resemble linux file systems and
 does not use the cloudproxy authorization language for file operations.
 
 User name is APPLICATION.

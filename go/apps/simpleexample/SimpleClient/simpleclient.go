@@ -22,19 +22,23 @@ import (
 	"os"
 	"path"
 
+	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/common"
+	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 	"github.com/jlmucb/cloudproxy/go/tao"
-	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
+var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var simpleCfg = flag.String("domain_config",
 	"./tao.config",
 	"path to tao configuration")
 var simpleClientPath = flag.String("path",
 	"./SimpleClient",
 	"path to SimpleClient files")
-var testRollback= flag.Bool("test_rollback", false, "test rollback?")
+var testRollback = flag.Bool("test_rollback", false, "test rollback?")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
+var useSimpleDomainService = flag.Bool("use_simpledomainservice", true,
+	"whether to use simple domain service")
 var serverAddr string
 
 func main() {
@@ -44,7 +48,7 @@ func main() {
 	var clientProgramData taosupport.TaoProgramData
 
 	// Make sure we zero keys when we're done.
-	defer taosupport.ClearTaoProgramData(&clientProgramData)
+	defer clientProgramData.ClearTaoProgramData()
 
 	// Parse flags
 	flag.Parse()
@@ -52,7 +56,8 @@ func main() {
 
 	// If TaoParadigm completes without error, clientProgramData contains all the
 	// Cloudproxy information needed throughout simpleclient execution.
-	err := taosupport.TaoParadigm(simpleCfg, simpleClientPath, &clientProgramData)
+	err := taosupport.TaoParadigm(simpleCfg, simpleClientPath, "ECC-P-256.aes128.hmacaes256",
+		*useSimpleDomainService, *caAddr, &clientProgramData)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao: ", err)
 	}
@@ -66,29 +71,29 @@ func main() {
 		} else {
 			fmt.Printf("simpleClient: InitCounter, no error\n")
 		}
-		c,  err := tao.Parent().GetCounter("label")
+		c, err := tao.Parent().GetCounter("label")
 		if err != nil {
 			fmt.Printf("simpleClient: Error Return from GetCounter %d %s\n", c, err)
 		} else {
 			fmt.Printf("simpleclient: GetCounter successful %d\n", c)
 		}
-		data := []byte {
-			0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,
-			0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5, }
-		sealed,  err := tao.Parent().RollbackProtectedSeal("label", data,
-			tao.SealPolicyDefault)  // REMOVE
+		data := []byte{
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5,
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5}
+		sealed, err := tao.Parent().RollbackProtectedSeal("label", data,
+			tao.SealPolicyDefault) // REMOVE
 		if err != nil {
 			fmt.Printf("simpleClient: Error Return from RollbackProtectedSeal %s\n", err)
 		} else {
 			fmt.Printf("simpleClient: RollbackProtectedSeal successful %x\n", sealed)
 		}
-		c,  err = tao.Parent().GetCounter("label")
+		c, err = tao.Parent().GetCounter("label")
 		if err != nil {
 			fmt.Printf("simpleClient: Error Return from GetCounter %d %s\n", c, err)
 		} else {
 			fmt.Printf("simpleclient: GetCounter successful %d\n", c)
 		}
-		recoveredData,  _, err := tao.Parent().RollbackProtectedUnseal(sealed)
+		recoveredData, _, err := tao.Parent().RollbackProtectedUnseal(sealed)
 		if err != nil {
 			fmt.Printf("simpleClient: Error Return from RollbackProtectedUnseal %s\n", err)
 		} else {
@@ -114,13 +119,13 @@ func main() {
 	// secret.
 	secretRequest := "SecretRequest"
 
-	msg := new(taosupport.SimpleMessage)
+	msg := new(simpleexample_messages.SimpleMessage)
 	msg.RequestType = &secretRequest
-	taosupport.SendRequest(ms, msg)
+	simpleexample_messages.SendRequest(ms, msg)
 	if err != nil {
 		log.Fatalln("simpleclient: Error in response to SendRequest\n")
 	}
-	respmsg, err := taosupport.GetResponse(ms)
+	respmsg, err := simpleexample_messages.GetResponse(ms)
 	if err != nil {
 		log.Fatalln("simpleclient: Error in response to GetResponse\n")
 	}

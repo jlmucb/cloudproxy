@@ -16,23 +16,21 @@ package main
 
 import (
 	"bytes"
-	// "crypto"
 	"crypto/rand"
 	"crypto/x509"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	// "os"
 	"path"
 
 	"github.com/golang/protobuf/proto"
-	// "github.com/jlmucb/cloudproxy/go/tao"
-	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
+	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
 
+var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var simpleCfg = flag.String("domain_config",
 	"./tao.config",
 	"path to tao configuration")
@@ -41,6 +39,8 @@ var fileClientPath = flag.String("path",
 	"path to FileClient files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
+var useSimpleDomainService = flag.Bool("use_simpledomainservice", true,
+	"whether to use simple domain service")
 var serverAddr string
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 	var clientProgramData taosupport.TaoProgramData
 
 	// Make sure we zero keys when we're done.
-	defer taosupport.ClearTaoProgramData(&clientProgramData)
+	defer clientProgramData.ClearTaoProgramData()
 
 	// Parse flags
 	flag.Parse()
@@ -58,7 +58,8 @@ func main() {
 
 	// If TaoParadigm completes without error, clientProgramData contains all the
 	// Cloudproxy information needed throughout fileclient execution.
-	err := taosupport.TaoParadigm(simpleCfg, fileClientPath, &clientProgramData)
+	err := taosupport.TaoParadigm(simpleCfg, fileClientPath, "ECC-P-256.aes128.hmacaes256",
+		*useSimpleDomainService, *caAddr, &clientProgramData)
 	if err != nil {
 		fmt.Printf("fileclient: Can't establish Tao: ", err)
 	}
@@ -159,9 +160,9 @@ func main() {
 	fmt.Printf("Creates succeeded\n")
 
 	// Add a few owners, readers, writers
-	var newcerts  [][]byte
+	var newcerts [][]byte
 	newcerts = append(newcerts, UserKeyArray[1].Cert)
-	err  = common.AddOwner(ms, "directory1/file1", newcerts)
+	err = common.AddOwner(ms, "directory1/file1", newcerts)
 	if err != nil {
 		fmt.Printf("fileclient: common.AddOwner fails\n")
 		return
@@ -169,14 +170,14 @@ func main() {
 	fmt.Printf("AddOwner succeeded\n")
 
 	newcerts = append(newcerts, UserKeyArray[2].Cert)
-	err  = common.AddReader(ms, "directory1/file1" , newcerts)
+	err = common.AddReader(ms, "directory1/file1", newcerts)
 	if err != nil {
 		fmt.Printf("fileclient: common.AddReader fails\n")
 		return
 	}
 	fmt.Printf("AddReader succeeded\n")
 
-	err  = common.AddWriter(ms, "directory1/file1" , newcerts)
+	err = common.AddWriter(ms, "directory1/file1", newcerts)
 	if err != nil {
 		fmt.Printf("fileclient: common.AddWriter fails\n")
 		return
@@ -184,7 +185,7 @@ func main() {
 	fmt.Printf("AddWriter succeeded\n")
 
 	// Write a resource.
-	file1Contents := []byte {1, 2, 3}
+	file1Contents := []byte{1, 2, 3}
 	err = common.WriteResource(ms, "directory1/file1", file1Contents)
 	if err != nil {
 		fmt.Printf("fileclient: common.WriteResource fails\n")

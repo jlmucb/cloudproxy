@@ -110,12 +110,18 @@ int main(int argc, char **argv) {
   if (!client_channel.GetRequest(&size, buf)) {
     printf("\nsimpleclient: Error in response to GetRequest\n");
   } else {
+    printf("Got response %d\n", size);
     resp_string.assign((const char*)buf, (size_t)size);
-    if (!resp_message.ParseFromString(req_string)) {
+    if (!resp_message.ParseFromString(resp_string)) {
       printf("simpleclient: Error in parsing request from GetRequest\n");
     }
-    const char* secret = (const char*) resp_message.data(0).data();
-    printf("\nsimpleclient: secret is %s, done\n", secret);
+printf("about to set secret %d\n", resp_message.data_size());
+    if (resp_message.data_size() > 0) {
+      const char* secret = (const char*) resp_message.data(0).data();
+      printf("\nsimpleclient: secret is %s, done\n", secret);
+    } else {
+      printf("\nsimpleclient: no secret\n");
+    }
   }
 
   if (FLAGS_test_rollback) {

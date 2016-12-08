@@ -37,7 +37,7 @@ func PrintMessage(msg *SimpleMessage) {
 	if msg.Err != nil {
 		log.Printf("\terror: %s\n", msg.Err)
 	}
-	log.Printf("\tdata: ")
+	log.Printf("\tdata (%d): ", len(msg.GetData()))
 	for _, data := range msg.GetData() {
 		log.Printf("\t: %x\n", data)
 	}

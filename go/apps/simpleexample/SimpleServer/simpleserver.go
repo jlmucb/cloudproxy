@@ -69,7 +69,7 @@ func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.
 	}
 }
 
-func serviceThead(ms *util.MessageStream, clientProgramName string,
+func serviceThread(ms *util.MessageStream, clientProgramName string,
 	serverProgramData *taosupport.TaoProgramData) {
 
 	for {
@@ -164,7 +164,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		// to communicate with this simpleclient.  ms is the bi-directional
 		// confidentiality and integrity protected channel corresponding to the
 		// channel opened by OpenTaoChannel.
-		go serviceThead(ms, clientName, serverProgramData)
+		go serviceThread(ms, clientName, serverProgramData)
 	}
 }
 

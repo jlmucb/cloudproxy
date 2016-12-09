@@ -25,7 +25,7 @@ import (
 	"net"
 	"path"
 
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
+	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 
@@ -33,14 +33,17 @@ import (
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
 
+var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var simpleCfg = flag.String("domain_config",
 	"./tao.config",
 	"path to fileproxy tao configuration")
-var fileServerPath = flag.String("path", 
+var fileServerPath = flag.String("path",
 	"./FileServer",
 	"path to Server files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
+var useSimpleDomainService = flag.Bool("use_simpledomainservice", true,
+	"whether to use simple domain service")
 var serverAddr string
 
 // Handles service request, req and return response over channel (ms).
@@ -142,13 +145,14 @@ func main() {
 	// main is very similar to the initial parts of main in simpleclient,
 	// See the comments there.
 	var serverProgramData taosupport.TaoProgramData
-	defer taosupport.ClearTaoProgramData(&serverProgramData)
+	defer serverProgramData.ClearTaoProgramData()
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	err := taosupport.TaoParadigm(simpleCfg, fileServerPath, &serverProgramData)
+	err := taosupport.TaoParadigm(simpleCfg, fileServerPath, "ECC-P-256.aes128.hmacaes256",
+		*useSimpleDomainService, *caAddr, &serverProgramData)
 	if err != nil {
 		log.Fatalln("fileserver: Can't establish Tao", err)
 	}
@@ -163,7 +167,7 @@ func main() {
 		// Save encryption keys for table
 		encryptedFileSecrets, err = taosupport.Protect(serverProgramData.ProgramSymKeys, fileSecrets[:])
 		if err != nil {
-				fmt.Printf("fileserver: Error protecting data\n")
+			fmt.Printf("fileserver: Error protecting data\n")
 		}
 		err = ioutil.WriteFile(secretsFileName, encryptedFileSecrets, 0666)
 		if err != nil {
@@ -181,7 +185,7 @@ func main() {
 	if serverData == nil {
 		fmt.Printf("fileserver: error parsing policy certificate\n")
 		return
-	} 
+	}
 
 	serverData.PolicyCert = serverProgramData.PolicyCert
 	serverData.PolicyCertificate, err = x509.ParseCertificate(serverData.PolicyCert)
@@ -190,16 +194,16 @@ func main() {
 		return
 	}
 	serverData.ResourceManager = new(resourcemanager.ResourceMasterInfo)
-	serverData.FileSecrets= fileSecrets[:]
+	serverData.FileSecrets = fileSecrets[:]
 	serviceName := "fileserver"
 	serverData.ResourceManager.ServiceName = &serviceName
 	serverData.ResourceManager.BaseDirectoryName = fileServerPath
 	serverData.PolicyCert = serverProgramData.PolicyCert
 
-fmt.Printf("Initializing Table\n")
+	fmt.Printf("Initializing Table\n")
 	// Read resource table.
 	tableFileName := path.Join(*fileServerPath, "EncryptedTable.bin")
-	if  !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets[:],
+	if !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets[:],
 		&serverData.ResourceMutex) {
 		fmt.Printf("fileserver: error parsing policy certificate\n")
 		return

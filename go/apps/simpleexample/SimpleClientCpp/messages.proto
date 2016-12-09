@@ -13,7 +13,7 @@
 // limitations under the License.
 
 syntax = "proto2";
-package taosupport;
+package simpleexample_messages;
 
 enum MessageType {
    REQUEST = 1;

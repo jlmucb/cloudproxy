@@ -22,19 +22,23 @@ import (
 	"log"
 	"net"
 
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
+	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/common"
+	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var simpleCfg = flag.String("domain_config",
 	"./tao.config",
 	"path to simple tao configuration")
-var simpleServerPath = flag.String("path", 
+var simpleServerPath = flag.String("path",
 	"./SimpleServer",
 	"path to Server files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
+var useSimpleDomainService = flag.Bool("use_simpledomainservice", true,
+	"whether to use simple domain service")
 var serverAddr string
 
 // Handle service request, req and return response over channel (ms).
@@ -46,16 +50,16 @@ var serverAddr string
 // into this example.  The single request response buffer is defined in
 // taosupport/taosupport.proto.
 func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData,
-	clientProgramName string, req *taosupport.SimpleMessage) (bool, error) {
+	clientProgramName string, req *simpleexample_messages.SimpleMessage) (bool, error) {
 
 	//  The somewhat boring secret is the corresponding simpleclient's program name || 43
 	secret := clientProgramName + "43"
 
 	if *req.RequestType == "SecretRequest" {
 		req.Data = append(req.Data, []byte(secret))
-		taosupport.SendResponse(ms, req)
+		simpleexample_messages.SendResponse(ms, req)
 		log.Printf("HandleServiceRequest response buffer: ")
-		taosupport.PrintMessage(req)
+		simpleexample_messages.PrintMessage(req)
 		return true, nil
 	} else {
 		log.Printf("HandleServiceRequest response is bad request\n")
@@ -65,16 +69,16 @@ func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.
 	}
 }
 
-func serviceThead(ms *util.MessageStream, clientProgramName string,
+func serviceThread(ms *util.MessageStream, clientProgramName string,
 	serverProgramData *taosupport.TaoProgramData) {
 
 	for {
-		req, err := taosupport.GetRequest(ms)
+		req, err := simpleexample_messages.GetRequest(ms)
 		if err != nil {
 			return
 		}
 		log.Printf("serviceThread, got message: ")
-		taosupport.PrintMessage(req)
+		simpleexample_messages.PrintMessage(req)
 
 		terminate, _ := HandleServiceRequest(ms, serverProgramData,
 			clientProgramName, req)
@@ -160,7 +164,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		// to communicate with this simpleclient.  ms is the bi-directional
 		// confidentiality and integrity protected channel corresponding to the
 		// channel opened by OpenTaoChannel.
-		go serviceThead(ms, clientName, serverProgramData)
+		go serviceThread(ms, clientName, serverProgramData)
 	}
 }
 
@@ -169,13 +173,14 @@ func main() {
 	// main is very similar to the initial parts of main in simpleclient.
 	// see the comments there.
 	var serverProgramData taosupport.TaoProgramData
-	defer taosupport.ClearTaoProgramData(&serverProgramData)
+	defer serverProgramData.ClearTaoProgramData()
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	err := taosupport.TaoParadigm(simpleCfg, simpleServerPath, &serverProgramData)
+	err := taosupport.TaoParadigm(simpleCfg, simpleServerPath, "ECC-P-256.aes128.hmacaes256",
+		*useSimpleDomainService, *caAddr, &serverProgramData)
 	if err != nil {
 		log.Fatalln("simpleserver: Can't establish Tao", err)
 	}

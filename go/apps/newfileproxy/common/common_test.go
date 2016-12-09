@@ -15,8 +15,6 @@
 package common
 
 import (
-	// "crypto/ecdsa"
-	// "crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
 	"fmt"

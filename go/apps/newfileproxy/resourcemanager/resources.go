@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
+	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 )
 
 func EncodeTime(t time.Time) (string, error) {

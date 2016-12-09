@@ -23,7 +23,6 @@
 
 #include "helpers.h"
 #include "taosupport.h"
-#include <taosupport.pb.h>
 
 #include <openssl/ssl.h>
 #include <openssl/rsa.h>
@@ -162,32 +161,18 @@ void TaoChannel::CloseTaoChannel() {
   peer_channel_.Close();
 }
 
-bool TaoChannel::SendRequest(taosupport::SimpleMessage& out) {
-  string msg_buf;
-
-  if (!out.SerializeToString(&msg_buf)) {
-    printf("Can't serialize request.\n");
-    return false;
-  }
-  int k = SslMessageWrite(peer_channel_.GetSslChannel(),
-                          msg_buf.size(), (byte*)msg_buf.data());
+bool TaoChannel::SendRequest(int size, byte* out) {
+  int k = SslMessageWrite(peer_channel_.GetSslChannel(), size, out);
   return k > 0;
 }
 
-bool TaoChannel::GetRequest(taosupport::SimpleMessage* in) {
-  byte buf[BUFSIZE];
-
-  int k = SslMessageRead(peer_channel_.GetSslChannel(), BUFSIZE, buf);
+bool TaoChannel::GetRequest(int* size, byte* in) {
+  int k = SslMessageRead(peer_channel_.GetSslChannel(), *size, in);
   if (k <= 0) {
     printf("Can't read request channel.\n");
     return false;
   }
-  string in_msg;
-  in_msg.assign((const char*) buf, k);
-  if (!in->ParseFromString(in_msg)) {
-    printf("Can't parse response from channel.\n");
-    return false;
-  }
+  *size = k;
   return true;
 }
 
@@ -300,7 +285,8 @@ void TaoProgramData::ClearProgramData() {
 }
 
 bool TaoProgramData::InitTao(FDMessageChannel* msg, Tao* tao, string& cfg,
-       string& path, string& network, string& address, string& port) {
+       string& path, string& network, string& address, string& port, string& cipher_suite,
+       bool useSimpleService) {
 
   // Set tao and msg for later calls.
   msg_ = msg;

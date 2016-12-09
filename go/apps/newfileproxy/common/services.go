@@ -27,8 +27,6 @@ import (
 	"sync"
 	"time"
 
-	// "github.com/jlmucb/cloudproxy/go/tao"
-	// "github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/util"
 	resourcemanager "github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"

@@ -13,9 +13,7 @@
 // limitations under the License.
 
 syntax = "proto2";
-package taosupport;
-
-// TODO(jlm): Comments describing the fields needed.
+package simpleexample_messages;
 
 enum MessageType {
    REQUEST = 1;

@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Google, Inc.  All rights reserved.
+// Copyright (c) 2016, Google, Inc.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,30 +10,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// File: simpleserver.go
+// File: fileserver.go
 
 package main
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"path"
 
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/common"
 	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
+
+	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
+	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/resourcemanager"
 )
 
 var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var simpleCfg = flag.String("domain_config",
 	"./tao.config",
-	"path to simple tao configuration")
-var simpleServerPath = flag.String("path",
-	"./SimpleServer",
+	"path to fileproxy tao configuration")
+var fileServerPath = flag.String("path",
+	"./FileServer",
 	"path to Server files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
@@ -41,59 +46,25 @@ var useSimpleDomainService = flag.Bool("use_simpledomainservice", true,
 	"whether to use simple domain service")
 var serverAddr string
 
-// Handle service request, req and return response over channel (ms).
-// This handles the one valid service request: "SecretRequest"
-// and terminates the channel after the first successful request
-// which is not generally what would happen in most channels.
-// Note that in the future, we might want to use grpc rather than custom
-// service request/response buffers but we don't want to introduce complexity
-// into this example.  The single request response buffer is defined in
-// taosupport/taosupport.proto.
-func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData,
-	clientProgramName string, req *simpleexample_messages.SimpleMessage) (bool, error) {
-
-	//  The somewhat boring secret is the corresponding simpleclient's program name || 43
-	secret := clientProgramName + "43"
-
-	if *req.RequestType == "SecretRequest" {
-		req.Data = append(req.Data, []byte(secret))
-		simpleexample_messages.SendResponse(ms, req)
-		log.Printf("HandleServiceRequest response buffer: ")
-		simpleexample_messages.PrintMessage(req)
-		return true, nil
-	} else {
-		log.Printf("HandleServiceRequest response is bad request\n")
-		errmsg := "BadRequest"
-		req.Err = &errmsg
-		return false, nil
-	}
-}
-
-func serviceThread(ms *util.MessageStream, clientProgramName string,
+// Handles service request, req and return response over channel (ms).
+func serviceThead(ms *util.MessageStream, clientProgramName string,
+	serverData *common.ServerData, connectionData *common.ServerConnectionData,
 	serverProgramData *taosupport.TaoProgramData) {
-
 	for {
-		req, err := simpleexample_messages.GetRequest(ms)
+		req, err := common.GetMessage(ms)
 		if err != nil {
 			return
 		}
-		log.Printf("serviceThread, got message: ")
-		simpleexample_messages.PrintMessage(req)
-
-		terminate, _ := HandleServiceRequest(ms, serverProgramData,
-			clientProgramName, req)
-		if terminate {
-			break
-		}
+		// log.Printf("serviceThread, got message: ")
+		// common.PrintMessage(req)
+		common.DoRequest(ms, serverData, connectionData, req)
 	}
-	log.Printf("simpleserver: client thread terminating\n")
+	log.Printf("fileserver: client thread terminating\n")
 }
 
 // This is the server. It implements the server Tao Channel negotiation corresponding
-// to the client's taosupport.OpenTaoChannel.  It's possible we should move this into
-// taosupport/taosupport.go since it should not vary very much from implementation to
-// implementation.
-func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
+// to the client's taosupport.OpenTaoChannel.
+func server(serverAddr string, serverData *common.ServerData, serverProgramData *taosupport.TaoProgramData) {
 
 	var sock net.Listener
 
@@ -102,14 +73,14 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 	pool := x509.NewCertPool()
 	policyCert, err := x509.ParseCertificate(serverProgramData.PolicyCert)
 	if err != nil {
-		log.Printf("simpleserver, can't parse policyCert: ", err, "\n")
+		log.Printf("fileserver, can't parse policyCert: ", err, "\n")
 		return
 	}
 	// Make the policy cert the unique root of the verification chain.
 	pool.AddCert(policyCert)
 	tlsc, err := tao.EncodeTLSCert(&serverProgramData.ProgramKey)
 	if err != nil {
-		log.Printf("simpleserver, encode error: ", err, "\n")
+		log.Printf("fileserver, encode error: ", err, "\n")
 		return
 	}
 	conf := &tls.Config{
@@ -120,10 +91,10 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 	}
 
 	// Listen for clients.
-	log.Printf("simpleserver: Listening\n")
+	log.Printf("fileserver: Listening\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
 	if err != nil {
-		log.Printf("simpleserver, listen error: ", err, "\n")
+		log.Printf("fileserver, listen error: ", err, "\n")
 		return
 	}
 
@@ -132,7 +103,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		log.Printf("server: at accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
-			fmt.Printf("simpleserver: can't accept connection: %s\n", err.Error())
+			fmt.Printf("fileserver: can't accept connection: %s\n", err.Error())
 			log.Printf("server: can't accept connection: %s\n", err.Error())
 			continue
 		}
@@ -164,14 +135,15 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		// to communicate with this simpleclient.  ms is the bi-directional
 		// confidentiality and integrity protected channel corresponding to the
 		// channel opened by OpenTaoChannel.
-		go serviceThread(ms, clientName, serverProgramData)
+		connectionData := new(common.ServerConnectionData)
+		go serviceThead(ms, clientName, serverData, connectionData, serverProgramData)
 	}
 }
 
 func main() {
 
-	// main is very similar to the initial parts of main in simpleclient.
-	// see the comments there.
+	// main is very similar to the initial parts of main in simpleclient,
+	// See the comments there.
 	var serverProgramData taosupport.TaoProgramData
 	defer serverProgramData.ClearTaoProgramData()
 
@@ -179,13 +151,64 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	err := taosupport.TaoParadigm(simpleCfg, simpleServerPath, "ECC-P-256.aes128.hmacaes256",
+	err := taosupport.TaoParadigm(simpleCfg, fileServerPath, "ECC-P-256.aes128.hmacaes256",
 		*useSimpleDomainService, *caAddr, &serverProgramData)
 	if err != nil {
-		log.Fatalln("simpleserver: Can't establish Tao", err)
+		log.Fatalln("fileserver: Can't establish Tao", err)
 	}
-	log.Printf("simpleserver name is %s\n", serverProgramData.TaoName)
+	log.Printf("newfileserver name is %s\n", serverProgramData.TaoName)
 
-	server(serverAddr, &serverProgramData)
-	log.Printf("simpleserver: done\n")
+	// Get or initialize encryption keys for table
+	fileSecrets := make([]byte, 32)
+	secretsFileName := path.Join(*fileServerPath, "FileSecrets.bin")
+	encryptedFileSecrets, err := ioutil.ReadFile(secretsFileName)
+	if err != nil {
+		rand.Read(fileSecrets)
+		// Save encryption keys for table
+		encryptedFileSecrets, err = taosupport.Protect(serverProgramData.ProgramSymKeys, fileSecrets[:])
+		if err != nil {
+			fmt.Printf("fileserver: Error protecting data\n")
+		}
+		err = ioutil.WriteFile(secretsFileName, encryptedFileSecrets, 0666)
+		if err != nil {
+			fmt.Printf("fileserver: error saving retrieved secret\n")
+		}
+	} else {
+		fileSecrets, err = taosupport.Unprotect(serverProgramData.ProgramSymKeys, encryptedFileSecrets)
+		if err != nil {
+			fmt.Printf("fileserver: Error protecting data\n")
+		}
+	}
+
+	// Initialize serverData
+	serverData := new(common.ServerData)
+	if serverData == nil {
+		fmt.Printf("fileserver: error parsing policy certificate\n")
+		return
+	}
+
+	serverData.PolicyCert = serverProgramData.PolicyCert
+	serverData.PolicyCertificate, err = x509.ParseCertificate(serverData.PolicyCert)
+	if err != nil {
+		fmt.Printf("fileserver: error parsing policy certificate\n")
+		return
+	}
+	serverData.ResourceManager = new(resourcemanager.ResourceMasterInfo)
+	serverData.FileSecrets = fileSecrets[:]
+	serviceName := "fileserver"
+	serverData.ResourceManager.ServiceName = &serviceName
+	serverData.ResourceManager.BaseDirectoryName = fileServerPath
+	serverData.PolicyCert = serverProgramData.PolicyCert
+
+	fmt.Printf("Initializing Table\n")
+	// Read resource table.
+	tableFileName := path.Join(*fileServerPath, "EncryptedTable.bin")
+	if !resourcemanager.ReadTable(serverData.ResourceManager, tableFileName, fileSecrets[:],
+		&serverData.ResourceMutex) {
+		fmt.Printf("fileserver: error parsing policy certificate\n")
+		return
+	}
+
+	server(serverAddr, serverData, &serverProgramData)
+	log.Printf("fileserver: done\n")
 }

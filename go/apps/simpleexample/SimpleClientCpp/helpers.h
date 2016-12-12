@@ -35,7 +35,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/bn.h>
 
-#include "taosupport.pb.h"
+#include "messages.pb.h"
 
 #include <string>
 #include <memory>

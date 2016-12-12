@@ -23,7 +23,7 @@ message DomainCertRequest {
   optional bytes attestation = 1;
   optional string key_type = 2;
   optional bytes subject_public_key = 3;
-  optional bytes cert_chain = 4;
+  repeated bytes cert_chain = 4;
 }
 
 // This is the response from the domain service.

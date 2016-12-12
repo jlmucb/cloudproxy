@@ -1,0 +1,8 @@
+#
+
+cp ~/bin/SimpleDomainService /Domains
+cp ~/bin/linux_host /Domains
+cp ~/bin/fileserver /Domains/FileServer
+cp ~/bin/fileclient /Domains/FileClient
+cp ~/bin/key_util /Domains
+cp ~/bin/domain_server /Domains

@@ -1,0 +1,34 @@
+#
+source ./defines
+
+if [[ -e $DOMAIN ]]
+then
+  echo "$DOMAIN exists"
+else
+  mkdir $DOMAIN
+  mkdir $DOMAIN/policy_keys
+  echo "$DOMAIN created"
+fi
+
+if [[ -e $TEMPLATE ]]
+then
+  echo "$TEMPLATE exists"
+else
+  cp $OLD_TEMPLATE $TEMPLATE
+  echo "$OLDTEMPLATE copied to $TEMPLATE"
+fi
+
+if [[ -e $DOMAIN/linux_tao_host ]]
+then
+  echo "$DOMAIN/linux_tao_host exists"
+else
+  mkdir $DOMAIN/linux_tao_host
+  echo "$DOMAIN/linux_tao_host created"
+fi
+
+#
+# For soft tao, we need a key and it must be in the template.
+#
+
+KEY_NAME="$($BINPATH/tao domain newsoft -soft_pass xxx -config_template $TEMPLATE $DOMAIN/linux_tao_host)"
+echo "host_name: \"$KEY_NAME\"" | tee -a $TEMPLATE

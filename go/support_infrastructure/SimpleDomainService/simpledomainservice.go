@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/domain_policy"
+	"github.com/jlmucb/cloudproxy/go/support_libraries/domain_policy"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"

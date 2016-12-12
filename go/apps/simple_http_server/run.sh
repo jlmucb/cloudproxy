@@ -60,8 +60,8 @@ $BINPATH/tao domain init -tao_domain $DOMAIN -config_template $DOMAIN/$TEMPLATE 
 # or something else.
 $BINPATH/tao host init -tao_domain $DOMAIN -hosting process -root -pass $PASSWORD
 
-# Start linux host on SoftTao. Needs to run as root to
-$BINPATH/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass $PASSWORD &
+# Start linux host on SoftTao. Needs to run as root to start the server
+sudo -E $BINPATH/tao host start -tao_domain $DOMAIN -host linux_tao_host -pass $PASSWORD &
 sleep 3
 
 # Start the http server

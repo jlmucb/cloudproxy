@@ -18,7 +18,6 @@ import (
 	"container/list"
 	"crypto/rand"
 	"encoding/binary"
-	"io"
 	"log"
 	"net"
 	"time"
@@ -118,28 +117,28 @@ func (sq *Queue) Close(id uint64, msg []byte, destroy bool, conn, prevConn net.C
 }
 
 func (sq *Queue) delete(q *Queueable) {
-	// Close the connection and delete all resources. Any subsequent
-	// messages or reply requests will cause an error.
-	if q.destroy {
-		// Wait for the client to kill the connection or timeout
-		if q.msg == nil {
-			q.conn.Close()
-		} else {
-			_, err := q.conn.Read([]byte{0})
-			if err != nil {
-				e, ok := err.(net.Error)
-				if err == io.EOF || (ok && e.Timeout()) {
-					// If it times out, and the connection
-					// is supposed to be closed,
-					// ignore it..
-					q.conn.Close()
-				}
-			}
-		}
-	}
-	if _, def := sq.sendBuffer[q.id]; def {
-		delete(sq.sendBuffer, q.id)
-	}
+	// // Close the connection and delete all resources. Any subsequent
+	// // messages or reply requests will cause an error.
+	// if q.destroy {
+	// 	// Wait for the client to kill the connection or timeout
+	// 	if q.msg == nil {
+	// 		q.conn.Close()
+	// 	} else {
+	// 		_, err := q.conn.Read([]byte{0})
+	// 		if err != nil {
+	// 			e, ok := err.(net.Error)
+	// 			if err == io.EOF || (ok && e.Timeout()) {
+	// 				// If it times out, and the connection
+	// 				// is supposed to be closed,
+	// 				// ignore it..
+	// 				q.conn.Close()
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// if _, def := sq.sendBuffer[q.id]; def {
+	// 	delete(sq.sendBuffer, q.id)
+	// }
 }
 
 // DoQueue adds messages to a queue and transmits messages in batches. It also
@@ -189,7 +188,7 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 		case <-kill:
 			return
 		case err := <-sq.err:
-			if err.conn == nil {
+			if err.conn != nil {
 				var d Directive
 				d.Type = DirectiveType_ERROR.Enum()
 				d.Error = proto.String(err.Error())
@@ -294,10 +293,14 @@ func senderWorker(network string, q *Queueable,
 
 	q.conn.SetDeadline(time.Now().Add(timeout))
 	if q.msg != nil { // Send the message.
-		if q.msg[TYPE] == 1 {
-			var d Directive
-			unmarshalDirective(q.msg, &d)
-		}
+		// if q.msg[TYPE] == 1 {
+		// 	var d Directive
+		// 	unmarshalDirective(q.msg, &d)
+		// 	fmt.Println("directive", q.id, *d.Type)
+		// 	if d.Error != nil {
+		// 		fmt.Println("error:", *d.Error)
+		// 	}
+		// }
 		if _, e := q.conn.Write(q.msg); e != nil {
 			err <- sendQueueError{q.id, q.prevConn, e}
 			res <- senderResult{q.conn, q.id}

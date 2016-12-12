@@ -12,7 +12,7 @@
 //
 // File: taosupport.go
 
-package taosupport
+package tao_support
 
 import (
 	"bytes"
@@ -24,7 +24,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -34,30 +33,24 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/domain_policy"
 	"github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"
+	"github.com/jlmucb/cloudproxy/go/support_libraries/domain_policy"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-// TODO(jlm): Should all the logs be Printf's here?
-
-var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
-var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
-var configPath = flag.String("config", "tao.config", "The Tao domain config")
-var useSimpleDomainService = flag.Bool("use_simpledomainservice", true,
-	"whether to use simple domain service")
-
+// We should get this from the keySetType later.
 const SizeofSymmetricKeys = 64
 
-//  This is the structure containing all the Tao data required by a Hosted System.
 type TaoProgramData struct {
 	// true after initialization.
 	Initialized bool
 
 	// Program name.
 	TaoName string
+
+	KeySetType string
 
 	// DER encoded policy cert for domain.
 	PolicyCert []byte
@@ -78,26 +71,60 @@ type TaoProgramData struct {
 	ProgramFilePath *string
 }
 
-// Zero Tao sensitive data.
-func ClearTaoProgramData(programData *TaoProgramData) {
-	programData.Initialized = false
-	ZeroBytes([]byte(programData.TaoName))
-	ZeroBytes(programData.PolicyCert)
-	if programData.ProgramKey.SigningKey != nil {
-		// TODO(manferdelli): find out how to clear signingkey.
-		// ZeroBytes([]byte(*programData.ProgramKey))
+// Support functions
+func ZeroBytes(buf []byte) {
+	n := len(buf)
+	for i := 0; i < n; i++ {
+		buf[i] = 0
 	}
-	ZeroBytes(programData.ProgramSymKeys)
-	ZeroBytes(programData.ProgramCert)
-	programData.ProgramFilePath = nil
 }
 
-// RequestDomainServiceCert requests the signed Program
-// Certificate from simpledomainservice.
-//  TODO: This needs to change in a way that is tao supplier dependent.
-//     For tpm2 we need the ekCert and the tao and we need the data
-//     for ActivateCredential.
-//     For tpm1.2, we need the aikCert.
+// This is not used now but Cloudproxy principals are in the Organization name.
+func PrincipalNameFromDERCert(derCert []byte) *string {
+	cert, err := x509.ParseCertificate(derCert)
+	if err != nil {
+		log.Printf("PrincipalNameFromDERCert: Can't get name from certificate\n")
+		return nil
+	}
+	var name string
+	if len(cert.Subject.Organization) > 0 && cert.Subject.Organization[0] != "" {
+		name = cert.Subject.Organization[0]
+	} else {
+		name = cert.Subject.CommonName
+	}
+	return &name
+}
+
+func (pp *TaoProgramData) ClearTaoProgramData() {
+	pp.Initialized = false
+	pp.KeySetType = ""
+	ZeroBytes([]byte(pp.TaoName))
+	ZeroBytes(pp.PolicyCert)
+	if pp.ProgramKey.SigningKey != nil {
+		// TODO(manferdelli): find out how to clear signingkey.
+		// ZeroBytes([]byte(*pp.ProgramKey))
+	}
+	ZeroBytes(pp.ProgramSymKeys)
+	ZeroBytes(pp.ProgramCert)
+	pp.ProgramFilePath = nil
+}
+
+func (pp *TaoProgramData) FillTaoProgramData(keySetType string, policyCert []byte, taoName string,
+	programKey tao.Keys, symKeys []byte, programCert []byte, certChain [][]byte,
+	filePath *string) bool {
+	pp.KeySetType = keySetType
+	pp.PolicyCert = policyCert
+	pp.TaoName = taoName
+	pp.ProgramKey = programKey
+	pp.ProgramSymKeys = symKeys
+	pp.ProgramCert = programCert
+	pp.CertChain = certChain
+	pp.ProgramFilePath = filePath
+	pp.Initialized = true
+	return true
+}
+
+// RequestDomainServiceCert requests the signed Program Cert from SimpleDomainService
 func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 	v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
 
@@ -166,8 +193,8 @@ func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 }
 
 // Returns key, cert and cert chain
-func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
-	*tao.Keys, []byte, [][]byte, error) {
+func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain, useSimpleDomainService bool,
+	caAddr string) (*tao.Keys, []byte, [][]byte, error) {
 
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil || derCert == nil {
@@ -178,9 +205,8 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	// Get program cert.
 	var programCert []byte
 	var certChain [][]byte
-	if *useSimpleDomainService {
-		domain_response, err := RequestDomainServiceCert("tcp", *caAddr, k,
-			domain.Keys.VerifyingKey)
+	if useSimpleDomainService {
+		domain_response, err := RequestDomainServiceCert("tcp", caAddr, k, domain.Keys.VerifyingKey)
 		if err != nil || domain_response == nil {
 			log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
 			return nil, nil, nil, err
@@ -194,12 +220,13 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 		}
 		k.Cert.Raw = programCert
 	} else {
-		cert, err := domain_service.RequestProgramCert(k.Delegation, k.VerifyingKey, "tcp", *caAddr)
+		cert, err := domain_service.RequestProgramCert(k.Delegation, k.VerifyingKey, "tcp", caAddr)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		k.Cert = cert
 		programCert = cert.Raw
+		// Cert chains?
 	}
 
 	// Serialize and save key blob
@@ -234,20 +261,6 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	return k, programCert, certChain, nil
 }
 
-func (pp *TaoProgramData) FillTaoProgramData(policyCert []byte, taoName string,
-	programKey tao.Keys, symKeys []byte, programCert []byte, certChain [][]byte,
-	filePath *string) bool {
-	pp.PolicyCert = policyCert
-	pp.TaoName = taoName
-	pp.ProgramKey = programKey
-	pp.ProgramSymKeys = symKeys
-	pp.ProgramCert = programCert
-	pp.CertChain = certChain
-	pp.ProgramFilePath = filePath
-	pp.Initialized = true
-	return true
-}
-
 // Load domain info for the domain and establish Clouproxy keys and properties.
 // This handles reading in existing (sealed) Cloudproxy keys and properties, or,
 // if this is the first call (or a call after state has been erased), this also
@@ -256,7 +269,11 @@ func (pp *TaoProgramData) FillTaoProgramData(policyCert []byte, taoName string,
 // If TaoParadigm completes without error, programObject contains all the
 // Cloudproxy information needed throughout the calling program execution
 // ensures that this information is sealed and stored for subsequent invocations.
-func TaoParadigm(cfg *string, filePath *string,
+//
+// More generally, TaoParadigm should take a keyset type that specifies the public
+// and symmetric key types and lengths but for now, its P-256 ECC and 64 bit symmetric
+// keys.  It should be part of the ProgramData.
+func TaoParadigm(cfg *string, filePath *string, keySetType string, useSimpleDomainService bool, caAddr string,
 	programObject *TaoProgramData) error {
 
 	// Load domain info for this domain.
@@ -322,7 +339,7 @@ func TaoParadigm(cfg *string, filePath *string,
 	} else {
 		// Get Program key.
 		programKey, programCert, certChain, err = InitializeSealedProgramKey(
-			*filePath, tao.Parent(), *simpleDomain)
+			*filePath, tao.Parent(), *simpleDomain, useSimpleDomainService, caAddr)
 		if err != nil {
 			return errors.New(fmt.Sprintln("TaoParadigm: InitializeSealedSigningKey error: ", err))
 		}
@@ -333,7 +350,7 @@ func TaoParadigm(cfg *string, filePath *string,
 	log.Printf("TaoParadigm: Retrieved Signing key\n")
 
 	// Initialize Program policy object.
-	ok := programObject.FillTaoProgramData(derPolicyCert, taoName.String(),
+	ok := programObject.FillTaoProgramData(keySetType, derPolicyCert, taoName.String(),
 		*programKey, symKeys, programCert, certChain, filePath)
 	if !ok {
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
@@ -364,7 +381,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 	if err != nil {
 		log.Fatalln("OpenTaoChannel, encode error: ", err)
 	}
-	// TODO(manferdelli): Replace this with tao.Dial
+	// TODO(manferdelli): Replace this with tao.Dial?
 	conn, err := tls.Dial("tcp", *serverAddr, &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
@@ -380,25 +397,6 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 	// Stream for Tao Channel.
 	ms := util.NewMessageStream(conn)
 	return ms, &peerName, nil
-}
-
-// Support functions
-
-func ZeroBytes(buf []byte) {
-	n := len(buf)
-	for i := 0; i < n; i++ {
-		buf[i] = 0
-	}
-}
-
-func PrincipalNameFromDERCert(derCert []byte) *string {
-	cert, err := x509.ParseCertificate(derCert)
-	if err != nil {
-		log.Printf("PrincipalNameFromDERCert: Can't get name from certificate\n")
-		return nil
-	}
-	cn := cert.Subject.CommonName
-	return &cn
 }
 
 // Returns sealed symmetric key, sealed signing key,
@@ -493,7 +491,6 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*tao.Keys, error) {
 
 	// Recover public key from blob
-
 	k := &tao.Keys{}
 
 	cert, err := x509.ParseCertificate(programCert)
@@ -502,6 +499,7 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*t
 	}
 
 	/*
+		 * We don't use this now.
 		k.Delegation = new(tao.Attestation)
 		err = proto.Unmarshal(delegateBlob, k.Delegation)
 		if err != nil {
@@ -520,83 +518,6 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*t
 	k.Cert = cert
 	k.Cert.Raw = programCert
 	return k, err
-}
-
-func PrintMessage(msg *SimpleMessage) {
-	log.Printf("Message\n")
-	if msg.MessageType != nil {
-		log.Printf("\tmessage type: %d\n", *msg.MessageType)
-	} else {
-		log.Printf("\tmessage type: nil\n")
-	}
-	if msg.RequestType != nil {
-		log.Printf("\trequest_type: %s\n", *msg.RequestType)
-	} else {
-		log.Printf("\trequest_type: nil\n")
-	}
-	if msg.Err != nil {
-		log.Printf("\terror: %s\n", msg.Err)
-	}
-	log.Printf("\tdata: ")
-	for _, data := range msg.GetData() {
-		log.Printf("\t: %x\n", data)
-	}
-	log.Printf("\n")
-}
-
-func SendMessage(ms *util.MessageStream, msg *SimpleMessage) error {
-	out, err := proto.Marshal(msg)
-	if err != nil {
-		return errors.New("SendRequest: Can't encode response")
-	}
-	send := string(out)
-	_, err = ms.WriteString(send)
-	if err != nil {
-		return errors.New("SendResponse: Writestring error")
-	}
-	return nil
-}
-
-func GetMessage(ms *util.MessageStream) (*SimpleMessage,
-	error) {
-	resp, err := ms.ReadString()
-	if err != nil {
-		return nil, err
-	}
-	msg := new(SimpleMessage)
-	err = proto.Unmarshal([]byte(resp), msg)
-	if err != nil {
-		return nil, errors.New("GetResponse: Can't unmarshal message")
-	}
-	return msg, nil
-}
-
-func SendRequest(ms *util.MessageStream, msg *SimpleMessage) error {
-	m1 := int32(MessageType_REQUEST)
-	msg.MessageType = &m1
-	return SendMessage(ms, msg)
-}
-
-func SendResponse(ms *util.MessageStream, msg *SimpleMessage) error {
-	m1 := int32(MessageType_RESPONSE)
-	msg.MessageType = &m1
-	return SendMessage(ms, msg)
-}
-
-func GetRequest(ms *util.MessageStream) (*SimpleMessage, error) {
-	msg, err := GetMessage(ms)
-	if err != nil || *msg.MessageType != int32(MessageType_REQUEST) {
-		return nil, errors.New("GetResponse: reception error")
-	}
-	return msg, nil
-}
-
-func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
-	msg, err := GetMessage(ms)
-	if err != nil || *msg.MessageType != int32(MessageType_RESPONSE) {
-		return nil, errors.New("GetResponse: reception error")
-	}
-	return msg, nil
 }
 
 func Protect(keys []byte, in []byte) ([]byte, error) {

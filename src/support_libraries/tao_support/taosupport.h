@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 #include <string>
 #include <stdlib.h>
-#include <taosupport.pb.h>
 
 #ifndef __TAOSUPPORT_H__
 #define __TAOSUPPORT_H__
@@ -23,7 +22,6 @@
 
 #include "attestation.pb.h"
 
-#include <taosupport.pb.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -54,6 +52,9 @@ private:
   string marshalled_tao_name_;
   // Printable tao name
   string tao_name_;
+
+  // cipher suite
+  string cipher_suite_;
 
   string policy_cert_;
   X509* policyCertificate_;
@@ -96,7 +97,8 @@ public:
 
   void ClearProgramData();
   bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&,
-               string& network, string& address, string& port);
+               string& network, string& address, string& port, string& cipher_suite,
+               bool useSimpleService);
   void Print();
 
   // Maybe the Initialize routines should be private.
@@ -134,8 +136,8 @@ public:
   bool OpenTaoChannel(TaoProgramData& client_program_data,
                       string& serverAddress, string& port);
   void CloseTaoChannel();
-  bool SendRequest(taosupport::SimpleMessage& out);
-  bool GetRequest(taosupport::SimpleMessage* in);
+  bool SendRequest(int size, byte* out);
+  bool GetRequest(int* size, byte* in);
   void Print();
 };
 

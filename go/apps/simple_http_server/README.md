@@ -17,8 +17,8 @@ and services that to any clients.
 This application does not really have any meaningful security as the
 connection is on plaintext HTTP and provides no authentication (i.e.,
 no TLS); it is meant as a simplest demonstration of getting a server
-running on top of CloudProxy and linux_host in particular. This will
-be shown in another example.
+running on top of CloudProxy and linux_host in particular. Running
+with TLS will be shown in another example.
 
 
 Dependencies
@@ -47,7 +47,7 @@ of this Tao.
 
 - `run.sh`: Script to compile and run the application.
 
-- `server.go`: Code for a simple HTTP server.
+- `server.go`: Code for a simple HTTP server using Tao.
 
 
 Running the example
@@ -55,7 +55,7 @@ Running the example
 
 To run this application, run
 
-    `./run.sh`
+    ./run.sh
 
 This sets up all the necessary files, and runs the server. This
 requires sudo access since the linux hosts run with root privilege. It

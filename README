@@ -1,24 +1,115 @@
-This directory contains the source code and design material for the 
-CloudProxy Project.
+This directory contains the source code and design material for the
+CloudProxy Project.  This project was started at the Intel Science and
+Technology Center for Secure Computing at University of California at
+Berkeley.  Google joined the project in January 2013 and is a major
+contributor.
 
-This project was started at the Intel Science and Technology Center for Secure
-Computing at University of California at Berkeley.  Google joined the project in
-January 2013 and is a major contributor.
+The code and accompanying material is licensed for general use under
+the Apache 2.0 License. Please consult the LICENSE file for details
+and terms.  By using this software you agree to those terms.
 
-The code is licensed for general use under the Apache 2.0 License. Please
-consult the LICENSE file for details and terms.  By using this software you
-agree to those terms.
+The repository contains the complete CloudProxy source and a number of examples
+as well as rather complete instructions.  The current version supports both Go
+and C++ programming interfaces to Cloudproxy and support for the following "root"
+security hosts:
+	1. Support for TPM 1.2.
+	2. Support for TPM 2.0.
+	3. Support for the Soft Tao: a software root of trust which can be used
+	   for development on hardware without TPM's.
+In the case of TPM 2.0, the TPM can either be a discrete TPM part or a firmware
+based TPM.
 
-The directory Doc contains documentation and commentary.  It contains:
-    1. A paper by Manferdelli, Roeder and Schneider describing the
-       project in considerable detail.
-    2. Extensive documentation on building the FileProxy system on a bare machine.
+Cloudproxy runs in or on the following platforms:
+	1. A Linux based KVM.
+	2. A Linux OS (either running as a VM over KVM or as the "root" platform.
+	3. Mac OS-X, version 10.  Macs generally do not have TPMs but can run
+	   using the "Soft Tao."  This is very convenient for development.
+
+Each Cloudproxy (Tao) host presents the same programming interface to "hosted
+systems" or applications, so you can develop on, for example, a "SoftTao"
+based Mac Cloudproxy and run, without programming changes on a root Tao using
+a TPM or hosted Tao's.
+
+To get started, follow the "Cloudproxy Nuts and Bolts" tutorial, in Doc 
+directory, which comprehensively describes Cloudproxy concepts,
+installation and a fully implemented sample application, called simpleexample.
+Although the Nuts and Bolts paper is long, you can follow the installation and
+simple example sample code by reading only the first half of the document.
+Simple example, although simple, covers the entire Cloudproxy API,
+called the "Tao." Most applications can be built by simply copying
+and pasting sample code from simple example.  Our experience is
+that someone can install and build cloudproxy and complete the simpleexample
+tutorial in about a day and program relatively complex applications the next
+day.  Most installation scripts and tests can also be used, with minor changes
+for configuring and running your own applications.  The tutorial covers both
+Go and C++ interfaces on a SoftTao running on Mac OS-X or Linux.  It
+covers the important concept of Tao Principal Names in depth.
+
+"CloudProxy Deployment Nuts and Bolts" covers complete installation and
+configuration information for TPM installations whether directly hosted on
+Linux or hosted in a Linux VM running on KVM.  The instructions are also
+rather comprehensive and may be copied an pasted in a variety of deployment
+scenarios.  "CloudProxy Deployment Nuts and Bolts" also covers important
+key management tools and techniques for Cloudproxy applications and hosts.
+Since programs are "first class" principals in Cloudproxy and are completely
+and unforgeably identified by Cloudproxy for the purpose of authentication
+and key management, first time programmers often worry about distribution
+and update of new applications and new versions of applications.
+"CloudProxy Deployment Nuts and Bolts" describes several simple
+mechanisms to do automatic key management and provides prototypical
+tools and infrastructure components to generate keys including
+foundational "policy keys," certify program and data protection
+keys, rotate keys, support key storage hierarchies, provision keys using
+a keystore and transfer keys between applications and different versions
+of the same applications.  All these tools and techniques are implemented
+in this repository.  Simpleexample itself contains a simple tao
+library ("taosupport") which allows most applications to interface with
+the Tao using a few simple stylized calls.  This library can be used
+across a large application set with very little change.
+
+Eric Grosse pointed out that "simple example" may still be a big
+"first step," so there is an even simpler starting application called
+"simple-http-server" which demonstrates just about the simplest possible
+use case.
+
+There are a number of sample applications provided.  These include:
+	1. Newfileproxy: This is a new version of the very first
+	  "real" cloudproxy application called fileproxy.  The
+	   fileproxy application provides confidentiality and
+	   integrity protection and access control for files
+	   stored in a cloud by a set of cloudproxy service 
+	   applications.  Fileproxy demonstrates "insider protection"
+	   in a cloud application in an intuitive setting.
+	   Newfileproxy is a newer version of a fileproxy. It is
+	   simpler than the original and is based on the simpleexample code
+	   you learned in the tutorial.  The old version of fileproxy
+	   is deprecated.
+	2. Mixnet:  This is a cloudproxy based mixnet router and is
+	   fully functional.
+	3. Roughtime:  This is a secure time implementation based on
+	   cloudproxy that can be used to support "secure network time"
+	   to cloudproxy or non-cloudproxy programs.
+	4. Simple-http-server: A cloudproxy secured http service (server only).
+
+Several older applications remain the distribution but are not maintained. 
+They include:
+	1. Bidproxy: A secure bidding service that is secure against
+	   tampering by the organization conducting the bid.  It protects
+	   the confidentiality of bids and designates the winning bid.
+	2. Authproxy: A distributed authentication service hosted on
+	   Cloudproxy.
+
+The directory Doc also contains older documentation and commentary including the
+original Cloudproxy paper by Manferdelli, Roeder and Schneider.  There is
+also Docker container support, although we have not kept this current
+nor is there extensive use documentation yet.
 
 Please send feedback, comments and suggestions and bug reports to
-  jlmucbmath@gmail.com or tmroeder@google.com
+  jlmucbmath@gmail.com or manferdelli@google.com
 Unless expressly noted in any such submitted material, you agree that any 
-feedback, comments or suggested can be incorporated under the Apache 
+feedback, comments or suggestions can be used and distributed under the Apache 
 License in this directory.
 
-John and Tom
+The Cloudproxy developers --- John Manferdelli, Tom Roeder, Kevin Walsh, Sid Telang,
+Albert Kwon.  Thanks to Paul England who answered a number of questions on TPM 2.0.
 

@@ -352,8 +352,8 @@ func TestCreateDestroy(t *testing.T) {
 		t.Error("Error creating circuit:", err)
 	}
 
-	if len(router.nextIds) != 1 {
-		t.Error("Failed to establish circuit:", len(router.nextIds))
+	if len(router.circuits) != 1 {
+		t.Error("Failed to establish circuit. Num circuits:", len(router.circuits))
 	}
 
 	if err = proxy.DestroyCircuit(id); err != nil {
@@ -368,8 +368,8 @@ func TestCreateDestroy(t *testing.T) {
 	default:
 	}
 
-	if len(router.nextIds) != 0 {
-		t.Error("Expecting 0 circuits, but have", len(router.nextIds))
+	if len(router.circuits) != 0 {
+		t.Error("Expecting 0 circuits, but have", len(router.circuits))
 	}
 }
 
@@ -416,9 +416,9 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(router1.nextIds) != 1 || len(router2.nextIds) != 1 || len(router3.nextIds) != 1 {
-		t.Error("Expecting 0 connections, but have",
-			len(router1.nextIds), len(router2.nextIds), len(router3.nextIds))
+	if len(router1.circuits) != 2 || len(router2.circuits) != 2 || len(router3.circuits) != 1 {
+		t.Error("Expecting (2,2,1) circuits, but have",
+			len(router1.circuits), len(router2.circuits), len(router3.circuits))
 	}
 
 	if err = proxy.DestroyCircuit(id); err != nil {
@@ -435,9 +435,9 @@ func TestCreateDestroyMultiHop(t *testing.T) {
 		}
 	}
 
-	if len(router1.nextIds) != 0 || len(router2.nextIds) != 0 || len(router3.nextIds) != 0 {
+	if len(router1.circuits) != 0 || len(router2.circuits) != 0 || len(router3.circuits) != 0 {
 		t.Error("Expecting 0 connections, but have",
-			len(router1.nextIds), len(router2.nextIds), len(router3.nextIds))
+			len(router1.circuits), len(router2.circuits), len(router3.circuits))
 	}
 }
 

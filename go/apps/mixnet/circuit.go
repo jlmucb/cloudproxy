@@ -27,12 +27,14 @@ import (
 
 // A circuit carries cells
 type Circuit struct {
-	conn  *Conn
-	id    uint64
-	cells chan []byte
-	errs  chan error
-	next  *Circuit
-	prev  *Circuit
+	conn    *Conn
+	id      uint64
+	cells   chan []byte
+	errs    chan error
+	next    *Circuit
+	entry   bool
+	exit    bool
+	forward bool
 
 	peerKey    *[32]byte
 	publicKey  *[32]byte
@@ -40,30 +42,28 @@ type Circuit struct {
 	sharedKey  *[32]byte
 }
 
-// SET THE CORRECT KEYS
-func NewCircuit(conn *Conn, id uint64, peerKey, publicKey, privateKey *[32]byte) *Circuit {
-	if peerKey != nil && privateKey != nil {
-		var sharedKey [32]byte
-		box.Precompute(&sharedKey, peerKey, privateKey)
-		return &Circuit{
-			conn:  conn,
-			id:    id,
-			cells: make(chan []byte, 2),
-			errs:  make(chan error, 2),
-
-			peerKey:    peerKey,
-			publicKey:  publicKey,
-			privateKey: privateKey,
-			sharedKey:  &sharedKey,
-		}
-	} else {
-		return &Circuit{
-			conn:  conn,
-			id:    id,
-			cells: make(chan []byte, 2),
-			errs:  make(chan error, 2),
-		}
+// A circuit now encrypts for the exit circuit. The key is assumed to be available
+// through "peerKey", and publicKey and privateKey are the keys are local keys
+// used to perform diffiehellman with peerKey. The keys are optional.
+func NewCircuit(conn *Conn, id uint64, entry, exit, forward bool) *Circuit {
+	return &Circuit{
+		conn:    conn,
+		id:      id,
+		cells:   make(chan []byte, 2),
+		errs:    make(chan error, 2),
+		entry:   entry,
+		exit:    exit,
+		forward: forward,
 	}
+}
+
+func (c *Circuit) SetKeys(peerKey, publicKey, privateKey *[32]byte) {
+	var sharedKey [32]byte
+	box.Precompute(&sharedKey, peerKey, privateKey)
+	c.peerKey = peerKey
+	c.publicKey = publicKey
+	c.privateKey = privateKey
+	c.sharedKey = &sharedKey
 }
 
 func (c *Circuit) Encrypt(msg []byte) []byte {

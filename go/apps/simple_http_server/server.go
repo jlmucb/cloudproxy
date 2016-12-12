@@ -24,7 +24,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
+	"syscall"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
@@ -142,7 +144,11 @@ func main() {
 		Addr:    ":" + *serverPort,
 		Handler: mux,
 	}
+
+	kill := make(chan os.Signal, 1)
+	signal.Notify(kill, syscall.SIGINT, syscall.SIGTERM)
 	fmt.Println("Starting simple http server..")
-	httpServer.Serve(server.listener)
+	go httpServer.Serve(server.listener)
+	<-kill
 	fmt.Println("Shutting down http server..")
 }

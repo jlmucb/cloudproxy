@@ -40,7 +40,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 
 	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.
@@ -619,17 +618,12 @@ func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
 	return proto.Marshal(ed)
 }
 
-// Decrypt checks the MAC then decrypts ciphertext into plaintext.
-func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
-	var ed EncryptedData
-	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
-		return nil, err
-	}
+func (c *Crypter) decrypt(ed EncryptedData, result []byte) error {
 
 	// TODO(tmroeder): we're currently mostly ignoring the CryptoHeader,
 	// since we only have one key.
 	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
+		return newError("bad version")
 	}
 
 	// Check the HMAC before touching the ciphertext.
@@ -641,18 +635,43 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	mac.Write(fullCiphertext)
 	m := mac.Sum(nil)
 	if !hmac.Equal(m, ed.Mac) {
-		return nil, newError("bad HMAC")
+		return newError("bad HMAC")
 	}
 
 	block, err := aes.NewCipher(c.aesKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	s := cipher.NewCTR(block, ed.Iv)
+	s.XORKeyStream(result, ed.Ciphertext)
+	return nil
+}
+
+// Decrypt checks the MAC then decrypts ciphertext into plaintext.
+func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
+	var ed EncryptedData
+	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
+		return nil, err
+	}
+
 	data := make([]byte, len(ed.Ciphertext))
-	s.XORKeyStream(data, ed.Ciphertext)
-	return data, nil
+	err := c.decrypt(ed, data)
+	return data, err
+}
+
+func (c *Crypter) DecryptKey(ciphertext []byte) ([]byte, error) {
+	var ed EncryptedData
+	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
+		return nil, err
+	}
+
+	key, err := makeSensitive(len(ed.Ciphertext))
+	if err != nil {
+		return nil, err
+	}
+	err = c.decrypt(ed, key)
+	return key, err
 }
 
 // marshalAESCTRHMACSHACryptingKeyV1 encodes a private AES/HMAC key pair
@@ -1019,7 +1038,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if err != nil {
 					return nil, err
 				}
-				defer ZeroBytes(data)
+				defer clearSensitive(data)
 
 				var cks CryptoKeyset
 				if err = proto.Unmarshal(data, &cks); err != nil {
@@ -1237,12 +1256,12 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	}
 
 	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
+	aesKey := PBKDF2Key(password, pbed.Salt[:aes.BlockSize/2], int(*pbed.Iterations), 16, sha256.New)
+	defer clearSensitive(aesKey)
 
 	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
+	hmacKey := PBKDF2Key(password, pbed.Salt[aes.BlockSize/2:], int(*pbed.Iterations), 64, sha256.New)
+	defer clearSensitive(hmacKey)
 	c := &Crypter{aesKey, hmacKey}
 
 	// Note that we're abusing the PBEData format here, since the IV and
@@ -1282,22 +1301,37 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	}
 
 	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
+	aesKey := PBKDF2Key(password, pbed.Salt[:aes.BlockSize/2], int(*pbed.Iterations), 16, sha256.New)
+	defer clearSensitive(aesKey)
 
 	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
+	hmacKey := PBKDF2Key(password, pbed.Salt[aes.BlockSize/2:], int(*pbed.Iterations), 64, sha256.New)
+	defer clearSensitive(hmacKey)
 	c := &Crypter{aesKey, hmacKey}
 
 	// Note that we're abusing the PBEData format here, since the IV and
 	// the MAC are actually contained in the ciphertext from Encrypt().
-	data, err := c.Decrypt(pbed.Ciphertext)
+	// (kwonalbert) We are assuming this is only used to decrypt sensitive information..
+	data, err := c.DecryptKey(pbed.Ciphertext)
 	if err != nil {
 		return nil, err
 	}
 
 	return data, nil
+}
+
+func zeroKeySet(k *CryptoKeyset) error {
+	for _, key := range k.Keys {
+		switch key.GetPurpose() {
+		case CryptoKey_SIGNING:
+			continue
+		case CryptoKey_CRYPTING:
+			ZeroBytes(key.Key)
+		case CryptoKey_DERIVING:
+			continue
+		}
+	}
+	return nil
 }
 
 // MarshalKeyset encodes the keys into a protobuf message.

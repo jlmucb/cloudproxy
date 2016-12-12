@@ -17,7 +17,6 @@ package tao
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"runtime"
 	"testing"
 	"time"
@@ -51,17 +50,10 @@ func TPM2Setup() {
 		}
 		go HandleQuote("tcp", "127.0.0.1:8121", "xxx", testDir, details)
 		time.Sleep(1)
-		endorseKey()
+		HandleEndorsement(2048, "endorsement_key", testDir+"/endorsement_cert",
+			"", "", "xxx", testDir, true)
 	}
 	quoteServerRunning = true
-}
-
-func endorseKey() {
-	err := HandleEndorsement(2048, "endorsement_key", testDir+"/endorsement_cert",
-		"", "", "xxx", testDir, true)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func TestEncode(t *testing.T) {

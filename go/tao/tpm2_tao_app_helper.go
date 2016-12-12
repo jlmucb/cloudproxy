@@ -55,7 +55,7 @@ func HandleEndorsement(keySize int, keyName, endorsementCertFile, policyCertFile
 
 	ekHandle, _, err := tpm2.CreateEndorsement(rw, uint16(keySize), pcrs)
 	if err != nil {
-		fmt.Errorf("Can't CreateEndorsement: %s", err)
+		return fmt.Errorf("Can't CreateEndorsement: %s", err)
 	}
 	defer tpm2.FlushContext(rw, ekHandle)
 
@@ -208,5 +208,4 @@ func HandleQuote(network, addr, pass, path string, details X509Details) error {
 			log.Printf("Quote server: Error sending response on the channel: %s\n ", err)
 		}
 	}
-	return nil
 }

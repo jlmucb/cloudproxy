@@ -177,7 +177,7 @@ func TestLinuxHostTaoServerInitCounter(t *testing.T) {
 	}
 	err = host.InitCounter("label", int64(1))
 	if err != nil {
-		t.Fatal("Couldn't InitCounter: %s: ", err)
+		t.Fatalf("Couldn't InitCounter: %s: ", err)
 	}
 	c, err := host.GetCounter("label")
 	if c != int64(1) {

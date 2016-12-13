@@ -41,7 +41,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 
 	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.
@@ -900,8 +899,10 @@ func (k *Keys) PlaintextKeysetPath() string {
 // we need to somehow make it actually zeroed
 func (k *Keys) ClearKeys() {
 	k.SigningKey.ec.D.SetInt64(0)
-	ZeroBytes(k.CryptingKey.aesKey)
-	ZeroBytes(k.CryptingKey.hmacKey)
+	if k.CryptingKey != nil {
+		ClearSensitive(k.CryptingKey.aesKey)
+		ClearSensitive(k.CryptingKey.hmacKey)
+	}
 	// No need to zero verifier (since it's just a public key)
 	ZeroBytes(k.DerivingKey.secret)
 }
@@ -933,21 +934,7 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 	}
 
 	if k.keyTypes&Crypting == Crypting {
-		// kwonalbert: removed GenerateCrypter because it uses
-		// MakeSensitive in side, and NewTemporaryKeys is used outside..
-		c := &Crypter{
-			aesKey:  make([]byte, aesKeySize),
-			hmacKey: make([]byte, hmacKeySize),
-		}
-
-		if _, err := rand.Read(c.aesKey); err != nil {
-			return nil, err
-		}
-
-		if _, err := rand.Read(c.hmacKey); err != nil {
-			return nil, err
-		}
-		k.CryptingKey = c
+		k.CryptingKey, err = GenerateCrypter()
 		if err != nil {
 			return nil, err
 		}
@@ -1272,12 +1259,12 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	}
 
 	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
+	aesKey := PBKDF2Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	defer ClearSensitive(aesKey)
 
 	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
+	hmacKey := PBKDF2Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	defer ClearSensitive(hmacKey)
 	c := &Crypter{aesKey, hmacKey}
 
 	// Note that we're abusing the PBEData format here, since the IV and
@@ -1317,12 +1304,12 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	}
 
 	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
+	aesKey := PBKDF2Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	defer ClearSensitive(aesKey)
 
 	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
+	hmacKey := PBKDF2Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	defer ClearSensitive(hmacKey)
 	c := &Crypter{aesKey, hmacKey}
 
 	// Note that we're abusing the PBEData format here, since the IV and

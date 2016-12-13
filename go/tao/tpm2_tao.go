@@ -409,6 +409,9 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 		return nil, err
 	}
 
+	// kwonalbert: flushing to avoid occasional 902 error..
+	tpm2.FlushContext(tt.rw, rootHandle)
+
 	quoteCertPath := path.Join(tt.path, "quote_cert")
 	if _, quoteCertErr := os.Stat(quoteCertPath); quoteCertErr != nil {
 		tt.quoteCert, err = getQuoteCert(tt.rw, tt.path, quoteHandle, quotePassword, tt.name, tt.verifier)

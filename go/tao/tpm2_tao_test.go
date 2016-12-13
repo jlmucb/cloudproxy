@@ -17,6 +17,7 @@ package tao
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -39,6 +40,7 @@ var quoteServerRunning bool = false
 
 func TPM2Setup() {
 	if !quoteServerRunning {
+		os.Mkdir(testDir, 777)
 		// Setup testing env
 		us := "US"
 		org := "Google"

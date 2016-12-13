@@ -106,6 +106,28 @@ func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
 	return unsealed, nonce, err
 }
 
+// out: unsealed blob, nonce
+func AssistUnsealKey(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
+	pub []byte, priv []byte, parentPassword string, ownerPassword string,
+	policy_digest []byte) ([]byte, []byte, error) {
+
+	// Load Sealed
+	sealHandle, _, err := Load(rw, parentHandle, parentPassword,
+		ownerPassword, pub, priv)
+	if err != nil {
+		return nil, nil, errors.New("Load failed")
+	}
+	defer FlushContext(rw, sealHandle)
+
+	// Unseal
+	unsealed, nonce, err := UnsealKey(rw, sealHandle, ownerPassword,
+		sessionHandle, policy_digest)
+	if err != nil {
+		return nil, nil, errors.New("Unseal failed")
+	}
+	return unsealed, nonce, err
+}
+
 // Call with tpm 2.0 and the quote handle, get the key back for serialization in AttestCertRequest.
 func GetRsaKeyFromHandle(rw io.ReadWriter, handle Handle) (*rsa.PublicKey, error) {
 	publicBlob, _, _, err := ReadPublic(rw, handle)
@@ -154,8 +176,8 @@ func FormatTpm2Quote(stmt []byte, pcrs []int, pcrVals [][]byte) ([]byte, error) 
 func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVal []byte,
 	tpm2Quote []byte, sig []byte, key *rsa.PublicKey) (bool, error) {
 
-	// TODO: fix
-	hash_alg_id := uint16(AlgTPM_ALG_SHA1)
+	// TODO: probably should be an input, or be parametrized
+	hash_alg_id := uint16(AlgTPM_ALG_SHA256)
 
 	attest, err := UnmarshalCertifyInfo(tpm2Quote)
 	if err != nil {

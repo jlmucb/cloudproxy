@@ -237,8 +237,8 @@ func (tt *TPMTao) Seal(data []byte, policy string) (sealed []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer ZeroBytes(crypter.aesKey)
-	defer ZeroBytes(crypter.hmacKey)
+	defer ClearSensitive(crypter.aesKey)
+	defer ClearSensitive(crypter.hmacKey)
 
 	c, err := crypter.Encrypt(data)
 	if err != nil {
@@ -306,7 +306,7 @@ func (tt *TPMTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 	return m, SealPolicyDefault, nil
 }
 
-func (s *TPMTao) InitCounter(label string, c int64) (error) {
+func (s *TPMTao) InitCounter(label string, c int64) error {
 	return errors.New("InitCounter for tpm not implemented")
 }
 
@@ -318,7 +318,7 @@ func (s *TPMTao) RollbackProtectedSeal(label string, data []byte, policy string)
 	return nil, errors.New("RollbackProtectedSeal for tpm not implemented")
 }
 
-func (s *TPMTao) RollbackProtectedUnseal(sealed []byte) ([]byte, string,  error) {
+func (s *TPMTao) RollbackProtectedUnseal(sealed []byte) ([]byte, string, error) {
 	return nil, "", errors.New("RollbackProtectedUnseal for tpm not implemented")
 }
 

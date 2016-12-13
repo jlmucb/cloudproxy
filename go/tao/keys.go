@@ -33,6 +33,7 @@ import (
 	"math/big"
 	"os"
 	"path"
+	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -84,6 +85,16 @@ type Crypter struct {
 // A Deriver is used to derive key material from a context using HKDF.
 type Deriver struct {
 	secret []byte
+}
+
+func MakeSensitive(length int) ([]byte, error) {
+	// TODO: consider mlock as well
+	return syscall.Mmap(-1, 0, length, syscall.PROT_WRITE, syscall.MAP_PRIVATE|syscall.MAP_ANONYMOUS)
+}
+
+func ClearSensitive(b []byte) error {
+	ZeroBytes(b)
+	return syscall.Munmap(b)
 }
 
 // GenerateSigner creates a new Signer with a fresh key.
@@ -557,9 +568,17 @@ func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLe
 
 // GenerateCrypter instantiates a new Crypter with fresh keys.
 func GenerateCrypter() (*Crypter, error) {
+	aesKey, err := MakeSensitive(aesKeySize)
+	if err != nil {
+		return nil, err
+	}
+	hmacKey, err := MakeSensitive(hmacKeySize)
+	if err != nil {
+		return nil, err
+	}
 	c := &Crypter{
-		aesKey:  make([]byte, aesKeySize),
-		hmacKey: make([]byte, hmacKeySize),
+		aesKey:  aesKey,
+		hmacKey: hmacKey,
 	}
 
 	if _, err := rand.Read(c.aesKey); err != nil {
@@ -877,6 +896,16 @@ func (k *Keys) PlaintextKeysetPath() string {
 	return path.Join(k.dir, PlaintextKeysetPath)
 }
 
+// TODO(kwonalbert): there is NO guarantee these keys are actually deleted
+// we need to somehow make it actually zeroed
+func (k *Keys) ClearKeys() {
+	k.SigningKey.ec.D.SetInt64(0)
+	ZeroBytes(k.CryptingKey.aesKey)
+	ZeroBytes(k.CryptingKey.hmacKey)
+	// No need to zero verifier (since it's just a public key)
+	ZeroBytes(k.DerivingKey.secret)
+}
+
 // ZeroBytes clears the bytes in a slice.
 func ZeroBytes(b []byte) {
 	for i := range b {
@@ -904,7 +933,21 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 	}
 
 	if k.keyTypes&Crypting == Crypting {
-		k.CryptingKey, err = GenerateCrypter()
+		// kwonalbert: removed GenerateCrypter because it uses
+		// MakeSensitive in side, and NewTemporaryKeys is used outside..
+		c := &Crypter{
+			aesKey:  make([]byte, aesKeySize),
+			hmacKey: make([]byte, hmacKeySize),
+		}
+
+		if _, err := rand.Read(c.aesKey); err != nil {
+			return nil, err
+		}
+
+		if _, err := rand.Read(c.hmacKey); err != nil {
+			return nil, err
+		}
+		k.CryptingKey = c
 		if err != nil {
 			return nil, err
 		}

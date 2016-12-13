@@ -97,7 +97,7 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		}
 		// Note: Hash algorithm used below must match hash algorithm in the signing scheme
 		// used for the quote key.
-		expectedPcrDigest, err := tpm2.ComputePcrDigest(tpm2.AlgTPM_ALG_SHA1, pcrVal)
+		expectedPcrDigest, err := tpm2.ComputePcrDigest(tpm2.AlgTPM_ALG_SHA256, pcrVal)
 		if err != nil {
 			return auth.Prin{}, newError("tao: Error computing PCR digest: %s", err)
 		}

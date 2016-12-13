@@ -101,8 +101,7 @@ func (pp *TaoProgramData) ClearTaoProgramData() {
 	ZeroBytes([]byte(pp.TaoName))
 	ZeroBytes(pp.PolicyCert)
 	if pp.ProgramKey.SigningKey != nil {
-		// TODO(manferdelli): find out how to clear signingkey.
-		// ZeroBytes([]byte(*pp.ProgramKey))
+		pp.ProgramKey.ClearKeys()
 	}
 	ZeroBytes(pp.ProgramSymKeys)
 	ZeroBytes(pp.ProgramCert)

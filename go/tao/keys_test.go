@@ -152,9 +152,12 @@ func TestSignAndVerify(t *testing.T) {
 }
 
 func TestNewCrypter(t *testing.T) {
-	if _, err := GenerateCrypter(); err != nil {
+	crypter, err := GenerateCrypter()
+	if err != nil {
 		t.Fatal(err.Error())
 	}
+	ClearSensitive(crypter.aesKey)
+	ClearSensitive(crypter.hmacKey)
 }
 
 func TestEncryptAndDecrypt(t *testing.T) {
@@ -162,6 +165,8 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+	defer ClearSensitive(c.aesKey)
+	defer ClearSensitive(c.hmacKey)
 
 	data := []byte("Test data to encrypt")
 	crypted, err := c.Encrypt(data)
@@ -190,6 +195,8 @@ func TestMarshalCrypterProto(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+	defer ClearSensitive(c.aesKey)
+	defer ClearSensitive(c.hmacKey)
 
 	ck, err := MarshalCrypterProto(c)
 	if err != nil {

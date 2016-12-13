@@ -132,8 +132,8 @@ type TPM2Tao struct {
 
 // Loads keys from Blobs.
 func (tt *TPM2Tao) loadKeyFromBlobs(ownerHandle tpm2.Handle, ownerPw string,
-		objectPw string, publicBlob []byte,
-		privateBlob []byte) (tpm2.Handle, error) {
+	objectPw string, publicBlob []byte,
+	privateBlob []byte) (tpm2.Handle, error) {
 	return tpm2.LoadKeyFromBlobs(tt.rw, ownerHandle, ownerPw, objectPw, publicBlob, privateBlob)
 }
 
@@ -609,8 +609,8 @@ func (tt *TPM2Tao) Seal(data []byte, policy string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer ZeroBytes(crypter.aesKey)
-	defer ZeroBytes(crypter.hmacKey)
+	defer ClearSensitive(crypter.aesKey)
+	defer ClearSensitive(crypter.hmacKey)
 
 	c, err := crypter.Encrypt(data)
 	if err != nil {
@@ -669,12 +669,13 @@ func (tt *TPM2Tao) Unseal(sealed []byte) (data []byte, policy string, err error)
 
 	// Decode buffer containing pub and priv blobs
 	pub, priv := DecodeTwoBytes(h.SealedKey)
-	unsealed, _, err := tpm2.AssistUnseal(tt.rw, sh,
+	unsealed, nonce, err := tpm2.AssistUnsealKey(tt.rw, sh,
 		rh, pub, priv, "", tt.password, policy_digest)
 	if err != nil {
 		return nil, "", err
 	}
-	defer ZeroBytes(unsealed)
+	defer ClearSensitive(unsealed)
+	defer ClearSensitive(nonce)
 
 	var ck CryptoKey
 	if err := proto.Unmarshal(unsealed, &ck); err != nil {
@@ -709,6 +710,9 @@ func (s *TPM2Tao) InitCounter(label string, c int64) error {
 	if err != nil {
 		return err
 	}
+
+	// TODO(kwonalbert): if this is fixed, then we should
+	// fix it when we initialize TPM2Tao
 	s.authString = "01020304"
 
 	return tpm2.InitCounter(s.rw, s.nvHandle, s.authString)

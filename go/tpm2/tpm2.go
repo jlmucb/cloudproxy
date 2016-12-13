@@ -34,6 +34,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -53,6 +54,7 @@ func GetSerialNumber() *big.Int {
 }
 
 type ValidPcrCheck func([]byte, []byte) bool
+
 func ValidPcr(pcrSelect []byte, digest []byte) bool {
 	return true
 }
@@ -1545,6 +1547,76 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	return unsealed, nonce, nil
 }
 
+func makeSensitive(length int) ([]byte, error) {
+	// TODO: consider mlock as well
+	return syscall.Mmap(-1, 0, length, syscall.PROT_WRITE, syscall.MAP_PRIVATE|syscall.MAP_ANONYMOUS)
+}
+
+func clearSensitive(b []byte) error {
+	for i := range b {
+		b[i] = 0
+	}
+	return syscall.Munmap(b)
+}
+
+// UnsealKey
+func UnsealKey(rw io.ReadWriter, item_handle Handle, password string, session_handle Handle,
+	digest []byte) ([]byte, []byte, error) {
+	// Construct command
+	cmd, err := ConstructUnseal(item_handle, password, session_handle)
+	if err != nil {
+		return nil, nil, errors.New("ConstructUnseal fails")
+	}
+
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return nil, nil, errors.New("Write Tpm fails")
+	}
+
+	// Get response
+	resp, err := makeSensitive(4096)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer clearSensitive(resp)
+
+	read, err := rw.Read(resp)
+	if err != nil {
+		return nil, nil, errors.New("Read Tpm fails")
+	}
+
+	// Decode Response
+	if read < 10 {
+		return nil, nil, errors.New("Read buffer too small")
+	}
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return nil, nil, errors.New("DecodeCommandResponse fails")
+	}
+	if status != ErrSuccess {
+		return nil, nil, errors.New("Unseal unsuccessful")
+	}
+	unsealed, nonce, err := DecodeUnseal(resp[10:])
+	if err != nil {
+		return nil, nil, errors.New("DecodeStartAuthSession fails")
+	}
+
+	unsealedC, err := makeSensitive(len(unsealed))
+	if err != nil {
+		return nil, nil, err
+	}
+	nonceC, err := makeSensitive(len(nonce))
+	if err != nil {
+		clearSensitive(unsealedC)
+		return nil, nil, err
+	}
+	copy(unsealedC, unsealed)
+	copy(nonceC, nonce)
+
+	return unsealedC, nonceC, nil
+}
+
 // ConstructQuote constructs a Quote command.
 func ConstructQuote(signing_handle Handle, parent_password, owner_password string,
 	to_quote []byte, pcr_nums []int, sig_alg uint16) ([]byte, error) {
@@ -2455,7 +2527,7 @@ func ConstructUndefineSpace(owner Handle, handle Handle) ([]byte, error) {
 }
 
 // UndefineSpace
-func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
+func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) error {
 	cmd, err := ConstructUndefineSpace(owner, handle)
 	if err != nil {
 		return errors.New("UndefineSpace: Can't construct UndefineSpace command")
@@ -2492,7 +2564,7 @@ func UndefineSpace(rw io.ReadWriter, owner Handle, handle Handle) (error) {
 // 80020000001300000000000000000000010000
 
 func ConstructDefineSpace(owner Handle, handle Handle, authString string,
-		attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
+	attributes uint32, policy []byte, dataSize uint16) ([]byte, error) {
 	pw := SetPasswordData(authString)
 	auth := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	var empty []byte
@@ -2502,7 +2574,7 @@ func ConstructDefineSpace(owner Handle, handle Handle, authString string,
 		return nil, errors.New("DefineSpace: pack error")
 	}
 	hashAlg := uint16(AlgTPM_ALG_SHA1)
-	sizeNvArea := uint16(2 * int(unsafe.Sizeof(owner)) + 3 * int(unsafe.Sizeof(dataSize)) + len(policy))
+	sizeNvArea := uint16(2*int(unsafe.Sizeof(owner)) + 3*int(unsafe.Sizeof(dataSize)) + len(policy))
 	out1 = append(append(out1, auth...), pw...)
 	num_bytes2 := []interface{}{sizeNvArea, uint32(handle), hashAlg, attributes, policy, dataSize}
 	out2, err := pack(num_bytes2)
@@ -2519,8 +2591,8 @@ func ConstructDefineSpace(owner Handle, handle Handle, authString string,
 
 // DefineSpace
 func DefineSpace(rw io.ReadWriter, owner Handle, handle Handle,
-		authString string, policy []byte,
-		attributes uint32, dataSize uint16) (error) {
+	authString string, policy []byte,
+	attributes uint32, dataSize uint16) error {
 	cmd, err := ConstructDefineSpace(owner, handle, authString, attributes, policy, dataSize)
 	if err != nil {
 		return errors.New("DefineSpace: Can't construct DefineSpace command")
@@ -2575,7 +2647,7 @@ func ConstructIncrementNv(handle Handle, authString string) ([]byte, error) {
 }
 
 // IncrementNv
-func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
+func IncrementNv(rw io.ReadWriter, handle Handle, authString string) error {
 	cmd, err := ConstructIncrementNv(handle, authString)
 	if err != nil {
 		return errors.New("IncrementNv: Can't construct UndefineSpace command")
@@ -2616,13 +2688,13 @@ func IncrementNv(rw io.ReadWriter, handle Handle, authString string) (error) {
 func DecodeReadNv(in []byte) (uint64, error) {
 	var respSize uint32
 	var byteCounter []byte
-	err :=  unpack(in, []interface{}{&respSize, &byteCounter})
+	err := unpack(in, []interface{}{&respSize, &byteCounter})
 	if err != nil {
 		return uint64(0), errors.New("ReadNv: unpack failed")
 	}
 	c := uint64(0)
 	for i := 0; i < len(byteCounter); i++ {
-		c = c * 256 +  uint64(byteCounter[i])
+		c = c*256 + uint64(byteCounter[i])
 	}
 	return c, nil
 }
@@ -2652,7 +2724,7 @@ func ConstructReadNv(handle Handle, authString string, offset uint16, dataSize u
 
 // ReadNv
 func ReadNv(rw io.ReadWriter, handle Handle, authString string,
-		offset uint16, dataSize uint16) (uint64, error) {
+	offset uint16, dataSize uint16) (uint64, error) {
 	cmd, err := ConstructReadNv(handle, authString, offset, dataSize)
 	if err != nil {
 		return uint64(0), errors.New("ReadNv: Can't construct ReadNv command")
@@ -2696,7 +2768,7 @@ func GetCounter(rw io.ReadWriter, nvHandle Handle, authString string) (int64, er
 }
 
 // Tpm2 InitCounter
-func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) (error) {
+func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) error {
 	owner := Handle(OrdTPM_RH_OWNER)
 	dataSize := uint16(8)
 	var tpmPolicy []byte // empty
@@ -2712,7 +2784,6 @@ func InitCounter(rw io.ReadWriter, nvHandle Handle, authString string) (error) {
 	if err != nil {
 		fmt.Printf("Space already defined?\n")
 	}
-	err =  IncrementNv(rw, nvHandle, authString)
+	err = IncrementNv(rw, nvHandle, authString)
 	return err
 }
-

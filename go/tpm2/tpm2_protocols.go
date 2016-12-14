@@ -177,7 +177,7 @@ func VerifyTpm2Quote(serialized []byte, pcrs []int, expectedPcrVal []byte,
 	tpm2Quote []byte, sig []byte, key *rsa.PublicKey) (bool, error) {
 
 	// TODO: probably should be an input, or be parametrized
-	hash_alg_id := uint16(AlgTPM_ALG_SHA256)
+	hash_alg_id := uint16(AlgTPM_ALG_SHA1)
 
 	attest, err := UnmarshalCertifyInfo(tpm2Quote)
 	if err != nil {

@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"os"
 	"path"
@@ -1048,7 +1049,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 
-				// TODO(tmroeder): defer zeroKeyset(&cks)
+				defer zeroKeyset(&cks)
 
 				ktemp, err := UnmarshalKeyset(&cks)
 				if err != nil {
@@ -1080,7 +1081,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 
-				// TODO(tmroeder): defer zeroKeyset(cks)
+				defer zeroKeyset(cks)
 
 				m, err := proto.Marshal(cks)
 				if err != nil {
@@ -1433,13 +1434,13 @@ func (k *Keys) Save(t Tao) error {
 	}
 	cks.Delegation = k.Delegation
 
-	// TODO(tmroeder): defer zeroKeyset(cks)
+	defer zeroKeyset(cks)
 
 	m, err := proto.Marshal(cks)
 	if err != nil {
 		return err
 	}
-	defer ZeroBytes(m)
+	defer ClearSensitive(m)
 
 	data, err := t.Seal(m, k.policy)
 	if err != nil {
@@ -1502,7 +1503,7 @@ func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 		}
 	}
 
-	// TODO(tmroeder): defer zeroKeyset(&cks)
+	defer zeroKeyset(&cks)
 
 	ktemp, err := UnmarshalKeyset(&cks)
 	if err != nil {
@@ -1518,6 +1519,17 @@ func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 	k.Delegation = cks.Delegation
 
 	return k, nil
+}
+
+func zeroKeyset(ks *CryptoKeyset) {
+	for _, key := range ks.Keys {
+		if key != nil {
+			err := ClearSensitive(key.Key)
+			if err != nil {
+				log.Println("Could not clear key:", err)
+			}
+		}
+	}
 }
 
 // NewSecret creates and encrypts a new secret value of the given length, or it

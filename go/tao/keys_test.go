@@ -23,6 +23,8 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// TODO(kwonalbert): Call ClearKeys() after the tests
+
 func TestGenerateKeys(t *testing.T) {
 	if _, err := GenerateSigner(); err != nil {
 		t.Fatal(err.Error())
@@ -327,6 +329,8 @@ func TestNewTemporaryKeys(t *testing.T) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
 		t.Fatal("Couldn't generate the right keys")
 	}
+
+	k.ClearKeys()
 }
 
 func TestNewOnDiskPBEKeys(t *testing.T) {
@@ -345,11 +349,14 @@ func TestNewOnDiskPBEKeys(t *testing.T) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
 		t.Fatal("Couldn't generate the right keys")
 	}
+	k.ClearKeys()
 
-	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+	k, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
 	if err != nil {
 		t.Fatal("Couldn't recover the serialized keys:", err)
 	}
+
+	k.ClearKeys()
 }
 
 func TestNewOnDiskPBESigner(t *testing.T) {
@@ -368,11 +375,13 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 	if k.SigningKey == nil || k.CryptingKey != nil || k.DerivingKey != nil {
 		t.Fatal("Couldn't generate the right keys")
 	}
+	k.ClearKeys()
 
-	_, err = NewOnDiskPBEKeys(Signing, password, tempDir, nil)
+	k, err = NewOnDiskPBEKeys(Signing, password, tempDir, nil)
 	if err != nil {
 		t.Fatal("Couldn't recover the serialized keys:", err)
 	}
+	k.ClearKeys()
 }
 
 func TestTaoDelegatedKeys(t *testing.T) {
@@ -399,15 +408,17 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 		t.Fatal("Couldn't initialize a SoftTao:", err)
 	}
 
-	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+	k, err := NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't initialize a hosted keyset:", err)
 	}
+	k.ClearKeys()
 
-	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+	k, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
 	}
+	k.ClearKeys()
 }
 
 // Test generating a new set of keys and saving/loading them to/from the disk unsealed.

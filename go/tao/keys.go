@@ -54,9 +54,11 @@ const (
 	Deriving
 )
 
-const aesKeySize = 32 // 256-bit AES
-const deriverSecretSize = 32
-const hmacKeySize = 32 // SHA-256
+const (
+	aesKeySize        = 32 // 256-bit AES
+	deriverSecretSize = 32
+	hmacKeySize       = 32 // SHA-256
+)
 
 // A Signer is used to sign and verify signatures
 type Signer struct {
@@ -310,10 +312,10 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
 	}
 
 	k := new(ECDSA_SHA_SigningKeyV1)
-	defer ZeroBytes(k.EcPrivate)
 	if err := proto.Unmarshal(ck.Key, k); err != nil {
 		return nil, err
 	}
+	defer ClearSensitive(k.EcPrivate)
 
 	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
 		return nil, newError("bad Curve")
@@ -750,7 +752,11 @@ func (c *Crypter) CreateHeader() (*CryptoHeader, error) {
 // GenerateDeriver generates a deriver with a fresh secret.
 func GenerateDeriver() (*Deriver, error) {
 	d := new(Deriver)
-	d.secret = make([]byte, deriverSecretSize)
+	var err error
+	d.secret, err = MakeSensitive(deriverSecretSize)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := rand.Read(d.secret); err != nil {
 		return nil, err
 	}
@@ -899,13 +905,26 @@ func (k *Keys) PlaintextKeysetPath() string {
 // TODO(kwonalbert): there is NO guarantee these keys are actually deleted
 // we need to somehow make it actually zeroed
 func (k *Keys) ClearKeys() {
-	k.SigningKey.ec.D.SetInt64(0)
+	if k.SigningKey != nil {
+		k.SigningKey.ec.D.SetInt64(0)
+	}
 	if k.CryptingKey != nil {
-		ClearSensitive(k.CryptingKey.aesKey)
-		ClearSensitive(k.CryptingKey.hmacKey)
+		err := ClearSensitive(k.CryptingKey.aesKey)
+		if err != nil {
+			log.Println("AES Clear:", err)
+		}
+		err = ClearSensitive(k.CryptingKey.hmacKey)
+		if err != nil {
+			log.Println("HMAC Clear:", err)
+		}
 	}
 	// No need to zero verifier (since it's just a public key)
-	ZeroBytes(k.DerivingKey.secret)
+	if k.DerivingKey != nil {
+		err := ClearSensitive(k.DerivingKey.secret)
+		if err != nil {
+			log.Println("Deriver Clear:", err)
+		}
+	}
 }
 
 // ZeroBytes clears the bytes in a slice.
@@ -1038,6 +1057,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 
+				// TODO(kwonalbert): data here needs to be sensitive also
 				data, err := PBEDecrypt(ks, password)
 				if err != nil {
 					return nil, err

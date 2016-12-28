@@ -158,7 +158,7 @@ Some of the important files are
   messages into cells, and handles communication with the entry mix.
 * `conn.go`, `listener.go`, `circuit.go`: Used to manage different network
   connections and circuits.
-* `mixnet_proto`: Specifies the directives (e.g., creating/destroying circuits)
+* `mixnet.proto`: Specifies the directives (e.g., creating/destroying circuits)
   used by proxies and routers.
 
 Parameters
@@ -191,15 +191,9 @@ end of the circuit.
 
 The scripts in `scripts` runs a full Tao test (currently with soft-tao). It
 implements essentially the same integration test as the one in `mixnet_test.go`,
-except it runs it with real Tao. The script assumes that typical Tao testing
-environment is setup (i.e., Tao is installed, `/Domains` exists, etc.). To run
-the test, simple run
-
-    ./initmixnet.sh
-    ./run.sh
-
-All tests currently use localhost. A large multi-machine test is currently left
-as future work.
+except it runs it with real Tao (though SoftTao at the moment). The script
+assumes that CloudProxy is installed already. Please take a look at the README
+in the `scripts` directory for instructions to run the scripts.
 
 References
 ----------

@@ -19,9 +19,9 @@ import (
 	"crypto/x509"
 	"flag"
 	"io"
+	"log"
 	"net"
 
-	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/apps/mixnet"
 )
 
@@ -36,7 +36,7 @@ func main() {
 
 	cert, err := tls.LoadX509KeyPair(*cert_file, *key_file)
 	if err != nil {
-		glog.Fatal(err)
+		log.Fatal(err)
 	}
 	config := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
@@ -46,14 +46,14 @@ func main() {
 	}
 	l, err := tls.Listen(*network, *addr, config)
 	if err != nil {
-		glog.Fatal(err)
+		log.Fatal(err)
 	}
 	defer l.Close()
 
 	for {
 		c, err := l.Accept()
 		if err != nil {
-			glog.Fatal(err)
+			log.Fatal(err)
 		}
 
 		go func(c net.Conn) {
@@ -65,16 +65,14 @@ func main() {
 					if err == io.EOF {
 						return
 					}
-					glog.Fatal(err)
+					log.Fatal(err)
 				} else {
 					_, err := c.Write(buf[:bytes])
 					if err != nil {
-						glog.Fatal(err)
+						log.Fatal(err)
 					}
 				}
 			}
 		}(c)
 	}
-
-	glog.Flush()
 }

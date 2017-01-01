@@ -26,15 +26,10 @@ echo "Starting routers..."
 for i in `seq 0 5`;
 do
   port=$[$start_port+$i]
-  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_router --addr 127.0.0.1:$port --dirs $directory_file --config $DOMAIN/tao.config --batch 8 &
+  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_router --addr 127.0.0.1:$port --dirs $directory_file --config $DOMAIN/tao.config --batch 2 &
   router_pids="$router_pids $!"
   sleep 0.3
 done
-
-echo -e "127.0.0.1:8001\n127.0.0.1:8002\n127.0.0.1:8003" > $DOMAIN/mixnet_proxy/1.circuit
-echo -e "127.0.0.1:8001\n127.0.0.1:8005\n127.0.0.1:8003" > $DOMAIN/mixnet_proxy/2.circuit
-echo -e "127.0.0.1:8004\n127.0.0.1:8005\n127.0.0.1:8006" > $DOMAIN/mixnet_proxy/3.circuit
-echo -e "127.0.0.1:8004\n127.0.0.1:8002\n127.0.0.1:8006" > $DOMAIN/mixnet_proxy/4.circuit
 
 # Start mixnet proxies; proxies will pick one of 4 paths
 proxy_start_port=9000
@@ -43,16 +38,7 @@ echo "Starting proxies..."
 for i in `seq 0 15`;
 do
   port=$[$proxy_start_port+$i]
-  if [[ $(( $i % 4 )) == 0 ]]; then
-    circuit="1.circuit"
-  elif [[ $(( $i % 4 )) == 1 ]]; then
-    circuit="2.circuit"
-  elif [[ $(( $i % 4 )) == 2 ]]; then
-    circuit="3.circuit"
-  elif [[ $(( $i % 4 )) == 3 ]]; then
-    circuit="4.circuit"
-  fi
-  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$port --dirs $directory_file --config $DOMAIN/tao.config --circuit $DOMAIN/mixnet_proxy/$circuit --hops 3 &
+  $GOPATH/bin/tao run -tao_domain $DOMAIN $DOMAINROOT/mixnet_proxy --addr :$port --dirs $directory_file --config $DOMAIN/tao.config --hops 3 &
   proxy_pids="$proxy_pids $!"
   sleep 0.3
 done
@@ -60,7 +46,7 @@ done
 # Start echo TLS server
 dest_port=10000
 echo "Starting echo TLS server..."
-$DOMAINROOT/mixnet_simpleserver --addr :$dest_port --cert $DOMAIN/mixnet_simpleserver/cert.pem --key $DOMAIN/mixnet_simpleserver/key.pem&
+$DOMAINROOT/mixnet_simpleserver --addr :$dest_port --cert $DOMAIN/mixnet_simpleserver/cert.pem --key $DOMAIN/mixnet_simpleserver/key.pem &
 dest_pid=$!
 sleep 0.3
 

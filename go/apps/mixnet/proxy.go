@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -42,56 +43,106 @@ type ProxyContext struct {
 	// Because DeleteCircuit could be called at anytime,
 	// we put a global lock around adding/deleting circuits
 	// Should be okay for performance, since it doesn't happen often
-	conns struct {
+	conns *struct {
 		sync.Mutex
 		m map[string]*Conn
 	}
 	// Used to check duplicates
-	circuitIds struct {
+	circuitIds *struct {
 		sync.Mutex
 		m map[uint64]bool
 	}
-	connIds struct {
+	connIds *struct {
 		sync.Mutex
 		m map[uint32]bool
 	}
 
+	// address of the directories
+	directories []string
+	// list of available servers and their keys for exit encryption
+	directory  []string
+	serverKeys [][]byte
+
 	network string        // Network protocol, e.g. "tcp".
 	timeout time.Duration // Timeout on read/write.
+
+	hopCount int
 }
 
 // NewProxyContext loads a domain from a local configuration.
-func NewProxyContext(path, network, addr string, timeout time.Duration) (p *ProxyContext, err error) {
-	p = new(ProxyContext)
-	p.network = network
-	p.timeout = timeout
-
+func NewProxyContext(path, network, addr string, directories []string, hopCount int, timeout time.Duration) (*ProxyContext, error) {
 	// Load domain from a local configuration.
-	if p.domain, err = tao.LoadDomain(path, nil); err != nil {
+	domain, err := tao.LoadDomain(path, nil)
+	if err != nil {
 		return nil, err
 	}
 
 	// Initialize a SOCKS server.
-	if p.listener, err = SocksListen(network, addr); err != nil {
+	listener, err := SocksListen(network, addr)
+	if err != nil {
 		return nil, err
 	}
 
-	p.clients = make(map[uint64]net.Conn)
-	p.circuits = make(map[uint64]*Conn)
-	p.conns = struct {
+	clients := make(map[uint64]net.Conn)
+	circuits := make(map[uint64]*Conn)
+	conns := struct {
 		sync.Mutex
 		m map[string]*Conn
 	}{m: make(map[string]*Conn)}
-	p.circuitIds = struct {
+	circuitIds := struct {
 		sync.Mutex
 		m map[uint64]bool
 	}{m: make(map[uint64]bool)}
-	p.connIds = struct {
+	connIds := struct {
 		sync.Mutex
 		m map[uint32]bool
 	}{m: make(map[uint32]bool)}
 
+	p := &ProxyContext{
+		domain:   domain,
+		listener: listener,
+
+		clients:    clients,
+		circuits:   circuits,
+		conns:      &conns,
+		circuitIds: &circuitIds,
+		connIds:    &connIds,
+
+		directories: directories,
+
+		network: network,
+		timeout: timeout,
+
+		hopCount: hopCount,
+	}
 	return p, nil
+}
+
+func (p *ProxyContext) directoryConsensus() {
+	for _, dirAddr := range p.directories {
+		directory, keys, err := p.GetDirectory(dirAddr)
+		if err != nil {
+			log.Println("GetDirectory err:", err)
+		}
+		// TODO(kwonalbert): Check directory consensus
+		p.directory = directory
+		p.serverKeys = keys
+	}
+}
+
+// Read the directory from a directory server
+// TODO(kwonalbert): This is more or less a duplicate of the router get dir..
+// Combine them..
+func (p *ProxyContext) GetDirectory(dirAddr string) ([]string, [][]byte, error) {
+	c, err := tao.Dial(p.network, dirAddr, p.domain.Guard, p.domain.Keys.VerifyingKey, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	directory, keys, err := GetDirectory(c)
+	if err != nil {
+		return nil, nil, err
+	}
+	return directory, keys, c.Close()
 }
 
 // Close unbinds the proxy server socket.
@@ -140,10 +191,70 @@ func (p *ProxyContext) handleConn(c *Conn) {
 	}
 }
 
+func (p *ProxyContext) pickCircuit(path []string) ([]string, *[32]byte, error) {
+	// TODO(kwonalbert): there could be flags to show which servers
+	// are "more" trustworthy
+	exit := ""
+	if len(path) == 0 {
+		// only has the final dest, pick a random exit
+		b := make([]byte, LEN_SIZE)
+		if _, err := rand.Read(b); err != nil {
+			return nil, nil, err
+		}
+		exit = p.directory[int(binary.LittleEndian.Uint32(b))%len(p.directory)]
+		path = append(path, exit)
+	} else {
+		// only has the final dest, pick a random exit
+		exit = path[len(path)-1]
+	}
+
+	idx := -1
+	for s, server := range p.directory {
+		if server == exit {
+			idx = s
+		}
+	}
+	if idx == -1 {
+		return nil, nil, errors.New("Exit key not found")
+	}
+
+	var key [32]byte
+	copy(key[:], p.serverKeys[idx])
+
+	if len(path) < p.hopCount {
+		entry := ""
+		exit := path[len(path)-1]
+		ok := false
+		for !ok {
+			b := make([]byte, LEN_SIZE)
+			if _, err := rand.Read(b); err != nil {
+				return nil, nil, err
+			}
+			entry = p.directory[int(binary.LittleEndian.Uint32(b))%len(p.directory)]
+			ok = entry != exit
+		}
+		newPath := make([]string, p.hopCount)
+		newPath[0] = entry
+		for i := 1; i < p.hopCount; i++ {
+			newPath[i] = ""
+		}
+		path = append(newPath, path...)
+	}
+	return path, &key, nil
+}
+
 // CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
-// specified by addrs[0]. It directs the router to construct a circuit to a
-// particular destination over the mixnet specified by addrs[len(addrs)-1].
-func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circuit, uint64, error) {
+// specified by path[0]. It directs the router to construct a circuit to dest.
+// The user either provides just the exit, or the whole path
+func (p *ProxyContext) CreateCircuit(path []string, dest string) (*Circuit, uint64, error) {
+	p.directoryConsensus()
+
+	path, exitKey, err := p.pickCircuit(path)
+	if err != nil {
+		return nil, 0, err
+	}
+	path = append(path, dest)
+
 	id, err := p.newID()
 	if err != nil {
 		return nil, id, err
@@ -151,15 +262,15 @@ func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circui
 
 	var c *Conn
 	p.conns.Lock()
-	if _, ok := p.conns.m[addrs[0]]; !ok {
-		c, err = p.DialRouter(p.network, addrs[0])
+	if _, ok := p.conns.m[path[0]]; !ok {
+		c, err = p.DialRouter(p.network, path[0])
 		if err != nil {
 			p.conns.Unlock()
 			return nil, id, err
 		}
-		p.conns.m[addrs[0]] = c
+		p.conns.m[path[0]] = c
 	} else {
-		c = p.conns.m[addrs[0]]
+		c = p.conns.m[path[0]]
 	}
 	p.circuits[id] = c
 	pub, priv, _ := box.GenerateKey(rand.Reader)
@@ -168,12 +279,12 @@ func (p *ProxyContext) CreateCircuit(addrs []string, exitKey *[32]byte) (*Circui
 	c.AddCircuit(circuit)
 	p.conns.Unlock()
 
-	boxedDest := circuit.Encrypt([]byte(addrs[len(addrs)-1]))
-	addrs[len(addrs)-1] = string(boxedDest)
+	boxedDest := circuit.Encrypt([]byte(path[len(path)-1]))
+	path[len(path)-1] = string(boxedDest)
 
 	d := &Directive{
 		Type:  DirectiveType_CREATE.Enum(),
-		Addrs: addrs,
+		Addrs: path,
 		Key:   pub[:],
 	}
 
@@ -269,8 +380,8 @@ func (p *ProxyContext) Accept() (net.Conn, error) {
 // Read a message from the client, send it over the mixnet, wait for a reply,
 // and forward it the client. Once an EOF is encountered (or some other error
 // occurs), destroy the circuit.
-func (p *ProxyContext) ServeClient(c net.Conn, addrs []string, exitKey *[32]byte) error {
-	circuit, id, err := p.CreateCircuit(addrs, exitKey)
+func (p *ProxyContext) ServeClient(c net.Conn, path []string, dest string) error {
+	circuit, id, err := p.CreateCircuit(path, dest)
 	if err != nil {
 		return err
 	}

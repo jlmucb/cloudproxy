@@ -20,6 +20,7 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -37,8 +38,8 @@ type DirectoryContext struct {
 	timeout  time.Duration // Timeout on read/write/dial.
 
 	dirLock    *sync.Mutex
-	directory  []string
-	serverKeys [][]byte
+	directory  []string // List of online servers
+	serverKeys [][]byte // NaCL keys
 }
 
 func NewDirectoryContext(path, network, addr string, timeout time.Duration,
@@ -139,6 +140,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 	dc.dirLock.Lock()
 	defer dc.dirLock.Unlock()
 	if *dm.Type == DirectoryMessageType_REGISTER {
+		log.Println("Registering", dm.Addrs)
 		if fromRouter {
 			dc.directory = append(dc.directory, dm.Addrs...)
 			dc.serverKeys = append(dc.serverKeys, dm.Keys...)
@@ -148,6 +150,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 			glog.Error(err)
 		}
 	} else if *dm.Type == DirectoryMessageType_DELETE {
+		log.Println("Deleting", dm.Addrs)
 		if fromRouter {
 			for _, addr := range dm.Addrs {
 				for i := range dc.directory {
@@ -161,7 +164,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 				}
 			}
 		}
-		_, err = c.Write([]byte{1}) // Indicate it was successfully written
+		_, err = c.Write([]byte{0}) // Indicate it was successfully written
 		if err != nil {
 			glog.Error(err)
 		}
@@ -169,6 +172,7 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 		result := &DirectoryMessage{
 			Type:  DirectoryMessageType_DIRECTORY.Enum(),
 			Addrs: dc.directory,
+			Keys:  dc.serverKeys,
 		}
 		ret, err := proto.Marshal(result)
 		if err != nil {
@@ -181,6 +185,12 @@ func (dc *DirectoryContext) handleConn(c net.Conn, fromRouter bool) {
 		} else if n != len(ret) {
 			glog.Error("Could not send back all of the directory")
 		}
+	}
+}
+
+func (dc *DirectoryContext) Close() {
+	if dc.listener != nil {
+		dc.listener.Close()
 	}
 }
 
@@ -204,33 +214,33 @@ func RegisterRouter(c net.Conn, addrs []string, keys [][]byte) error {
 	return nil
 }
 
-func GetDirectory(c net.Conn) ([]string, error) {
+func GetDirectory(c net.Conn) ([]string, [][]byte, error) {
 	dm := &DirectoryMessage{
 		Type: DirectoryMessageType_LIST.Enum(),
 	}
 	b, err := proto.Marshal(dm)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	n, err := c.Write(b)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if n != len(b) {
-		return nil, errors.New("Couldn't write the whole request")
+		return nil, nil, errors.New("Couldn't write the whole request")
 	}
 
 	msg := make([]byte, MaxMsgBytes+1)
 	n, err = c.Read(msg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if n > MaxMsgBytes {
-		return nil, errors.New("Couldn't read the whole response")
+		return nil, nil, errors.New("Couldn't read the whole response")
 	}
 
 	var dir DirectoryMessage
 	if err = proto.Unmarshal(msg[:n], &dir); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return dir.Addrs, err
+	return dir.Addrs, dir.Keys, err
 }

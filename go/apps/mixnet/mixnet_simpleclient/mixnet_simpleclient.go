@@ -20,8 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-
-	"github.com/golang/glog"
+	"log"
 
 	"golang.org/x/net/proxy"
 )
@@ -37,12 +36,12 @@ func main() {
 
 	dialer, err := proxy.SOCKS5(*network, *proxyAddr, nil, proxy.Direct)
 	if err != nil {
-		glog.Fatal(err)
+		log.Fatal(err)
 	}
 
 	c, err := dialer.Dial(*network, *destination)
 	if err != nil {
-		glog.Fatal(err)
+		log.Fatal(err)
 	}
 	defer c.Close()
 
@@ -56,20 +55,18 @@ func main() {
 	msg := []byte(fmt.Sprintf("My name is %d.", *id))
 
 	if _, err = tlsConn.Write(msg); err != nil {
-		glog.Fatal(err)
+		log.Fatal(err)
 	}
 
 	res := make([]byte, len(msg))
 	bytes, err := tlsConn.Read(res)
 	if err != nil {
-		glog.Fatal(err)
+		log.Fatal(err)
 	}
 
 	if string(msg) != string(res[:bytes]) {
-		glog.Fatal(errors.New("Expected:" + string(msg) + ". Got: " + string(res[:bytes]) + "."))
+		log.Fatal(errors.New("Expected:" + string(msg) + ". Got: " + string(res[:bytes]) + "."))
 	} else {
-		glog.Info("Got: ", string(res[:bytes]))
+		log.Println("Got: ", string(res[:bytes]))
 	}
-
-	glog.Flush()
 }

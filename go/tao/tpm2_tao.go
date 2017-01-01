@@ -317,7 +317,7 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	defer tpm2.FlushContext(tt.rw, rootHandle)
 
 	if quotePrivateErr != nil || sealPrivateErr != nil || quotePublicErr != nil || sealPublicErr != nil {
-		quoteKeyPublicBlob, quoteKeyPrivateBlob, sealKeyPublicBlob, sealKeyPrivateBlob, err :=
+		quoteKeyPublicBlob, quoteKeyPrivateBlob, sealKeyPublicBlob, sealKeyPrivateBlob, err =
 			tpm2.CreateTpm2HierarchySubKeys(tt.rw, tt.pcrs, keySize, uint16(tpm2.AlgTPM_ALG_SHA1),
 				rootHandle, quotePassword)
 		if err != nil {
@@ -408,6 +408,9 @@ func NewTPM2Tao(tpmPath string, statePath string, pcrNums []int) (Tao, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// kwonalbert: flushing to avoid occasional 902 error..
+	tpm2.FlushContext(tt.rw, rootHandle)
 
 	quoteCertPath := path.Join(tt.path, "quote_cert")
 	if _, quoteCertErr := os.Stat(quoteCertPath); quoteCertErr != nil {

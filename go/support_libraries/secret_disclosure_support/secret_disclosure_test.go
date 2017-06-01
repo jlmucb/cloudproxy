@@ -31,13 +31,13 @@ import (
 )
 
 var Delegate = auth.Prin{
-	Type: "program",
-	Key:  auth.Bytes([]byte(`fake program`)),
+	Type:    "program",
+	KeyHash: auth.Bytes([]byte("Hash-of-FakeProgram-Key")),
 }
 
 var Delegator = auth.Prin{
-	Type: "program",
-	Key:  auth.Bytes([]byte(`speaker program`)),
+	Type:    "program",
+	KeyHash: auth.Bytes([]byte("Hash-of-SpeakerProgram-Key")),
 }
 
 var ProtectedObjectName = "obj_name"

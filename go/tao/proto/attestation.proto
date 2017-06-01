@@ -232,6 +232,9 @@ message Attestation {
   // attestation. This is included in attestations signed by a root Tao
   // i.e. a TPM (1.2 or 2.0) Tao or a soft Tao, and forms the root of the
   // attestation chain. This certificate is signed by the policy key.
+  // TODO(kwalsh) remove this -- endorsements, and especially x509 certificates,
+  // do not belong in attestations; an x509 "endorsement" in fact *is* a kind of
+  // attestation.
   optional bytes root_endorsement = 8;
 }
 

@@ -39,8 +39,10 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 
-	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/pbkdf2"
+	// "golang.org/x/crypto/hkdf"
+	// "golang.org/x/crypto/pbkdf2"
+	"github.com/golang/crypto/hkdf"
+	"github.com/golang/crypto/pbkdf2"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.
@@ -57,6 +59,9 @@ const aesKeySize = 32 // 256-bit AES
 const deriverSecretSize = 32
 const hmacKeySize = 32 // SHA-256
 
+// I think Signer should be of type PrivateKey, not
+// ecdsa.PrivateKey so this structure can support
+// multiple algorithms.
 // A Signer is used to sign and verify signatures
 type Signer struct {
 	ec *ecdsa.PrivateKey
@@ -76,6 +81,7 @@ type Verifier struct {
 }
 
 // A Crypter is used to encrypt and decrypt data.
+// TODO(jlm): Maybe secretKey rather than aesKey?
 type Crypter struct {
 	aesKey  []byte
 	hmacKey []byte
@@ -136,6 +142,7 @@ func NewX509Name(p *X509Details) *pkix.Name {
 }
 
 // PrepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
+// TODO(jlm): SignatureAlgorithm and PublicKeyAlgorithm should be based on cipherSuite.
 func PrepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 	return &x509.Certificate{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,

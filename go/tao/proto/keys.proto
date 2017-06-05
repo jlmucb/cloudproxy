@@ -55,6 +55,7 @@ message CryptoKeyset {
 // PBEData is used by root Tao hosts to seal a serialized CryptoKeyset
 // using a user-chosen password.
 
+// TODO(jlm): Should cipher/hmac be replaced by CryptoHeader?
 message PBEData {
   required CryptoVersion version = 1;
   required string cipher = 2;  // "aes128-cbc"
@@ -66,6 +67,7 @@ message PBEData {
   required bytes salt = 7;
 }
 
+// TODO(jllm): Should this be a string?
 enum NamedEllipticCurve {
   PRIME256_V1 = 1;  // aka secp256r1
 }
@@ -75,6 +77,7 @@ message ECDSA_SHA_VerifyingKey_v1 {
   required bytes ec_public = 2;  // = OpenSSL::EC_POINT_point2oct(pub_key)
 }
 
+// TODO(jlm): Should private/public be a general asymmetric key structure?
 message ECDSA_SHA_SigningKey_v1 {
   required NamedEllipticCurve curve = 1;
   required bytes ec_private = 2;  // = OpenSSL::BN_bn2bin(priv_key)
@@ -105,7 +108,7 @@ message HMAC_SHA_DerivingKey_v1 {
 // (e.g. if key rotation causes multiple keys to be live simultaneously)
 
 // TODO(jlm): I suggest changing the cryptoheader to include:
-// key_name, epoch, type, status (all strings).
+// key_name, key_epoch, key_type, key_status (all strings).
 // There's no reason to be Keyczar compatible, so I'd get rid of
 // key_hint.
 message CryptoHeader {

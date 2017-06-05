@@ -23,6 +23,9 @@ enum CryptoVersion {
   CRYPTO_VERSION_1 = 1;
 }
 
+// TODO(jlm): I suggest CryptoKey and CryptoAlgorithm be strings
+// so they are consistant with the cryptoheader.
+// Maybe better: Why not include the cryptoheader?
 message CryptoKey {
   enum CryptoPurpose {
     VERIFYING = 1;  // public
@@ -101,6 +104,10 @@ message HMAC_SHA_DerivingKey_v1 {
 // version number and a four-byte key-hint to distinguish among multiple keys
 // (e.g. if key rotation causes multiple keys to be live simultaneously)
 
+// TODO(jlm): I suggest changing the cryptoheader to include:
+// key_name, epoch, type, status (all strings).
+// There's no reason to be Keyczar compatible, so I'd get rid of
+// key_hint.
 message CryptoHeader {
   required CryptoVersion version = 1;
   required bytes key_hint = 2;

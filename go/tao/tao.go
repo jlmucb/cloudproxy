@@ -104,15 +104,15 @@ type Tao interface {
 
 // Supported crypto suites
 const (
-	Basic128Suite = "AES-128-CTR-ECC-P256-SHA-256-HMAC-SHA-256"
-	Basic256Suite = "AES-256-CTR-ECC-P521-SHA-512-HMAC-SHA-512"
+	Basic128BitCipherSuite = "AES-128-CTR-ECC-P256-SHA-256-HMAC-SHA-256"
+	Basic256BitCipherSuite = "AES-256-CTR-ECC-P521-SHA-512-HMAC-SHA-512"
 )
 
 // Crypto Suite
 // Each Library is associated with exactly one cipher suite that describes
 // seal/unseal, hmac, public key and key derivation algorithms.  The original
 // default was AES-128-CTR-ECC-P256-SHA-256-HMAC-SHA-256
-var cryptoSuite = Basic128Suite
+var cryptoSuite = Basic128BitCipherSuite
 
 // The following variables are accessible within the tao package so they can be
 // accessed by the functions that manage the Tao parent singleton object.

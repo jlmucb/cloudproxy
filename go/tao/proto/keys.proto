@@ -23,9 +23,26 @@ enum CryptoVersion {
   CRYPTO_VERSION_1 = 1;
 }
 
-// TODO(jlm): I suggest CryptoKey and CryptoAlgorithm be strings
-// so they are consistant with the cryptoheader.
-// Maybe better: Why not include the cryptoheader?
+// Following Keyczar, signing and encryption use a short header that contains a
+// version number and a four-byte key-hint to distinguish among multiple keys
+// (e.g. if key rotation causes multiple keys to be live simultaneously)
+
+// TODO(jlm): I suggest changing the cryptoheader to include:
+// key_name, key_epoch, key_type, key_status (all strings).
+// There's no reason to be Keyczar compatible, so I'd get rid of
+// key_hint.
+message CryptoHeader {
+  required CryptoVersion version = 1;
+  required bytes key_hint = 2;
+  optional string key_name = 3;
+  optional string key_epoch = 4;
+  optional string key_type = 5;
+  optional string key_status = 6;
+}
+
+// TODO(jlm): I suggest CryptoPurpose and CryptoAlgorithm be strings
+// so they are consistant with the cryptoheader.  It will also be easier
+// to port to C++.  Why not include the cryptoheader (as changed below)?
 message CryptoKey {
   enum CryptoPurpose {
     VERIFYING = 1;  // public
@@ -42,6 +59,7 @@ message CryptoKey {
   required CryptoPurpose purpose = 2;
   required CryptoAlgorithm algorithm = 3;
   required bytes key = 4;  // serialized <algorithm><purpose>Key<version>
+  required CryptoHeader algorithm_info = 4;
 }
 
 message CryptoKeyset {
@@ -101,19 +119,6 @@ enum CryptoDerivingMode {
 message HMAC_SHA_DerivingKey_v1 {
   required CryptoDerivingMode mode = 1;
   required bytes hmac_private = 2;
-}
-
-// Following Keyczar, signing and encryption use a short header that contains a
-// version number and a four-byte key-hint to distinguish among multiple keys
-// (e.g. if key rotation causes multiple keys to be live simultaneously)
-
-// TODO(jlm): I suggest changing the cryptoheader to include:
-// key_name, key_epoch, key_type, key_status (all strings).
-// There's no reason to be Keyczar compatible, so I'd get rid of
-// key_hint.
-message CryptoHeader {
-  required CryptoVersion version = 1;
-  required bytes key_hint = 2;
 }
 
 // A PDU to be serialized and signed, including a required context to ensure

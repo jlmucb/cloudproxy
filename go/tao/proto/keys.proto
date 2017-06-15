@@ -120,7 +120,6 @@ message KeyDerivationPDU {
 
 
 
-
 // Remove later
 enum NamedEllipticCurve {
   PRIME256_V1 = 1;  // aka secp256r1

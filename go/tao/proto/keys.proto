@@ -17,49 +17,36 @@ import "attestation.proto";
 
 package tao;
 
-// TODO(kwalsh) add finer-granularity version tags?
-
 enum CryptoVersion {
   CRYPTO_VERSION_1 = 1;
+  CRYPTO_VERSION_2 = 2;
 }
 
-// Following Keyczar, signing and encryption use a short header that contains a
-// version number and a four-byte key-hint to distinguish among multiple keys
-// (e.g. if key rotation causes multiple keys to be live simultaneously)
-
-// TODO(jlm): I suggest changing the cryptoheader to include:
-// key_name, key_epoch, key_type, key_status (all strings).
-// There's no reason to be Keyczar compatible, so I'd get rid of
-// key_hint.
+// CryptoHeader has been changed to include:
+// key_name, key_epoch, key_type, key_purpose, key_status (all strings).
+// key_epoch is monotonically increasing integer
+// key_status: "primary," "pre-primary", "post-primary," "inactive," "revoked"
+// key_type: "aes-128-raw", "aes-256-raw",
+//	"aes-128-ctr", "aes-256-ctr", 
+//	"aes-128-gcm", "aes-256-gcm", 
+//	"aes-128-sha-256-cbc", "aes-256-sha-384-cbc", 
+//	"sha-256-hmac", "sha-384-hmac", "sha-512-hmac",
+//	"rsa-1024", "rsa-2048", "rsa-3072"
+//	"ecdsa-P256", "ecdsa-384"
+// key_purpose: "verifying", "signing", "crypting", "deriving", "sealing"
 message CryptoHeader {
   required CryptoVersion version = 1;
-  required bytes key_hint = 2;
-  optional string key_name = 3;
-  optional string key_epoch = 4;
-  optional string key_type = 5;
+  optional string key_name = 2;
+  optional int32 key_epoch = 3;
+  optional string key_type = 4;
+  optional string key_purpose = 5;
   optional string key_status = 6;
 }
 
-// TODO(jlm): I suggest CryptoPurpose and CryptoAlgorithm be strings
-// so they are consistant with the cryptoheader.  It will also be easier
-// to port to C++.  Why not include the cryptoheader (as changed below)?
+// CryptoKey
 message CryptoKey {
-  enum CryptoPurpose {
-    VERIFYING = 1;  // public
-    SIGNING = 2;    // private
-    CRYPTING = 3;   // private
-    DERIVING = 4;   // private
-  }
-  enum CryptoAlgorithm {  // algorithm, mode, etc., all rolled into one
-    ECDSA_SHA = 1;
-    AES_CTR_HMAC_SHA = 2;
-    HMAC_SHA = 3;
-  }
-  required CryptoVersion version = 1;
-  required CryptoPurpose purpose = 2;
-  required CryptoAlgorithm algorithm = 3;
-  required bytes key = 4;  // serialized <algorithm><purpose>Key<version>
-  required CryptoHeader algorithm_info = 4;
+  required CryptoHeader key_header = 1;
+  repeated bytes key_components = 2;
 }
 
 message CryptoKeyset {
@@ -83,42 +70,6 @@ message PBEData {
   required bytes ciphertext = 6;
   // TODO(kwalsh) Should this not use a mac as well for integrity protection?
   required bytes salt = 7;
-}
-
-// TODO(jllm): Should this be a string?
-enum NamedEllipticCurve {
-  PRIME256_V1 = 1;  // aka secp256r1
-}
-
-message ECDSA_SHA_VerifyingKey_v1 {
-  required NamedEllipticCurve curve = 1;
-  required bytes ec_public = 2;  // = OpenSSL::EC_POINT_point2oct(pub_key)
-}
-
-// TODO(jlm): Should private/public be a general asymmetric key structure?
-message ECDSA_SHA_SigningKey_v1 {
-  required NamedEllipticCurve curve = 1;
-  required bytes ec_private = 2;  // = OpenSSL::BN_bn2bin(priv_key)
-  required bytes ec_public = 3;  // = OpenSSL::EC_POINT_point2oct(pub_key)
-}
-
-enum CryptoCipherMode {
-  CIPHER_MODE_CTR = 1;
-}
-
-message AES_CTR_HMAC_SHA_CryptingKey_v1 {
-  required CryptoCipherMode mode = 1;
-  required bytes aes_private = 2;
-  required bytes hmac_private = 3;
-}
-
-enum CryptoDerivingMode {
- DERIVING_MODE_HKDF = 1;
-}
-
-message HMAC_SHA_DerivingKey_v1 {
-  required CryptoDerivingMode mode = 1;
-  required bytes hmac_private = 2;
 }
 
 // A PDU to be serialized and signed, including a required context to ensure
@@ -145,11 +96,11 @@ message SignedData {
 // encryption modes (like AES CTR with HMAC-SHA) that require a separate MAC.
 // Note: We actually just hmac the partially serialized EncryptedData message
 // with all fields complete except the mac field.
-// message EncryptionIntegrityPDU {
-//   required CryptoHeader header = 1;
-//   required bytes iv = 2;
-//   required bytes ciphertext = 3;
-// }
+message EncryptionIntegrityPDU {
+   required CryptoHeader header = 1;
+   required bytes iv = 2;
+   required bytes ciphertext = 3;
+}
 
 // The result of encrypting.
 message EncryptedData {
@@ -165,4 +116,41 @@ message KeyDerivationPDU {
   required fixed32 size = 2;
   required string context = 3;
   required fixed32 index = 4;
+}
+
+
+
+
+// Remove later
+enum NamedEllipticCurve {
+  PRIME256_V1 = 1;  // aka secp256r1
+}
+
+message ECDSA_SHA_VerifyingKey_v1 {
+  required NamedEllipticCurve curve = 1;
+  required bytes ec_public = 2;  // = OpenSSL::EC_POINT_point2oct(pub_key)
+}
+
+message ECDSA_SHA_SigningKey_v1 {
+  required NamedEllipticCurve curve = 1;
+  required bytes ec_private = 2;  // = OpenSSL::BN_bn2bin(priv_key)
+  required bytes ec_public = 3;  // = OpenSSL::EC_POINT_point2oct(pub_key)
+}
+
+enum CryptoCipherMode {
+  CIPHER_MODE_CTR = 1;
+}
+
+message AES_CTR_HMAC_SHA_CryptingKey_v1 {
+  required CryptoCipherMode mode = 1;
+  required bytes aes_private = 2;
+  required bytes hmac_private = 3;
+}
+
+enum CryptoDerivingMode {
+ DERIVING_MODE_HKDF = 1;
+}
+message HMAC_SHA_DerivingKey_v1 {
+  required CryptoDerivingMode mode = 1;
+  required bytes hmac_private = 2;
 }

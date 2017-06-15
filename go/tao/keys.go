@@ -21,6 +21,7 @@ import (
 	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
@@ -60,6 +61,10 @@ func randBytes(size int) ([]byte, error) {
 
 func SerializeRsaPrivateComponents(rsaKey *rsa.PrivateKey) ([][]byte, error) {
 	// mod, e, d, p, q
+	// rsaKey.PublicKey.N.Bytes()
+	// rsaKey.PublicKey.E.Bytes()
+	// rsaKey.D.Bytes()
+	// rsaKey.Primes[0].Bytes()
 	return nil, nil
 }
 
@@ -68,7 +73,23 @@ func DeserializeRsaPrivateComponents(rsaKey *rsa.PrivateKey [][]byte) (error) {
 }
 
 func SerializeEcdsaPrivateComponents(ecKey *ecdsa.PrivateKey) ([][]byte, error) {
-	// p, a, Base, G (Public)
+	// Use Marshal/Unmarshal?
+	// ecKey.Curve
+	// ecKey.PublicKey.X
+	// ecKey.PublicKey.Y
+	// ecKey.D
+	// p, a, Base, G (Public), order of base point
+	/*
+	// P384
+	type CurveParams struct {
+        	P       *big.Int // the order of the underlying field
+        	N       *big.Int // the order of the base point
+        	B       *big.Int // the constant of the curve equation
+        	Gx, Gy  *big.Int // (x,y) of the base point
+        	BitSize int      // the size of the underlying field
+        	Name    string   // the canonical name of the curve
+	}
+*/
 	return nil, nil
 }
 
@@ -229,16 +250,21 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int, keyPurpos
 		KeyPurpose: purpose,
 		KeyStatus: keyStatus,
 	}
-	cryptoKey.KeyHeader = key
+	cryptoKey.KeyHeader = ch
 	return cryptoKey
 }
 
 func MarshalCryptoKey(ck CryptoKey) []byte {
-	return nil
+	return proto.Marshal(ck)
 }
 
 func UnmarshalCryptoKey(bytes []byte) *CryptoKey {
-	return nil
+	ck := new(CryptoKey)
+	err := proto.Unmarshal(ck, bytes)
+	if err != nil {
+		return nil
+	}
+	return ck
 }
 
 // A Signer is used to sign and verify signatures

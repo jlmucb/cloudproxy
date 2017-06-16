@@ -438,8 +438,21 @@ func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix
 	template.BasicConstraintsValid = true
 	template.IsCA = true
 	template.Issuer = template.Subject
-	// FIX: der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
-	der, err := x509.CreateCertificate(rand.Reader, template, template, nil, nil)
+	if s.key.KeyHeader.KeyType == nil {
+		return nil, errors.New("No key type")
+	}
+	var publicKey interface{}
+	switch(*s.key.KeyHeader.KeyType) {
+	case "rsa-1024", "rsa-2048", "rsa-3072":
+		priv := (*s.privateKey).(rsa.PrivateKey)
+		publicKey = priv.PublicKey
+	case "ecdsa-P256", "ecdsa-P384":
+		priv := (*s.privateKey).(ecdsa.PrivateKey)
+		publicKey = priv.PublicKey
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, publicKey, s.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -454,8 +467,21 @@ func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64,name *pkix
 	template.BasicConstraintsValid = true
 	template.Issuer = template.Subject
 
-	// FIX der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
-	der, err := x509.CreateCertificate(rand.Reader, template, template, nil, nil)
+	if s.key.KeyHeader.KeyType == nil {
+		return nil, errors.New("No key type")
+	}
+	var pub interface{}
+	switch(*s.key.KeyHeader.KeyType) {
+	case "rsa-1024", "rsa-2048", "rsa-3072":
+		priv := (*s.privateKey).(rsa.PrivateKey)
+		pub = priv.PublicKey
+	case "ecdsa-P256", "ecdsa-P384":
+		priv := (*s.privateKey).(ecdsa.PrivateKey)
+		pub = priv.PublicKey
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, s.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -468,8 +494,7 @@ func (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCe
 	if cert == nil {
 		return nil, errors.New("Missing issuing certificate required to create CRL.")
 	}
-	// FIX return cert.CreateCRL(rand.Reader, s.ec, revokedCerts, now, expiry)
-	return cert.CreateCRL(rand.Reader, nil, revokedCerts, now, expiry)
+	return cert.CreateCRL(rand.Reader, s.privateKey, revokedCerts, now, expiry)
 }
 
 // CreateSignedX509 creates a signed X.509 certificate for some other subject's
@@ -479,8 +504,7 @@ func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subj
 	template := PrepareX509Template(pkAlg, sigAlg, sn, subjectName)
 	template.SerialNumber = new(big.Int).SetInt64(int64(certSerial))
 
-	// der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.ec, s.ec)
-	der, err := x509.CreateCertificate(rand.Reader, template, caCert, nil, nil)
+	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.publicKey, s.privateKey)
 	if err != nil {
 		return nil, err
 	}

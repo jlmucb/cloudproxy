@@ -105,24 +105,6 @@ func SerializeEcdsaPrivateComponents(ecKey *ecdsa.PrivateKey) ([]byte, error) {
 	return x509.MarshalECPrivateKey(ecKey)
 }
 
-
-	/*
-	// ecKey.Curve
-	// ecKey.PublicKey.X
-	// ecKey.PublicKey.Y
-	// ecKey.D
-	// p, a, Base, G (Public), order of base point
-	// P384
-	type CurveParams struct {
-        	P       *big.Int // the order of the underlying field
-        	N       *big.Int // the order of the base point
-        	B       *big.Int // the constant of the curve equation
-        	Gx, Gy  *big.Int // (x,y) of the base point
-        	BitSize int      // the size of the underlying field
-        	Name    string   // the canonical name of the curve
-	}
-	*/
-
 func DeserializeEcdsaPrivateComponents(keyBytes []byte) (*ecdsa.PrivateKey, error) {
 	return x509.ParseECPrivateKey(keyBytes)
 }
@@ -275,6 +257,16 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		}
 	case "ecdsa-P256":
 		ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil
+		}
+		keyComponent, err := SerializeEcdsaPrivateComponents(ecKey)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
+	case "ecdsa-P384":
+		ecKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 		if err != nil {
 			return nil
 		}

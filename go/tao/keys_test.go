@@ -15,6 +15,8 @@
 package tao
 
 import (
+	"bytes"
+	"crypto/aes"
 	"fmt"
 	"testing"
 
@@ -83,6 +85,23 @@ func TestGenerateKeys(t *testing.T) {
 	}
 	printKey(cryptoKey1_d)
 	fmt.Printf("\n")
+	crypter, err := aes.NewCipher(cryptoKey1_d.KeyComponents[0])
+	if err != nil {
+		t.Fatal("Can't create aes-128 encrypter\n")
+	}
+	plain := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+	fmt.Printf("aes key size %d, key: %x, plain size %d, BlockSize: %d\n", len(cryptoKey1_d.KeyComponents[0]),
+		cryptoKey1_d.KeyComponents[0], len(plain), crypter.BlockSize())
+	encrypted := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	decrypted := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	crypter.Encrypt(encrypted, plain)
+	crypter.Decrypt(decrypted, encrypted)
+	if !bytes.Equal(plain, decrypted) {
+		t.Fatal("aes-128-raw plain and decrypted dont match\n")
+	} else {
+		fmt.Printf("Encryption works, encrypted: %x\n", encrypted)
+	}
+	fmt.Printf("\n")
 
 	// "aes-256-raw"
 	keyName = "keyName2"
@@ -93,8 +112,35 @@ func TestGenerateKeys(t *testing.T) {
 	if cryptoKey2 == nil {
 		t.Fatal("Can't generate aes-256-raw key\n")
 	}
-	fmt.Printf("Testing aes-128-raw generation\n")
+	fmt.Printf("Testing aes-256-raw generation\n")
 	printKey(cryptoKey2)
+	fmt.Printf("\n")
+	m2 := MarshalCryptoKey(*cryptoKey2)
+	if m2 == nil {
+		t.Fatal("Can't MarshalCryptoKey aes-256-raw key\n")
+	}
+	cryptoKey2_d, err := UnmarshalCryptoKey(m2)
+	if err != nil {
+		t.Fatal("Can't UnmarshalCryptoKey aes-256-raw key\n")
+	}
+	printKey(cryptoKey2_d)
+	fmt.Printf("\n")
+	crypter2, err := aes.NewCipher(cryptoKey2_d.KeyComponents[0])
+	if err != nil {
+		t.Fatal("Can't create aes-256 encrypter\n")
+	}
+	plain2 := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+	fmt.Printf("aes key size %d, key: %x, plain size %d, BlockSize: %d\n", len(cryptoKey2_d.KeyComponents[0]),
+		cryptoKey2_d.KeyComponents[0], len(plain2), crypter2.BlockSize())
+	encrypted2 := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	decrypted2 := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	crypter2.Encrypt(encrypted2, plain2)
+	crypter2.Decrypt(decrypted2, encrypted2)
+	if !bytes.Equal(plain2, decrypted2) {
+		t.Fatal("aes-256-raw plain and decrypted dont match\n")
+	} else {
+		fmt.Printf("Encryption works, encrypted: %x\n", encrypted2)
+	}
 	fmt.Printf("\n")
 
 	// "aes-128-ctr"

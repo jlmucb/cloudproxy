@@ -73,6 +73,16 @@ func TestGenerateKeys(t *testing.T) {
 	fmt.Printf("Testing aes-128-raw generation\n")
 	printKey(cryptoKey1)
 	fmt.Printf("\n")
+	m1 := MarshalCryptoKey(*cryptoKey1)
+	if m1 == nil {
+		t.Fatal("Can't MarshalCryptoKey aes-128-raw key\n")
+	}
+	cryptoKey1_d, err := UnmarshalCryptoKey(m1)
+	if err != nil {
+		t.Fatal("Can't UnmarshalCryptoKey aes-128-raw key\n")
+	}
+	printKey(cryptoKey1_d)
+	fmt.Printf("\n")
 
 	// "aes-256-raw"
 	keyName = "keyName2"
@@ -194,6 +204,17 @@ func TestGenerateKeys(t *testing.T) {
 	fmt.Printf("Testing rsa-1024 generation\n")
 	printKey(cryptoKey10)
 	fmt.Printf("\n")
+	m10 := MarshalCryptoKey(*cryptoKey10)
+	if m10 == nil {
+		t.Fatal("Can't MarshalCryptoKey rsa-1024 key\n")
+	}
+	cryptoKey10_d, err := UnmarshalCryptoKey(m10)
+	if err != nil {
+		t.Fatal("Can't UnmarshalCryptoKey rsa-1024 key\n")
+	}
+	printKey(cryptoKey10_d)
+	fmt.Printf("\n")
+
 
         // "rsa-2048"
 	keyName = "keyName11"

@@ -292,8 +292,11 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 }
 
 func MarshalCryptoKey(ck CryptoKey) []byte {
-	// return proto.Marshal(ck)
-	return nil
+	b, err := proto.Marshal(&ck)
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 func UnmarshalCryptoKey(bytes []byte) (*CryptoKey, error) {

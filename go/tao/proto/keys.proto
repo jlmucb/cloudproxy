@@ -33,6 +33,8 @@ enum CryptoVersion {
 //	"sha-256-hmac", "sha-384-hmac", "sha-512-hmac",
 //	"rsa-1024", "rsa-2048", "rsa-3072"
 //	"ecdsa-P256", "ecdsa-384"
+//	"rsa-1024-public", "rsa-2048-public", "rsa-3072-public"
+//	"ecdsa-P256-public", "ecdsa-384-public"
 // key_purpose: "verifying", "signing", "crypting", "deriving", "sealing"
 message CryptoHeader {
   required CryptoVersion version = 1;

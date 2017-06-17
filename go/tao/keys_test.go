@@ -315,36 +315,67 @@ func TestGenerateKeys(t *testing.T) {
 	fmt.Printf("\n")
 }
 
-func TestKeyMarshalling(t *testing.T) {
+func TestKeytoImplementation(t *testing.T) {
+	// SignerFromCryptoKey(key CryptoKey) *Signer
+	// VerifierFromCryptoKey(key CryptoKey)
+	// CrypterFromCryptoKey(key CryptoKey) *Crypter
+	// DeriverFromCryptoKey(key CryptoKey) *Deriver
 }
 
-func TestSignerDERSerialization(t *testing.T) {
+func TestPublicSerialization(t *testing.T) {
+}
+
+func TestVerifierSerialization(t *testing.T) {
+	// func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
+}
+
+func TestSignerToPublic(t *testing.T) {
+	// (s *Signer) GetVerifierFromSigner() *Verifier
+}
+
+func TestKeyAccess(t *testing.T) {
+	// (s *Signer) GetSignerPrivateKey() *crypto.PrivateKey
+	// (s *Verifier) GetVerifierPublicKey() *crypto.PublicKey 
+}
+
+func TestCanonicalizeKeyBytes(t *testing.T) {
+	// func (v *Verifier) CanonicalKeyBytesFromVerifier() []byte
+	// func (s *Signer) CanonicalKeyBytesFromSigner() []byte {
+}
+
+func TestSignerVerifierDERSerialization(t *testing.T) {
+	// func (v *Verifier) MarshalKey() []byte {
+	// func UnmarshalKey(material []byte) (*Verifier, error) {
+	// func FromX509(cert *x509.Certificate) (*Verifier, error) {
+	// func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
+	// func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
 }
 
 func TestSelfSignedX509(t *testing.T) {
+	// (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix.Name) ([]byte, error)
+	// (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64,name *pkix.Name) (*x509.Certificate, error)
+	// (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error)
+	// (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
 }
 
 func TestCreateHeader(t *testing.T) {
 }
 
-func TestPublicSignerMarshalProto(t *testing.T) {
-}
-
-func TestVerifierFromX509(t *testing.T) {
-}
-
 func TestSignAndVerify(t *testing.T) {
+	//func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
+	// func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
 }
 
 func TestNewCrypter(t *testing.T) {
 }
 
 func TestEncryptAndDecrypt(t *testing.T) {
-}
-
-func TestNewDeriver(t *testing.T) {
+	// func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
+	// func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 }
 
 func TestDeriveSecret(t *testing.T) {
+	// func (d *Deriver) Derive(salt, context, material []byte) error {
+
 }
 

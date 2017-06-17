@@ -310,21 +310,21 @@ func UnmarshalCryptoKey(bytes []byte) (*CryptoKey, error) {
 
 // A Signer is used to sign and verify signatures
 type Signer struct {
-	key *CryptoKey
+	header *CryptoHeader
 
 	privateKey *crypto.PrivateKey
 }
 
 // A Verifier is used to verify signatures.
 type Verifier struct {
-	key *CryptoKey
+	header *CryptoHeader
 
 	publicKey *crypto.PublicKey
 }
 
 // A Crypter is used to encrypt and decrypt data.
 type Crypter struct {
-	key *CryptoKey
+	header *CryptoHeader
 
 	encryptingKeyBytes  []byte
 	hmacKeyBytes[]byte
@@ -332,7 +332,7 @@ type Crypter struct {
 
 // A Deriver is used to derive key material from a context using HKDF.
 type Deriver struct {
-	key *CryptoKey
+	header *CryptoHeader
 
 	secret []byte
 }
@@ -354,33 +354,55 @@ func DeriverFromCryptoKey(key CryptoKey) *Deriver {
 }
 
 func (s *Signer) GetVerifierFromSigner() *Verifier {
-	// return &Verifier{&s.ec.PublicKey}
-	return nil
+	// s.key
+	// s.PrivateKey
+	var publicKey crypto.PublicKey
+	switch(*s.header.KeyType) {
+	case "rsa-1024", "rsa-2048", "rsa-3072":
+		priv := (*s.privateKey).(rsa.PrivateKey)
+		publicKey = crypto.PublicKey(priv.PublicKey)
+	case "ecdsa-P256", "ecdsa-P384":
+		priv := (*s.privateKey).(ecdsa.PrivateKey)
+		publicKey = priv.PublicKey
+	default:
+		return nil
+	}
+	newKeyType := *s.header.KeyType + "-public"
+	var newHeader CryptoHeader
+	newHeader.Version = s.header.Version
+	newHeader.KeyName = s.header.KeyName
+	newHeader.KeyEpoch = s.header.KeyEpoch
+	newHeader.KeyType = &newKeyType
+	newHeader.KeyPurpose = s.header.KeyPurpose
+	newHeader.KeyStatus = s.header.KeyStatus
+	v := &Verifier {
+		header: &newHeader,
+		publicKey: &publicKey,
+	}
+	return v
+}
+
+func (v *Verifier) GetVerifierPublicKey() *crypto.PublicKey {
+	return v.publicKey
 }
 
 func (s *Signer) GetSignerPrivateKey() *crypto.PrivateKey {
-	// return &s.PrivateKey
-	return nil
+	return s.privateKey
 }
 
-func (s *Verifier) GetVerifierPublicKey() *crypto.PublicKey {
-	// switch(v.key.KeyType) {
-	// default:
-	// }
-	// return s.ec
-	return nil
+func (v *Verifier) CanonicalKeyBytesFromVerifier() ([]byte, error) {
+	kr, err := x509.MarshalPKIXPublicKey(v.publicKey)
+	if err != nil {
+		return kr, err
+	}
+	// Now hash with type
+	b := append([]byte(*v.header.KeyType), kr...)
+	h := sha256.Sum256(b)
+	return h[0:32], err
 }
 
-func (v *Verifier) CanonicalKeyBytesFromVerifier() []byte {
-	// switch(v.key.KeyType) {
-	// default:
-	// }
-	return nil
-}
-
-func (s *Signer) CanonicalKeyBytesFromSigner() []byte {
-	// return x509.MarshalECPublicKey(s.ec)
-	return nil
+func (s *Signer) CanonicalKeyBytesFromSigner() ([]byte, error) {
+	return s.GetVerifierFromSigner().CanonicalKeyBytesFromVerifier()
 }
 
 // ToPrincipal produces a "key" type Prin for this signer. This contains a
@@ -433,11 +455,11 @@ func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix
 	template.BasicConstraintsValid = true
 	template.IsCA = true
 	template.Issuer = template.Subject
-	if s.key.KeyHeader.KeyType == nil {
+	if s.header.KeyType == nil {
 		return nil, errors.New("No key type")
 	}
 	var publicKey interface{}
-	switch(*s.key.KeyHeader.KeyType) {
+	switch(*s.header.KeyType) {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
 		priv := (*s.privateKey).(rsa.PrivateKey)
 		publicKey = priv.PublicKey
@@ -462,11 +484,11 @@ func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64,name *pkix
 	template.BasicConstraintsValid = true
 	template.Issuer = template.Subject
 
-	if s.key.KeyHeader.KeyType == nil {
+	if s.header.KeyType == nil {
 		return nil, errors.New("No key type")
 	}
 	var pub interface{}
-	switch(*s.key.KeyHeader.KeyType) {
+	switch(*s.header.KeyType) {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
 		priv := (*s.privateKey).(rsa.PrivateKey)
 		pub = priv.PublicKey
@@ -690,7 +712,6 @@ func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLe
 	if err != nil {
 		return nil, err
 	}
-
 	hash := sha256.Sum256(b)
 	return hash[:digestLen], nil
 }

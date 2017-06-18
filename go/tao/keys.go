@@ -418,7 +418,7 @@ func VerifierFromCryptoKey(k CryptoKey) *Verifier {
 }
 
 func CrypterFromCryptoKey(k CryptoKey) *Crypter {
-	c := &Crypter{
+	c := &Crypter {
 		header: k.KeyHeader,
 	}
 	switch *k.KeyHeader.KeyType {
@@ -434,8 +434,12 @@ func CrypterFromCryptoKey(k CryptoKey) *Crypter {
 	return c
 }
 
-func DeriverFromCryptoKey(key CryptoKey) *Deriver {
-	return nil
+func DeriverFromCryptoKey(k CryptoKey) *Deriver {
+	d := &Deriver {
+		header: k.KeyHeader,
+		secret: k.KeyComponents[0],
+	}
+	return d
 }
 
 func (s *Signer) GetVerifierFromSigner() *Verifier {
@@ -620,6 +624,12 @@ func (d *Deriver) Derive(salt, context, material []byte) error {
 // Sign computes a sigature over the contextualized data, using the
 // private key of the signer.
 func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
+	/*
+	switch(d.header.KeyType) {
+	default:
+		return nil, errors.New("Unsupported crypting algorithm")
+	}
+	*/
 	ch, err := s.CreateHeader()
 	if err != nil {
 		return nil, err
@@ -798,17 +808,12 @@ func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLe
 // with a MAC.
 func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
 	/*
-		switch(c.header.KeyType) {
-		default:
-			return nil, errors.New("Unsupported crypting algorithm")
-		}
+	switch(c.header.KeyType) {
+	default:
+		return nil, errors.New("Unsupported crypting algorithm")
+	}
 	*/
 	block, err := aes.NewCipher(c.encryptingKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := c.CreateHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -829,7 +834,7 @@ func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
 	m := mac.Sum(nil)
 
 	ed := &EncryptedData{
-		Header:     ch,
+		Header:     c.header,
 		Iv:         iv,
 		Ciphertext: ciphertext[aes.BlockSize:],
 		Mac:        m,
@@ -845,9 +850,13 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// TODO(tmroeder): we're currently mostly ignoring the CryptoHeader,
-	// since we only have one key.
-	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_1 {
+	/*
+		switch(c.header.KeyType) {
+		default:
+			return nil, errors.New("Unsupported crypting algorithm")
+		}
+	*/
+	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		return nil, errors.New("bad version")
 	}
 

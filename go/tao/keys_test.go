@@ -479,7 +479,7 @@ func TestNewCrypter(t *testing.T) {
 	keyEpoch := int32(1)
 	keyPurpose := "crypting"
 	keyStatus := "active"
-	cryptingKey := GenerateCryptoKey("aes-128-sha-256-cbc", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptingKey := GenerateCryptoKey("aes-128-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptingKey == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
@@ -511,6 +511,44 @@ func TestEncryptAndDecrypt(t *testing.T) {
 }
 
 func TestDeriveSecret(t *testing.T) {
-	// func (d *Deriver) Derive(salt, context, material []byte) error {
-
+	ver := CryptoVersion_CRYPTO_VERSION_2
+	keyName := "keyName1"
+	keyType := "hdkf-sha256"
+	keyEpoch := int32(1)
+	keyPurpose := "deriving"
+	keyStatus := "active"
+	ch := &CryptoHeader {
+		Version: &ver,
+		KeyName: &keyName,
+		KeyEpoch: &keyEpoch,
+		KeyType: &keyType,
+		KeyPurpose: &keyPurpose,
+		KeyStatus: &keyStatus,
+	}
+	// derivingKey := GenerateCryptoKey("hdfk-sha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	// derivingKey.KeyComponents = append(derivingKey.KeyComponents, buf)
+	// if derivingKey == nil {
+		// t.Fatal("Can't generate signing key\n")
+	// }
+	// printKey(derivingKey)
+	// d := DeriverFromCryptoKey(*derivingKey)
+	// if d == nil {
+		// t.Fatal("DeriveFromCryptoKey fails\n")
+	// }
+	buf := make([]byte, 32)
+        _, err := rand.Read(buf)
+	
+	d := &Deriver {
+		header: ch,
+		secret: buf,
+	}
+	fmt.Printf("\n")
+	salt := []byte{1,2,3,4}
+	context:= []byte{1,2}
+	material:= make([]byte, 32)
+	material[0] = 1
+	err = d.Derive(salt, context, material)
+	if err != nil {
+	}
+	fmt.Printf("Derived: %x\n", material)
 }

@@ -21,14 +21,13 @@ import (
 	// "crypto/sha256"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"fmt"
 	"testing"
 
-	//"github.com/jlmucb/cloudproxy/go/tao"
-	// "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	// "io/ioutil"
 	// "os"
-	// "crypto/rand"
 )
 
 func printKey(cryptoKey *CryptoKey) {
@@ -50,7 +49,7 @@ func printKey(cryptoKey *CryptoKey) {
 	} else {
 		fmt.Printf("Purpose: %s\n", *cryptoKey.KeyHeader.KeyPurpose)
 	}
-	if cryptoKey.KeyHeader.KeyStatus== nil {
+	if cryptoKey.KeyHeader.KeyStatus == nil {
 		fmt.Printf("No key status\n")
 	} else {
 		fmt.Printf("Key status: %s\n", *cryptoKey.KeyHeader.KeyStatus)
@@ -93,11 +92,11 @@ func TestGenerateKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't create aes-128 encrypter\n")
 	}
-	plain := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+	plain := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	fmt.Printf("aes key size %d, key: %x, plain size %d, BlockSize: %d\n", len(cryptoKey1_d.KeyComponents[0]),
 		cryptoKey1_d.KeyComponents[0], len(plain), crypter.BlockSize())
-	encrypted := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-	decrypted := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	encrypted := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	decrypted := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	crypter.Encrypt(encrypted, plain)
 	crypter.Decrypt(decrypted, encrypted)
 	if !bytes.Equal(plain, decrypted) {
@@ -133,11 +132,11 @@ func TestGenerateKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't create aes-256 encrypter\n")
 	}
-	plain2 := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+	plain2 := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	fmt.Printf("aes key size %d, key: %x, plain size %d, BlockSize: %d\n", len(cryptoKey2_d.KeyComponents[0]),
 		cryptoKey2_d.KeyComponents[0], len(plain2), crypter2.BlockSize())
-	encrypted2 := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-	decrypted2 := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	encrypted2 := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	decrypted2 := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	crypter2.Encrypt(encrypted2, plain2)
 	crypter2.Decrypt(decrypted2, encrypted2)
 	if !bytes.Equal(plain2, decrypted2) {
@@ -160,7 +159,6 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey3)
 	fmt.Printf("\n")
 
-
 	// "aes-256-ctr"
 	keyName = "keyName4"
 	keyEpoch = 4
@@ -173,7 +171,6 @@ func TestGenerateKeys(t *testing.T) {
 	fmt.Printf("Testing aes-256-ctr generation\n")
 	printKey(cryptoKey4)
 	fmt.Printf("\n")
-
 
 	// "aes-128-sha-256-cbc"
 	keyName = "keyName5"
@@ -188,8 +185,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey5)
 	fmt.Printf("\n")
 
-
-        // "aes-256-sha-384-cbc"
+	// "aes-256-sha-384-cbc"
 	keyName = "keyName6"
 	keyEpoch = 2
 	keyPurpose = "crypting"
@@ -202,8 +198,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey6)
 	fmt.Printf("\n")
 
-
-        // "sha-256-hmac"
+	// "sha-256-hmac"
 	keyName = "keyName7"
 	keyEpoch = 2
 	keyPurpose = "crypting"
@@ -216,7 +211,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey7)
 	fmt.Printf("\n")
 
-        // "sha-384-hmac"
+	// "sha-384-hmac"
 	keyName = "keyName8"
 	keyEpoch = 2
 	keyPurpose = "crypting"
@@ -229,7 +224,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey8)
 	fmt.Printf("\n")
 
-        // "sha-512-hmac"
+	// "sha-512-hmac"
 	keyName = "keyName9"
 	keyEpoch = 2
 	keyPurpose = "crypting"
@@ -242,7 +237,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey9)
 	fmt.Printf("\n")
 
-        // "rsa-1024"
+	// "rsa-1024"
 	keyName = "keyName10"
 	keyEpoch = 2
 	keyPurpose = "signing"
@@ -265,8 +260,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey10_d)
 	fmt.Printf("\n")
 
-
-        // "rsa-2048"
+	// "rsa-2048"
 	keyName = "keyName11"
 	keyEpoch = 2
 	keyPurpose = "signing"
@@ -279,7 +273,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey11)
 	fmt.Printf("\n")
 
-        // "rsa-3072"
+	// "rsa-3072"
 	keyName = "keyName12"
 	keyEpoch = 2
 	keyPurpose = "signing"
@@ -292,7 +286,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey12)
 	fmt.Printf("\n")
 
-        // "ecdsa-P256"
+	// "ecdsa-P256"
 	keyName = "keyName13"
 	keyEpoch = 2
 	keyPurpose = "signing"
@@ -305,7 +299,7 @@ func TestGenerateKeys(t *testing.T) {
 	printKey(cryptoKey13)
 	fmt.Printf("\n")
 
-        // "ecdsa-P384"
+	// "ecdsa-P384"
 	keyName = "keyName14"
 	keyEpoch = 2
 	keyPurpose = "signing"
@@ -319,27 +313,12 @@ func TestGenerateKeys(t *testing.T) {
 	fmt.Printf("\n")
 }
 
-func TestKeytoImplementation(t *testing.T) {
-	// SignerFromCryptoKey(key CryptoKey) *Signer
-	// VerifierFromCryptoKey(key CryptoKey)
-	// CrypterFromCryptoKey(key CryptoKey) *Crypter
-	// DeriverFromCryptoKey(key CryptoKey) *Deriver
-}
-
-func TestPublicSerialization(t *testing.T) {
-}
-
 func TestVerifierSerialization(t *testing.T) {
 	// func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
 }
 
 func TestSignerToPublic(t *testing.T) {
 	// (s *Signer) GetVerifierFromSigner() *Verifier
-}
-
-func TestKeyAccess(t *testing.T) {
-	// (s *Signer) GetSignerPrivateKey() *crypto.PrivateKey
-	// (s *Verifier) GetVerifierPublicKey() *crypto.PublicKey 
 }
 
 func TestCanonicalizeKeyBytes(t *testing.T) {
@@ -360,9 +339,6 @@ func TestSelfSignedX509(t *testing.T) {
 	// (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64,name *pkix.Name) (*x509.Certificate, error)
 	// (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error)
 	// (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-}
-
-func TestCreateHeader(t *testing.T) {
 }
 
 func TestSignAndVerify(t *testing.T) {
@@ -389,7 +365,7 @@ func TestSignAndVerify(t *testing.T) {
 		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
 	}
 
-	mesg := []byte{1,2,3,4,5,6,7,8,9}
+	mesg := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	hash := crypto.SHA256
 	blk := hash.New()
 	blk.Write(mesg)
@@ -411,11 +387,22 @@ func TestSignAndVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal("Verify fails, ", err, "\n")
 	} else {
-		fmt.Printf("Verify succeeds\n")
+		fmt.Printf("Rsa Verify succeeds\n")
 	}
 
-	//func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
-	// func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
+	/*
+		s := SignerFromCryptoKey(*cryptoKey1)
+		if s== nil {
+			t.Fatal("SignerFromCryptoKey fails, ", err, "\n")
+		}
+		sig1, err := s.Sign(hashed, "Signing context")
+		if err != nil {
+			t.Fatal("Signer Sign failed, ", err, "\n")
+		}
+		fmt.Printf("Signer sign: %x\n", sig1)
+
+		// verified, err := v.Verify(hashed, "Signing context", sig1)
+	*/
 }
 
 func TestNewCrypter(t *testing.T) {
@@ -431,3 +418,43 @@ func TestDeriveSecret(t *testing.T) {
 
 }
 
+func TestCerts(t *testing.T) {
+	keyName := "keyName1"
+	keyEpoch := int32(1)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	signingKey := GenerateCryptoKey("ecdsa-P256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if signingKey == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	printKey(signingKey)
+	fmt.Printf("\n")
+
+	privateKey, err := PrivateKeyFromCryptoKey(*signingKey)
+	if err != nil {
+	}
+
+	s := &Signer{
+		header:     signingKey.KeyHeader,
+		privateKey: &privateKey,
+	}
+
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
+	}
+	der, err := s.CreateSelfSignedDER(int(x509.ECDSA), int(x509.ECDSAWithSHA256),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedDER failed, ", err, "\n")
+	}
+	fmt.Printf("Der: %x\n", der)
+	cert, err := s.CreateSelfSignedX509(int(x509.ECDSA), int(x509.ECDSAWithSHA256),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
+	}
+	fmt.Printf("Cert: %x\n", cert)
+}

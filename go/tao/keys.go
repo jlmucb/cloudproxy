@@ -29,6 +29,7 @@ import (
 	"crypto/x509/pkix"
 	// "encoding/asn1"
 
+	//"fmt"
 	"errors"
 	"math/big"
 	"time"
@@ -82,7 +83,7 @@ func SerializeRsaPrivateComponents(rsaKey *rsa.PrivateKey) ([][]byte, error) {
 	return keyComponents, nil
 }
 
-func DeserializeRsaPrivateComponents(keyComponents [][]byte, rsaKey *rsa.PrivateKey) (error) {
+func DeserializeRsaPrivateComponents(keyComponents [][]byte, rsaKey *rsa.PrivateKey) error {
 	if len(keyComponents) < 3 {
 		return errors.New("Too few key components")
 	}
@@ -126,7 +127,7 @@ func SerializeRsaPublicComponents(rsaKey *rsa.PublicKey) ([][]byte, error) {
 	return keyComponents, nil
 }
 
-func DeserializeRsaPublicComponents(rsaKey *rsa.PublicKey, keyComponents [][]byte) (error) {
+func DeserializeRsaPublicComponents(rsaKey *rsa.PublicKey, keyComponents [][]byte) error {
 	if len(keyComponents) < 2 {
 		return errors.New("Too few key components")
 	}
@@ -147,7 +148,7 @@ func DeserializeEcdsaPublicComponents(keyBytes []byte) (crypto.PrivateKey, error
 }
 
 func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
-	switch(*k.KeyHeader.KeyType) {
+	switch *k.KeyHeader.KeyType {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
 		rsaKey := new(rsa.PrivateKey)
 		err := DeserializeRsaPrivateComponents(k.KeyComponents, rsaKey)
@@ -168,10 +169,10 @@ func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
 
 func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
 	var publicKey crypto.PublicKey
-	switch(*k.KeyHeader.KeyType) {
+	switch *k.KeyHeader.KeyType {
 	case "rsa-1024-public":
-	case  "rsa-2048-public":
-	case  "rsa-3072-public":
+	case "rsa-2048-public":
+	case "rsa-3072-public":
 		rsaKey := new(rsa.PublicKey)
 		err := DeserializeRsaPublicComponents(rsaKey, k.KeyComponents)
 		if err != nil {
@@ -329,13 +330,13 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		return nil
 	}
 	ver := CryptoVersion_CRYPTO_VERSION_2
-	ch := &CryptoHeader {
-		Version: &ver,
-		KeyName: keyName,
-		KeyEpoch: keyEpoch,
-		KeyType: &keyType,
+	ch := &CryptoHeader{
+		Version:    &ver,
+		KeyName:    keyName,
+		KeyEpoch:   keyEpoch,
+		KeyType:    &keyType,
 		KeyPurpose: keyPurpose,
-		KeyStatus: keyStatus,
+		KeyStatus:  keyStatus,
 	}
 	cryptoKey.KeyHeader = ch
 	return cryptoKey
@@ -376,8 +377,8 @@ type Verifier struct {
 type Crypter struct {
 	header *CryptoHeader
 
-	encryptingKeyBytes  []byte
-	hmacKeyBytes[]byte
+	encryptingKeyBytes []byte
+	hmacKeyBytes       []byte
 }
 
 // A Deriver is used to derive key material from a context using HKDF.
@@ -395,8 +396,8 @@ func SignerFromCryptoKey(k CryptoKey) *Signer {
 	if k.KeyHeader.KeyType == nil {
 		return nil
 	}
-	s := &Signer {
-		header: k.KeyHeader,
+	s := &Signer{
+		header:     k.KeyHeader,
 		privateKey: &privateKey,
 	}
 	return s
@@ -407,6 +408,12 @@ func VerifierFromCryptoKey(key CryptoKey) *Verifier {
 }
 
 func CrypterFromCryptoKey(key CryptoKey) *Crypter {
+	/*
+		switch(*key.KeyHeader.KeyType) {
+		case "rsa-1024", "rsa-2048", "rsa-3072":
+		default:
+		}
+	*/
 	return nil
 }
 
@@ -418,7 +425,7 @@ func (s *Signer) GetVerifierFromSigner() *Verifier {
 	// s.key
 	// s.PrivateKey
 	var publicKey crypto.PublicKey
-	switch(*s.header.KeyType) {
+	switch *s.header.KeyType {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
 		priv := (*s.privateKey).(rsa.PrivateKey)
 		publicKey = crypto.PublicKey(priv.PublicKey)
@@ -436,8 +443,8 @@ func (s *Signer) GetVerifierFromSigner() *Verifier {
 	newHeader.KeyType = &newKeyType
 	newHeader.KeyPurpose = s.header.KeyPurpose
 	newHeader.KeyStatus = s.header.KeyStatus
-	v := &Verifier {
-		header: &newHeader,
+	v := &Verifier{
+		header:    &newHeader,
 		publicKey: &publicKey,
 	}
 	return v
@@ -520,18 +527,16 @@ func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix
 	if s.header.KeyType == nil {
 		return nil, errors.New("No key type")
 	}
-	var publicKey interface{}
-	switch(*s.header.KeyType) {
+	var pub interface{}
+	switch *s.header.KeyType {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
-		priv := (*s.privateKey).(rsa.PrivateKey)
-		publicKey = priv.PublicKey
+		pub = &(*s.privateKey).(*rsa.PrivateKey).PublicKey
 	case "ecdsa-P256", "ecdsa-P384":
-		priv := (*s.privateKey).(ecdsa.PrivateKey)
-		publicKey = priv.PublicKey
+		pub = &(*s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, publicKey, s.privateKey)
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, *s.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +545,7 @@ func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix
 
 // CreateSelfSignedX509 creates a self-signed X.509 certificate for the public
 // key of this Signer.
-func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64,name *pkix.Name) (*x509.Certificate, error) {
+func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64, name *pkix.Name) (*x509.Certificate, error) {
 	template := PrepareX509Template(pkAlg, sigAlg, sn, name)
 	template.IsCA = true
 	template.BasicConstraintsValid = true
@@ -550,17 +555,15 @@ func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64,name *pkix
 		return nil, errors.New("No key type")
 	}
 	var pub interface{}
-	switch(*s.header.KeyType) {
+	switch *s.header.KeyType {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
-		priv := (*s.privateKey).(rsa.PrivateKey)
-		pub = priv.PublicKey
+		pub = &(*s.privateKey).(*rsa.PrivateKey).PublicKey
 	case "ecdsa-P256", "ecdsa-P384":
-		priv := (*s.privateKey).(ecdsa.PrivateKey)
-		pub = priv.PublicKey
+		pub = &(*s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, s.privateKey)
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, *s.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -578,8 +581,8 @@ func (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCe
 
 // CreateSignedX509 creates a signed X.509 certificate for some other subject's
 // key.
-func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, 
-		pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name) (*x509.Certificate, error) {
+func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
+	pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name) (*x509.Certificate, error) {
 	template := PrepareX509Template(pkAlg, sigAlg, sn, subjectName)
 	template.SerialNumber = new(big.Int).SetInt64(int64(certSerial))
 
@@ -615,13 +618,13 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	// FIX
 	// b, err := contextualizedSHA256(ch, data, context, sha256.Size)
 	// if err != nil {
-		// return nil, err
+	// return nil, err
 	// }
 
 	// FIX R, S, err := ecdsa.Sign(rand.Reader, s.ec, b)
 	// R, S, err := ecdsa.Sign(rand.Reader, nil, b)
 	// if err != nil {
-		// return nil, err
+	// return nil, err
 	// }
 
 	// FIX m, err := asn1.Marshal(ecdsaSignature{R, S})
@@ -641,27 +644,27 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 // Verify checks a signature over the contextualized data, using the
 // public key of the verifier.
 func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
-/*
-	// Deserialize the data and extract the CryptoHeader.
-	var sd SignedData
-	if err := proto.Unmarshal(sig, &sd); err != nil {
-		return false, err
-	}
+	/*
+		// Deserialize the data and extract the CryptoHeader.
+		var sd SignedData
+		if err := proto.Unmarshal(sig, &sd); err != nil {
+			return false, err
+		}
 
-	var ecSig ecdsaSignature
-	// We ignore the first parameter, since we don't mind if there's more
-	// data after the signature.
-	if _, err := asn1.Unmarshal(sd.Signature, &ecSig); err != nil {
-		return false, err
-	}
+		var ecSig ecdsaSignature
+		// We ignore the first parameter, since we don't mind if there's more
+		// data after the signature.
+		if _, err := asn1.Unmarshal(sd.Signature, &ecSig); err != nil {
+			return false, err
+		}
 
-	b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
-	if err != nil {
-		return false, err
-	}
+		b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
+		if err != nil {
+			return false, err
+		}
 
-	return ecdsa.Verify(v.ec, b, ecSig.R, ecSig.S), nil
- */
+		return ecdsa.Verify(v.ec, b, ecSig.R, ecSig.S), nil
+	*/
 	// FIX
 	return true, nil
 }
@@ -681,36 +684,36 @@ func (v *Verifier) MarshalKey() []byte {
 
 // UnmarshalKey deserializes a Verifier.
 func UnmarshalKey(material []byte) (*Verifier, error) {
-/*
-	var ck CryptoKey
-	if err := proto.Unmarshal(material, &ck); err != nil {
-		return nil, err
-	}
+	/*
+		var ck CryptoKey
+		if err := proto.Unmarshal(material, &ck); err != nil {
+			return nil, err
+		}
 
-	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
-	}
+		if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
+			return nil, newError("bad version")
+		}
 
-	if *ck.Purpose != CryptoKey_VERIFYING {
-		return nil, newError("bad purpose")
-	}
+		if *ck.Purpose != CryptoKey_VERIFYING {
+			return nil, newError("bad purpose")
+		}
 
-	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-		return nil, newError("bad algorithm")
-	}
+		if *ck.Algorithm != CryptoKey_ECDSA_SHA {
+			return nil, newError("bad algorithm")
+		}
 
-	var ecvk ECDSA_SHA_VerifyingKeyV1
-	if err := proto.Unmarshal(ck.Key, &ecvk); err != nil {
-		return nil, err
-	}
+		var ecvk ECDSA_SHA_VerifyingKeyV1
+		if err := proto.Unmarshal(ck.Key, &ecvk); err != nil {
+			return nil, err
+		}
 
-	ec, err := unmarshalECDSASHAVerifyingKeyV1(&ecvk)
-	if err != nil {
-		return nil, err
-	}
+		ec, err := unmarshalECDSASHAVerifyingKeyV1(&ecvk)
+		if err != nil {
+			return nil, err
+		}
 
-	return &Verifier{ec}, nil
- */
+		return &Verifier{ec}, nil
+	*/
 	// FIX
 	return nil, nil
 }
@@ -724,7 +727,7 @@ func (v *Verifier) SignsForPrincipal(prin auth.Prin) bool {
 func FromX509(cert *x509.Certificate) (*Verifier, error) {
 	// ecpk, ok := cert.PublicKey.(*ecdsa.PublicKey)
 	// if !ok {
-		// return nil, errors.New("invalid key type in certificate: must be ECDSA")
+	// return nil, errors.New("invalid key type in certificate: must be ECDSA")
 	// }
 
 	// FIX: return &Verifier{ecpk}, nil
@@ -861,7 +864,7 @@ func (c *Crypter) CreateHeader() (*CryptoHeader, error) {
 	// FIX k := marshalAESCTRHMACSHACryptingKeyV1(c)
 	//b, err := proto.Marshal(k)
 	//if err != nil {
-		//return nil, err
+	//return nil, err
 	//}
 	var b []byte
 	defer ZeroBytes(b)

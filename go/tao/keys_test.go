@@ -66,31 +66,31 @@ func TestGenerateKeys(t *testing.T) {
 	var keyPurpose string
 	var keyStatus string
 
-	// "aes-128-raw"
+	// "aes128-raw"
 	keyName = "keyName1"
 	keyEpoch = 1
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey1 := GenerateCryptoKey("aes-128-raw", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey1 := GenerateCryptoKey("aes128-raw", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey1 == nil {
-		t.Fatal("Can't generate aes-128-raw key\n")
+		t.Fatal("Can't generate aes128-raw key\n")
 	}
-	fmt.Printf("Testing aes-128-raw generation\n")
+	fmt.Printf("Testing aes128-raw generation\n")
 	printKey(cryptoKey1)
 	fmt.Printf("\n")
 	m1 := MarshalCryptoKey(*cryptoKey1)
 	if m1 == nil {
-		t.Fatal("Can't MarshalCryptoKey aes-128-raw key\n")
+		t.Fatal("Can't MarshalCryptoKey aes128-raw key\n")
 	}
 	cryptoKey1_d, err := UnmarshalCryptoKey(m1)
 	if err != nil {
-		t.Fatal("Can't UnmarshalCryptoKey aes-128-raw key\n")
+		t.Fatal("Can't UnmarshalCryptoKey aes128-raw key\n")
 	}
 	printKey(cryptoKey1_d)
 	fmt.Printf("\n")
 	crypter, err := aes.NewCipher(cryptoKey1_d.KeyComponents[0])
 	if err != nil {
-		t.Fatal("Can't create aes-128 encrypter\n")
+		t.Fatal("Can't create aes128 encrypter\n")
 	}
 	plain := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	fmt.Printf("aes key size %d, key: %x, plain size %d, BlockSize: %d\n", len(cryptoKey1_d.KeyComponents[0]),
@@ -100,37 +100,37 @@ func TestGenerateKeys(t *testing.T) {
 	crypter.Encrypt(encrypted, plain)
 	crypter.Decrypt(decrypted, encrypted)
 	if !bytes.Equal(plain, decrypted) {
-		t.Fatal("aes-128-raw plain and decrypted dont match\n")
+		t.Fatal("aes128-raw plain and decrypted dont match\n")
 	} else {
 		fmt.Printf("Encryption works, encrypted: %x\n", encrypted)
 	}
 	fmt.Printf("\n")
 
-	// "aes-256-raw"
+	// "aes256-raw"
 	keyName = "keyName2"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey2 := GenerateCryptoKey("aes-256-raw", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey2 := GenerateCryptoKey("aes256-raw", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey2 == nil {
-		t.Fatal("Can't generate aes-256-raw key\n")
+		t.Fatal("Can't generate aes256-raw key\n")
 	}
-	fmt.Printf("Testing aes-256-raw generation\n")
+	fmt.Printf("Testing aes256-raw generation\n")
 	printKey(cryptoKey2)
 	fmt.Printf("\n")
 	m2 := MarshalCryptoKey(*cryptoKey2)
 	if m2 == nil {
-		t.Fatal("Can't MarshalCryptoKey aes-256-raw key\n")
+		t.Fatal("Can't MarshalCryptoKey aes256-raw key\n")
 	}
 	cryptoKey2_d, err := UnmarshalCryptoKey(m2)
 	if err != nil {
-		t.Fatal("Can't UnmarshalCryptoKey aes-256-raw key\n")
+		t.Fatal("Can't UnmarshalCryptoKey aes256-raw key\n")
 	}
 	printKey(cryptoKey2_d)
 	fmt.Printf("\n")
 	crypter2, err := aes.NewCipher(cryptoKey2_d.KeyComponents[0])
 	if err != nil {
-		t.Fatal("Can't create aes-256 encrypter\n")
+		t.Fatal("Can't create aes256 encrypter\n")
 	}
 	plain2 := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	fmt.Printf("aes key size %d, key: %x, plain size %d, BlockSize: %d\n", len(cryptoKey2_d.KeyComponents[0]),
@@ -140,175 +140,175 @@ func TestGenerateKeys(t *testing.T) {
 	crypter2.Encrypt(encrypted2, plain2)
 	crypter2.Decrypt(decrypted2, encrypted2)
 	if !bytes.Equal(plain2, decrypted2) {
-		t.Fatal("aes-256-raw plain and decrypted dont match\n")
+		t.Fatal("aes256-raw plain and decrypted dont match\n")
 	} else {
 		fmt.Printf("Encryption works, encrypted: %x\n", encrypted2)
 	}
 	fmt.Printf("\n")
 
-	// "aes-128-ctr"
+	// "aes128-ctr"
 	keyName = "keyName3"
 	keyEpoch = 3
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey3 := GenerateCryptoKey("aes-128-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey3 := GenerateCryptoKey("aes128-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey1 == nil {
-		t.Fatal("Can't generate aes-128-ctr key\n")
+		t.Fatal("Can't generate aes128-ctr key\n")
 	}
-	fmt.Printf("Testing aes-128-ctr generation\n")
+	fmt.Printf("Testing aes128-ctr generation\n")
 	printKey(cryptoKey3)
 	fmt.Printf("\n")
 
-	// "aes-256-ctr"
+	// "aes256-ctr"
 	keyName = "keyName4"
 	keyEpoch = 4
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey4 := GenerateCryptoKey("aes-256-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey4 := GenerateCryptoKey("aes256-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey1 == nil {
-		t.Fatal("Can't generate aes-256-ctrkey\n")
+		t.Fatal("Can't generate aes256-ctr key\n")
 	}
-	fmt.Printf("Testing aes-256-ctr generation\n")
+	fmt.Printf("Testing aes256-ctr generation\n")
 	printKey(cryptoKey4)
 	fmt.Printf("\n")
 
-	// "aes-128-sha-256-cbc"
+	// "aes128-cbc-hmacsha256"
 	keyName = "keyName5"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey5 := GenerateCryptoKey("aes-128-sha-256-cbc", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey5 := GenerateCryptoKey("aes128-cbc-hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey5 == nil {
-		t.Fatal("Can't generate aes-128-sha-256-cbc key\n")
+		t.Fatal("Can't generate aes128-cbc-hmacsha256 key\n")
 	}
-	fmt.Printf("Testing aes-128-sha-256-cbc generation\n")
+	fmt.Printf("Testing aes128-cbc-hmacsha256 generation\n")
 	printKey(cryptoKey5)
 	fmt.Printf("\n")
 
-	// "aes-256-sha-384-cbc"
+	// "aes256-sha384-cbc"
 	keyName = "keyName6"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey6 := GenerateCryptoKey("aes-256-sha-384-cbc", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey6 := GenerateCryptoKey("aes256-cbc-hmacsha384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey6 == nil {
-		t.Fatal("Can't generate key\n")
+		t.Fatal("Can't generate aes256-cbc-hmacsha384 key\n")
 	}
-	fmt.Printf("Testing aes-256-sha-384-cbc generation\n")
+	fmt.Printf("Testing aes256-cbc-hmacsha384 generation\n")
 	printKey(cryptoKey6)
 	fmt.Printf("\n")
 
-	// "sha-256-hmac"
+	// "hmacsha256"
 	keyName = "keyName7"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey7 := GenerateCryptoKey("sha-256-hmac", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey7 := GenerateCryptoKey("hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey7 == nil {
-		t.Fatal("Can't sha-256-hmac key\n")
+		t.Fatal("Can't hmacsha256 key\n")
 	}
-	fmt.Printf("Testing sha-256-hmac generation\n")
+	fmt.Printf("Testing hmacsha256 generation\n")
 	printKey(cryptoKey7)
 	fmt.Printf("\n")
 
-	// "sha-384-hmac"
+	// "hmacsha384"
 	keyName = "keyName8"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey8 := GenerateCryptoKey("sha-384-hmac", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey8 := GenerateCryptoKey("hmacsha384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey1 == nil {
-		t.Fatal("Can't generate sha-384-hmac key\n")
+		t.Fatal("Can't generate hmacsha384 key\n")
 	}
-	fmt.Printf("Testing sha-384-hmac generation\n")
+	fmt.Printf("Testing hmacsha384 generation\n")
 	printKey(cryptoKey8)
 	fmt.Printf("\n")
 
-	// "sha-512-hmac"
+	// "hmacsha512"
 	keyName = "keyName9"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey9 := GenerateCryptoKey("sha-512-hmac", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey9 := GenerateCryptoKey("hmacsha512", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey1 == nil {
-		t.Fatal("Can't generate sha-512-hmac key\n")
+		t.Fatal("Can't generate hmacsha512 key\n")
 	}
-	fmt.Printf("Testing sha-512-hmac generation\n")
+	fmt.Printf("Testing hmacsha512 generation\n")
 	printKey(cryptoKey9)
 	fmt.Printf("\n")
 
-	// "rsa-1024"
+	// "rsa1024"
 	keyName = "keyName10"
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
-	cryptoKey10 := GenerateCryptoKey("rsa-1024", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey10 := GenerateCryptoKey("rsa1024", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey1 == nil {
-		t.Fatal("Can't generate rsa-1024 key\n")
+		t.Fatal("Can't generate rsa1024 key\n")
 	}
-	fmt.Printf("Testing rsa-1024 generation\n")
+	fmt.Printf("Testing rsa1024 generation\n")
 	printKey(cryptoKey10)
 	fmt.Printf("\n")
 	m10 := MarshalCryptoKey(*cryptoKey10)
 	if m10 == nil {
-		t.Fatal("Can't MarshalCryptoKey rsa-1024 key\n")
+		t.Fatal("Can't MarshalCryptoKey rsa1024 key\n")
 	}
 	cryptoKey10_d, err := UnmarshalCryptoKey(m10)
 	if err != nil {
-		t.Fatal("Can't UnmarshalCryptoKey rsa-1024 key\n")
+		t.Fatal("Can't UnmarshalCryptoKey rsa1024 key\n")
 	}
 	printKey(cryptoKey10_d)
 	fmt.Printf("\n")
 
-	// "rsa-2048"
+	// "rsa2048"
 	keyName = "keyName11"
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
-	cryptoKey11 := GenerateCryptoKey("rsa-2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey11 := GenerateCryptoKey("rsa2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey11 == nil {
-		t.Fatal("Can't generate rsa-2048 key\n")
+		t.Fatal("Can't generate rsa2048 key\n")
 	}
-	fmt.Printf("Testing rsa-2048 generation\n")
+	fmt.Printf("Testing rsa2048 generation\n")
 	printKey(cryptoKey11)
 	fmt.Printf("\n")
 
-	// "rsa-3072"
+	// "rsa3072"
 	keyName = "keyName12"
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
-	cryptoKey12 := GenerateCryptoKey("rsa-3072", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey12 := GenerateCryptoKey("rsa3072", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey12 == nil {
-		t.Fatal("Can't generate rsa-3072 key\n")
+		t.Fatal("Can't generate rsa3072 key\n")
 	}
-	fmt.Printf("Testing rsa-3072 generation\n")
+	fmt.Printf("Testing rsa3072 generation\n")
 	printKey(cryptoKey12)
 	fmt.Printf("\n")
 
-	// "ecdsa-P256"
+	// "ecdsap256"
 	keyName = "keyName13"
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
-	cryptoKey13 := GenerateCryptoKey("ecdsa-P256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey13 := GenerateCryptoKey("ecdsap256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey13 == nil {
-		t.Fatal("Can't generate ecdsa-P256 key\n")
+		t.Fatal("Can't generate ecdsap256 key\n")
 	}
-	fmt.Printf("Testing ecdsa-P256 generation\n")
+	fmt.Printf("Testing ecdsap256 generation\n")
 	printKey(cryptoKey13)
 	fmt.Printf("\n")
 
-	// "ecdsa-P384"
+	// "ecdsap384"
 	keyName = "keyName14"
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
-	cryptoKey14 := GenerateCryptoKey("ecdsa-P384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey14 := GenerateCryptoKey("ecdsap384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey14 == nil {
-		t.Fatal("Can't generate ecdsa-P384 key\n")
+		t.Fatal("Can't generate ecdsap384 key\n")
 	}
-	fmt.Printf("Testing ecdsa-P384 generation\n")
+	fmt.Printf("Testing ecdsap384 generation\n")
 	printKey(cryptoKey14)
 	fmt.Printf("\n")
 }
@@ -319,11 +319,6 @@ func TestVerifierSerialization(t *testing.T) {
 
 func TestSignerToPublic(t *testing.T) {
 	// (s *Signer) GetVerifierFromSigner() *Verifier
-}
-
-func TestCanonicalizeKeyBytes(t *testing.T) {
-	// func (v *Verifier) CanonicalKeyBytesFromVerifier() []byte
-	// func (s *Signer) CanonicalKeyBytesFromSigner() []byte {
 }
 
 func TestSignerVerifierDERSerialization(t *testing.T) {
@@ -353,9 +348,9 @@ func TestSignAndVerify(t *testing.T) {
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
-	cryptoKey1 := GenerateCryptoKey("rsa-2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey1 := GenerateCryptoKey("rsa2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey1 == nil {
-		t.Fatal("Can't generate rsa-2048 key\n")
+		t.Fatal("Can't generate rsa2048 key\n")
 	}
 	printKey(cryptoKey1)
 
@@ -410,7 +405,7 @@ func TestCerts(t *testing.T) {
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
 	keyStatus := "active"
-	signingKey := GenerateCryptoKey("ecdsa-P256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	signingKey := GenerateCryptoKey("ecdsap256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if signingKey == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
@@ -451,7 +446,7 @@ func TestCanonicalBytes(t *testing.T) {
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
 	keyStatus := "active"
-	signingKey := GenerateCryptoKey("ecdsa-P256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	signingKey := GenerateCryptoKey("ecdsap256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if signingKey == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
@@ -479,7 +474,7 @@ func TestNewCrypter(t *testing.T) {
 	keyEpoch := int32(1)
 	keyPurpose := "crypting"
 	keyStatus := "active"
-	cryptingKey := GenerateCryptoKey("aes-128-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptingKey := GenerateCryptoKey("aes128-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptingKey == nil {
 		t.Fatal("Can't generate signing key\n")
 	}

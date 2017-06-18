@@ -26,16 +26,17 @@ enum CryptoVersion {
 // key_name, key_epoch, key_type, key_purpose, key_status (all strings).
 // key_epoch is monotonically increasing integer
 // key_status: "primary," "pre-primary", "post-primary," "inactive," "revoked"
-// key_type: "aes-128-raw", "aes-256-raw",
+// key_types:
+//	"aes-128-raw", "aes-256-raw",
 //	"aes128-ctr", "aes256-ctr", 
-//	"aes128-ctr-sha256hmac", "aes256-ctr-sha256hmac", 
+//	"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", 
 //	"aes128-gcm", "aes256-gcm", 
-//	"aes128-cbc-sha256mac", "aes256-cbc-sha384hmac", 
-//	"sha256hmac", "sha384hmac", "sha512hmac",
+//	"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384", 
+//	"hmacsha256", "hmacsha384", "hmacsha512",
 //	"rsa1024", "rsa2048", "rsa3072"
-//	"ecdsaP256", "ecdsaP384"
+//	"ecdsap256", "ecdsap384"
 //	"rsa1024public", "rsa2048public", "rsa3072public"
-//	"ecdsaP256public", "ecdsaP384public"
+//	"ecdsap256public", "ecdsap384public"
 //	"hdkf-sha256
 // key_purpose: "verifying", "signing", "crypting", "deriving", "sealing"
 message CryptoHeader {

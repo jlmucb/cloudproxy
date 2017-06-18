@@ -148,14 +148,14 @@ func DeserializeEcdsaPublicComponents(keyBytes []byte) (crypto.PrivateKey, error
 
 func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
 	switch *k.KeyHeader.KeyType {
-	case "rsa-1024", "rsa-2048", "rsa-3072":
+	case "rsa1024", "rsa2048", "rsa3072":
 		rsaKey := new(rsa.PrivateKey)
 		err := DeserializeRsaPrivateComponents(k.KeyComponents, rsaKey)
 		if err != nil {
 			return nil, errors.New("Can't DeserializeRsaPrivateComponents")
 		}
 		return crypto.PrivateKey(rsaKey), nil
-	case "ecdsa-P256", "ecdsa-P384":
+	case "ecdsap256", "ecdsap384":
 		ecKey, err := DeserializeEcdsaPrivateComponents(k.KeyComponents[0])
 		if err != nil {
 			return nil, errors.New("Can't DeserializeEcdsaPrivateComponents")
@@ -169,17 +169,17 @@ func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
 func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
 	var publicKey crypto.PublicKey
 	switch *k.KeyHeader.KeyType {
-	case "rsa-1024-public":
-	case "rsa-2048-public":
-	case "rsa-3072-public":
+	case "rsa1024-public":
+	case "rsa2048-public":
+	case "rsa3072-public":
 		rsaKey := new(rsa.PublicKey)
 		err := DeserializeRsaPublicComponents(rsaKey, k.KeyComponents)
 		if err != nil {
 			return nil, errors.New("Can't DeserializeRsaPublicComponents")
 		}
 		publicKey = crypto.PublicKey(rsaKey)
-	case "ecdsa-P256-public":
-	case "ecdsa-P384-public":
+	case "ecdsap256-public":
+	case "ecdsap384-public":
 		ecKey, err := DeserializeEcdsaPublicComponents(k.KeyComponents[0])
 		if err != nil {
 			return nil, errors.New("Can't DeserializeEcdsaPublicComponents")
@@ -194,19 +194,19 @@ func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
 func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) *CryptoKey {
 	cryptoKey := new(CryptoKey)
 	switch keyType {
-	case "aes-128-raw":
+	case "aes128-raw":
 		keyBuf, err := randBytes(16)
 		if err != nil {
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-	case "aes-256-raw":
+	case "aes256-raw":
 		keyBuf, err := randBytes(32)
 		if err != nil {
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-	case "aes-128-ctr":
+	case "aes128-ctr":
 		keyBuf, err := randBytes(16)
 		if err != nil {
 			return nil
@@ -217,7 +217,7 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
-	case "aes-256-ctr":
+	case "aes256-ctr":
 		keyBuf, err := randBytes(32)
 		if err != nil {
 			return nil
@@ -228,7 +228,39 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
-	case "aes-128-sha-256-cbc":
+		hmacBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+	case "aes128-ctr-hmac256":
+		keyBuf, err := randBytes(16)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		ivBuf, err := randBytes(16)
+		if err != nil {
+			return nil
+		}
+		hmacBuf, err := randBytes(48)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
+	case "aes256-ctr-hmac384":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		ivBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
+	case "aes128-cbc-hmacsha256":
 		keyBuf, err := randBytes(16)
 		if err != nil {
 			return nil
@@ -239,7 +271,7 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
-	case "aes-256-sha-384-cbc":
+	case "aes256-cbc-hmacsha384":
 		keyBuf, err := randBytes(32)
 		if err != nil {
 			return nil
@@ -250,25 +282,25 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
-	case "sha-256-hmac":
+	case "hmacsha256":
 		keyBuf, err := randBytes(32)
 		if err != nil {
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-	case "sha-384-hmac":
+	case "hmacsha384":
 		keyBuf, err := randBytes(48)
 		if err != nil {
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-	case "sha-512-hmac":
+	case "hmacsha512":
 		keyBuf, err := randBytes(64)
 		if err != nil {
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-	case "rsa-1024":
+	case "rsa1024":
 		rsaKey, err := rsa.GenerateKey(rand.Reader, 1024)
 		if err != nil {
 			return nil
@@ -281,7 +313,7 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		for i := 0; i < len(keyComponents); i++ {
 			cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponents[i])
 		}
-	case "rsa-2048":
+	case "rsa2048":
 		rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			return nil
@@ -293,7 +325,7 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		for i := 0; i < len(keyComponents); i++ {
 			cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponents[i])
 		}
-	case "rsa-3072":
+	case "rsa3072":
 		rsaKey, err := rsa.GenerateKey(rand.Reader, 3072)
 		if err != nil {
 			return nil
@@ -305,7 +337,7 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		for i := 0; i < len(keyComponents); i++ {
 			cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponents[i])
 		}
-	case "ecdsa-P256":
+	case "ecdsap256":
 		ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			return nil
@@ -315,7 +347,7 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
-	case "ecdsa-P384":
+	case "ecdsap384":
 		ecKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 		if err != nil {
 			return nil
@@ -325,6 +357,12 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
+	case "hdkf-sha256":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
 	default:
 		return nil
 	}
@@ -422,11 +460,14 @@ func CrypterFromCryptoKey(k CryptoKey) *Crypter {
 		header: k.KeyHeader,
 	}
 	switch *k.KeyHeader.KeyType {
-	case "aes-128-ctr", "aes-256-ctr":
+	case "aes128-ctr", "aes256-ctr":
 		c.encryptingKeyBytes = k.KeyComponents[0]
-	case "aes-128-gcm", "aes-256-gcm", "aes-128-sha-256-cbc", "aes-256-sha-384-cbc",
-		"sha-256-hmac", "sha-384-hmac", "sha-512-hmac":
+	case "aes128-gcm", "aes256-gcm", 
+			"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384",
+			"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384":
 		c.encryptingKeyBytes = k.KeyComponents[0]
+		c.hmacKeyBytes = k.KeyComponents[1]
+	case "hmacsha256", "hmacsha384", "hmacsha512":
 		c.hmacKeyBytes = k.KeyComponents[1]
 	default:
 		return nil
@@ -445,9 +486,9 @@ func DeriverFromCryptoKey(k CryptoKey) *Deriver {
 func (s *Signer) GetVerifierFromSigner() *Verifier {
 	var pub crypto.PublicKey
 	switch *s.header.KeyType {
-	case "rsa-1024", "rsa-2048", "rsa-3072":
+	case "rsa1024", "rsa2048", "rsa3072":
 		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
-	case "ecdsa-P256", "ecdsa-P384":
+	case "ecdsap256", "ecdsap384":
 		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil
@@ -546,9 +587,9 @@ func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix
 	}
 	var pub interface{}
 	switch *s.header.KeyType {
-	case "rsa-1024", "rsa-2048", "rsa-3072":
+	case "rsa1024", "rsa2048", "rsa3072":
 		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
-	case "ecdsa-P256", "ecdsa-P384":
+	case "ecdsap256", "ecdsap384":
 		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")
@@ -573,9 +614,9 @@ func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64, name *pki
 	}
 	var pub interface{}
 	switch *s.header.KeyType {
-	case "rsa-1024", "rsa-2048", "rsa-3072":
+	case "rsa1024", "rsa2048", "rsa3072":
 		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
-	case "ecdsa-P256", "ecdsa-P384":
+	case "ecdsap256", "ecdsap384":
 		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")

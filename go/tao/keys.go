@@ -28,7 +28,7 @@ import (
 	"crypto/sha512"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	// "encoding/asn1"
+	"encoding/asn1"
 
 	"errors"
 	"math/big"
@@ -664,16 +664,25 @@ func (d *Deriver) Derive(salt, context, material []byte) error {
 	return nil
 }
 
+// An ecdsaSignature wraps the two components of the signature from an ECDSA
+// private key. This is copied from the Go crypto/x509 source: it just uses a
+// simple two-element structure to marshal a DSA signature as ASN.1 in an X.509
+// certificate.
+type ecdsaSignature struct {
+	R, S *big.Int
+}
+
 // Sign computes a sigature over the contextualized data, using the
 // private key of the signer.
 func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
-	/*
-	switch(d.header.KeyType) {
-	default:
-		return nil, errors.New("Unsupported crypting algorithm")
-	}
-	*/
-	ch, err := s.CreateHeader()
+
+	var sig []byte
+
+	newKeyType := *s.header.KeyType + "-public"
+	newHeader := *s.header
+	newHeader.KeyType = &newKeyType
+	
+	b, err := contextualizedSHA256(&newHeader, data, context, sha256.Size)
 	if err != nil {
 		return nil, err
 	}
@@ -681,107 +690,89 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	// TODO(tmroeder): for compatibility with the C++ version, we should
 	// compute ECDSA signatures over hashes truncated to fit in the ECDSA
 	// signature.
-	// FIX
-	// b, err := contextualizedSHA256(ch, data, context, sha256.Size)
-	// if err != nil {
-	// return nil, err
-	// }
-
-	// FIX R, S, err := ecdsa.Sign(rand.Reader, s.ec, b)
-	// R, S, err := ecdsa.Sign(rand.Reader, nil, b)
-	// if err != nil {
-	// return nil, err
-	// }
-
-	// FIX m, err := asn1.Marshal(ecdsaSignature{R, S})
-	var m []byte
-	if err != nil {
-		return nil, err
+	switch(*s.header.KeyType) {
+	case "ecdsap256", "ecdsap384":
+		R, S, err := ecdsa.Sign(rand.Reader, s.privateKey.(*ecdsa.PrivateKey), b)
+		if err != nil {
+			return nil, err
+		}
+		sig, err = asn1.Marshal(ecdsaSignature{R, S})
+		if err != nil {
+			return nil, err
+		}
+	case "rsa1024", "rsa2048", "rsa3072":
+		return nil, errors.New("Unsupported rsa signing algorithm")
+	default:
+		return nil, errors.New("Unsupported signing algorithm")
 	}
 
 	sd := &SignedData{
-		Header:    ch,
-		Signature: m,
+		Header:    &newHeader,
+		Signature: sig,
 	}
-
 	return proto.Marshal(sd)
 }
 
 // Verify checks a signature over the contextualized data, using the
 // public key of the verifier.
 func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
-	/*
-		// Deserialize the data and extract the CryptoHeader.
-		var sd SignedData
-		if err := proto.Unmarshal(sig, &sd); err != nil {
-			return false, err
-		}
+	// Deserialize the data and extract the CryptoHeader.
+	var sd SignedData
+	if err := proto.Unmarshal(sig, &sd); err != nil {
+		return false, err
+	}
+	if *v.header.KeyType != *sd.Header.KeyType {
+		return false, errors.New("Wrong signature algorithm") 
+	}
 
+	switch(*v.header.KeyType) {
+	case "ecdsap256", "ecdsap384":
 		var ecSig ecdsaSignature
 		// We ignore the first parameter, since we don't mind if there's more
 		// data after the signature.
 		if _, err := asn1.Unmarshal(sd.Signature, &ecSig); err != nil {
 			return false, err
 		}
-
 		b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
 		if err != nil {
 			return false, err
 		}
-
-		return ecdsa.Verify(v.ec, b, ecSig.R, ecSig.S), nil
-	*/
-	// FIX
-	return true, nil
+        	return ecdsa.Verify((v.publicKey).(*ecdsa.PublicKey), b, ecSig.R, ecSig.S), nil
+	case "rsa1024", "rsa2048", "rsa3072":
+		return false, errors.New("Unsupported rsa signing algorithm")
+	default:
+		return false, errors.New("Unsupported signing algorithm")
+	}
+	return false, nil
 }
 
 // MarshalKey serializes a Verifier.
 func (v *Verifier) MarshalKey() []byte {
-	// FIX
-	var data []byte
-	//ck := MarshalVerifierProto(v)
-
-	// proto.Marshal won't fail here since we fill all required fields of the
-	// message. Propagating impossible errors just leads to clutter later.
-	//data, _ := proto.Marshal(ck)
-
-	return data
+	var k CryptoKey
+	k.KeyHeader = v.header
+	keyComponent, err := SerializeEcdsaPublicComponents((v.publicKey).(*ecdsa.PublicKey))
+	if err != nil {
+	}
+	k.KeyComponents = append(k.KeyComponents, keyComponent)
+	return MarshalCryptoKey(k)
 }
 
 // UnmarshalKey deserializes a Verifier.
 func UnmarshalKey(material []byte) (*Verifier, error) {
-	/*
-		var ck CryptoKey
-		if err := proto.Unmarshal(material, &ck); err != nil {
-			return nil, err
-		}
-
-		if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-			return nil, newError("bad version")
-		}
-
-		if *ck.Purpose != CryptoKey_VERIFYING {
-			return nil, newError("bad purpose")
-		}
-
-		if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-			return nil, newError("bad algorithm")
-		}
-
-		var ecvk ECDSA_SHA_VerifyingKeyV1
-		if err := proto.Unmarshal(ck.Key, &ecvk); err != nil {
-			return nil, err
-		}
-
-		ec, err := unmarshalECDSASHAVerifyingKeyV1(&ecvk)
-		if err != nil {
-			return nil, err
-		}
-
-		return &Verifier{ec}, nil
-	*/
-	// FIX
-	return nil, nil
+	var k CryptoKey
+	err := proto.Unmarshal(material, &k)
+	if err != nil {
+		return nil, errors.New("Can't Unmarshal verifier")
+	}
+	// make sure its a verifying ecdsa key using sha
+	if *k.KeyHeader.KeyPurpose != "verifying" {
+		return nil, errors.New("Not a verifying key")
+	}
+	v := VerifierFromCryptoKey(k)
+	if v == nil {
+		return nil, errors.New("VerifierFromCryptoKey failed")
+	}
+	return v, nil
 }
 
 // SignsForPrincipal returns true when prin is (or is a subprincipal of) this verifier key.
@@ -791,13 +782,12 @@ func (v *Verifier) SignsForPrincipal(prin auth.Prin) bool {
 
 // FromX509 creates a Verifier from an X509 certificate.
 func FromX509(cert *x509.Certificate) (*Verifier, error) {
-	// ecpk, ok := cert.PublicKey.(*ecdsa.PublicKey)
-	// if !ok {
-	// return nil, errors.New("invalid key type in certificate: must be ECDSA")
-	// }
-
-	// FIX: return &Verifier{ecpk}, nil
-	return nil, nil
+	var h CryptoHeader
+	v := &Verifier {
+		header: &h,
+		publicKey: cert.PublicKey,
+	}
+	return v, nil
 }
 
 // Equals checks to see if the public key in the X.509 certificate matches the
@@ -817,12 +807,6 @@ func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
 // message.
 func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
 	// FIX return s, nil
-	return nil, nil
-}
-
-// CreateHeader fills in a header for this verifying key.
-func (v *Verifier) CreateHeaderFromVerifier() (*CryptoHeader, error) {
-	// FIX return ch, nil
 	return nil, nil
 }
 
@@ -1008,28 +992,4 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	default:
 		return nil, errors.New("Unsupported crypting algorithm")
 	}
-}
-
-func (c *Signer) CreateHeader() (*CryptoHeader, error) {
-	return nil, nil
-}
-
-// CreateHeader instantiates and fills in a header for this crypting key.
-func (c *Crypter) CreateHeader() (*CryptoHeader, error) {
-	// FIX k := marshalAESCTRHMACSHACryptingKeyV1(c)
-	//b, err := proto.Marshal(k)
-	//if err != nil {
-	//return nil, err
-	//}
-	var b []byte
-	defer ZeroBytes(b)
-
-	// h := sha1.Sum(b)
-	ch := &CryptoHeader{
-		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		// KeyHint: h[:4],
-	}
-
-	return ch, nil
-
 }

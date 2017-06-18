@@ -29,7 +29,6 @@ import (
 	"crypto/x509/pkix"
 	// "encoding/asn1"
 
-	//"fmt"
 	"errors"
 	"math/big"
 	"time"
@@ -363,14 +362,14 @@ func UnmarshalCryptoKey(bytes []byte) (*CryptoKey, error) {
 type Signer struct {
 	header *CryptoHeader
 
-	privateKey *crypto.PrivateKey
+	privateKey crypto.PrivateKey
 }
 
 // A Verifier is used to verify signatures.
 type Verifier struct {
 	header *CryptoHeader
 
-	publicKey *crypto.PublicKey
+	publicKey crypto.PublicKey
 }
 
 // A Crypter is used to encrypt and decrypt data.
@@ -398,23 +397,41 @@ func SignerFromCryptoKey(k CryptoKey) *Signer {
 	}
 	s := &Signer{
 		header:     k.KeyHeader,
-		privateKey: &privateKey,
+		privateKey: privateKey,
 	}
 	return s
 }
 
-func VerifierFromCryptoKey(key CryptoKey) *Verifier {
-	return nil
+func VerifierFromCryptoKey(k CryptoKey) *Verifier {
+	publicKey, err := PublicKeyFromCryptoKey(k)
+	if err != nil {
+		return nil
+	}
+	if k.KeyHeader.KeyType == nil {
+		return nil
+	}
+	v := &Verifier{
+		header:    k.KeyHeader,
+		publicKey: publicKey,
+	}
+	return v
 }
 
-func CrypterFromCryptoKey(key CryptoKey) *Crypter {
-	/*
-		switch(*key.KeyHeader.KeyType) {
-		case "rsa-1024", "rsa-2048", "rsa-3072":
-		default:
-		}
-	*/
-	return nil
+func CrypterFromCryptoKey(k CryptoKey) *Crypter {
+	c := &Crypter{
+		header: k.KeyHeader,
+	}
+	switch *k.KeyHeader.KeyType {
+	case "aes-128-ctr", "aes-256-ctr":
+		c.encryptingKeyBytes = k.KeyComponents[0]
+	case "aes-128-gcm", "aes-256-gcm", "aes-128-sha-256-cbc", "aes-256-sha-384-cbc",
+		"sha-256-hmac", "sha-384-hmac", "sha-512-hmac":
+		c.encryptingKeyBytes = k.KeyComponents[0]
+		c.hmacKeyBytes = k.KeyComponents[1]
+	default:
+		return nil
+	}
+	return c
 }
 
 func DeriverFromCryptoKey(key CryptoKey) *Deriver {
@@ -422,16 +439,12 @@ func DeriverFromCryptoKey(key CryptoKey) *Deriver {
 }
 
 func (s *Signer) GetVerifierFromSigner() *Verifier {
-	// s.key
-	// s.PrivateKey
-	var publicKey crypto.PublicKey
+	var pub crypto.PublicKey
 	switch *s.header.KeyType {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
-		priv := (*s.privateKey).(rsa.PrivateKey)
-		publicKey = crypto.PublicKey(priv.PublicKey)
+		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
 	case "ecdsa-P256", "ecdsa-P384":
-		priv := (*s.privateKey).(ecdsa.PrivateKey)
-		publicKey = priv.PublicKey
+		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil
 	}
@@ -445,16 +458,16 @@ func (s *Signer) GetVerifierFromSigner() *Verifier {
 	newHeader.KeyStatus = s.header.KeyStatus
 	v := &Verifier{
 		header:    &newHeader,
-		publicKey: &publicKey,
+		publicKey: pub,
 	}
 	return v
 }
 
-func (v *Verifier) GetVerifierPublicKey() *crypto.PublicKey {
+func (v *Verifier) GetVerifierPublicKey() crypto.PublicKey {
 	return v.publicKey
 }
 
-func (s *Signer) GetSignerPrivateKey() *crypto.PrivateKey {
+func (s *Signer) GetSignerPrivateKey() crypto.PrivateKey {
 	return s.privateKey
 }
 
@@ -530,13 +543,13 @@ func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix
 	var pub interface{}
 	switch *s.header.KeyType {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
-		pub = &(*s.privateKey).(*rsa.PrivateKey).PublicKey
+		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
 	case "ecdsa-P256", "ecdsa-P384":
-		pub = &(*s.privateKey).(*ecdsa.PrivateKey).PublicKey
+		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, *s.privateKey)
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, s.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -557,13 +570,13 @@ func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64, name *pki
 	var pub interface{}
 	switch *s.header.KeyType {
 	case "rsa-1024", "rsa-2048", "rsa-3072":
-		pub = &(*s.privateKey).(*rsa.PrivateKey).PublicKey
+		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
 	case "ecdsa-P256", "ecdsa-P384":
-		pub = &(*s.privateKey).(*ecdsa.PrivateKey).PublicKey
+		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, *s.privateKey)
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, s.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -784,6 +797,12 @@ func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLe
 // Encrypt encrypts plaintext into ciphertext and protects ciphertext integrity
 // with a MAC.
 func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
+	/*
+		switch(c.header.KeyType) {
+		default:
+			return nil, errors.New("Unsupported crypting algorithm")
+		}
+	*/
 	block, err := aes.NewCipher(c.encryptingKeyBytes)
 	if err != nil {
 		return nil, err

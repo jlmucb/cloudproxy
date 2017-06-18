@@ -405,19 +405,6 @@ func TestSignAndVerify(t *testing.T) {
 	*/
 }
 
-func TestNewCrypter(t *testing.T) {
-}
-
-func TestEncryptAndDecrypt(t *testing.T) {
-	// func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
-	// func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
-}
-
-func TestDeriveSecret(t *testing.T) {
-	// func (d *Deriver) Derive(salt, context, material []byte) error {
-
-}
-
 func TestCerts(t *testing.T) {
 	keyName := "keyName1"
 	keyEpoch := int32(1)
@@ -436,7 +423,7 @@ func TestCerts(t *testing.T) {
 
 	s := &Signer{
 		header:     signingKey.KeyHeader,
-		privateKey: &privateKey,
+		privateKey: privateKey,
 	}
 
 	details := &X509Details{
@@ -457,4 +444,73 @@ func TestCerts(t *testing.T) {
 		t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
 	}
 	fmt.Printf("Cert: %x\n", cert)
+}
+
+func TestCanonicalBytes(t *testing.T) {
+	keyName := "keyName1"
+	keyEpoch := int32(1)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	signingKey := GenerateCryptoKey("ecdsa-P256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if signingKey == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	printKey(signingKey)
+	fmt.Printf("\n")
+
+	privateKey, err := PrivateKeyFromCryptoKey(*signingKey)
+	if err != nil {
+		t.Fatal("PrivateKeyFromCryptoKey fails\n")
+	}
+
+	s := &Signer{
+		header:     signingKey.KeyHeader,
+		privateKey: privateKey,
+	}
+	cb, err := s.CanonicalKeyBytesFromSigner()
+	if err != nil {
+		t.Fatal("CanonicalKeyBytesFromSigner fails\n")
+	}
+	fmt.Printf("Canonical bytes: %x\n", cb)
+}
+
+func TestNewCrypter(t *testing.T) {
+	keyName := "keyName1"
+	keyEpoch := int32(1)
+	keyPurpose := "crypting"
+	keyStatus := "active"
+	cryptingKey := GenerateCryptoKey("aes-128-sha-256-cbc", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptingKey == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	printKey(cryptingKey)
+	fmt.Printf("\n")
+	c := CrypterFromCryptoKey(*cryptingKey)
+	if c == nil {
+		t.Fatal("CrypterFromCryptoKey fails\n")
+	}
+	plain := []byte{0, 1, 2, 3, 4, 5, 6, 7}
+	crypted, err := c.Encrypt(plain)
+	if err != nil {
+		t.Fatal("Crypter failed to encrypt\n")
+	}
+	fmt.Printf("Encrypted: %x\n", crypted)
+	decrypted, err := c.Decrypt(crypted)
+	if err != nil {
+		t.Fatal("Crypter failed to decrypt\n")
+	}
+	fmt.Printf("Decrypted: %x\n", decrypted)
+	if !bytes.Equal(plain, decrypted) {
+		t.Fatal("plain an decrypted bytes don't match\n")
+	}
+}
+
+func TestEncryptAndDecrypt(t *testing.T) {
+	// func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
+	// func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
+}
+
+func TestDeriveSecret(t *testing.T) {
+	// func (d *Deriver) Derive(salt, context, material []byte) error {
+
 }

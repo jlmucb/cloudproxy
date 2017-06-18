@@ -28,6 +28,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	// "encoding/asn1"
+
 	"errors"
 	"math/big"
 	"time"
@@ -67,14 +68,17 @@ func SerializeRsaPrivateComponents(rsaKey *rsa.PrivateKey) ([][]byte, error) {
 	if d == nil {
 		return keyComponents, nil
 	}
+	keyComponents = append(keyComponents, d.Bytes())
 	p := rsaKey.Primes[0]
 	if p == nil {
 		return keyComponents, nil
 	}
+	keyComponents = append(keyComponents, p.Bytes())
 	q := rsaKey.Primes[1]
 	if q == nil {
 		return keyComponents, nil
 	}
+	keyComponents = append(keyComponents, q.Bytes())
 	return keyComponents, nil
 }
 
@@ -96,8 +100,9 @@ func DeserializeRsaPrivateComponents(keyComponents [][]byte, rsaKey *rsa.Private
 	p.SetBytes(keyComponents[3])
 	q := new(big.Int)
 	q.SetBytes(keyComponents[4])
-	rsaKey.Primes = append(rsaKey.Primes, p)
-	rsaKey.Primes = append(rsaKey.Primes, q)
+	rsaKey.Primes = make([]*big.Int, 2)
+	rsaKey.Primes[0] = p
+	rsaKey.Primes[1] = q
 	return nil
 }
 
@@ -139,6 +144,51 @@ func SerializeEcdsaPublicComponents(ecKey *ecdsa.PublicKey) ([]byte, error) {
 
 func DeserializeEcdsaPublicComponents(keyBytes []byte) (crypto.PrivateKey, error) {
 	return x509.ParsePKIXPublicKey(keyBytes)
+}
+
+func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
+	switch(*k.KeyHeader.KeyType) {
+	case "rsa-1024", "rsa-2048", "rsa-3072":
+		rsaKey := new(rsa.PrivateKey)
+		err := DeserializeRsaPrivateComponents(k.KeyComponents, rsaKey)
+		if err != nil {
+			return nil, errors.New("Can't DeserializeRsaPrivateComponents")
+		}
+		return crypto.PrivateKey(rsaKey), nil
+	case "ecdsa-P256", "ecdsa-P384":
+		ecKey, err := DeserializeEcdsaPrivateComponents(k.KeyComponents[0])
+		if err != nil {
+			return nil, errors.New("Can't DeserializeEcdsaPrivateComponents")
+		}
+		return crypto.PrivateKey(ecKey), nil
+	default:
+	}
+	return nil, errors.New("Unsupported key type")
+}
+
+func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
+	var publicKey crypto.PublicKey
+	switch(*k.KeyHeader.KeyType) {
+	case "rsa-1024-public":
+	case  "rsa-2048-public":
+	case  "rsa-3072-public":
+		rsaKey := new(rsa.PublicKey)
+		err := DeserializeRsaPublicComponents(rsaKey, k.KeyComponents)
+		if err != nil {
+			return nil, errors.New("Can't DeserializeRsaPublicComponents")
+		}
+		publicKey = crypto.PublicKey(rsaKey)
+	case "ecdsa-P256-public":
+	case "ecdsa-P384-public":
+		ecKey, err := DeserializeEcdsaPublicComponents(k.KeyComponents[0])
+		if err != nil {
+			return nil, errors.New("Can't DeserializeEcdsaPublicComponents")
+		}
+		publicKey = crypto.PublicKey(ecKey)
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+	return publicKey, errors.New("Unsupported key type")
 }
 
 func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) *CryptoKey {
@@ -337,8 +387,19 @@ type Deriver struct {
 	secret []byte
 }
 
-func SignerFromCryptoKey(key CryptoKey) *Signer {
-	return nil
+func SignerFromCryptoKey(k CryptoKey) *Signer {
+	privateKey, err := PrivateKeyFromCryptoKey(k)
+	if err != nil {
+		return nil
+	}
+	if k.KeyHeader.KeyType == nil {
+		return nil
+	}
+	s := &Signer {
+		header: k.KeyHeader,
+		privateKey: &privateKey,
+	}
+	return s
 }
 
 func VerifierFromCryptoKey(key CryptoKey) *Verifier {
@@ -396,6 +457,7 @@ func (v *Verifier) CanonicalKeyBytesFromVerifier() ([]byte, error) {
 		return kr, err
 	}
 	// Now hash with type
+	// Note: not sure this is needed since we now use MarshalPKIXPublic
 	b := append([]byte(*v.header.KeyType), kr...)
 	h := sha256.Sum256(b)
 	return h[0:32], err

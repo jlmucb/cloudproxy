@@ -16,7 +16,11 @@ package tao
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/aes"
+	// "crypto/sha256"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"testing"
 
@@ -362,6 +366,54 @@ func TestCreateHeader(t *testing.T) {
 }
 
 func TestSignAndVerify(t *testing.T) {
+
+	var keyName string
+	var keyEpoch int32
+	var keyPurpose string
+	var keyStatus string
+
+	fmt.Printf("\n")
+	keyName = "TestRsa2048SignandVerify"
+	keyEpoch = 2
+	keyPurpose = "signing"
+	keyStatus = "primary"
+	cryptoKey1 := GenerateCryptoKey("rsa-2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey1 == nil {
+		t.Fatal("Can't generate rsa-2048 key\n")
+	}
+	printKey(cryptoKey1)
+
+	// save
+	privateKey, err := PrivateKeyFromCryptoKey(*cryptoKey1)
+	if err != nil {
+		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
+	}
+
+	mesg := []byte{1,2,3,4,5,6,7,8,9}
+	hash := crypto.SHA256
+	blk := hash.New()
+	blk.Write(mesg)
+	hashed := blk.Sum(nil)
+	fmt.Printf("Hashed: %x\n", hashed)
+
+	// sig, err := privateKey.(*rsa.PrivateKey).Sign(rand.Reader, hashed, opts)
+	sig, err := rsa.SignPKCS1v15(rand.Reader, privateKey.(*rsa.PrivateKey), crypto.SHA256, hashed[:])
+	if err != nil {
+		t.Fatal("privateKey signing fails\n")
+	}
+	fmt.Printf("Signature: %x\n", sig)
+
+	publicKey := privateKey.(*rsa.PrivateKey).PublicKey
+	if err != nil {
+		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
+	}
+	err = rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, hashed, sig)
+	if err != nil {
+		t.Fatal("Verify fails, ", err, "\n")
+	} else {
+		fmt.Printf("Verify succeeds\n")
+	}
+
 	//func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	// func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
 }

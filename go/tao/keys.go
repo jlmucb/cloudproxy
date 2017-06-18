@@ -25,6 +25,7 @@ import (
 	"crypto/rsa"
 	// "crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	// "encoding/asn1"
@@ -223,23 +224,24 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-		ivBuf, err := randBytes(32)
-		if err != nil {
-			return nil
-		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
 		hmacBuf, err := randBytes(32)
 		if err != nil {
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
-	case "aes128-ctr-hmac256":
+	case "aes128-ctr-hmacsha256":
 		keyBuf, err := randBytes(16)
 		if err != nil {
 			return nil
 		}
+		hmacBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-		ivBuf, err := randBytes(16)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+	case "aes256-ctr-hmacsha384":
+		keyBuf, err := randBytes(32)
 		if err != nil {
 			return nil
 		}
@@ -247,19 +249,19 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		if err != nil {
 			return nil
 		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
-	case "aes256-ctr-hmac384":
+	case "aes256-ctr-hmacsha512":
 		keyBuf, err := randBytes(32)
 		if err != nil {
 			return nil
 		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-		ivBuf, err := randBytes(32)
+		hmacBuf, err := randBytes(64)
 		if err != nil {
 			return nil
 		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
 	case "aes128-cbc-hmacsha256":
 		keyBuf, err := randBytes(16)
 		if err != nil {
@@ -463,7 +465,7 @@ func CrypterFromCryptoKey(k CryptoKey) *Crypter {
 	case "aes128-ctr", "aes256-ctr":
 		c.encryptingKeyBytes = k.KeyComponents[0]
 	case "aes128-gcm", "aes256-gcm", 
-			"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384",
+			"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512",
 			"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384":
 		c.encryptingKeyBytes = k.KeyComponents[0]
 		c.hmacKeyBytes = k.KeyComponents[1]
@@ -845,15 +847,8 @@ func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLe
 	return hash[:digestLen], nil
 }
 
-// Encrypt encrypts plaintext into ciphertext and protects ciphertext integrity
-// with a MAC.
-func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
-	/*
-	switch(c.header.KeyType) {
-	default:
-		return nil, errors.New("Unsupported crypting algorithm")
-	}
-	*/
+// Handles both aes128/sha256 and aes256/sha256
+func (c *Crypter) encryptAes128ctrHmacsha256(plain []byte) ([]byte, error) {
 	block, err := aes.NewCipher(c.encryptingKeyBytes)
 	if err != nil {
 		return nil, err
@@ -861,14 +856,14 @@ func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
 
 	// A ciphertext consists of an IV, encrypted bytes, and the output of
 	// HMAC-SHA256.
-	ciphertext := make([]byte, aes.BlockSize+len(data))
+	ciphertext := make([]byte, aes.BlockSize+len(plain))
 	iv := ciphertext[:aes.BlockSize]
 	if _, err := rand.Read(iv); err != nil {
 		return nil, err
 	}
 
 	s := cipher.NewCTR(block, iv)
-	s.XORKeyStream(ciphertext[aes.BlockSize:], data)
+	s.XORKeyStream(ciphertext[aes.BlockSize:], plain)
 
 	mac := hmac.New(sha256.New, c.hmacKeyBytes)
 	mac.Write(ciphertext)
@@ -884,21 +879,17 @@ func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
 	return proto.Marshal(ed)
 }
 
-// Decrypt checks the MAC then decrypts ciphertext into plaintext.
-func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
+// Handles both aes128/sha256 and aes256/sha256
+func (c *Crypter) decryptAes128ctrHmacsha256(ciphertext []byte) ([]byte, error) {
 	var ed EncryptedData
 	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
 		return nil, err
 	}
-
-	/*
-		switch(c.header.KeyType) {
-		default:
-			return nil, errors.New("Unsupported crypting algorithm")
-		}
-	*/
 	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		return nil, errors.New("bad version")
+	}
+	if *ed.Header.KeyType!= *c.header.KeyType {
+		return nil, errors.New("bad key type")
 	}
 
 	// Check the HMAC before touching the ciphertext.
@@ -919,9 +910,104 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	}
 
 	s := cipher.NewCTR(block, ed.Iv)
-	data := make([]byte, len(ed.Ciphertext))
-	s.XORKeyStream(data, ed.Ciphertext)
-	return data, nil
+	plain := make([]byte, len(ed.Ciphertext))
+	s.XORKeyStream(plain, ed.Ciphertext)
+	return plain, nil
+}
+
+func (c *Crypter) encryptAes256ctrHmacsha512(plain []byte) ([]byte, error) {
+	block, err := aes.NewCipher(c.encryptingKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// A ciphertext consists of an IV, encrypted bytes, and the output of
+	// HMAC-SHA512.
+	ciphertext := make([]byte, aes.BlockSize+len(plain))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := rand.Read(iv); err != nil {
+		return nil, err
+	}
+
+	s := cipher.NewCTR(block, iv)
+	s.XORKeyStream(ciphertext[aes.BlockSize:], plain)
+
+	mac := hmac.New(sha512.New, c.hmacKeyBytes)
+	mac.Write(ciphertext)
+	m := mac.Sum(nil)
+
+	ed := &EncryptedData{
+		Header:     c.header,
+		Iv:         iv,
+		Ciphertext: ciphertext[aes.BlockSize:],
+		Mac:        m,
+	}
+
+	return proto.Marshal(ed)
+}
+
+func (c *Crypter) decryptAes256ctrHmacsha512(ciphertext []byte) ([]byte, error) {
+	var ed EncryptedData
+	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
+		return nil, err
+	}
+	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
+		return nil, errors.New("bad version")
+	}
+	if *ed.Header.KeyType!= "aes256-ctr-hmacsha512" {
+		return nil, errors.New("bad key type")
+	}
+
+	// Check the HMAC before touching the ciphertext.
+	fullCiphertext := make([]byte, len(ed.Iv)+len(ed.Ciphertext))
+	copy(fullCiphertext, ed.Iv)
+	copy(fullCiphertext[len(ed.Iv):], ed.Ciphertext)
+
+	mac := hmac.New(sha512.New, c.hmacKeyBytes)
+	mac.Write(fullCiphertext)
+	m := mac.Sum(nil)
+	if !hmac.Equal(m, ed.Mac) {
+		return nil, errors.New("bad HMAC")
+	}
+
+	block, err := aes.NewCipher(c.encryptingKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	s := cipher.NewCTR(block, ed.Iv)
+	plain := make([]byte, len(ed.Ciphertext))
+	s.XORKeyStream(plain, ed.Ciphertext)
+	return plain, nil
+}
+
+// Encrypt encrypts plaintext into ciphertext with integrity
+// with a MAC.
+func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
+	switch(*c.header.KeyType) {
+	case "aes128-ctr-hmacsha256":
+		return c.encryptAes128ctrHmacsha256(plain)
+	case "aes256-ctr-hmacsha256":
+		return c.encryptAes128ctrHmacsha256(plain)
+	case "aes256-ctr-hmacsha512":
+		return c.encryptAes256ctrHmacsha512(plain)
+	default:
+		return nil, errors.New("Unsupported crypting algorithm")
+	}
+}
+
+// Decrypt checks the MAC then decrypts ciphertext into plaintext.
+func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
+	switch(*c.header.KeyType) {
+	case "aes128-ctr-hmacsha256":
+		return c.decryptAes128ctrHmacsha256(ciphertext)
+	case "aes256-ctr-hmacsha256":
+		return c.decryptAes128ctrHmacsha256(ciphertext)
+	case "aes256-ctr-hmacsha512":
+		return c.decryptAes256ctrHmacsha512(ciphertext)
+	default:
+		return nil, errors.New("Unsupported crypting algorithm")
+	}
 }
 
 func (c *Signer) CreateHeader() (*CryptoHeader, error) {

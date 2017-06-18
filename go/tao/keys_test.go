@@ -474,9 +474,9 @@ func TestNewCrypter(t *testing.T) {
 	keyEpoch := int32(1)
 	keyPurpose := "crypting"
 	keyStatus := "active"
-	cryptingKey := GenerateCryptoKey("aes128-ctr", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptingKey := GenerateCryptoKey("aes128-ctr-hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptingKey == nil {
-		t.Fatal("Can't generate signing key\n")
+		t.Fatal("Can't generate crypting key\n")
 	}
 	printKey(cryptingKey)
 	fmt.Printf("\n")

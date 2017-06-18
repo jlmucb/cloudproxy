@@ -31,7 +31,7 @@ enum CryptoVersion {
 //	"aes128-ctr", "aes256-ctr", 
 //	"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", 
 //	"aes128-gcm", "aes256-gcm", 
-//	"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384", 
+//	"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha256", "aes256-cbc-hmacsha512",
 //	"hmacsha256", "hmacsha384", "hmacsha512",
 //	"rsa1024", "rsa2048", "rsa3072"
 //	"ecdsap256", "ecdsap384"

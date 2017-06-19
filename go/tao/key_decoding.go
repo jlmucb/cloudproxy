@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tao;
+package tao
+
+func ptrFromString(str string) *string {
+	return &str
+}
 
 func CrypterTypeFromSuiteName(suiteName string) *string {
-	switch(suiteName) {
+	switch suiteName {
 	case Basic128BitCipherSuite:
-		return "aes128-ctr-hmacsha256"
+		return ptrFromString("aes128-ctr-hmacsha256")
 	case Basic256BitCipherSuite:
-		return "aes256-ctr-hmacsha384"
+		return ptrFromString("aes256-ctr-hmacsha384")
 	default:
 		return nil
 	}
@@ -27,11 +31,11 @@ func CrypterTypeFromSuiteName(suiteName string) *string {
 }
 
 func SignerTypeFromSuiteName(suiteName string) *string {
-	switch(suiteName) {
+	switch suiteName {
 	case Basic128BitCipherSuite:
-		return "ecdsap256"
+		return ptrFromString("ecdsap256")
 	case Basic256BitCipherSuite:
-		return "ecdsap384"
+		return ptrFromString("ecdsap384")
 	default:
 		return nil
 	}
@@ -39,9 +43,9 @@ func SignerTypeFromSuiteName(suiteName string) *string {
 }
 
 func DeriverTypeFromSuiteName(suiteName string) *string {
-	switch(suiteName) {
-	case Basic128BitCipherSuite, case Basic256BitCipherSuite:
-		return "hdkf-sha256"
+	switch suiteName {
+	case Basic128BitCipherSuite, Basic256BitCipherSuite:
+		return ptrFromString("hdkf-sha256")
 	default:
 		return nil
 	}
@@ -49,14 +53,13 @@ func DeriverTypeFromSuiteName(suiteName string) *string {
 }
 
 func HmacTypeFromSuiteName(suiteName string) *string {
-	switch(suiteName) {
+	switch suiteName {
 	case Basic128BitCipherSuite:
-		return "hmacsha256"
+		return ptrFromString("hmacsha256")
 	case Basic256BitCipherSuite:
-		return "hmacsha384"
+		return ptrFromString("hmacsha384")
 	default:
 		return nil
 	}
 	return nil
 }
-

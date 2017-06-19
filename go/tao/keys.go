@@ -192,6 +192,18 @@ func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
 	return publicKey, errors.New("Unsupported key type")
 }
 
+func ClearCryptoKey(k CryptoKey) {
+}
+
+func (s *Signer) Clear() {
+}
+
+func (c *Crypter) Clear() {
+}
+
+func (d *Deriver) Clear() {
+}
+
 func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) *CryptoKey {
 	cryptoKey := new(CryptoKey)
 	switch keyType {

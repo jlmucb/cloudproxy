@@ -15,10 +15,10 @@
 package tao
 
 import (
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	//"encoding/asn1"
 	"encoding/pem"
 	"errors"
@@ -34,19 +34,19 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-// -------------------------------------------------------------------
-
-// Temporary?
-
 // A KeyType represent the type(s) of keys held by a Keys struct.
 type KeyType int
 
 // These are the types of supported keys.
 const (
-        Signing KeyType = 1 << iota
-        Crypting
-        Deriving
+	Signing KeyType = 1 << iota
+	Crypting
+	Deriving
 )
+
+// -------------------------------------------------------------------
+
+// Temporary
 
 func GenerateSigner() (*Signer, error) {
 	return nil, nil
@@ -61,51 +61,51 @@ func GenerateDeriver() (*Deriver, error) {
 }
 
 func (s *Verifier) GetVerifier() *ecdsa.PublicKey {
-        return nil
+	return nil
 }
 
 type Tao interface {
-        // GetTaoName returns the Tao principal name assigned to the caller.
-        GetTaoName() (name auth.Prin, err error)
+	// GetTaoName returns the Tao principal name assigned to the caller.
+	GetTaoName() (name auth.Prin, err error)
 
-        // ExtendTaoName irreversibly extends the Tao principal name of the caller.
-        ExtendTaoName(subprin auth.SubPrin) error
+	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
+	ExtendTaoName(subprin auth.SubPrin) error
 
-        // GetRandomBytes returns a slice of n random bytes.
-        GetRandomBytes(n int) (bytes []byte, err error)
+	// GetRandomBytes returns a slice of n random bytes.
+	GetRandomBytes(n int) (bytes []byte, err error)
 
-        // Rand produces an io.Reader for random bytes from this Tao.
-        Rand() io.Reader
+	// Rand produces an io.Reader for random bytes from this Tao.
+	Rand() io.Reader
 
-        // GetSharedSecret returns a slice of n secret bytes.
-        GetSharedSecret(n int, policy string) (bytes []byte, err error)
+	// GetSharedSecret returns a slice of n secret bytes.
+	GetSharedSecret(n int, policy string) (bytes []byte, err error)
 
-        // Attest requests the Tao host sign a statement on behalf of the caller. The
-        // optional issuer, time and expiration will be given default values if nil.
-        // TODO(kwalsh) Maybe create a struct for these optional params? Or use
-        // auth.Says instead (in which time and expiration are optional) with a
+	// Attest requests the Tao host sign a statement on behalf of the caller. The
+	// optional issuer, time and expiration will be given default values if nil.
+	// TODO(kwalsh) Maybe create a struct for these optional params? Or use
+	// auth.Says instead (in which time and expiration are optional) with a
 
-       Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error)
+	Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error)
 
-        // Seal encrypts data so only certain hosted programs can unseal it.
-        Seal(data []byte, policy string) (sealed []byte, err error)
+	// Seal encrypts data so only certain hosted programs can unseal it.
+	Seal(data []byte, policy string) (sealed []byte, err error)
 
-        // Unseal decrypts data that has been sealed by the Seal() operation, but only
-        // if the policy specified during the Seal() operation is satisfied.
-        Unseal(sealed []byte) (data []byte, policy string, err error)
+	// Unseal decrypts data that has been sealed by the Seal() operation, but only
+	// if the policy specified during the Seal() operation is satisfied.
+	Unseal(sealed []byte) (data []byte, policy string, err error)
 
-        // InitCounter initializes a counter with given label.
-        InitCounter(label string, c int64) error
+	// InitCounter initializes a counter with given label.
+	InitCounter(label string, c int64) error
 
-        // GetCounter retrieves a counter with given label.
-        GetCounter(label string) (int64, error)
+	// GetCounter retrieves a counter with given label.
+	GetCounter(label string) (int64, error)
 
-        // RollbackProtectedSeal encrypts data under rollback protection
-        // so only certain hosted programs can unseal it.
-        RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error)
+	// RollbackProtectedSeal encrypts data under rollback protection
+	// so only certain hosted programs can unseal it.
+	RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error)
 
-        // RollbackProtectedUnseal decrypts data under rollback protection.
-        RollbackProtectedUnseal(sealed []byte) ([]byte, string, error)
+	// RollbackProtectedUnseal decrypts data under rollback protection.
+	RollbackProtectedUnseal(sealed []byte) ([]byte, string, error)
 }
 
 func UnmarshalSignerDER(signer []byte) (*Signer, error) {
@@ -116,18 +116,132 @@ func MarshalSignerDER(s *Signer) ([]byte, error) {
 	return nil, nil
 }
 
-
-
 // -------------------------------------------------------------------
 
+// Generate or restore a signer.
+// InitializeSigner uses marshaledCryptoKey to restore a signer from
+// a serialized CryptoKey if it's not nil; otherwise it generates one.
+// If generated, the remainder of the arguments are used as parameters;
+// otherwise they are ignored.
+func InitializeSigner(marshaledCryptoKey []byte, keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) (*Signer, error) {
+	if marshaledCryptoKey != nil {
+		k, err := UnmarshalCryptoKey(marshaledCryptoKey)
+		if err != nil {
+			return nil, errors.New("Can't UnmarshalCryptoKey")
+		}
+		s := SignerFromCryptoKey(*k)
+		if s == nil {
+			ClearCryptoKey(*k)
+			return nil, errors.New("Can't SignerFromCryptoKey")
+		}
+		if s.header.KeyPurpose == nil || *s.header.KeyPurpose != "signing" {
+			ClearCryptoKey(*k)
+			s.Clear()
+			return nil, errors.New("Recovered key not a signer")
+		}
+	}
+	k := GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
+	if k == nil {
+		return nil, errors.New("Can't GenerateCryptoKey")
+	}
+	s := SignerFromCryptoKey(*k)
+	if s == nil {
+		ClearCryptoKey(*k)
+		return nil, errors.New("Can't SignerFromCryptoKey")
+	}
+	if s.header.KeyPurpose == nil || *s.header.KeyPurpose != "signing" {
+		ClearCryptoKey(*k)
+		s.Clear()
+		return nil, errors.New("Recovered key not a signer")
+	}
+	return s, nil
+}
+
+// Generate or restore a crypter.
+// InitializeCrypter uses marshaledCryptoKey to restore a signer from
+// a serialized CryptoKey if it's not nil; otherwise it generates one.
+// If generated, the remainder of the arguments are used as parameters;
+// otherwise they are ignored.
+func InitializeCrypter(marshaledCryptoKey []byte, keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) (*Crypter, error) {
+	if marshaledCryptoKey != nil {
+		k, err := UnmarshalCryptoKey(marshaledCryptoKey)
+		if err != nil {
+			return nil, errors.New("Can't UnmarshalCryptoKey")
+		}
+		c := CrypterFromCryptoKey(*k)
+		if c == nil {
+			ClearCryptoKey(*k)
+			return nil, errors.New("Can't CrypterFromCryptoKey")
+		}
+		if c.header.KeyPurpose == nil || *c.header.KeyPurpose != "crypting" {
+			ClearCryptoKey(*k)
+			c.Clear()
+			return nil, errors.New("Recovered key not a crypter")
+		}
+	}
+	k := GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
+	if k == nil {
+		return nil, errors.New("Can't GenerateCryptoKey")
+	}
+	c := CrypterFromCryptoKey(*k)
+	if c == nil {
+		ClearCryptoKey(*k)
+		return nil, errors.New("Can't CrypterFromCryptoKey")
+	}
+	if c.header.KeyPurpose == nil || *c.header.KeyPurpose != "crypting" {
+		ClearCryptoKey(*k)
+		c.Clear()
+		return nil, errors.New("Recovered key not a crypter")
+	}
+	return c, nil
+}
+
+// Generate or restore a deriver.
+// InitializeDeriver uses marshaledCryptoKey to restore a signer from
+// a serialized CryptoKey if it's not nil; otherwise it generates one.
+// If generated, the remainder of the arguments are used as parameters;
+// otherwise they are ignored.
+func InitializeDeriver(marshaledCryptoKey []byte, keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) (*Deriver, error) {
+	if marshaledCryptoKey != nil {
+		k, err := UnmarshalCryptoKey(marshaledCryptoKey)
+		if err != nil {
+			return nil, errors.New("Can't UnmarshalCryptoKey")
+		}
+		d := DeriverFromCryptoKey(*k)
+		if d == nil {
+			ClearCryptoKey(*k)
+			return nil, errors.New("Can't DeriverFromCryptoKey")
+		}
+		if d.header.KeyPurpose == nil || *d.header.KeyPurpose != "deriving" {
+			ClearCryptoKey(*k)
+			return nil, errors.New("Recovered key not a deriver")
+		}
+	}
+	k := GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
+	if k == nil {
+		return nil, errors.New("Can't GenerateCryptoKey")
+	}
+	d := DeriverFromCryptoKey(*k)
+	if d == nil {
+		ClearCryptoKey(*k)
+		return nil, errors.New("Can't DeriverFromCryptoKey")
+	}
+	if d.header.KeyPurpose == nil || *d.header.KeyPurpose != "deriving" {
+		ClearCryptoKey(*k)
+		d.Clear()
+		return nil, errors.New("Recovered key not a deriver")
+	}
+	return d, nil
+}
 
 // A Keys manages a set of signing, verifying, encrypting, and key-deriving
 // keys.
 type Keys struct {
-	dir     string
-	policy  string
-	key	CryptoKey
-	keyTypes KeyType	// Temporary?
+	dir    string
+	policy string
+
+	// Key types in this structure
+	keyTypes KeyType
 
 	SigningKey   *Signer
 	CryptingKey  *Crypter
@@ -202,7 +316,12 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 
 	var err error
 	if k.keyTypes&Signing == Signing {
-		k.SigningKey, err = GenerateSigner()
+		keyName := "Temporary_Keys_signer"
+		keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+		keyPurpose := "signing"
+		keyStatus := "active"
+		keyEpoch := int32(1)
+		k.SigningKey, err = InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 		if err != nil {
 			return nil, err
 		}
@@ -211,14 +330,24 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 	}
 
 	if k.keyTypes&Crypting == Crypting {
-		k.CryptingKey, err = GenerateCrypter()
+		keyName := "Temporary_Keys_crypter"
+		keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+		keyPurpose := "crypting"
+		keyStatus := "active"
+		keyEpoch := int32(1)
+		k.CryptingKey, err = InitializeCrypter(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if k.keyTypes&Deriving == Deriving {
-		k.DerivingKey, err = GenerateDeriver()
+		keyName := "Temporary_Keys_deriver"
+		keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+		keyPurpose := "deriving"
+		keyStatus := "active"
+		keyEpoch := int32(1)
+		k.DerivingKey, err = InitializeDeriver(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 		if err != nil {
 			return nil, err
 		}
@@ -251,19 +380,19 @@ func NewSignedOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name
 	// If there's already a cert, then this means that there was already a
 	// keyset on disk, so don't create a new signed certificate.
 	if k.Cert == nil {
-/*
- *	FIX
- *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
- *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		k.Cert, err = signer.SigningKey.CreateSignedX509(signer.Cert, serial, k.VerifyingKey, name)
-		if err != nil {
-			return nil, err
-		}
+		/*
+		    *	FIX
+		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
+		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
+		   		k.Cert, err = signer.SigningKey.CreateSignedX509(signer.Cert, serial, k.VerifyingKey, name)
+		   		if err != nil {
+		   			return nil, err
+		   		}
 
-		if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
-			return nil, err
-		}
- */
+		   		if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+		   			return nil, err
+		   		}
+		*/
 	}
 
 	return k, nil
@@ -459,19 +588,19 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 }
 
 func (k *Keys) newCert(name *pkix.Name) (err error) {
-/*
- *	FIX
- *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
- *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
+	/*
+	    *	FIX
+	    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
+	    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
 
-	k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
-	if err != nil {
-		return err
-	}
-	if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
-		return err
-	}
- */
+	   	k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
+	   	if err != nil {
+	   		return err
+	   	}
+	   	if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+	   		return err
+	   	}
+	*/
 	return nil
 }
 
@@ -529,43 +658,42 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 		return nil, newError("null or empty password")
 	}
 
-	pbed := &PBEData{
-	}
-/*
- *	FIX
-	pbed := &PBEData{
-		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Cipher:  proto.String("aes128-ctr"),
-		Hmac:    proto.String("sha256"),
-		// The IV is required, so we include it, but this algorithm doesn't use it.
-		Iv:         make([]byte, aes.BlockSize),
-		Iterations: proto.Int32(4096),
-		Salt:       make([]byte, aes.BlockSize),
-	}
+	pbed := &PBEData{}
+	/*
+	    *	FIX
+	   	pbed := &PBEData{
+	   		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
+	   		Cipher:  proto.String("aes128-ctr"),
+	   		Hmac:    proto.String("sha256"),
+	   		// The IV is required, so we include it, but this algorithm doesn't use it.
+	   		Iv:         make([]byte, aes.BlockSize),
+	   		Iterations: proto.Int32(4096),
+	   		Salt:       make([]byte, aes.BlockSize),
+	   	}
 
-	// We use the first half of the salt for the AES key and the second
-	// half for the HMAC key, since the standard recommends at least 8
-	// bytes of salt.
-	if _, err := rand.Read(pbed.Salt); err != nil {
-		return nil, err
-	}
+	   	// We use the first half of the salt for the AES key and the second
+	   	// half for the HMAC key, since the standard recommends at least 8
+	   	// bytes of salt.
+	   	if _, err := rand.Read(pbed.Salt); err != nil {
+	   		return nil, err
+	   	}
 
-	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
+	   	// 128-bit AES key.
+	   	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	   	defer ZeroBytes(aesKey)
 
-	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
-	c := &Crypter{aesKey, hmacKey}
+	   	// 64-byte HMAC-SHA256 key.
+	   	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	   	defer ZeroBytes(hmacKey)
+	   	c := &Crypter{aesKey, hmacKey}
 
-	// Note that we're abusing the PBEData format here, since the IV and
-	// the MAC are actually contained in the ciphertext from Encrypt().
-	var err error
-	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
-		return nil, err
-	}
- */
+	   	// Note that we're abusing the PBEData format here, since the IV and
+	   	// the MAC are actually contained in the ciphertext from Encrypt().
+	   	var err error
+	   	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
+	   		return nil, err
+	   	}
+	*/
 
 	return proto.Marshal(pbed)
 }
@@ -596,26 +724,26 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 		return nil, newError("bad hmac")
 	}
 
-/*
- *	FIX
-	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
+	/*
+	    *	FIX
+	   	// 128-bit AES key.
+	   	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	   	defer ZeroBytes(aesKey)
 
-	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
-	c := &Crypter{aesKey, hmacKey}
+	   	// 64-byte HMAC-SHA256 key.
+	   	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	   	defer ZeroBytes(hmacKey)
+	   	c := &Crypter{aesKey, hmacKey}
 
-	// Note that we're abusing the PBEData format here, since the IV and
-	// the MAC are actually contained in the ciphertext from Encrypt().
-	data, err := c.Decrypt(pbed.Ciphertext)
-	if err != nil {
-		return nil, err
-	}
+	   	// Note that we're abusing the PBEData format here, since the IV and
+	   	// the MAC are actually contained in the ciphertext from Encrypt().
+	   	data, err := c.Decrypt(pbed.Ciphertext)
+	   	if err != nil {
+	   		return nil, err
+	   	}
 
-	return data, nil
- */
+	   	return data, nil
+	*/
 	return nil, nil
 }
 
@@ -623,45 +751,45 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 	var cks []*CryptoKey
 	if k.keyTypes&Signing == Signing {
-/*
- *	FIX
- *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
- *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		ck, err := MarshalSignerProto(k.SigningKey)
-		if err != nil {
-			return nil, err
-		}
+		/*
+		    *	FIX
+		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
+		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
+		   		ck, err := MarshalSignerProto(k.SigningKey)
+		   		if err != nil {
+		   			return nil, err
+		   		}
 
-		cks = append(cks, ck)
- */
+		   		cks = append(cks, ck)
+		*/
 	}
 
 	if k.keyTypes&Crypting == Crypting {
-/*
- *	FIX
- *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
- *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		ck, err := MarshalCrypterProto(k.CryptingKey)
-		if err != nil {
-			return nil, err
-		}
+		/*
+		    *	FIX
+		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
+		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
+		   		ck, err := MarshalCrypterProto(k.CryptingKey)
+		   		if err != nil {
+		   			return nil, err
+		   		}
 
-		cks = append(cks, ck)
- */
+		   		cks = append(cks, ck)
+		*/
 	}
 
 	if k.keyTypes&Deriving == Deriving {
-/*
- *	FIX
- *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
- *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		ck, err := MarshalDeriverProto(k.DerivingKey)
-		if err != nil {
-			return nil, err
-		}
+		/*
+		    *	FIX
+		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
+		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
+		   		ck, err := MarshalDeriverProto(k.DerivingKey)
+		   		if err != nil {
+		   			return nil, err
+		   		}
 
-		cks = append(cks, ck)
- */
+		   		cks = append(cks, ck)
+		*/
 	}
 
 	ckset := &CryptoKeyset{
@@ -675,31 +803,31 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 // that this Keys structure doesn't have any of its variables set.
 func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
 	k := new(Keys)
-/*
- * 	FIX
-	var err error
-	for i := range cks.Keys {
-		if *cks.Keys[i].Purpose == CryptoKey_SIGNING {
-			if k.SigningKey, err = UnmarshalSignerProto(cks.Keys[i]); err != nil {
-				return nil, err
-			}
+	/*
+	    * 	FIX
+	   	var err error
+	   	for i := range cks.Keys {
+	   		if *cks.Keys[i].Purpose == CryptoKey_SIGNING {
+	   			if k.SigningKey, err = UnmarshalSignerProto(cks.Keys[i]); err != nil {
+	   				return nil, err
+	   			}
 
-			k.VerifyingKey = k.SigningKey.GetVerifier()
-		}
+	   			k.VerifyingKey = k.SigningKey.GetVerifier()
+	   		}
 
-		if *cks.Keys[i].Purpose == CryptoKey_CRYPTING {
-			if k.CryptingKey, err = UnmarshalCrypterProto(cks.Keys[i]); err != nil {
-				return nil, err
-			}
-		}
+	   		if *cks.Keys[i].Purpose == CryptoKey_CRYPTING {
+	   			if k.CryptingKey, err = UnmarshalCrypterProto(cks.Keys[i]); err != nil {
+	   				return nil, err
+	   			}
+	   		}
 
-		if *cks.Keys[i].Purpose == CryptoKey_DERIVING {
-			if k.DerivingKey, err = UnmarshalDeriverProto(cks.Keys[i]); err != nil {
-				return nil, err
-			}
-		}
-	}
-*/
+	   		if *cks.Keys[i].Purpose == CryptoKey_DERIVING {
+	   			if k.DerivingKey, err = UnmarshalDeriverProto(cks.Keys[i]); err != nil {
+	   				return nil, err
+	   			}
+	   		}
+	   	}
+	*/
 
 	return k, nil
 }

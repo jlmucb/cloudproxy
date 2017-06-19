@@ -131,11 +131,11 @@ func InitializeSigner(marshaledCryptoKey []byte, keyType string, keyName *string
 		}
 		s := SignerFromCryptoKey(*k)
 		if s == nil {
-			ClearCryptoKey(*k)
+			k.Clear()
 			return nil, errors.New("Can't SignerFromCryptoKey")
 		}
 		if s.header.KeyPurpose == nil || *s.header.KeyPurpose != "signing" {
-			ClearCryptoKey(*k)
+			k.Clear()
 			s.Clear()
 			return nil, errors.New("Recovered key not a signer")
 		}
@@ -146,11 +146,11 @@ func InitializeSigner(marshaledCryptoKey []byte, keyType string, keyName *string
 	}
 	s := SignerFromCryptoKey(*k)
 	if s == nil {
-		ClearCryptoKey(*k)
+		k.Clear()
 		return nil, errors.New("Can't SignerFromCryptoKey")
 	}
 	if s.header.KeyPurpose == nil || *s.header.KeyPurpose != "signing" {
-		ClearCryptoKey(*k)
+		k.Clear()
 		s.Clear()
 		return nil, errors.New("Recovered key not a signer")
 	}
@@ -170,11 +170,11 @@ func InitializeCrypter(marshaledCryptoKey []byte, keyType string, keyName *strin
 		}
 		c := CrypterFromCryptoKey(*k)
 		if c == nil {
-			ClearCryptoKey(*k)
+			k.Clear()
 			return nil, errors.New("Can't CrypterFromCryptoKey")
 		}
 		if c.header.KeyPurpose == nil || *c.header.KeyPurpose != "crypting" {
-			ClearCryptoKey(*k)
+			k.Clear()
 			c.Clear()
 			return nil, errors.New("Recovered key not a crypter")
 		}
@@ -185,11 +185,11 @@ func InitializeCrypter(marshaledCryptoKey []byte, keyType string, keyName *strin
 	}
 	c := CrypterFromCryptoKey(*k)
 	if c == nil {
-		ClearCryptoKey(*k)
+		k.Clear()
 		return nil, errors.New("Can't CrypterFromCryptoKey")
 	}
 	if c.header.KeyPurpose == nil || *c.header.KeyPurpose != "crypting" {
-		ClearCryptoKey(*k)
+		k.Clear()
 		c.Clear()
 		return nil, errors.New("Recovered key not a crypter")
 	}
@@ -209,11 +209,11 @@ func InitializeDeriver(marshaledCryptoKey []byte, keyType string, keyName *strin
 		}
 		d := DeriverFromCryptoKey(*k)
 		if d == nil {
-			ClearCryptoKey(*k)
+			k.Clear()
 			return nil, errors.New("Can't DeriverFromCryptoKey")
 		}
 		if d.header.KeyPurpose == nil || *d.header.KeyPurpose != "deriving" {
-			ClearCryptoKey(*k)
+			k.Clear()
 			return nil, errors.New("Recovered key not a deriver")
 		}
 	}
@@ -223,11 +223,11 @@ func InitializeDeriver(marshaledCryptoKey []byte, keyType string, keyName *strin
 	}
 	d := DeriverFromCryptoKey(*k)
 	if d == nil {
-		ClearCryptoKey(*k)
+		k.Clear()
 		return nil, errors.New("Can't DeriverFromCryptoKey")
 	}
 	if d.header.KeyPurpose == nil || *d.header.KeyPurpose != "deriving" {
-		ClearCryptoKey(*k)
+		k.Clear()
 		d.Clear()
 		return nil, errors.New("Recovered key not a deriver")
 	}

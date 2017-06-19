@@ -192,16 +192,26 @@ func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
 	return publicKey, errors.New("Unsupported key type")
 }
 
-func ClearCryptoKey(k CryptoKey) {
+func (k *CryptoKey) Clear() {
+	for i := 0; i < len(k.KeyComponents); i++ {
+		ZeroBytes(k.KeyComponents[i])
+	}
 }
 
 func (s *Signer) Clear() {
+	if (s.privateKey).(*ecdsa.PrivateKey) != nil {
+		// TODO: ZeroBytes([]byte((s.privateKey).(*ecdsa.PrivateKey)))
+	} else if (s.privateKey).(*rsa.PrivateKey) != nil {
+	}
 }
 
 func (c *Crypter) Clear() {
+	ZeroBytes(c.encryptingKeyBytes)
+	ZeroBytes(c.hmacKeyBytes)
 }
 
 func (d *Deriver) Clear() {
+	ZeroBytes(d.secret)
 }
 
 func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) *CryptoKey {

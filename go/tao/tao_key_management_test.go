@@ -20,7 +20,7 @@ import (
 	// "os"
 	"testing"
 
-	// "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 // Temporary
@@ -30,105 +30,6 @@ const (
 )
 
 var TaoCryptoSuite string
-
-func TestGenerateKeys(t *testing.T) {
-	/*
-	    *	FIX
-	   	if _, err := GenerateSigner(); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	*/
-}
-
-func TestSignerDERSerialization(t *testing.T) {
-	/*
-	    *	FIX
-	   	s, err := GenerateSigner()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	b, err := MarshalSignerDER(s)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if _, err := UnmarshalSignerDER(b); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	*/
-}
-
-func TestSelfSignedX509(t *testing.T) {
-	/*
-	    *	FIX
-	   	s, err := GenerateSigner()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	details := &X509Details{
-	   		CommonName:   proto.String("test"),
-	   		Country:      proto.String("US"),
-	   		State:        proto.String("WA"),
-	   		Organization: proto.String("Google"),
-	   	}
-
-	   	_, err = s.CreateSelfSignedX509(NewX509Name(details))
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	*/
-}
-
-func TestSignerMarshalProto(t *testing.T) {
-	/*
-	    *	FIX
-	   	s, err := GenerateSigner()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	c, err := MarshalSignerProto(s)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if _, err := UnmarshalSignerProto(c); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	*/
-}
-
-func TestCreateHeader(t *testing.T) {
-	/*
-	    *	FIX
-	   	s, err := GenerateSigner()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if _, err := s.CreateHeader(); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	   /*
-	   }
-
-	   func TestPublicSignerMarshalProto(t *testing.T) {
-	   /*
-	    *	FIX
-	   	s, err := GenerateSigner()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	ck := MarshalPublicSignerProto(s)
-
-	   	if _, err := UnmarshalVerifierProto(ck); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	*/
-}
 
 func TestVerifierFromX509(t *testing.T) {
 	/*
@@ -156,110 +57,10 @@ func TestVerifierFromX509(t *testing.T) {
 	*/
 }
 
-func TestSignAndVerify(t *testing.T) {
-	/*
-	    *	FIX
-	   	s, err := GenerateSigner()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	v := s.GetVerifier()
-
-	   	data := []byte(`Test data to sign`)
-	   	context := "Context string"
-	   	sig, err := s.Sign(data, context)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if verifies, err := v.Verify(data, context, sig); err != nil || !verifies {
-	   		if err != nil {
-	   			t.Fatal(err.Error())
-	   		} else {
-	   			t.Fatal("The signature failed verification")
-	   		}
-	   	}
-	*/
-}
-
 func TestNewCrypter(t *testing.T) {
 	if _, err := GenerateCrypter(); err != nil {
 		t.Fatal(err.Error())
 	}
-}
-
-func TestEncryptAndDecrypt(t *testing.T) {
-	/*
-	    *	FIX
-	   	c, err := GenerateCrypter()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	data := []byte("Test data to encrypt")
-	   	crypted, err := c.Encrypt(data)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	data2, err := c.Decrypt(crypted)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if len(data) != len(data2) {
-	   		t.Fatal("The decrypted data was not the same length as the original data")
-	   	}
-
-	   	for i := range data {
-	   		if data[i] != data2[i] {
-	   			t.Fatal("The decrypted data was not the same as the original data")
-	   		}
-	   	}
-	*/
-}
-
-func TestMarshalCrypterProto(t *testing.T) {
-	/*
-	    *	FIX
-	   	c, err := GenerateCrypter()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	ck, err := MarshalCrypterProto(c)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	c2, err := UnmarshalCrypterProto(ck)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	// Try encrypting with one and decrypting with the other.
-	   	data := []byte("Test data to encrypt")
-	   	crypted, err := c.Encrypt(data)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	data2, err := c2.Decrypt(crypted)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if len(data) != len(data2) {
-	   		t.Fatal("The decrypted data was not the same length as the original data")
-	   	}
-
-	   	for i := range data {
-	   		if data[i] != data2[i] {
-	   			t.Fatal("The decrypted data was not the same as the original data")
-	   		}
-	   	}
-	*/
 }
 
 func TestNewDeriver(t *testing.T) {
@@ -302,81 +103,6 @@ func TestDeriveSecret(t *testing.T) {
 	   		if material[i] != material2[i] {
 	   			t.Fatal("The Deriver is not deterministic")
 	   		}
-	   	}
-	*/
-}
-
-func TestMarshalDeriver(t *testing.T) {
-	/*
-	    *	FIX
-	   	d, err := GenerateDeriver()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	ck, err := MarshalDeriverProto(d)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	d2, err := UnmarshalDeriverProto(ck)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	// Make sure both derivers derive the same keys given the same input.
-	   	salt := make([]byte, 20)
-	   	if _, err := rand.Read(salt); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	context := []byte("Test context")
-
-	   	// Derive an AES-256 key.
-	   	material := make([]byte, 32)
-	   	if err := d.Derive(salt, context, material); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	material2 := make([]byte, 32)
-	   	if err := d2.Derive(salt, context, material2); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if len(material) != len(material2) {
-	   		t.Fatal("The Deriver generated two different lengths of keys")
-	   	}
-
-	   	for i := range material {
-	   		if material[i] != material2[i] {
-	   			t.Fatal("The Deriver is not deterministic")
-	   		}
-	   	}
-	*/
-}
-
-func TestNewOnDiskPBEKeys(t *testing.T) {
-	/*
-	    *	FIX
-	   	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
-	   	if err != nil {
-	   		t.Fatal("Couldn't create a temporary directory:", err)
-	   	}
-	   	defer os.RemoveAll(tempDir)
-
-	   	password := []byte(`don't use this password`)
-	   	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't create on-disk PBE keys:", err)
-	   	}
-
-	   	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
-	   		t.Fatal("Couldn't generate the right keys")
-	   	}
-
-	   	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't recover the serialized keys:", err)
 	   	}
 	*/
 }
@@ -576,4 +302,75 @@ func TestNewTemporaryKeys(t *testing.T) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
 		t.Fatal("Couldn't generate the right keys")
 	}
+
+	_, err = proto.Marshal(k.SigningKey.header)
+	if err != nil {
+		t.Fatal("Couldn't marshal signing key")
+	}
+	_, err = proto.Marshal(k.CryptingKey.header)
+	if err != nil {
+		t.Fatal("Couldn't marshal crypting key")
+	}
+	_, err = proto.Marshal(k.DerivingKey.header)
+	if err != nil {
+		t.Fatal("Couldn't marshal deriving key")
+	}
+}
+
+func TestSelfSignedX509(t *testing.T) {
+	keyName := "Temporary_Keys_signer"
+	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+   		t.Fatal(err.Error())
+	}
+
+   	details := &X509Details{
+   		CommonName:   proto.String("test"),
+   		Country:      proto.String("US"),
+   		State:        proto.String("WA"),
+   		Organization: proto.String("Google"),
+   	}
+
+	pkInt := PublicKeyAlgFromSignerAlg(*keyType)
+	sigInt := SignatureAlgFromSignerAlg(*keyType)
+	if pkInt < 0 || sigInt < 0 {
+   		t.Fatal("Unknown Algorithm identifiers")
+	}
+	_, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
+   	if err != nil {
+   		t.Fatal(err.Error())
+   	}
+}
+
+func TestKeyProtos(t *testing.T) {
+}
+
+func TestNewOnDiskPBEKeys(t *testing.T) {
+	/*
+	    *	FIX
+	   	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
+	   	if err != nil {
+	   		t.Fatal("Couldn't create a temporary directory:", err)
+	   	}
+	   	defer os.RemoveAll(tempDir)
+
+	   	password := []byte(`don't use this password`)
+	   	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+	   	if err != nil {
+	   		t.Fatal("Couldn't create on-disk PBE keys:", err)
+	   	}
+
+	   	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+	   		t.Fatal("Couldn't generate the right keys")
+	   	}
+
+	   	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+	   	if err != nil {
+	   		t.Fatal("Couldn't recover the serialized keys:", err)
+	   	}
+	*/
 }

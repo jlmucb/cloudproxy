@@ -14,8 +14,36 @@
 
 package tao
 
+import (
+	"crypto/x509"
+)
+
 func ptrFromString(str string) *string {
 	return &str
+}
+
+func PublicKeyAlgFromSignerAlg(signerAlg string) int {
+	switch(signerAlg) {
+	case "ecdsap256", "ecdsap384":
+		return int(x509.ECDSA)
+	case "rsa1024", "rsa2048", "rsa3072":
+		return int(x509.RSA)
+	default:
+		return -1
+	}
+	return -1
+}
+
+func SignatureAlgFromSignerAlg(signerAlg string) int {
+	switch(signerAlg) {
+	case "ecdsap256", "ecdsap384":
+		return int(x509.ECDSAWithSHA256)
+	case "rsa1024", "rsa2048", "rsa3072":
+		return int(x509.SHA256WithRSA)
+	default:
+		return -1
+	}
+	return -1
 }
 
 func CrypterTypeFromSuiteName(suiteName string) *string {

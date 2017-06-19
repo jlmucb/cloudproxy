@@ -4,4 +4,7 @@ Adding a new cipher suite
 
 2. Set global variable cryptoSuite to the new cipher suite.
 
+3. Add decoding for new suite in key_decoding.go
+
+4. Add algorithm implementation and calling (mostly involving switches) in keys.go
 

@@ -314,28 +314,6 @@ func TestGenerateKeys(t *testing.T) {
 	fmt.Printf("\n")
 }
 
-func TestVerifierSerialization(t *testing.T) {
-	// func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
-}
-
-func TestSignerToPublic(t *testing.T) {
-	// (s *Signer) GetVerifierFromSigner() *Verifier
-}
-
-func TestSignerVerifierDERSerialization(t *testing.T) {
-	// func (v *Verifier) MarshalKey() []byte {
-	// func UnmarshalKey(material []byte) (*Verifier, error) {
-	// func FromX509(cert *x509.Certificate) (*Verifier, error) {
-	// func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
-	// func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
-}
-
-func TestSelfSignedX509(t *testing.T) {
-	// (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix.Name) ([]byte, error)
-	// (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64,name *pkix.Name) (*x509.Certificate, error)
-	// (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error)
-	// (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-}
 
 func TestCerts(t *testing.T) {
 	keyName := "keyName1"
@@ -376,6 +354,9 @@ func TestCerts(t *testing.T) {
 		t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
 	}
 	fmt.Printf("Cert: %x\n", cert)
+
+	// (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error)
+	// (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
 }
 
 func TestCanonicalBytes(t *testing.T) {
@@ -664,4 +645,12 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	if !bytes.Equal(plain, decrypted) {
 		t.Fatal("plain and decrypted don't match")
 	}
+}
+
+func TestSignerVerifierDERSerialization(t *testing.T) {
+	// func (v *Verifier) MarshalKey() []byte {
+	// func UnmarshalKey(material []byte) (*Verifier, error) {
+	// func FromX509(cert *x509.Certificate) (*Verifier, error) {
+	// func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
+	// func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
 }

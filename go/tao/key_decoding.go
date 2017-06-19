@@ -14,83 +14,49 @@
 
 package tao;
 
-func CryptoKeyToSymmetricAlg(keyInfo CryptoKey) *string {
+func CrypterTypeFromSuiteName(suiteName string) *string {
+	switch(suiteName) {
+	case Basic128BitCipherSuite:
+		return "aes128-ctr-hmacsha256"
+	case Basic256BitCipherSuite:
+		return "aes256-ctr-hmacsha384"
+	default:
+		return nil
+	}
 	return nil
 }
 
-func CryptoKeyToHmacAlg(keyInfo CryptoKey) *string {
+func SignerTypeFromSuiteName(suiteName string) *string {
+	switch(suiteName) {
+	case Basic128BitCipherSuite:
+		return "ecdsap256"
+	case Basic256BitCipherSuite:
+		return "ecdsap384"
+	default:
+		return nil
+	}
 	return nil
 }
 
-func CryptoKeyToPublicAlg(keyInfo CryptoKey) *string {
+func DeriverTypeFromSuiteName(suiteName string) *string {
+	switch(suiteName) {
+	case Basic128BitCipherSuite, case Basic256BitCipherSuite:
+		return "hdkf-sha256"
+	default:
+		return nil
+	}
 	return nil
 }
 
-func CryptoKeyToDerivingAlg(keyInfo CryptoKey) *string {
+func HmacTypeFromSuiteName(suiteName string) *string {
+	switch(suiteName) {
+	case Basic128BitCipherSuite:
+		return "hmacsha256"
+	case Basic256BitCipherSuite:
+		return "hmacsha384"
+	default:
+		return nil
+	}
 	return nil
-}
-
-func CryptoKeyToPublicCurveName(keyInfo CryptoKey) *string {
-	return nil
-}
-
-func CryptoKeyToSymmetricKeyBytes(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToHmacKeyBytes(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToDerivingKeyBytes(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToIVKeyBytes(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToCtrKeyBytes(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToPublicModulus(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToPublicExp(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToPrivateExp(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToPrivateP(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToPrivateQ(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToEcPublicCurveId(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToEcPrime(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToEcBasePoint(keyInfo CryptoKey) ([]byte, []byte) {
-	return nil, nil
-}
-
-func CryptoKeyToEcSecretMultiplier(keyInfo CryptoKey) []byte {
-	return nil
-}
-
-func CryptoKeyToEcPublicPoint(keyInfo CryptoKey) ([]byte, []byte) {
-	return nil, nil
 }
 

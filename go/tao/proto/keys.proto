@@ -128,39 +128,3 @@ message KeyDerivationPDU {
   required string context = 3;
   required fixed32 index = 4;
 }
-
-
-
-// Remove later
-enum NamedEllipticCurve {
-  PRIME256_V1 = 1;  // aka secp256r1
-}
-
-message ECDSA_SHA_VerifyingKey_v1 {
-  required NamedEllipticCurve curve = 1;
-  required bytes ec_public = 2;  // = OpenSSL::EC_POINT_point2oct(pub_key)
-}
-
-message ECDSA_SHA_SigningKey_v1 {
-  required NamedEllipticCurve curve = 1;
-  required bytes ec_private = 2;  // = OpenSSL::BN_bn2bin(priv_key)
-  required bytes ec_public = 3;  // = OpenSSL::EC_POINT_point2oct(pub_key)
-}
-
-enum CryptoCipherMode {
-  CIPHER_MODE_CTR = 1;
-}
-
-message AES_CTR_HMAC_SHA_CryptingKey_v1 {
-  required CryptoCipherMode mode = 1;
-  required bytes aes_private = 2;
-  required bytes hmac_private = 3;
-}
-
-enum CryptoDerivingMode {
- DERIVING_MODE_HKDF = 1;
-}
-message HMAC_SHA_DerivingKey_v1 {
-  required CryptoDerivingMode mode = 1;
-  required bytes hmac_private = 2;
-}

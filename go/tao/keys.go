@@ -251,6 +251,17 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+	case "aes256-ctr-hmacsha256":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		hmacBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
 	case "aes256-ctr-hmacsha512":
 		keyBuf, err := randBytes(32)
 		if err != nil {
@@ -458,15 +469,15 @@ func VerifierFromCryptoKey(k CryptoKey) *Verifier {
 }
 
 func CrypterFromCryptoKey(k CryptoKey) *Crypter {
-	c := &Crypter {
+	c := &Crypter{
 		header: k.KeyHeader,
 	}
 	switch *k.KeyHeader.KeyType {
 	case "aes128-ctr", "aes256-ctr":
 		c.encryptingKeyBytes = k.KeyComponents[0]
-	case "aes128-gcm", "aes256-gcm", 
-			"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", "aes256-ctr-hmacsha512",
-			"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384":
+	case "aes128-gcm", "aes256-gcm",
+		"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", "aes256-ctr-hmacsha512",
+		"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384":
 		c.encryptingKeyBytes = k.KeyComponents[0]
 		c.hmacKeyBytes = k.KeyComponents[1]
 	case "hmacsha256", "hmacsha384", "hmacsha512":
@@ -478,7 +489,7 @@ func CrypterFromCryptoKey(k CryptoKey) *Crypter {
 }
 
 func DeriverFromCryptoKey(k CryptoKey) *Deriver {
-	d := &Deriver {
+	d := &Deriver{
 		header: k.KeyHeader,
 		secret: k.KeyComponents[0],
 	}
@@ -681,7 +692,7 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	newKeyType := *s.header.KeyType + "-public"
 	newHeader := *s.header
 	newHeader.KeyType = &newKeyType
-	
+
 	b, err := contextualizedSHA256(&newHeader, data, context, sha256.Size)
 	if err != nil {
 		return nil, err
@@ -690,7 +701,7 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	// TODO(tmroeder): for compatibility with the C++ version, we should
 	// compute ECDSA signatures over hashes truncated to fit in the ECDSA
 	// signature.
-	switch(*s.header.KeyType) {
+	switch *s.header.KeyType {
 	case "ecdsap256", "ecdsap384":
 		R, S, err := ecdsa.Sign(rand.Reader, s.privateKey.(*ecdsa.PrivateKey), b)
 		if err != nil {
@@ -702,7 +713,7 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 		}
 	case "rsa1024", "rsa2048", "rsa3072":
 		// Use PKCS 1.5?
-		sig, err = rsa.SignPKCS1v15(rand.Reader, s.privateKey.(*rsa.PrivateKey),crypto.SHA256, b)
+		sig, err = rsa.SignPKCS1v15(rand.Reader, s.privateKey.(*rsa.PrivateKey), crypto.SHA256, b)
 		if err != nil {
 			return nil, err
 		}
@@ -726,10 +737,10 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 		return false, err
 	}
 	if *v.header.KeyType != *sd.Header.KeyType {
-		return false, errors.New("Wrong signature algorithm") 
+		return false, errors.New("Wrong signature algorithm")
 	}
 
-	switch(*v.header.KeyType) {
+	switch *v.header.KeyType {
 	case "ecdsap256-public", "ecdsap384-public":
 		var ecSig ecdsaSignature
 		// We ignore the first parameter, since we don't mind if there's more
@@ -741,7 +752,7 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 		if err != nil {
 			return false, err
 		}
-        	return ecdsa.Verify((v.publicKey).(*ecdsa.PublicKey), b, ecSig.R, ecSig.S), nil
+		return ecdsa.Verify((v.publicKey).(*ecdsa.PublicKey), b, ecSig.R, ecSig.S), nil
 	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
 		b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
 		if err != nil {
@@ -795,8 +806,8 @@ func (v *Verifier) SignsForPrincipal(prin auth.Prin) bool {
 // FromX509 creates a Verifier from an X509 certificate.
 func FromX509(cert *x509.Certificate) (*Verifier, error) {
 	var h CryptoHeader
-	v := &Verifier {
-		header: &h,
+	v := &Verifier{
+		header:    &h,
 		publicKey: cert.PublicKey,
 	}
 	return v, nil
@@ -817,7 +828,7 @@ func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
 
 // contextualizeData produces a single string from a header, data, and a context.
 func contextualizeData(data []byte, context string) ([]byte, error) {
-	s := &ContextualizedData {
+	s := &ContextualizedData{
 		Context: proto.String(context),
 		Data:    data,
 	}
@@ -875,7 +886,7 @@ func (c *Crypter) decryptAes128ctrHmacsha256(ciphertext []byte) ([]byte, error) 
 	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		return nil, errors.New("bad version")
 	}
-	if *ed.Header.KeyType!= *c.header.KeyType {
+	if *ed.Header.KeyType != *c.header.KeyType {
 		return nil, errors.New("bad key type")
 	}
 
@@ -941,7 +952,7 @@ func (c *Crypter) decryptAes256ctrHmacsha512(ciphertext []byte) ([]byte, error) 
 	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		return nil, errors.New("bad version")
 	}
-	if *ed.Header.KeyType!= "aes256-ctr-hmacsha512" {
+	if *ed.Header.KeyType != "aes256-ctr-hmacsha512" {
 		return nil, errors.New("bad key type")
 	}
 
@@ -971,7 +982,7 @@ func (c *Crypter) decryptAes256ctrHmacsha512(ciphertext []byte) ([]byte, error) 
 // Encrypt encrypts plaintext into ciphertext with integrity
 // with a MAC.
 func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
-	switch(*c.header.KeyType) {
+	switch *c.header.KeyType {
 	case "aes128-ctr-hmacsha256":
 		return c.encryptAes128ctrHmacsha256(plain)
 	case "aes256-ctr-hmacsha256":
@@ -985,7 +996,7 @@ func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
 
 // Decrypt checks the MAC then decrypts ciphertext into plaintext.
 func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
-	switch(*c.header.KeyType) {
+	switch *c.header.KeyType {
 	case "aes128-ctr-hmacsha256":
 		return c.decryptAes128ctrHmacsha256(ciphertext)
 	case "aes256-ctr-hmacsha256":

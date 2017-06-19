@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/aes"
+	//"crypto/ecdsa"
 	// "crypto/sha256"
 	"crypto/rand"
 	"crypto/rsa"
@@ -443,35 +444,35 @@ func TestDeriveSecret(t *testing.T) {
 	keyEpoch := int32(1)
 	keyPurpose := "deriving"
 	keyStatus := "active"
-	ch := &CryptoHeader {
-		Version: &ver,
-		KeyName: &keyName,
-		KeyEpoch: &keyEpoch,
-		KeyType: &keyType,
+	ch := &CryptoHeader{
+		Version:    &ver,
+		KeyName:    &keyName,
+		KeyEpoch:   &keyEpoch,
+		KeyType:    &keyType,
 		KeyPurpose: &keyPurpose,
-		KeyStatus: &keyStatus,
+		KeyStatus:  &keyStatus,
 	}
 	// derivingKey := GenerateCryptoKey("hdfk-sha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	// derivingKey.KeyComponents = append(derivingKey.KeyComponents, buf)
 	// if derivingKey == nil {
-		// t.Fatal("Can't generate signing key\n")
+	// t.Fatal("Can't generate signing key\n")
 	// }
 	// printKey(derivingKey)
 	// d := DeriverFromCryptoKey(*derivingKey)
 	// if d == nil {
-		// t.Fatal("DeriveFromCryptoKey fails\n")
+	// t.Fatal("DeriveFromCryptoKey fails\n")
 	// }
 	buf := make([]byte, 32)
-        _, err := rand.Read(buf)
-	
-	d := &Deriver {
+	_, err := rand.Read(buf)
+
+	d := &Deriver{
 		header: ch,
 		secret: buf,
 	}
 	fmt.Printf("\n")
-	salt := []byte{1,2,3,4}
-	context:= []byte{1,2}
-	material:= make([]byte, 32)
+	salt := []byte{1, 2, 3, 4}
+	context := []byte{1, 2}
+	material := make([]byte, 32)
 	material[0] = 1
 	err = d.Derive(salt, context, material)
 	if err != nil {
@@ -529,7 +530,7 @@ func TestSignAndVerify(t *testing.T) {
 	}
 
 	s := SignerFromCryptoKey(*cryptoKey1)
-	if s== nil {
+	if s == nil {
 		t.Fatal("SignerFromCryptoKey fails, ", err, "\n")
 	}
 	sig1, err := s.Sign(hashed, "Signing context")
@@ -550,6 +551,50 @@ func TestSignAndVerify(t *testing.T) {
 	}
 
 	// ecdsa test
+	fmt.Printf("\n")
+	keyName = "TestEcdsaP256SignandVerify"
+	keyEpoch = 2
+	keyPurpose = "signing"
+	keyStatus = "primary"
+	cryptoKey2 := GenerateCryptoKey("ecdsap256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey2 == nil {
+		t.Fatal("Can't generate ecdsap256key\n")
+	}
+	printKey(cryptoKey2)
+
+	// save
+	privateKey, err = PrivateKeyFromCryptoKey(*cryptoKey2)
+	if err != nil {
+		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
+	}
+
+	hash = crypto.SHA256
+	blk = hash.New()
+	blk.Write(mesg)
+	hashed = blk.Sum(nil)
+	fmt.Printf("Hashed: %x\n", hashed)
+
+	s = SignerFromCryptoKey(*cryptoKey2)
+	if s == nil {
+		t.Fatal("SignerFromCryptoKey fails, ", err, "\n")
+	}
+
+	sig2, err := s.Sign(hashed, "Signing context")
+	if err != nil {
+		t.Fatal("Signer Sign failed, ", err, "\n")
+	}
+	fmt.Printf("Signer sign: %x\n", sig2)
+
+	v = s.GetVerifierFromSigner()
+	if v == nil {
+		t.Fatal("Can't get verifier from signer\n")
+	}
+	verified, err = v.Verify(hashed, "Signing context", sig2)
+	if verified {
+		fmt.Printf("Ecdsa verified succeeds\n")
+	} else {
+		t.Fatal("Ecdsa verified failed, ", err, "\n")
+	}
 }
 
 func TestEncryptAndDecrypt(t *testing.T) {
@@ -559,9 +604,9 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	var keyPurpose string
 	var keyStatus string
 
-	// Rsa Tests
+	// Aes 128
 	fmt.Printf("\n")
-	keyName = "TestRsa2048SignandVerify"
+	keyName = "TestAes128-ctr-hmac-key"
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
@@ -575,13 +620,43 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	if c == nil {
 		t.Fatal("Can't get crypter from cryptokey\n")
 	}
-	plain := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+	plain := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	ciphertext, err := c.Encrypt(plain)
 	if err != nil {
 		t.Fatal("Can't encrypt, ", err, "\n")
 	}
 	fmt.Printf("Ciphertext: %x\n", ciphertext)
 	decrypted, err := c.Decrypt(ciphertext)
+	if err != nil {
+		t.Fatal("Can't decrypt, ", err, "\n")
+	}
+	fmt.Printf("Decrypted: %x\n", decrypted)
+	if !bytes.Equal(plain, decrypted) {
+		t.Fatal("plain and decrypted don't match")
+	}
+
+	// Aes 256
+	fmt.Printf("\n")
+	keyName = "TestAes256-ctr-hmac-key"
+	keyEpoch = 2
+	keyPurpose = "signing"
+	keyStatus = "primary"
+	cryptoKey2 := GenerateCryptoKey("aes256-ctr-hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey2 == nil {
+		t.Fatal("Can't generate aes256-ctr-hmacsha256 key\n")
+	}
+	printKey(cryptoKey2)
+
+	c = CrypterFromCryptoKey(*cryptoKey2)
+	if c == nil {
+		t.Fatal("Can't get crypter from cryptokey\n")
+	}
+	ciphertext, err = c.Encrypt(plain)
+	if err != nil {
+		t.Fatal("Can't encrypt, ", err, "\n")
+	}
+	fmt.Printf("Ciphertext: %x\n", ciphertext)
+	decrypted, err = c.Decrypt(ciphertext)
 	if err != nil {
 		t.Fatal("Can't decrypt, ", err, "\n")
 	}

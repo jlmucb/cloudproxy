@@ -701,7 +701,11 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 			return nil, err
 		}
 	case "rsa1024", "rsa2048", "rsa3072":
-		return nil, errors.New("Unsupported rsa signing algorithm")
+		// Use PKCS 1.5?
+		sig, err = rsa.SignPKCS1v15(rand.Reader, s.privateKey.(*rsa.PrivateKey),crypto.SHA256, b)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, errors.New("Unsupported signing algorithm")
 	}
@@ -726,7 +730,7 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 	}
 
 	switch(*v.header.KeyType) {
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256-public", "ecdsap384-public":
 		var ecSig ecdsaSignature
 		// We ignore the first parameter, since we don't mind if there's more
 		// data after the signature.
@@ -738,8 +742,16 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 			return false, err
 		}
         	return ecdsa.Verify((v.publicKey).(*ecdsa.PublicKey), b, ecSig.R, ecSig.S), nil
-	case "rsa1024", "rsa2048", "rsa3072":
-		return false, errors.New("Unsupported rsa signing algorithm")
+	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
+		b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
+		if err != nil {
+			return false, err
+		}
+		err = rsa.VerifyPKCS1v15((v.publicKey).(*rsa.PublicKey), crypto.SHA256, b, sd.Signature)
+		if err == nil {
+			return true, nil
+		}
+		return false, err
 	default:
 		return false, errors.New("Unsupported signing algorithm")
 	}
@@ -803,27 +815,18 @@ func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
 	return p.Identical(p2)
 }
 
-// UnmarshalVerifierProto decodes a verifying key from a CryptoKey protobuf
-// message.
-func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
-	// FIX return s, nil
-	return nil, nil
-}
-
 // contextualizeData produces a single string from a header, data, and a context.
-func contextualizeData(h *CryptoHeader, data []byte, context string) ([]byte, error) {
-	s := &SignaturePDU{
-		Header:  h,
+func contextualizeData(data []byte, context string) ([]byte, error) {
+	s := &ContextualizedData {
 		Context: proto.String(context),
 		Data:    data,
 	}
-
 	return proto.Marshal(s)
 }
 
 // contextualizedSHA256 performs a SHA-256 sum over contextualized data.
 func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLen int) ([]byte, error) {
-	b, err := contextualizeData(h, data, context)
+	b, err := contextualizeData(data, context)
 	if err != nil {
 		return nil, err
 	}

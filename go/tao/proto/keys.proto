@@ -77,19 +77,25 @@ message PBEData {
   required bytes salt = 7;
 }
 
-// A PDU to be serialized and signed, including a required context to ensure
-// unique deserialization.
+// Contextualized protobuf.
+// SECURITY WARNING: Always choose a unique context for each unique type of
+// message. One easy way to do this is to number the messages in a protocol
+// and make the context "ProtocolName Message Y: ProtobufName Version X"
+// Marshaled representation of this is the data that is signed.
+message ContextualizedData {
+	required string context = 1;
+	required bytes data = 2;
+}
+
+// A PDU including metadata for representing data to be signed.  The data is
+// a serialized ContextualizedData message providing unique deserialization.
 message SignaturePDU {
   required CryptoHeader header = 1;
-
-  // SECURITY WARNING: Always choose a unique context for each unique type of
-  // message. One easy way to do this is to number the messages in a protocol
-  // and make the context "ProtocolName Message Y: ProtobufName Version X"
   required string context = 2;
-
-  // The serialized protobuf representing this message.
+  // The serialized ContextualizedData that is to be signed.
   required bytes data = 3;
 }
+
 
 // The result of signing.
 message SignedData {

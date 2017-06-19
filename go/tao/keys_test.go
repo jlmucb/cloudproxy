@@ -336,70 +336,6 @@ func TestSelfSignedX509(t *testing.T) {
 	// (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
 }
 
-func TestSignAndVerify(t *testing.T) {
-
-	var keyName string
-	var keyEpoch int32
-	var keyPurpose string
-	var keyStatus string
-
-	fmt.Printf("\n")
-	keyName = "TestRsa2048SignandVerify"
-	keyEpoch = 2
-	keyPurpose = "signing"
-	keyStatus = "primary"
-	cryptoKey1 := GenerateCryptoKey("rsa2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-	if cryptoKey1 == nil {
-		t.Fatal("Can't generate rsa2048 key\n")
-	}
-	printKey(cryptoKey1)
-
-	// save
-	privateKey, err := PrivateKeyFromCryptoKey(*cryptoKey1)
-	if err != nil {
-		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
-	}
-
-	mesg := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	hash := crypto.SHA256
-	blk := hash.New()
-	blk.Write(mesg)
-	hashed := blk.Sum(nil)
-	fmt.Printf("Hashed: %x\n", hashed)
-
-	// sig, err := privateKey.(*rsa.PrivateKey).Sign(rand.Reader, hashed, opts)
-	sig, err := rsa.SignPKCS1v15(rand.Reader, privateKey.(*rsa.PrivateKey), crypto.SHA256, hashed[:])
-	if err != nil {
-		t.Fatal("privateKey signing fails\n")
-	}
-	fmt.Printf("Signature: %x\n", sig)
-
-	publicKey := privateKey.(*rsa.PrivateKey).PublicKey
-	if err != nil {
-		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
-	}
-	err = rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, hashed, sig)
-	if err != nil {
-		t.Fatal("Verify fails, ", err, "\n")
-	} else {
-		fmt.Printf("Rsa Verify succeeds\n")
-	}
-
-	/*
-		s := SignerFromCryptoKey(*cryptoKey1)
-		if s== nil {
-			t.Fatal("SignerFromCryptoKey fails, ", err, "\n")
-		}
-		sig1, err := s.Sign(hashed, "Signing context")
-		if err != nil {
-			t.Fatal("Signer Sign failed, ", err, "\n")
-		}
-		fmt.Printf("Signer sign: %x\n", sig1)
-
-		// verified, err := v.Verify(hashed, "Signing context", sig1)
-	*/
-}
-
 func TestCerts(t *testing.T) {
 	keyName := "keyName1"
 	keyEpoch := int32(1)
@@ -546,4 +482,74 @@ func TestDeriveSecret(t *testing.T) {
 	if err != nil {
 	}
 	fmt.Printf("Derived: %x\n", material)
+}
+
+func TestSignAndVerify(t *testing.T) {
+
+	var keyName string
+	var keyEpoch int32
+	var keyPurpose string
+	var keyStatus string
+
+	fmt.Printf("\n")
+	keyName = "TestRsa2048SignandVerify"
+	keyEpoch = 2
+	keyPurpose = "signing"
+	keyStatus = "primary"
+	cryptoKey1 := GenerateCryptoKey("rsa2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey1 == nil {
+		t.Fatal("Can't generate rsa2048 key\n")
+	}
+	printKey(cryptoKey1)
+
+	// save
+	privateKey, err := PrivateKeyFromCryptoKey(*cryptoKey1)
+	if err != nil {
+		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
+	}
+
+	mesg := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	hash := crypto.SHA256
+	blk := hash.New()
+	blk.Write(mesg)
+	hashed := blk.Sum(nil)
+	fmt.Printf("Hashed: %x\n", hashed)
+
+	sig, err := rsa.SignPKCS1v15(rand.Reader, privateKey.(*rsa.PrivateKey), crypto.SHA256, hashed[:])
+	if err != nil {
+		t.Fatal("privateKey signing fails\n")
+	}
+	fmt.Printf("Signature: %x\n", sig)
+
+	publicKey := privateKey.(*rsa.PrivateKey).PublicKey
+	if err != nil {
+		t.Fatal("PrivateKeyFromCryptoKey fails, ", err, "\n")
+	}
+	err = rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, hashed, sig)
+	if err != nil {
+		t.Fatal("Verify fails, ", err, "\n")
+	} else {
+		fmt.Printf("Rsa Verify succeeds\n")
+	}
+
+	s := SignerFromCryptoKey(*cryptoKey1)
+	if s== nil {
+		t.Fatal("SignerFromCryptoKey fails, ", err, "\n")
+	}
+	sig1, err := s.Sign(hashed, "Signing context")
+	if err != nil {
+		t.Fatal("Signer Sign failed, ", err, "\n")
+	}
+	fmt.Printf("Signer sign: %x\n", sig1)
+
+	v := s.GetVerifierFromSigner()
+	if v == nil {
+		t.Fatal("Can't get verifier from signer\n")
+	}
+	verified, err := v.Verify(hashed, "Signing context", sig1)
+	if verified {
+		fmt.Printf("Pkcs verified succeeds\n")
+	} else {
+		t.Fatal("Pkcs verified failed, ", err, "\n")
+	}
 }

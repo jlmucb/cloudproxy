@@ -465,7 +465,7 @@ func CrypterFromCryptoKey(k CryptoKey) *Crypter {
 	case "aes128-ctr", "aes256-ctr":
 		c.encryptingKeyBytes = k.KeyComponents[0]
 	case "aes128-gcm", "aes256-gcm", 
-			"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512",
+			"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", "aes256-ctr-hmacsha512",
 			"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384":
 		c.encryptingKeyBytes = k.KeyComponents[0]
 		c.hmacKeyBytes = k.KeyComponents[1]

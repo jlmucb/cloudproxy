@@ -436,11 +436,6 @@ func TestNewCrypter(t *testing.T) {
 	}
 }
 
-func TestEncryptAndDecrypt(t *testing.T) {
-	// func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
-	// func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
-}
-
 func TestDeriveSecret(t *testing.T) {
 	ver := CryptoVersion_CRYPTO_VERSION_2
 	keyName := "keyName1"
@@ -491,6 +486,7 @@ func TestSignAndVerify(t *testing.T) {
 	var keyPurpose string
 	var keyStatus string
 
+	// Rsa Tests
 	fmt.Printf("\n")
 	keyName = "TestRsa2048SignandVerify"
 	keyEpoch = 2
@@ -551,5 +547,46 @@ func TestSignAndVerify(t *testing.T) {
 		fmt.Printf("Pkcs verified succeeds\n")
 	} else {
 		t.Fatal("Pkcs verified failed, ", err, "\n")
+	}
+
+	// ecdsa test
+}
+
+func TestEncryptAndDecrypt(t *testing.T) {
+
+	var keyName string
+	var keyEpoch int32
+	var keyPurpose string
+	var keyStatus string
+
+	// Rsa Tests
+	fmt.Printf("\n")
+	keyName = "TestRsa2048SignandVerify"
+	keyEpoch = 2
+	keyPurpose = "signing"
+	keyStatus = "primary"
+	cryptoKey1 := GenerateCryptoKey("aes128-ctr-hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey1 == nil {
+		t.Fatal("Can't generate aes128-ctr-hmacsha256 key\n")
+	}
+	printKey(cryptoKey1)
+
+	c := CrypterFromCryptoKey(*cryptoKey1)
+	if c == nil {
+		t.Fatal("Can't get crypter from cryptokey\n")
+	}
+	plain := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+	ciphertext, err := c.Encrypt(plain)
+	if err != nil {
+		t.Fatal("Can't encrypt, ", err, "\n")
+	}
+	fmt.Printf("Ciphertext: %x\n", ciphertext)
+	decrypted, err := c.Decrypt(ciphertext)
+	if err != nil {
+		t.Fatal("Can't decrypt, ", err, "\n")
+	}
+	fmt.Printf("Decrypted: %x\n", decrypted)
+	if !bytes.Equal(plain, decrypted) {
+		t.Fatal("plain and decrypted don't match")
 	}
 }

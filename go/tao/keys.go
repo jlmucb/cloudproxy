@@ -148,19 +148,61 @@ func DeserializeEcdsaPublicComponents(keyBytes []byte) (crypto.PrivateKey, error
 }
 
 func KeyComponentsFromSigner(s *Signer) ([][]byte, error) {
-	return nil, nil
+	var keyComponents [][]byte
+	switch *s.header.KeyType {
+	case "rsa1024", "rsa2048", "rsa3072":
+		// Serialize modulus, public-exponent, private-exponent, P, Q
+		keyComponents, err := SerializeRsaPrivateComponents((s.privateKey).(*rsa.PrivateKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		return keyComponents, nil
+	case "ecdsap256", "ecdsap384":
+		// Serialize
+		keyComponent, err := SerializeEcdsaPrivateComponents((s.privateKey).(*ecdsa.PrivateKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		keyComponents = append(keyComponents, keyComponent)
+		return keyComponents, nil
+	default:
+		return nil, errors.New("Unknown signer key")
+	}
+	return keyComponents, nil
 }
 
 func KeyComponentsFromVerifier(v *Verifier) ([][]byte, error) {
-	return nil, nil
+	var keyComponents [][]byte
+	switch *v.header.KeyType {
+	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
+	case "ecdsap256-public", "ecdsap384-public":
+	default:
+	}
+	return keyComponents, nil
 }
 
 func KeyComponentsFromCrypter(c *Crypter) ([][]byte, error) {
-	return nil, nil
+	var keyComponents [][]byte
+	switch *c.header.KeyType {
+	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256",
+		"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha256", "aes256-cbc-hmacsha512":
+		keyComponents = append(keyComponents, c.encryptingKeyBytes)
+		keyComponents = append(keyComponents, c.hmacKeyBytes)
+	default:
+		return nil, errors.New("Unknown crypter key")
+	}
+	return keyComponents, nil
 }
 
 func KeyComponentsFromDeriver(d *Deriver) ([][]byte, error) {
-	return nil, nil
+	var keyComponents [][]byte
+	switch *d.header.KeyType {
+	case "hdkf-sha256":
+		keyComponents = append(keyComponents, d.secret)
+	default:
+		return nil, errors.New("Unknown deriverer key")
+	}
+	return keyComponents, nil
 }
 
 func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
@@ -228,6 +270,23 @@ func (c *Crypter) Clear() {
 
 func (d *Deriver) Clear() {
 	ZeroBytes(d.secret)
+}
+
+func MarshalCryptoKey(ck CryptoKey) []byte {
+	b, err := proto.Marshal(&ck)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
+func UnmarshalCryptoKey(bytes []byte) (*CryptoKey, error) {
+	ck := new(CryptoKey)
+	err := proto.Unmarshal(bytes, ck)
+	if err != nil {
+		return nil, err
+	}
+	return ck, nil
 }
 
 func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) *CryptoKey {
@@ -428,23 +487,6 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 	}
 	cryptoKey.KeyHeader = ch
 	return cryptoKey
-}
-
-func MarshalCryptoKey(ck CryptoKey) []byte {
-	b, err := proto.Marshal(&ck)
-	if err != nil {
-		return nil
-	}
-	return b
-}
-
-func UnmarshalCryptoKey(bytes []byte) (*CryptoKey, error) {
-	ck := new(CryptoKey)
-	err := proto.Unmarshal(bytes, ck)
-	if err != nil {
-		return nil, err
-	}
-	return ck, nil
 }
 
 // A Signer is used to sign and verify signatures

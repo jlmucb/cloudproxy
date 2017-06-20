@@ -251,6 +251,110 @@ type Keys struct {
 	Cert         *x509.Certificate
 }
 
+// Encodes Keys into protobuf
+func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
+	// fill in keys, cert, attestation
+	var cks [][]byte
+	if k.keyTypes&Signing == Signing {
+		ck := &CryptoKey{
+			KeyHeader: k.SigningKey.header,
+		}
+		keyComponents, err := KeyComponentsFromSigner(k.SigningKey)
+		if err != nil {
+			return nil, errors.New("Can't get key components from signing key")
+		}
+		ck.KeyComponents = keyComponents
+		serializedCryptoKey, err := proto.Marshal(ck)
+		if err != nil {
+			return nil, errors.New("Can't serialize signing key")
+		}
+		cks = append(cks, serializedCryptoKey)
+	}
+
+	if k.keyTypes&Crypting == Crypting {
+		ck := &CryptoKey{
+			KeyHeader: k.CryptingKey.header,
+		}
+		keyComponents, err := KeyComponentsFromCrypter(k.CryptingKey)
+		if err != nil {
+			return nil, errors.New("Can't get key components from crypting key")
+		}
+		ck.KeyComponents = keyComponents
+		serializedCryptoKey, err := proto.Marshal(ck)
+		if err != nil {
+			return nil, errors.New("Can't serialize crypting key")
+		}
+		cks = append(cks, serializedCryptoKey)
+	}
+
+	if k.keyTypes&Deriving == Deriving {
+		ck := &CryptoKey{
+			KeyHeader: k.DerivingKey.header,
+		}
+		keyComponents, err := KeyComponentsFromDeriver(k.DerivingKey)
+		if err != nil {
+			return nil, errors.New("Can't get key components from deriving key")
+		}
+		ck.KeyComponents = keyComponents
+		serializedCryptoKey, err := proto.Marshal(ck)
+		if err != nil {
+			return nil, errors.New("Can't serialize deriving key")
+		}
+		cks = append(cks, serializedCryptoKey)
+	}
+
+	ckset := &CryptoKeyset{
+		Keys: cks,
+		Cert: k.Cert.Raw,
+	}
+	return ckset, nil
+}
+
+// UnmarshalKeyset decodes a CryptoKeyset into a temporary Keys structure. Note
+// that this Keys structure doesn't have any of its variables set.
+func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
+	k := new(Keys)
+
+	for i := 0; i < len(cks.Keys); i++ {
+		var ck CryptoKey
+		err := proto.Unmarshal(cks.Keys[i], &ck)
+		if err != nil {
+			return nil, errors.New("Can't unmarshal cryptokey")
+		}
+		if ck.KeyHeader.KeyType == nil {
+			return nil, errors.New("Missing KeyType in CryptoHeader")
+		}
+		switch *ck.KeyHeader.KeyType {
+		default:
+		case "signing":
+			k.Cert, err = x509.ParseCertificate(cks.Cert)
+			if err != nil {
+				return nil, errors.New("Can't parse certificate")
+			}
+			k.SigningKey = SignerFromCryptoKey(ck)
+			if k.SigningKey == nil {
+				return nil, errors.New("Can't recover signing key from cryptokey")
+			}
+			k.keyTypes |= Signing
+		case "crypting":
+			k.CryptingKey = CrypterFromCryptoKey(ck)
+			if k.CryptingKey == nil {
+				return nil, errors.New("Can't recover crypting key from cryptokey")
+			}
+			k.keyTypes |= Crypting
+		case "deriving":
+			k.DerivingKey = DeriverFromCryptoKey(ck)
+			if k.DerivingKey == nil {
+				return nil, errors.New("Can't recover deriving key from cryptokey")
+			}
+			k.keyTypes |= Deriving
+		}
+	}
+
+	// cks.Attestation =
+	return k, nil
+}
+
 // The paths to the filename used by the Keys type.
 const (
 	X509Path            = "cert"
@@ -740,78 +844,6 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 		return data, nil
 	*/
 	return nil, nil
-}
-
-// Encodes Keys into protobuf
-func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
-	// fill in keys, cert, attestation
-	var cks [][]byte
-	var cert []byte
-	if k.keyTypes&Signing == Signing {
-		ck := &CryptoKey{
-			KeyHeader: k.SigningKey.header,
-		}
-		keyComponents, err := KeyComponentsFromSigner(k.SigningKey)
-		if err != nil {
-			return nil, errors.New("Can't get key components from signing key")
-		}
-		// fill in cert
-		ck.KeyComponents = keyComponents
-		serializedCryptoKey, err := proto.Marshal(ck)
-		if err != nil {
-			return nil, errors.New("Can't serialize signing key")
-		}
-		cks = append(cks, serializedCryptoKey)
-		// cks.Cert =
-		//    CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-		//   pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-	}
-
-	if k.keyTypes&Crypting == Crypting {
-		ck := &CryptoKey{
-			KeyHeader: k.CryptingKey.header,
-		}
-		keyComponents, err := KeyComponentsFromCrypter(k.CryptingKey)
-		if err != nil {
-			return nil, errors.New("Can't get key components from crypting key")
-		}
-		ck.KeyComponents = keyComponents
-		serializedCryptoKey, err := proto.Marshal(ck)
-		if err != nil {
-			return nil, errors.New("Can't serialize crypting key")
-		}
-		cks = append(cks, serializedCryptoKey)
-	}
-
-	if k.keyTypes&Deriving == Deriving {
-		ck := &CryptoKey{
-			KeyHeader: k.DerivingKey.header,
-		}
-		keyComponents, err := KeyComponentsFromDeriver(k.DerivingKey)
-		if err != nil {
-			return nil, errors.New("Can't get key components from deriving key")
-		}
-		ck.KeyComponents = keyComponents
-		serializedCryptoKey, err := proto.Marshal(ck)
-		if err != nil {
-			return nil, errors.New("Can't serialize deriving key")
-		}
-		cks = append(cks, serializedCryptoKey)
-	}
-
-	ckset := &CryptoKeyset{
-		Keys: cks,
-		Cert: cert,
-	}
-	return ckset, nil
-}
-
-// UnmarshalKeyset decodes a CryptoKeyset into a temporary Keys structure. Note
-// that this Keys structure doesn't have any of its variables set.
-func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
-	k := new(Keys)
-
-	return k, nil
 }
 
 // NewOnDiskTaoSealedKeys sets up the keys sealed under a host Tao or reads sealed keys.

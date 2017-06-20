@@ -674,10 +674,10 @@ func (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCe
 
 // CreateSignedX509 creates a signed X.509 certificate for some other subject's
 // key.
-func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-	pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name) (*x509.Certificate, error) {
-	template := PrepareX509Template(pkAlg, sigAlg, sn, subjectName)
-	template.SerialNumber = new(big.Int).SetInt64(int64(certSerial))
+func (s *Signer) CreateSignedX509(caCert *x509.Certificate, sn int, subjectKey *Verifier,
+	pkAlg int, sigAlg int, subjectName *pkix.Name) (*x509.Certificate, error) {
+	template := PrepareX509Template(pkAlg, sigAlg, int64(sn), subjectName)
+	template.SerialNumber = new(big.Int).SetInt64(int64(sn))
 
 	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.publicKey, s.privateKey)
 	if err != nil {

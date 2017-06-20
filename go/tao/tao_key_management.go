@@ -380,19 +380,16 @@ func NewSignedOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name
 	// If there's already a cert, then this means that there was already a
 	// keyset on disk, so don't create a new signed certificate.
 	if k.Cert == nil {
-		/*
-		    *	FIX
-		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		   		k.Cert, err = signer.SigningKey.CreateSignedX509(signer.Cert, serial, k.VerifyingKey, name)
-		   		if err != nil {
-		   			return nil, err
-		   		}
+		pkInt := PublicKeyAlgFromSignerAlg(*signer.SigningKey.header.KeyType)
+		sigInt := SignatureAlgFromSignerAlg(*signer.SigningKey.header.KeyType)
+		k.Cert, err = signer.SigningKey.CreateSignedX509(signer.Cert, serial, k.VerifyingKey, pkInt, sigInt, name)
+		if err != nil {
+			return nil, err
+		}
 
-		   		if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
-		   			return nil, err
-		   		}
-		*/
+		if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+			return nil, err
+		}
 	}
 
 	return k, nil
@@ -660,41 +657,40 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 
 	pbed := &PBEData{}
 	/*
-	    *	FIX
-	   	pbed := &PBEData{
-	   		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
-	   		Cipher:  proto.String("aes128-ctr"),
-	   		Hmac:    proto.String("sha256"),
-	   		// The IV is required, so we include it, but this algorithm doesn't use it.
-	   		Iv:         make([]byte, aes.BlockSize),
-	   		Iterations: proto.Int32(4096),
-	   		Salt:       make([]byte, aes.BlockSize),
-	   	}
+		    *	FIX
+		pbed := &PBEData{
+		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
+		Cipher:  proto.String("aes128-ctr"),
+		Hmac:    proto.String("sha256"),
+		// The IV is required, so we include it, but this algorithm doesn't use it.
+		Iv:         make([]byte, aes.BlockSize),
+		Iterations: proto.Int32(4096),
+		Salt:       make([]byte, aes.BlockSize),
+		}
 
-	   	// We use the first half of the salt for the AES key and the second
-	   	// half for the HMAC key, since the standard recommends at least 8
-	   	// bytes of salt.
-	   	if _, err := rand.Read(pbed.Salt); err != nil {
-	   		return nil, err
-	   	}
+		// We use the first half of the salt for the AES key and the second
+		 // half for the HMAC key, since the standard recommends at least 8
+		 // bytes of salt.
+		 if _, err := rand.Read(pbed.Salt); err != nil {
+		 return nil, err
+		 }
 
-	   	// 128-bit AES key.
-	   	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	   	defer ZeroBytes(aesKey)
+		// 128-bit AES key.
+		aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+		defer ZeroBytes(aesKey)
 
-	   	// 64-byte HMAC-SHA256 key.
-	   	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	   	defer ZeroBytes(hmacKey)
-	   	c := &Crypter{aesKey, hmacKey}
+		// 64-byte HMAC-SHA256 key.
+		hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+		defer ZeroBytes(hmacKey)
+		c := &Crypter{aesKey, hmacKey}
 
-	   	// Note that we're abusing the PBEData format here, since the IV and
-	   	// the MAC are actually contained in the ciphertext from Encrypt().
-	   	var err error
-	   	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
-	   		return nil, err
-	   	}
+		// Note that we're abusing the PBEData format here, since the IV and
+		// the MAC are actually contained in the ciphertext from Encrypt().
+		var err error
+		if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
+		return nil, err
+		}
 	*/
-
 	return proto.Marshal(pbed)
 }
 
@@ -725,24 +721,24 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	}
 
 	/*
-	    *	FIX
-	   	// 128-bit AES key.
-	   	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	   	defer ZeroBytes(aesKey)
+		 *	FIX
+		// 128-bit AES key.
+		aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+		defer ZeroBytes(aesKey)
 
-	   	// 64-byte HMAC-SHA256 key.
-	   	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	   	defer ZeroBytes(hmacKey)
-	   	c := &Crypter{aesKey, hmacKey}
+		// 64-byte HMAC-SHA256 key.
+		hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+		defer ZeroBytes(hmacKey)
+		c := &Crypter{aesKey, hmacKey}
 
-	   	// Note that we're abusing the PBEData format here, since the IV and
-	   	// the MAC are actually contained in the ciphertext from Encrypt().
-	   	data, err := c.Decrypt(pbed.Ciphertext)
-	   	if err != nil {
-	   		return nil, err
-	   	}
+		// Note that we're abusing the PBEData format here, since the IV and
+		// the MAC are actually contained in the ciphertext from Encrypt().
+		data, err := c.Decrypt(pbed.Ciphertext)
+		if err != nil {
+		return nil, err
+		}
 
-	   	return data, nil
+		return data, nil
 	*/
 	return nil, nil
 }

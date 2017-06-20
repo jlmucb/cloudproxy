@@ -31,32 +31,6 @@ const (
 
 var TaoCryptoSuite string
 
-func TestVerifierFromX509(t *testing.T) {
-	/*
-	    *	FIX
-	   	s, err := GenerateSigner()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	details := &X509Details{
-	   		CommonName:   proto.String("test"),
-	   		Country:      proto.String("US"),
-	   		State:        proto.String("WA"),
-	   		Organization: proto.String("Google"),
-	   	}
-
-	   	x, err := s.CreateSelfSignedX509(NewX509Name(details))
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if _, err := FromX509(x); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	*/
-}
-
 func TestNewCrypter(t *testing.T) {
 	if _, err := GenerateCrypter(); err != nil {
 		t.Fatal(err.Error())
@@ -325,25 +299,25 @@ func TestSelfSignedX509(t *testing.T) {
 	keyEpoch := int32(1)
 	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if err != nil {
-   		t.Fatal(err.Error())
+		t.Fatal(err.Error())
 	}
 
-   	details := &X509Details{
-   		CommonName:   proto.String("test"),
-   		Country:      proto.String("US"),
-   		State:        proto.String("WA"),
-   		Organization: proto.String("Google"),
-   	}
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
+	}
 
 	pkInt := PublicKeyAlgFromSignerAlg(*keyType)
 	sigInt := SignatureAlgFromSignerAlg(*keyType)
 	if pkInt < 0 || sigInt < 0 {
-   		t.Fatal("Unknown Algorithm identifiers")
+		t.Fatal("Unknown Algorithm identifiers")
 	}
 	_, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
-   	if err != nil {
-   		t.Fatal(err.Error())
-   	}
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 }
 
 func TestKeyProtos(t *testing.T) {
@@ -351,12 +325,12 @@ func TestKeyProtos(t *testing.T) {
 
 func TestNewOnDiskPBEKeys(t *testing.T) {
 	/*
-	    *	FIX
-	   	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
-	   	if err != nil {
-	   		t.Fatal("Couldn't create a temporary directory:", err)
-	   	}
-	   	defer os.RemoveAll(tempDir)
+		    *	FIX
+		   tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
+		   if err != nil {
+		   	t.Fatal("Couldn't create a temporary directory:", err)
+		   }
+		   defer os.RemoveAll(tempDir)
 
 	   	password := []byte(`don't use this password`)
 	   	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
@@ -372,5 +346,43 @@ func TestNewOnDiskPBEKeys(t *testing.T) {
 	   	if err != nil {
 	   		t.Fatal("Couldn't recover the serialized keys:", err)
 	   	}
+	*/
+}
+
+func TestVerifierFromX509(t *testing.T) {
+	keyName := "Temporary_Keys_signer"
+	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
+	}
+
+	pkInt := PublicKeyAlgFromSignerAlg(*keyType)
+	sigInt := SignatureAlgFromSignerAlg(*keyType)
+	if pkInt < 0 || sigInt < 0 {
+		t.Fatal("Unknown Algorithm identifiers")
+	}
+	_, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// Get Verifier from Certificate
+	// Validate signature
+	/*
+
+		if _, err := FromX509(x); err != nil {
+			t.Fatal(err.Error())
+		}
 	*/
 }

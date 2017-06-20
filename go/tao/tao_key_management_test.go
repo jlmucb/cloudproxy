@@ -16,6 +16,7 @@ package tao
 
 import (
 	// "crypto/rand"
+	"crypto/x509"
 	// "io/ioutil"
 	// "os"
 	"testing"
@@ -325,27 +326,27 @@ func TestKeyProtos(t *testing.T) {
 
 func TestNewOnDiskPBEKeys(t *testing.T) {
 	/*
-		    *	FIX
-		   tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
-		   if err != nil {
-		   	t.Fatal("Couldn't create a temporary directory:", err)
-		   }
-		   defer os.RemoveAll(tempDir)
+			    *	FIX
+			   tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
+			   if err != nil {
+			   	t.Fatal("Couldn't create a temporary directory:", err)
+			   }
+			   defer os.RemoveAll(tempDir)
 
-	   	password := []byte(`don't use this password`)
-	   	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't create on-disk PBE keys:", err)
-	   	}
+		   	password := []byte(`don't use this password`)
+		   	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+		   	if err != nil {
+		   		t.Fatal("Couldn't create on-disk PBE keys:", err)
+		   	}
 
-	   	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
-	   		t.Fatal("Couldn't generate the right keys")
-	   	}
+		   	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+		   		t.Fatal("Couldn't generate the right keys")
+		   	}
 
-	   	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't recover the serialized keys:", err)
-	   	}
+		   	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+		   	if err != nil {
+		   		t.Fatal("Couldn't recover the serialized keys:", err)
+		   	}
 	*/
 }
 
@@ -372,17 +373,19 @@ func TestVerifierFromX509(t *testing.T) {
 	if pkInt < 0 || sigInt < 0 {
 		t.Fatal("Unknown Algorithm identifiers")
 	}
-	_, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
+	cert, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+	roots := x509.NewCertPool()
+	roots.AddCert(cert)
 
-	// Get Verifier from Certificate
-	// Validate signature
-	/*
+	opts := x509.VerifyOptions{
+		Roots: roots,
+	}
 
-		if _, err := FromX509(x); err != nil {
-			t.Fatal(err.Error())
-		}
-	*/
+	_, err = cert.Verify(opts)
+	if err != nil {
+		t.Fatal("Failed to verify certificate: ", err, "\n")
+	}
 }

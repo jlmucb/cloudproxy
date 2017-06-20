@@ -585,19 +585,18 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 }
 
 func (k *Keys) newCert(name *pkix.Name) (err error) {
-	/*
-	    *	FIX
-	    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-	    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-
-	   	k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
-	   	if err != nil {
-	   		return err
-	   	}
-	   	if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
-	   		return err
-	   	}
-	*/
+	pkInt := PublicKeyAlgFromSignerAlg(*k.SigningKey.header.KeyType)
+	sigInt := SignatureAlgFromSignerAlg(*k.SigningKey.header.KeyType)
+	if pkInt < 0 || sigInt < 0 {
+		return errors.New("No signing algorithm")
+	}
+	k.Cert, err = k.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), name)
+	if err != nil {
+		return err
+	}
+	if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+		return err
+	}
 	return nil
 }
 

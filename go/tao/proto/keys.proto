@@ -55,8 +55,10 @@ message CryptoKey {
 }
 
 message CryptoKeyset {
-  repeated CryptoKey keys = 1;
-  optional Attestation delegation = 2;
+  repeated bytes keys = 1;
+  // Cert for Signing Key
+  optional bytes cert = 2;
+  optional Attestation delegation = 3;
 }
 
 // Stacked Tao hosts can invoke their host Tao to seal a serialized CryptoKeyset

@@ -743,55 +743,67 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// MarshalKeyset encodes the keys into a protobuf message.
+// Encodes Keys into protobuf
 func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
-	var cks []*CryptoKey
+	// fill in keys, cert, attestation
+	var cks [][]byte
+	var cert []byte
 	if k.keyTypes&Signing == Signing {
-		/*
-		    *	FIX
-		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		   		ck, err := MarshalSignerProto(k.SigningKey)
-		   		if err != nil {
-		   			return nil, err
-		   		}
-
-		   		cks = append(cks, ck)
-		*/
+		ck := &CryptoKey{
+			KeyHeader: k.SigningKey.header,
+		}
+		keyComponents, err := KeyComponentsFromSigner(k.SigningKey)
+		if err != nil {
+			return nil, errors.New("Can't get key components from signing key")
+		}
+		// fill in cert
+		ck.KeyComponents = keyComponents
+		serializedCryptoKey, err := proto.Marshal(ck)
+		if err != nil {
+			return nil, errors.New("Can't serialize signing key")
+		}
+		cks = append(cks, serializedCryptoKey)
+		// cks.Cert =
+		//    CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
+		//   pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
 	}
 
 	if k.keyTypes&Crypting == Crypting {
-		/*
-		    *	FIX
-		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		   		ck, err := MarshalCrypterProto(k.CryptingKey)
-		   		if err != nil {
-		   			return nil, err
-		   		}
-
-		   		cks = append(cks, ck)
-		*/
+		ck := &CryptoKey{
+			KeyHeader: k.CryptingKey.header,
+		}
+		keyComponents, err := KeyComponentsFromCrypter(k.CryptingKey)
+		if err != nil {
+			return nil, errors.New("Can't get key components from crypting key")
+		}
+		ck.KeyComponents = keyComponents
+		serializedCryptoKey, err := proto.Marshal(ck)
+		if err != nil {
+			return nil, errors.New("Can't serialize crypting key")
+		}
+		cks = append(cks, serializedCryptoKey)
 	}
 
 	if k.keyTypes&Deriving == Deriving {
-		/*
-		    *	FIX
-		    *	CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
-		    *      pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name)
-		   		ck, err := MarshalDeriverProto(k.DerivingKey)
-		   		if err != nil {
-		   			return nil, err
-		   		}
-
-		   		cks = append(cks, ck)
-		*/
+		ck := &CryptoKey{
+			KeyHeader: k.DerivingKey.header,
+		}
+		keyComponents, err := KeyComponentsFromDeriver(k.DerivingKey)
+		if err != nil {
+			return nil, errors.New("Can't get key components from deriving key")
+		}
+		ck.KeyComponents = keyComponents
+		serializedCryptoKey, err := proto.Marshal(ck)
+		if err != nil {
+			return nil, errors.New("Can't serialize deriving key")
+		}
+		cks = append(cks, serializedCryptoKey)
 	}
 
 	ckset := &CryptoKeyset{
 		Keys: cks,
+		Cert: cert,
 	}
-
 	return ckset, nil
 }
 
@@ -799,31 +811,6 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 // that this Keys structure doesn't have any of its variables set.
 func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
 	k := new(Keys)
-	/*
-	    * 	FIX
-	   	var err error
-	   	for i := range cks.Keys {
-	   		if *cks.Keys[i].Purpose == CryptoKey_SIGNING {
-	   			if k.SigningKey, err = UnmarshalSignerProto(cks.Keys[i]); err != nil {
-	   				return nil, err
-	   			}
-
-	   			k.VerifyingKey = k.SigningKey.GetVerifier()
-	   		}
-
-	   		if *cks.Keys[i].Purpose == CryptoKey_CRYPTING {
-	   			if k.CryptingKey, err = UnmarshalCrypterProto(cks.Keys[i]); err != nil {
-	   				return nil, err
-	   			}
-	   		}
-
-	   		if *cks.Keys[i].Purpose == CryptoKey_DERIVING {
-	   			if k.DerivingKey, err = UnmarshalDeriverProto(cks.Keys[i]); err != nil {
-	   				return nil, err
-	   			}
-	   		}
-	   	}
-	*/
 
 	return k, nil
 }

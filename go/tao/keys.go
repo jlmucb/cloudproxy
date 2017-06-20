@@ -147,6 +147,22 @@ func DeserializeEcdsaPublicComponents(keyBytes []byte) (crypto.PrivateKey, error
 	return x509.ParsePKIXPublicKey(keyBytes)
 }
 
+func KeyComponentsFromSigner(s *Signer) ([][]byte, error) {
+	return nil, nil
+}
+
+func KeyComponentsFromVerifier(v *Verifier) ([][]byte, error) {
+	return nil, nil
+}
+
+func KeyComponentsFromCrypter(c *Crypter) ([][]byte, error) {
+	return nil, nil
+}
+
+func KeyComponentsFromDeriver(d *Deriver) ([][]byte, error) {
+	return nil, nil
+}
+
 func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
 	switch *k.KeyHeader.KeyType {
 	case "rsa1024", "rsa2048", "rsa3072":

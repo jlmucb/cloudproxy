@@ -177,7 +177,20 @@ func KeyComponentsFromVerifier(v *Verifier) ([][]byte, error) {
 	var keyComponents [][]byte
 	switch *v.header.KeyType {
 	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
+		// Serialize modulus, public-exponent, private-exponent, P, Q
+		keyComponents, err := SerializeRsaPublicComponents((v.publicKey).(*rsa.PublicKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		return keyComponents, nil
 	case "ecdsap256-public", "ecdsap384-public":
+		// Serialize
+		keyComponent, err := SerializeEcdsaPublicComponents((v.publicKey).(*ecdsa.PublicKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		keyComponents = append(keyComponents, keyComponent)
+		return keyComponents, nil
 	default:
 	}
 	return keyComponents, nil
@@ -274,6 +287,55 @@ func (c *Crypter) Clear() {
 func (d *Deriver) Clear() {
 	ZeroBytes(d.secret)
 }
+
+func CryptoKeyFromSigner(s *Signer) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromSigner(s)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: s.header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
+func CryptoKeyFromVerifier(v *Verifier) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromVerifier(v)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: v.header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
+func CryptoKeyFromCrypter(c *Crypter) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromCrypter(c)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: c.header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
+func CryptoKeyFromDeriver(d *Deriver) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromDeriver(d)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: d.header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
 
 func printKeyHeader(header CryptoHeader) {
 	if header.Version == nil || *header.Version != CryptoVersion_CRYPTO_VERSION_2 {

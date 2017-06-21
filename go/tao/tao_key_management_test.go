@@ -26,18 +26,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// -------------------------------------------------------------
-
-// Temporary
-const (
-	Basic128BitCipherSuite = "sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256"
-	Basic256BitCipherSuite = "sign:ecdsap384,crypt:aes256-ctr-hmacsha384,derive:hdkf-sha256"
-)
-
-var TaoCryptoSuite string
-
-// -------------------------------------------------------------
-
 func TestNewTemporaryKeys(t *testing.T) {
 	TaoCryptoSuite = "sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256"
 	k, err := NewTemporaryKeys(Signing | Crypting | Deriving)

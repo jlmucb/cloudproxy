@@ -284,6 +284,68 @@ func TestGenerateKeys(t *testing.T) {
 	fmt.Printf("\n")
 }
 
+func TestKeyTranslate(t *testing.T) {
+
+	// Private keys
+	keyType := "rsa1024"
+	keyName := "Rsatestkey"
+	keyEpoch := int32(1)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	ck := GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate rsa key\n")
+	}
+	s := SignerFromCryptoKey(*ck)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
+	}
+	ckNew, err := CryptoKeyFromSigner(s)
+	if err != nil {
+		t.Fatal("Can't get key from signer\n")
+	}
+	printKey(ckNew)
+	sNew := SignerFromCryptoKey(*ck)
+	if sNew == nil {
+		t.Fatal("Can't get signer recovered key\n")
+	}
+	keyType = "ecdsap256"
+	keyName = "Ecdsatestkey"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate rsa key\n")
+	}
+	s = SignerFromCryptoKey(*ck)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
+	}
+	ckNew, err = CryptoKeyFromSigner(s)
+	if err != nil {
+		t.Fatal("Can't get key from signer\n")
+	}
+	printKey(ckNew)
+	sNew = SignerFromCryptoKey(*ck)
+	if sNew == nil {
+		t.Fatal("Can't get signer recovered key\n")
+	}
+
+	// GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
+	// VerifierFromCryptoKey(k CryptoKey)
+	// CryptoKeyFromSigner(s *Signer)
+	// VerifierFromCryptoKey(k CryptoKey)
+
+	// GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
+	// CrypterFromCryptoKey(k CryptoKey)
+	// CryptoKeyFromCrypter(s *Crypter)
+	// printKey()
+	// CrypterFromCryptoKey(k CryptoKey)
+
+	// GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
+	// DeriverFromCryptoKey(k CryptoKey)
+	// CryptoKeyFromDeriver(s *Deriver)
+	// printKey()
+	// DeriverFromCryptoKey(k CryptoKey)
+}
 
 func TestCerts(t *testing.T) {
 

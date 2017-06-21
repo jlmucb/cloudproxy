@@ -19,8 +19,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	//"encoding/asn1"
-	// "encoding/pem"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -519,13 +517,6 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			return nil, err
 		}
 	} else {
-		/*
-			// There are two different types of keysets: in one there's
-			// just a Signer, so we use an encrypted PEM format. In the
-			// other, there are multiple keys, so we use a custom protobuf
-			// format.
-			if k.keyTypes & ^Signing != 0 {
-		*/
 		// Check to see if there are already keys.
 		f, err := os.Open(k.PBEKeysetPath())
 		if err == nil {
@@ -601,89 +592,6 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				}
 			}
 		}
-		/*
-		   		} else {
-		   			// There's just a signer, so do PEM encryption of the encoded key.
-		   			f, err := os.Open(k.PBESignerPath())
-		   fmt.Printf("One signer Keys stored in %s\n", k.PBEKeysetPath())
-		   			if err == nil {
-		   				defer f.Close()
-		   				// Read the signer.
-		   				ss, err := ioutil.ReadAll(f)
-		   				if err != nil {
-		   					return nil, err
-		   				}
-		   fmt.Print("Single signer keys stored in %s\n", k.PBESignerPath())
-		   return nil, errors.New("Unimplemented path")
-
-		   				pb, rest := pem.Decode(ss)
-		   				if pb == nil || len(rest) > 0 {
-		   					return nil, newError("decoding failure")
-		   				}
-
-		   				p, err := x509.DecryptPEMBlock(pb, password)
-		   				if err != nil {
-		   					return nil, err
-		   				}
-		   				defer ZeroBytes(p)
-
-		   				err = k.loadCert()
-		   				if err != nil {
-		   					return nil, err
-		   				}
-
-		   				if k.SigningKey, err = UnmarshalSignerDER(p); err != nil {
-		   					return nil, err
-		   				}
-		   				k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
-		   			} else {
-		   				// Create a fresh key and store it to the PBESignerPath.
-		   				// FIX
-		   				keyName := "xxx"
-		   				keyEpoch := int32(1)
-		   				keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
-		   				keyStatus := "active"
-		   				keyPurpose := "signing"
-		   				k.SigningKey, err = InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-		   				if err != nil {
-		   					return nil, err
-		   				}
-
-		   				k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
-		   				if k.VerifyingKey == nil {
-		   					return nil, errors.New("k.SigningKey.GetVerifierFromSigner returned nil")
-		   				}
-		   				fmt.Printf("Here\n")
-		   				p, err := MarshalSignerDER(k.SigningKey)
-		   				if err != nil {
-		   					return nil, err
-		   				}
-		   				defer ZeroBytes(p)
-
-		   				pb, err := x509.EncryptPEMBlock(rand.Reader, "EC PRIVATE KEY", p, password, x509.PEMCipherAES128)
-		   				if err != nil {
-		   					return nil, err
-		   				}
-
-		   				pbes, err := util.CreatePath(k.PBESignerPath(), 0777, 0600)
-		   				if err != nil {
-		   					return nil, err
-		   				}
-		   				defer pbes.Close()
-
-		   				if err = pem.Encode(pbes, pb); err != nil {
-		   					return nil, err
-		   				}
-
-		   				if k.SigningKey != nil && name != nil {
-		   					err = k.newCert(name)
-		   					if err != nil {
-		   						return nil, err
-		   					}
-		   				}
-		   			}
-		   		}
-		*/
 	}
 
 	return k, nil

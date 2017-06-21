@@ -286,6 +286,8 @@ func TestGenerateKeys(t *testing.T) {
 
 
 func TestCerts(t *testing.T) {
+
+	// TODO: test RSA Keys an ecdsap384 too
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
@@ -330,6 +332,8 @@ func TestCerts(t *testing.T) {
 }
 
 func TestCanonicalBytes(t *testing.T) {
+
+	// TODO: test RSA Keys an ecdsap384 too
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
@@ -358,6 +362,8 @@ func TestCanonicalBytes(t *testing.T) {
 }
 
 func TestNewCrypter(t *testing.T) {
+
+	// TODO: test "aes256-ctr-hmacsha256" and "aes256-ctr-hmacsha384/512"
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "crypting"
@@ -389,6 +395,7 @@ func TestNewCrypter(t *testing.T) {
 }
 
 func TestDeriveSecret(t *testing.T) {
+
 	ver := CryptoVersion_CRYPTO_VERSION_2
 	keyName := "keyName1"
 	keyType := "hdkf-sha256"
@@ -406,7 +413,7 @@ func TestDeriveSecret(t *testing.T) {
 	// derivingKey := GenerateCryptoKey("hdfk-sha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	// derivingKey.KeyComponents = append(derivingKey.KeyComponents, buf)
 	// if derivingKey == nil {
-	// t.Fatal("Can't generate signing key\n")
+	// t.Fatal("Can't generate deriving key\n")
 	// }
 	// printKey(derivingKey)
 	// d := DeriverFromCryptoKey(*derivingKey)
@@ -415,12 +422,12 @@ func TestDeriveSecret(t *testing.T) {
 	// }
 	buf := make([]byte, 32)
 	_, err := rand.Read(buf)
-
 	d := &Deriver{
 		header: ch,
 		secret: buf,
 	}
 	fmt.Printf("\n")
+
 	salt := []byte{1, 2, 3, 4}
 	context := []byte{1, 2}
 	material := make([]byte, 32)
@@ -555,6 +562,8 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	var keyPurpose string
 	var keyStatus string
 
+	// TODO: test "aes256-ctr-hmacsha256" and "aes256-ctr-hmacsha384/512"
+	// FIx duplicated code in NewCrypter
 	// Aes 128
 	fmt.Printf("\n")
 	keyName = "TestAes128-ctr-hmac-key"
@@ -618,6 +627,7 @@ func TestEncryptAndDecrypt(t *testing.T) {
 }
 
 func TestSignerVerifierDERSerialization(t *testing.T) {
+	// Shouldn't need this anymore
 	// func (v *Verifier) MarshalKey() []byte {
 	// func UnmarshalKey(material []byte) (*Verifier, error) {
 	// func FromX509(cert *x509.Certificate) (*Verifier, error) {

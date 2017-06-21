@@ -117,7 +117,8 @@ func DeserializeEcdsaPrivateComponents(keyBytes []byte) (*ecdsa.PrivateKey, erro
 }
 
 func SerializeRsaPublicComponents(rsaKey *rsa.PublicKey) ([][]byte, error) {
-	// mod, e, d, p, q
+	// should this use return x509.ParsePKIXPublicKey(keyBytes)?
+	// mod, e, d
 	var keyComponents [][]byte
 	if rsaKey.N == nil {
 		return nil, errors.New("No modulus")

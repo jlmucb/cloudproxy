@@ -423,25 +423,21 @@ func TestKeyTranslate(t *testing.T) {
 
 func TestCerts(t *testing.T) {
 
-	// TODO: test RSA Keys an ecdsap384 too
+	// ecdsa
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
 	keyStatus := "active"
-	signingKey := GenerateCryptoKey("ecdsap256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-	if signingKey == nil {
+	sk := GenerateCryptoKey("ecdsap256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if sk == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
-	printKey(signingKey)
+	printKey(sk)
 	fmt.Printf("\n")
 
-	privateKey, err := PrivateKeyFromCryptoKey(*signingKey)
-	if err != nil {
-	}
-
-	s := &Signer{
-		header:     signingKey.KeyHeader,
-		privateKey: privateKey,
+	s := SignerFromCryptoKey(*sk)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
 	}
 
 	details := &X509Details{
@@ -463,13 +459,42 @@ func TestCerts(t *testing.T) {
 	}
 	fmt.Printf("Cert: %x\n", cert)
 
+	// RSA
+	keyPurpose = "signing"
+	keyStatus = "active"
+	sk = GenerateCryptoKey("rsa2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if sk == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	printKey(sk)
+	fmt.Printf("\n")
+	s = SignerFromCryptoKey(*sk)
+	if s== nil {
+		t.Fatal("Can't get signer from signing key\n")
+	}
+
+/*
+	FIX
+	der, err = s.CreateSelfSignedDER(int(x509.RSA), int(x509.SHA256WithRSA),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedDER failed, ", err, "\n")
+	}
+	fmt.Printf("Der: %x\n", der)
+	cert, err = s.CreateSelfSignedX509(int(x509.RSA), int(x509.SHA256WithRSA),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
+	}
+ */
+
 	// (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error)
 	// (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
 }
 
 func TestCanonicalBytes(t *testing.T) {
 
-	// TODO: test RSA Keys an ecdsap384 too
+	// ecdsa
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
@@ -481,16 +506,32 @@ func TestCanonicalBytes(t *testing.T) {
 	printKey(signingKey)
 	fmt.Printf("\n")
 
-	privateKey, err := PrivateKeyFromCryptoKey(*signingKey)
-	if err != nil {
-		t.Fatal("PrivateKeyFromCryptoKey fails\n")
+	s := SignerFromCryptoKey(*signingKey)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
 	}
 
-	s := &Signer{
-		header:     signingKey.KeyHeader,
-		privateKey: privateKey,
-	}
 	cb, err := s.CanonicalKeyBytesFromSigner()
+	if err != nil {
+		t.Fatal("CanonicalKeyBytesFromSigner fails\n")
+	}
+	fmt.Printf("Canonical bytes: %x\n", cb)
+
+	// rsa
+	keyName = "keyName1"
+	signingKey = GenerateCryptoKey("rsa2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if signingKey == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	printKey(signingKey)
+	fmt.Printf("\n")
+
+	s = SignerFromCryptoKey(*signingKey)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
+	}
+
+	cb, err = s.CanonicalKeyBytesFromSigner()
 	if err != nil {
 		t.Fatal("CanonicalKeyBytesFromSigner fails\n")
 	}
@@ -499,7 +540,6 @@ func TestCanonicalBytes(t *testing.T) {
 
 func TestNewCrypter(t *testing.T) {
 
-	// TODO: test "aes256-ctr-hmacsha256" and "aes256-ctr-hmacsha384/512"
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "crypting"
@@ -698,9 +738,6 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	var keyPurpose string
 	var keyStatus string
 
-	// TODO: test "aes256-ctr-hmacsha256" and "aes256-ctr-hmacsha384/512"
-	// FIx duplicated code in NewCrypter
-	// Aes 128
 	fmt.Printf("\n")
 	keyName = "TestAes128-ctr-hmac-key"
 	keyEpoch = 2
@@ -760,13 +797,4 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	if !bytes.Equal(plain, decrypted) {
 		t.Fatal("plain and decrypted don't match")
 	}
-}
-
-func TestSignerVerifierDERSerialization(t *testing.T) {
-	// Shouldn't need this anymore
-	// func (v *Verifier) MarshalKey() []byte {
-	// func UnmarshalKey(material []byte) (*Verifier, error) {
-	// func FromX509(cert *x509.Certificate) (*Verifier, error) {
-	// func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
-	// func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
 }

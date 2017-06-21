@@ -15,8 +15,10 @@
 package tao
 
 import (
+	"crypto/aes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	//"encoding/asn1"
@@ -32,6 +34,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.
@@ -305,7 +308,9 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 
 	ckset := &CryptoKeyset{
 		Keys: cks,
-		Cert: k.Cert.Raw,
+	}
+	if k.Cert != nil {
+		ckset.Cert = k.Cert.Raw
 	}
 	return ckset, nil
 }
@@ -447,7 +452,7 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 
 	if k.keyTypes&Deriving == Deriving {
 		keyName := "Temporary_Keys_deriver"
-		keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+		keyType := DeriverTypeFromSuiteName(TaoCryptoSuite)
 		keyPurpose := "deriving"
 		keyStatus := "active"
 		keyEpoch := int32(1)
@@ -456,7 +461,6 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 			return nil, err
 		}
 	}
-
 	return k, nil
 }
 
@@ -599,7 +603,6 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 				defer ZeroBytes(m)
-
 				enc, err := PBEEncrypt(m, password)
 				if err != nil {
 					return nil, err
@@ -757,43 +760,62 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	if password == nil || len(password) == 0 {
 		return nil, newError("null or empty password")
 	}
-
-	pbed := &PBEData{}
-	/*
-		    *	FIX
-		pbed := &PBEData{
-		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
+	// FIX
+	pbed := &PBEData{
+		Version: CryptoVersion_CRYPTO_VERSION_2.Enum(),
 		Cipher:  proto.String("aes128-ctr"),
 		Hmac:    proto.String("sha256"),
 		// The IV is required, so we include it, but this algorithm doesn't use it.
 		Iv:         make([]byte, aes.BlockSize),
 		Iterations: proto.Int32(4096),
 		Salt:       make([]byte, aes.BlockSize),
-		}
+	}
 
-		// We use the first half of the salt for the AES key and the second
-		 // half for the HMAC key, since the standard recommends at least 8
-		 // bytes of salt.
-		 if _, err := rand.Read(pbed.Salt); err != nil {
-		 return nil, err
-		 }
-
-		// 128-bit AES key.
-		aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-		defer ZeroBytes(aesKey)
-
-		// 64-byte HMAC-SHA256 key.
-		hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-		defer ZeroBytes(hmacKey)
-		c := &Crypter{aesKey, hmacKey}
-
-		// Note that we're abusing the PBEData format here, since the IV and
-		// the MAC are actually contained in the ciphertext from Encrypt().
-		var err error
-		if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
+	// We use the first half of the salt for the AES key and the second
+	// half for the HMAC key, since the standard recommends at least 8
+	// bytes of salt.
+	if _, err := rand.Read(pbed.Salt); err != nil {
 		return nil, err
-		}
-	*/
+	}
+
+	// 128-bit AES key.
+	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	defer ZeroBytes(aesKey)
+
+	// 64-byte HMAC-SHA256 key.
+	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	defer ZeroBytes(hmacKey)
+
+	ver := CryptoVersion_CRYPTO_VERSION_2
+	keyName := "PBEKey"
+	keyEpoch := int32(1)
+	// CrypterTypeFromSuiteName(suiteName string)
+	keyType:= "aes128-ctr-hmacsha256"
+	keyPurpose := "crypting"
+	keyStatus := "active"
+	ch := &CryptoHeader{
+		Version:    &ver,
+		KeyName:    &keyName,
+		KeyEpoch:   &keyEpoch,
+		KeyType:    &keyType,
+		KeyPurpose: &keyPurpose,
+		KeyStatus:  &keyStatus,
+	}
+	ck := &CryptoKey {
+		KeyHeader: ch,
+	}
+	ck.KeyComponents = append(ck.KeyComponents, aesKey)
+	ck.KeyComponents = append(ck.KeyComponents, hmacKey)
+	c := CrypterFromCryptoKey(*ck)
+	if c == nil {
+		return nil, errors.New("Empty crypter")
+	}
+	// Note that we're abusing the PBEData format here, since the IV and
+	// the MAC are actually contained in the ciphertext from Encrypt().
+	var err error
+	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
+		return nil, err
+	}
 	return proto.Marshal(pbed)
 }
 
@@ -811,7 +833,7 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	}
 
 	// Recover the keys from the password and the PBE header.
-	if *pbed.Version != CryptoVersion_CRYPTO_VERSION_1 {
+	if *pbed.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		return nil, newError("bad version")
 	}
 
@@ -823,27 +845,44 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 		return nil, newError("bad hmac")
 	}
 
-	/*
-		 *	FIX
-		// 128-bit AES key.
-		aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-		defer ZeroBytes(aesKey)
+	// 128-bit AES key.
+	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	defer ZeroBytes(aesKey)
 
-		// 64-byte HMAC-SHA256 key.
-		hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-		defer ZeroBytes(hmacKey)
-		c := &Crypter{aesKey, hmacKey}
+	// 64-byte HMAC-SHA256 key.
+	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
 
-		// Note that we're abusing the PBEData format here, since the IV and
-		// the MAC are actually contained in the ciphertext from Encrypt().
-		data, err := c.Decrypt(pbed.Ciphertext)
-		if err != nil {
+	ck := new(CryptoKey)
+	ver := CryptoVersion_CRYPTO_VERSION_2
+	keyName := "PBEKey"
+	keyEpoch := int32(1)
+	// Replace with CrypterTypeFromSuiteName(suiteName string)
+	keyType:= "aes128-ctr-hmacsha256"
+	keyPurpose := "crypting"
+	keyStatus := "active"
+	ch := &CryptoHeader{
+		Version:    &ver,
+		KeyName:    &keyName,
+		KeyEpoch:   &keyEpoch,
+		KeyType:    &keyType,
+		KeyPurpose: &keyPurpose,
+		KeyStatus:  &keyStatus,
+	}
+	ck.KeyHeader = ch
+	ck.KeyComponents = append(ck.KeyComponents, aesKey)
+	ck.KeyComponents = append(ck.KeyComponents, hmacKey)
+	c := CrypterFromCryptoKey(*ck)
+
+	defer ZeroBytes(hmacKey)
+
+	// Note that we're abusing the PBEData format here, since the IV and
+	// the MAC are actually contained in the ciphertext from Encrypt().
+	data, err := c.Decrypt(pbed.Ciphertext)
+	if err != nil {
 		return nil, err
-		}
+	}
 
-		return data, nil
-	*/
-	return nil, nil
+	return data, nil
 }
 
 // NewOnDiskTaoSealedKeys sets up the keys sealed under a host Tao or reads sealed keys.

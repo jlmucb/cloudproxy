@@ -31,6 +31,7 @@ import (
 	"encoding/asn1"
 
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -199,8 +200,9 @@ func KeyComponentsFromDeriver(d *Deriver) ([][]byte, error) {
 	switch *d.header.KeyType {
 	case "hdkf-sha256":
 		keyComponents = append(keyComponents, d.secret)
+		return keyComponents, nil
 	default:
-		return nil, errors.New("Unknown deriverer key")
+		return nil, errors.New("Unknown deriver key")
 	}
 	return keyComponents, nil
 }
@@ -270,6 +272,40 @@ func (c *Crypter) Clear() {
 
 func (d *Deriver) Clear() {
 	ZeroBytes(d.secret)
+}
+
+func printKeyHeader(header CryptoHeader) {
+	if header.Version == nil || *header.Version != CryptoVersion_CRYPTO_VERSION_2 {
+		fmt.Printf("Wrong version\n")
+	}
+	if header.KeyName == nil {
+		fmt.Printf("No key name\n")
+	} else {
+		fmt.Printf("Key name: %s\n", *header.KeyName)
+	}
+	if header.KeyType == nil {
+		fmt.Printf("No key type\n")
+	} else {
+		fmt.Printf("Key type: %s\n", *header.KeyType)
+	}
+	if header.KeyPurpose == nil {
+		fmt.Printf("No Purpose\n")
+	} else {
+		fmt.Printf("Purpose: %s\n", *header.KeyPurpose)
+	}
+	if header.KeyStatus == nil {
+		fmt.Printf("No key status\n")
+	} else {
+		fmt.Printf("Key status: %s\n", *header.KeyStatus)
+	}
+}
+
+func printKey(cryptoKey *CryptoKey) {
+	printKeyHeader(*cryptoKey.KeyHeader)
+	n := len(cryptoKey.KeyComponents)
+	for i := 0; i < n; i++ {
+		fmt.Printf("Component %d: %x\n", i, cryptoKey.KeyComponents[i])
+	}
 }
 
 func MarshalCryptoKey(ck CryptoKey) []byte {
@@ -1062,6 +1098,9 @@ func (c *Crypter) decryptAes256ctrHmacsha512(ciphertext []byte) ([]byte, error) 
 // Encrypt encrypts plaintext into ciphertext with integrity
 // with a MAC.
 func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
+	if c == nil || c.header == nil || c.header.KeyType == nil {
+		return nil, errors.New("Key Type not set")
+	}
 	switch *c.header.KeyType {
 	case "aes128-ctr-hmacsha256":
 		return c.encryptAes128ctrHmacsha256(plain)
@@ -1076,6 +1115,9 @@ func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
 
 // Decrypt checks the MAC then decrypts ciphertext into plaintext.
 func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
+	if c.header.KeyType == nil {
+		return nil, errors.New("Key Type not set")
+	}
 	switch *c.header.KeyType {
 	case "aes128-ctr-hmacsha256":
 		return c.decryptAes128ctrHmacsha256(ciphertext)

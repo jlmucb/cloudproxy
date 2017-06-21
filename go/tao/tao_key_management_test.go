@@ -15,10 +15,12 @@
 package tao
 
 import (
-	// "crypto/rand"
+	//"crypto/aes"
+	//"crypto/rand"
+	//"crypto/sha256"
 	"crypto/x509"
-	// "io/ioutil"
-	// "os"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -32,55 +34,7 @@ const (
 
 var TaoCryptoSuite string
 
-func TestNewCrypter(t *testing.T) {
-	if _, err := GenerateCrypter(); err != nil {
-		t.Fatal(err.Error())
-	}
-}
-
-func TestNewDeriver(t *testing.T) {
-	if _, err := GenerateDeriver(); err != nil {
-		t.Fatal(err.Error())
-	}
-}
-
-func TestDeriveSecret(t *testing.T) {
-	/*
-	    *	FIX
-	   	d, err := GenerateDeriver()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	salt := make([]byte, 20)
-	   	if _, err := rand.Read(salt); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	context := []byte("Test context")
-
-	   	// Derive an AES-256 key.
-	   	material := make([]byte, 32)
-	   	if err := d.Derive(salt, context, material); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	material2 := make([]byte, 32)
-	   	if err := d.Derive(salt, context, material2); err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-
-	   	if len(material) != len(material2) {
-	   		t.Fatal("The Deriver generated two different lengths of keys")
-	   	}
-
-	   	for i := range material {
-	   		if material[i] != material2[i] {
-	   			t.Fatal("The Deriver is not deterministic")
-	   		}
-	   	}
-	*/
-}
+// -------------------------------------------------------------
 
 func TestNewOnDiskPBESigner(t *testing.T) {
 	/*
@@ -325,29 +279,24 @@ func TestKeyProtos(t *testing.T) {
 }
 
 func TestNewOnDiskPBEKeys(t *testing.T) {
-	/*
-			    *	FIX
-			   tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
-			   if err != nil {
-			   	t.Fatal("Couldn't create a temporary directory:", err)
-			   }
-			   defer os.RemoveAll(tempDir)
+	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
+	if err != nil {
+		t.Fatal("Couldn't create a temporary directory:", err)
+	}
+	defer os.RemoveAll(tempDir)
+	password := []byte(`don't use this password`)
+	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+	if err != nil {
+		t.Fatal("Couldn't create on-disk PBE keys:", err)
+	}
+	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+		t.Fatal("Couldn't generate the right keys")
+	}
 
-		   	password := []byte(`don't use this password`)
-		   	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-		   	if err != nil {
-		   		t.Fatal("Couldn't create on-disk PBE keys:", err)
-		   	}
-
-		   	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
-		   		t.Fatal("Couldn't generate the right keys")
-		   	}
-
-		   	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-		   	if err != nil {
-		   		t.Fatal("Couldn't recover the serialized keys:", err)
-		   	}
-	*/
+	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+	if err != nil {
+		t.Fatal("Couldn't recover the serialized keys:", err)
+	}
 }
 
 func TestVerifierFromX509(t *testing.T) {

@@ -26,6 +26,8 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// -------------------------------------------------------------
+
 // Temporary
 const (
 	Basic128BitCipherSuite = "sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256"
@@ -164,17 +166,20 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 		t.Fatal("Couldn't create on-disk PBE keys:", err)
 	}
 
-	/*
-		if k.SigningKey == nil || k.CryptingKey != nil || k.DerivingKey != nil {
-			t.Fatal("Couldn't generate the right keys")
-		}
+	// FIX?
 
-		_, err = NewOnDiskPBEKeys(Signing, password, tempDir, nil)
-		if err != nil {
-			t.Fatal("Couldn't recover the serialized keys:", err)
-		}
-	*/
+	if k.SigningKey == nil || k.CryptingKey != nil || k.DerivingKey != nil {
+		t.Fatal("Couldn't generate the right keys")
+	}
+
+	_, err = NewOnDiskPBEKeys(Signing, password, tempDir, nil)
+	if err != nil {
+		t.Fatal("Couldn't recover the serialized keys:", err)
+	}
 }
+
+
+// TODO
 
 func TestTaoDelegatedKeys(t *testing.T) {
 	/*

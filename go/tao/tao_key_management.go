@@ -760,7 +760,7 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	if password == nil || len(password) == 0 {
 		return nil, newError("null or empty password")
 	}
-	// FIX
+	// FIX: Should follow cryptosuite
 	pbed := &PBEData{
 		Version: CryptoVersion_CRYPTO_VERSION_2.Enum(),
 		Cipher:  proto.String("aes128-ctr"),
@@ -789,7 +789,7 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	ver := CryptoVersion_CRYPTO_VERSION_2
 	keyName := "PBEKey"
 	keyEpoch := int32(1)
-	// CrypterTypeFromSuiteName(suiteName string)
+	// FIX: Should be derived from cryptosuite
 	keyType:= "aes128-ctr-hmacsha256"
 	keyPurpose := "crypting"
 	keyStatus := "active"
@@ -856,7 +856,7 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	ver := CryptoVersion_CRYPTO_VERSION_2
 	keyName := "PBEKey"
 	keyEpoch := int32(1)
-	// Replace with CrypterTypeFromSuiteName(suiteName string)
+	// FIX: Should be derived from cryptosuite
 	keyType:= "aes128-ctr-hmacsha256"
 	keyPurpose := "crypting"
 	keyStatus := "active"

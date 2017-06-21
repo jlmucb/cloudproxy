@@ -37,7 +37,7 @@ enum CryptoVersion {
 //	"ecdsap256", "ecdsap384"
 //	"rsa1024public", "rsa2048public", "rsa3072public"
 //	"ecdsap256public", "ecdsap384public"
-//	"hdkf-sha256
+//	"hdkf-sha256"
 // key_purpose: "verifying", "signing", "crypting", "deriving", "sealing"
 message CryptoHeader {
   required CryptoVersion version = 1;

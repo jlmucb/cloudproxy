@@ -31,36 +31,6 @@ import (
 	// "os"
 )
 
-func printKey(cryptoKey *CryptoKey) {
-	if cryptoKey.KeyHeader.Version == nil || *cryptoKey.KeyHeader.Version != CryptoVersion_CRYPTO_VERSION_2 {
-		fmt.Printf("Wrong version\n")
-	}
-	if cryptoKey.KeyHeader.KeyName == nil {
-		fmt.Printf("No key name\n")
-	} else {
-		fmt.Printf("Key name: %s\n", *cryptoKey.KeyHeader.KeyName)
-	}
-	if cryptoKey.KeyHeader.KeyType == nil {
-		fmt.Printf("No key type\n")
-	} else {
-		fmt.Printf("Key type: %s\n", *cryptoKey.KeyHeader.KeyType)
-	}
-	if cryptoKey.KeyHeader.KeyPurpose == nil {
-		fmt.Printf("No Purpose\n")
-	} else {
-		fmt.Printf("Purpose: %s\n", *cryptoKey.KeyHeader.KeyPurpose)
-	}
-	if cryptoKey.KeyHeader.KeyStatus == nil {
-		fmt.Printf("No key status\n")
-	} else {
-		fmt.Printf("Key status: %s\n", *cryptoKey.KeyHeader.KeyStatus)
-	}
-	n := len(cryptoKey.KeyComponents)
-	for i := 0; i < n; i++ {
-		fmt.Printf("Component %d: %x\n", i, cryptoKey.KeyComponents[i])
-	}
-}
-
 func TestGenerateKeys(t *testing.T) {
 	var keyName string
 	var keyEpoch int32

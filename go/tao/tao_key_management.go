@@ -330,14 +330,6 @@ func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
 	return k, nil
 }
 
-func UnmarshalSignerDER(signer []byte) (*Signer, error) {
-	return nil, nil
-}
-
-func MarshalSignerDER(s *Signer) ([]byte, error) {
-	return nil, nil
-}
-
 // The paths to the filename used by the Keys type.
 const (
 	X509Path            = "cert"

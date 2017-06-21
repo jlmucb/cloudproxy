@@ -329,22 +329,96 @@ func TestKeyTranslate(t *testing.T) {
 		t.Fatal("Can't get signer recovered key\n")
 	}
 
-	// GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
-	// VerifierFromCryptoKey(k CryptoKey)
-	// CryptoKeyFromSigner(s *Signer)
-	// VerifierFromCryptoKey(k CryptoKey)
+	// verifier
+	v := s.GetVerifierFromSigner()
+	if v == nil {
+		t.Fatal("Can't get verifier\n")
+	}
+	ckNew, err = CryptoKeyFromVerifier(v)
+	if err != nil {
+		t.Fatal("Cannot get CryptoKeyFromVerifier\n")
+	}
+	v = VerifierFromCryptoKey(*ckNew)
+	printKey(ckNew)
 
-	// GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
-	// CrypterFromCryptoKey(k CryptoKey)
-	// CryptoKeyFromCrypter(s *Crypter)
-	// printKey()
-	// CrypterFromCryptoKey(k CryptoKey)
+	// aes128-ctr-hmac256
+	keyType = "aes128-ctr-hmacsha256"
+	keyName = "aes128Crypter"
+	keyEpoch = 2
+	keyPurpose = "crypting"
+	keyStatus = "primary"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate aes key\n")
+	}
+	c := CrypterFromCryptoKey(*ck)
+	if c == nil {
+		t.Fatal("Can't generate aes key\n")
+	}
+	ckNew, err = CryptoKeyFromCrypter(c)
+	if err != nil {
+		t.Fatal("Can't generate aes key from crypter\n")
+	}
+	printKey(ckNew)
+	c = CrypterFromCryptoKey(*ckNew)
+	if c == nil {
+		t.Fatal("Can't recover crypter from key\n")
+	}
 
-	// GenerateCryptoKey(keyType, keyName, keyEpoch, keyPurpose, keyStatus)
-	// DeriverFromCryptoKey(k CryptoKey)
-	// CryptoKeyFromDeriver(s *Deriver)
-	// printKey()
-	// DeriverFromCryptoKey(k CryptoKey)
+	// aes256-ctr-hmac256
+	keyType = "aes256-ctr-hmacsha256"
+	keyName = "aes256Crypter"
+	keyStatus = "primary"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate aes key\n")
+	}
+	c = CrypterFromCryptoKey(*ck)
+	if c == nil {
+		t.Fatal("Can't get crypter from key\n")
+	}
+	ckNew, err = CryptoKeyFromCrypter(c)
+	if c == nil {
+		t.Fatal("Can't recover crypter from key\n")
+	}
+	printKey(ckNew)
+
+	// hdkf-sha256
+	keyType = "hdkf-sha256"
+	keyName = "sha256Deriver"
+	keyPurpose = "deriving"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate deriver key\n")
+	}
+	d := DeriverFromCryptoKey(*ck)
+	if d == nil {
+		t.Fatal("Can't get deriver from key\n")
+	}
+	ckNew, err = CryptoKeyFromDeriver(d)
+	if err != nil {
+		t.Fatal("Can't get key from deriver\n")
+	}
+	printKey(ckNew)
+	d = DeriverFromCryptoKey(*ckNew)
+	if d == nil {
+		t.Fatal("Can't get deriver from recovered key\n")
+	}
+
+	// aes256-ctr-hmac256
+	keyType = "aes256-ctr-hmacsha256"
+	keyName = "aes256Crypter"
+	keyStatus = "primary"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate aes key\n")
+	}
+	c = CrypterFromCryptoKey(*ck)
+	if c == nil {
+		t.Fatal("Can't generate rsa key\n")
+	}
+	ckNew, err = CryptoKeyFromCrypter(c)
+	printKey(ckNew)
 }
 
 func TestCerts(t *testing.T) {

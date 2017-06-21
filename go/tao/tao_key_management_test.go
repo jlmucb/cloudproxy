@@ -36,29 +36,143 @@ var TaoCryptoSuite string
 
 // -------------------------------------------------------------
 
+func TestNewTemporaryKeys(t *testing.T) {
+	TaoCryptoSuite = "sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256"
+	k, err := NewTemporaryKeys(Signing | Crypting | Deriving)
+	if err != nil {
+		t.Fatal("Couldn't initialize temporary keys:", err)
+	}
+
+	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+		t.Fatal("Couldn't generate the right keys")
+	}
+
+	_, err = proto.Marshal(k.SigningKey.header)
+	if err != nil {
+		t.Fatal("Couldn't marshal signing key")
+	}
+	_, err = proto.Marshal(k.CryptingKey.header)
+	if err != nil {
+		t.Fatal("Couldn't marshal crypting key")
+	}
+	_, err = proto.Marshal(k.DerivingKey.header)
+	if err != nil {
+		t.Fatal("Couldn't marshal deriving key")
+	}
+}
+
+func TestSelfSignedX509(t *testing.T) {
+	keyName := "Temporary_Keys_signer"
+	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
+	}
+
+	pkInt := PublicKeyAlgFromSignerAlg(*keyType)
+	sigInt := SignatureAlgFromSignerAlg(*keyType)
+	if pkInt < 0 || sigInt < 0 {
+		t.Fatal("Unknown Algorithm identifiers")
+	}
+	_, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+func TestNewOnDiskPBEKeys(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
+	if err != nil {
+		t.Fatal("Couldn't create a temporary directory:", err)
+	}
+	defer os.RemoveAll(tempDir)
+	password := []byte(`don't use this password`)
+	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+	if err != nil {
+		t.Fatal("Couldn't create on-disk PBE keys:", err)
+	}
+	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+		t.Fatal("Couldn't generate the right keys")
+	}
+
+	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
+	if err != nil {
+		t.Fatal("Couldn't recover the serialized keys:", err)
+	}
+}
+
+func TestVerifierFromX509(t *testing.T) {
+	keyName := "Temporary_Keys_signer"
+	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
+	}
+
+	pkInt := PublicKeyAlgFromSignerAlg(*keyType)
+	sigInt := SignatureAlgFromSignerAlg(*keyType)
+	if pkInt < 0 || sigInt < 0 {
+		t.Fatal("Unknown Algorithm identifiers")
+	}
+	cert, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(cert)
+
+	opts := x509.VerifyOptions{
+		Roots: roots,
+	}
+
+	_, err = cert.Verify(opts)
+	if err != nil {
+		t.Fatal("Failed to verify certificate: ", err, "\n")
+	}
+}
+
 func TestNewOnDiskPBESigner(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBESigner")
+	if err != nil {
+		t.Fatal("Couldn't create a temporary directory:", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	password := []byte(`don't use this password`)
+	k, err := NewOnDiskPBEKeys(Signing, password, tempDir, nil)
+	if k == nil || err != nil {
+		t.Fatal("Couldn't create on-disk PBE keys:", err)
+	}
+
 	/*
-	    *	FIX
-	   	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBESigner")
-	   	if err != nil {
-	   		t.Fatal("Couldn't create a temporary directory:", err)
-	   	}
-	   	defer os.RemoveAll(tempDir)
+		if k.SigningKey == nil || k.CryptingKey != nil || k.DerivingKey != nil {
+			t.Fatal("Couldn't generate the right keys")
+		}
 
-	   	password := []byte(`don't use this password`)
-	   	k, err := NewOnDiskPBEKeys(Signing, password, tempDir, nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't create on-disk PBE keys:", err)
-	   	}
-
-	   	if k.SigningKey == nil || k.CryptingKey != nil || k.DerivingKey != nil {
-	   		t.Fatal("Couldn't generate the right keys")
-	   	}
-
-	   	_, err = NewOnDiskPBEKeys(Signing, password, tempDir, nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't recover the serialized keys:", err)
-	   	}
+		_, err = NewOnDiskPBEKeys(Signing, password, tempDir, nil)
+		if err != nil {
+			t.Fatal("Couldn't recover the serialized keys:", err)
+		}
 	*/
 }
 
@@ -219,122 +333,4 @@ func TestCorruptedCiphertext(t *testing.T) {
 	   		}
 	   	}
 	*/
-}
-
-func TestNewTemporaryKeys(t *testing.T) {
-	TaoCryptoSuite = "sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256"
-	k, err := NewTemporaryKeys(Signing | Crypting | Deriving)
-	if err != nil {
-		t.Fatal("Couldn't initialize temporary keys:", err)
-	}
-
-	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
-		t.Fatal("Couldn't generate the right keys")
-	}
-
-	_, err = proto.Marshal(k.SigningKey.header)
-	if err != nil {
-		t.Fatal("Couldn't marshal signing key")
-	}
-	_, err = proto.Marshal(k.CryptingKey.header)
-	if err != nil {
-		t.Fatal("Couldn't marshal crypting key")
-	}
-	_, err = proto.Marshal(k.DerivingKey.header)
-	if err != nil {
-		t.Fatal("Couldn't marshal deriving key")
-	}
-}
-
-func TestSelfSignedX509(t *testing.T) {
-	keyName := "Temporary_Keys_signer"
-	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
-	keyPurpose := "signing"
-	keyStatus := "active"
-	keyEpoch := int32(1)
-	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	details := &X509Details{
-		CommonName:   proto.String("test"),
-		Country:      proto.String("US"),
-		State:        proto.String("WA"),
-		Organization: proto.String("Google"),
-	}
-
-	pkInt := PublicKeyAlgFromSignerAlg(*keyType)
-	sigInt := SignatureAlgFromSignerAlg(*keyType)
-	if pkInt < 0 || sigInt < 0 {
-		t.Fatal("Unknown Algorithm identifiers")
-	}
-	_, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-}
-
-func TestKeyProtos(t *testing.T) {
-}
-
-func TestNewOnDiskPBEKeys(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
-	if err != nil {
-		t.Fatal("Couldn't create a temporary directory:", err)
-	}
-	defer os.RemoveAll(tempDir)
-	password := []byte(`don't use this password`)
-	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-	if err != nil {
-		t.Fatal("Couldn't create on-disk PBE keys:", err)
-	}
-	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
-		t.Fatal("Couldn't generate the right keys")
-	}
-
-	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir, nil)
-	if err != nil {
-		t.Fatal("Couldn't recover the serialized keys:", err)
-	}
-}
-
-func TestVerifierFromX509(t *testing.T) {
-	keyName := "Temporary_Keys_signer"
-	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
-	keyPurpose := "signing"
-	keyStatus := "active"
-	keyEpoch := int32(1)
-	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	details := &X509Details{
-		CommonName:   proto.String("test"),
-		Country:      proto.String("US"),
-		State:        proto.String("WA"),
-		Organization: proto.String("Google"),
-	}
-
-	pkInt := PublicKeyAlgFromSignerAlg(*keyType)
-	sigInt := SignatureAlgFromSignerAlg(*keyType)
-	if pkInt < 0 || sigInt < 0 {
-		t.Fatal("Unknown Algorithm identifiers")
-	}
-	cert, nil := s.CreateSelfSignedX509(pkInt, sigInt, int64(1), NewX509Name(details))
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	roots := x509.NewCertPool()
-	roots.AddCert(cert)
-
-	opts := x509.VerifyOptions{
-		Roots: roots,
-	}
-
-	_, err = cert.Verify(opts)
-	if err != nil {
-		t.Fatal("Failed to verify certificate: ", err, "\n")
-	}
 }

@@ -16,7 +16,6 @@ package tao
 
 import (
 	"crypto/aes"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -24,7 +23,7 @@ import (
 	//"encoding/asn1"
 	"encoding/pem"
 	"errors"
-	// "fmt"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -50,22 +49,6 @@ const (
 // -------------------------------------------------------------------
 
 // Temporary
-
-func GenerateSigner() (*Signer, error) {
-	return nil, nil
-}
-
-func GenerateCrypter() (*Crypter, error) {
-	return nil, nil
-}
-
-func GenerateDeriver() (*Deriver, error) {
-	return nil, nil
-}
-
-func (s *Verifier) GetVerifier() *ecdsa.PublicKey {
-	return nil
-}
 
 type Tao interface {
 	// GetTaoName returns the Tao principal name assigned to the caller.
@@ -652,11 +635,22 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
 			} else {
 				// Create a fresh key and store it to the PBESignerPath.
-				if k.SigningKey, err = GenerateSigner(); err != nil {
+				// FIX
+				keyName := "xxx"
+				keyEpoch := int32(1)
+				keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+				keyStatus := "active"
+				keyPurpose := "signing"
+				k.SigningKey, err = InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+				if err != nil {
 					return nil, err
 				}
 
 				k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
+				if k.VerifyingKey == nil {
+					return nil, errors.New("k.SigningKey.GetVerifierFromSigner returned nil")
+				}
+				fmt.Printf("Here\n")
 				p, err := MarshalSignerDER(k.SigningKey)
 				if err != nil {
 					return nil, err
@@ -790,7 +784,7 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	keyName := "PBEKey"
 	keyEpoch := int32(1)
 	// FIX: Should be derived from cryptosuite
-	keyType:= "aes128-ctr-hmacsha256"
+	keyType := "aes128-ctr-hmacsha256"
 	keyPurpose := "crypting"
 	keyStatus := "active"
 	ch := &CryptoHeader{
@@ -801,7 +795,7 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 		KeyPurpose: &keyPurpose,
 		KeyStatus:  &keyStatus,
 	}
-	ck := &CryptoKey {
+	ck := &CryptoKey{
 		KeyHeader: ch,
 	}
 	ck.KeyComponents = append(ck.KeyComponents, aesKey)
@@ -857,7 +851,7 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	keyName := "PBEKey"
 	keyEpoch := int32(1)
 	// FIX: Should be derived from cryptosuite
-	keyType:= "aes128-ctr-hmacsha256"
+	keyType := "aes128-ctr-hmacsha256"
 	keyPurpose := "crypting"
 	keyStatus := "active"
 	ch := &CryptoHeader{

@@ -233,23 +233,28 @@ func (tt *TPMTao) Seal(data []byte, policy string) (sealed []byte, err error) {
 		return nil, errors.New("tpm-specific policies are not yet implemented")
 	}
 
-	crypter, err := GenerateCrypter()
-	if err != nil {
-		return nil, err
+	keyName := "SealingKey"
+	keyEpoch := int32(1)
+	keyPurpose := "crypting"
+	keyStatus := "active"
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return nil, errors.New("unsupported sealer crypter")
 	}
-	defer ZeroBytes(crypter.aesKey)
-	defer ZeroBytes(crypter.hmacKey)
+	ck := GenerateCryptoKey(*keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		return nil, errors.New("Can't generate sealing key")
+	}
+	crypter := CrypterFromCryptoKey(*ck)
+	if crypter  == nil {
+		return nil, errors.New("Can't get crypter from sealing key")
+	}
+	defer crypter.Clear()
 
 	c, err := crypter.Encrypt(data)
 	if err != nil {
 		return nil, err
 	}
-
-	ck, err := MarshalCrypterProto(crypter)
-	if err != nil {
-		return nil, err
-	}
-	defer ZeroBytes(ck.Key)
 
 	ckb, err := proto.Marshal(ck)
 	if err != nil {
@@ -289,14 +294,12 @@ func (tt *TPMTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 	if err := proto.Unmarshal(unsealed, &ck); err != nil {
 		return nil, "", err
 	}
-	defer ZeroBytes(ck.Key)
+	defer ck.Clear()
 
-	crypter, err := UnmarshalCrypterProto(&ck)
-	if err != nil {
-		return nil, "", err
+	crypter := CrypterFromCryptoKey(ck)
+	if err == nil {
+		return nil, "", errors.New("Cant get crypter from crypto key")
 	}
-	defer ZeroBytes(crypter.aesKey)
-	defer ZeroBytes(crypter.hmacKey)
 
 	m, err := crypter.Decrypt(h.EncryptedData)
 	if err != nil {

@@ -891,7 +891,8 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 			return nil, err
 		}
 	case "rsa1024", "rsa2048", "rsa3072":
-		// Use PKCS 1.5?
+		// Use PSS?
+		// Change sig, err = s.privateKey.(*rsa.PrivateKey).Sign(rand.Reader, b, nil)
 		sig, err = rsa.SignPKCS1v15(rand.Reader, s.privateKey.(*rsa.PrivateKey), crypto.SHA256, b)
 		if err != nil {
 			return nil, err
@@ -1191,4 +1192,46 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	default:
 		return nil, errors.New("Unsupported crypting algorithm")
 	}
+}
+
+// MarshalSignerDER serializes the signer to DER.
+func MarshalSignerDER(s *Signer) ([]byte, error) {
+	// FIX: only ecdsa is supported
+	if s.header.KeyType == nil {
+		return nil, errors.New("Unsupported alg for MarshalSignerDER")
+	}
+	switch(*s.header.KeyType) {
+	case "ecdsap256", "ecdsap384":
+        	return x509.MarshalECPrivateKey((s.privateKey).(*ecdsa.PrivateKey))
+	default:
+		return nil, errors.New("Unsupported alg for MarshalSignerDER")
+	}
+	return nil, errors.New("Unsupported alg for MarshalSignerDER")
+}
+
+// UnmarshalSignerDER deserializes a Signer from DER.
+func UnmarshalSignerDER(signer []byte) (*Signer, error) {
+	// TODO: only ecdsa is supported
+	// FIX
+	keyName := "Unnamed ECDSA signer"
+	keyEpoch := int32(1)
+	keyType := "ecdsap256"
+	keyPurpose := "singing"
+	keyStatus := "active"
+	h := &CryptoHeader{
+		KeyName: &keyName,
+		KeyEpoch: &keyEpoch,
+		KeyType: &keyType,
+		KeyPurpose: &keyPurpose,
+		KeyStatus: &keyStatus,
+	}
+        k := &Signer{
+		header: h,
+	}
+        privateKey, err := x509.ParseECPrivateKey(signer)
+	if err != nil {
+                return nil, err
+        }
+	k.privateKey = privateKey
+        return k, nil
 }

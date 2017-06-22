@@ -20,7 +20,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
-	"io"
+	// "io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -41,56 +41,6 @@ const (
 	Crypting
 	Deriving
 )
-
-// -------------------------------------------------------------------
-
-// Temporary
-
-type Tao interface {
-	// GetTaoName returns the Tao principal name assigned to the caller.
-	GetTaoName() (name auth.Prin, err error)
-
-	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
-	ExtendTaoName(subprin auth.SubPrin) error
-
-	// GetRandomBytes returns a slice of n random bytes.
-	GetRandomBytes(n int) (bytes []byte, err error)
-
-	// Rand produces an io.Reader for random bytes from this Tao.
-	Rand() io.Reader
-
-	// GetSharedSecret returns a slice of n secret bytes.
-	GetSharedSecret(n int, policy string) (bytes []byte, err error)
-
-	// Attest requests the Tao host sign a statement on behalf of the caller. The
-	// optional issuer, time and expiration will be given default values if nil.
-	// TODO(kwalsh) Maybe create a struct for these optional params? Or use
-	// auth.Says instead (in which time and expiration are optional) with a
-
-	Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error)
-
-	// Seal encrypts data so only certain hosted programs can unseal it.
-	Seal(data []byte, policy string) (sealed []byte, err error)
-
-	// Unseal decrypts data that has been sealed by the Seal() operation, but only
-	// if the policy specified during the Seal() operation is satisfied.
-	Unseal(sealed []byte) (data []byte, policy string, err error)
-
-	// InitCounter initializes a counter with given label.
-	InitCounter(label string, c int64) error
-
-	// GetCounter retrieves a counter with given label.
-	GetCounter(label string) (int64, error)
-
-	// RollbackProtectedSeal encrypts data under rollback protection
-	// so only certain hosted programs can unseal it.
-	RollbackProtectedSeal(label string, data []byte, policy string) ([]byte, error)
-
-	// RollbackProtectedUnseal decrypts data under rollback protection.
-	RollbackProtectedUnseal(sealed []byte) ([]byte, string, error)
-}
-
-// -------------------------------------------------------------------
 
 // Generate or restore a signer.
 // InitializeSigner uses marshaledCryptoKey to restore a signer from

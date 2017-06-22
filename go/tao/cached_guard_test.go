@@ -266,8 +266,17 @@ func TestCachingDatalogValidatePeerAttestation(t *testing.T) {
 	k.Delegation.SerializedEndorsements = [][]byte{eab}
 
 	// Generate an x509 certificate for the Tao-delegated server.
-	k.Cert, err = k.SigningKey.CreateSelfSignedX509(&pkix.Name{
-		Organization: []string{"Identity of some Tao service"}})
+	signerAlg := SignerTypeFromSuiteName(TaoCryptoSuite)
+	if signerAlg == nil {
+		t.Error("Cant get signer alg from ciphersuite")
+	}
+	pkInt := PublicKeyAlgFromSignerAlg(*signerAlg)
+	skInt := SignatureAlgFromSignerAlg(*signerAlg)
+	if pkInt < 0 || skInt < 0 {
+		t.Error("Cant get x509 signer alg from signer alg")
+	}
+	k.Cert, err = k.SigningKey.CreateSelfSignedX509(pkInt, skInt, 1,
+		&pkix.Name{Organization: []string{"Identity of some Tao service"}})
 	if err != nil {
 		t.Error("failed to generate x509 certificate:", err)
 		return

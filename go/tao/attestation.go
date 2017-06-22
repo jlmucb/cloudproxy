@@ -224,7 +224,7 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attesta
 		SerializedStatement: ser,
 		Signature:           sig,
 		SignerType:          proto.String("key"),
-		SignerKey:           s.GetVerifier().MarshalKey(),
+		SignerKey:           s.GetVerifierFromSigner().MarshalKey(),
 	}
 
 	if len(delegation) > 0 {

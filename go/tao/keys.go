@@ -38,9 +38,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 
-	// "golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/hkdf"
 	// "golang.org/x/crypto/pbkdf2"
-	"github.com/golang/crypto/hkdf"
+	//"github.com/golang/crypto/hkdf"
 )
 
 // ZeroBytes clears the bytes in a slice.
@@ -915,6 +915,9 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 	var sd SignedData
 	if err := proto.Unmarshal(sig, &sd); err != nil {
 		return false, err
+	}
+	if v == nil || v.header == nil || v.header.KeyType == nil || sd.Header == nil || sd.Header.KeyType == nil {
+		return false, errors.New("NIL ptr")
 	}
 	if *v.header.KeyType != *sd.Header.KeyType {
 		return false, errors.New("Wrong signature algorithm")

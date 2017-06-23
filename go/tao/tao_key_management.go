@@ -347,6 +347,9 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 	if k.keyTypes&Signing == Signing {
 		keyName := "Temporary_Keys_signer"
 		keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+		if  keyType == nil {
+			return nil, errors.New("nil signer type")
+		}
 		keyPurpose := "signing"
 		keyStatus := "active"
 		keyEpoch := int32(1)

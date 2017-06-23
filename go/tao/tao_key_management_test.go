@@ -54,12 +54,15 @@ func TestNewTemporaryKeys(t *testing.T) {
 func TestSelfSignedX509(t *testing.T) {
 	keyName := "Temporary_Keys_signer"
 	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		t.Fatal("BAD KEYTYPE")
+	}
 	keyPurpose := "signing"
 	keyStatus := "active"
 	keyEpoch := int32(1)
 	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal("BAD KEYTYPE" + TaoCryptoSuite)
 	}
 
 	details := &X509Details{

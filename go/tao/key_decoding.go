@@ -22,9 +22,10 @@ func ptrFromString(str string) *string {
 	return &str
 }
 
+// FIX
 func PublicKeyAlgFromSignerAlg(signerAlg string) int {
 	switch(signerAlg) {
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		return int(x509.ECDSA)
 	case "rsa1024", "rsa2048", "rsa3072":
 		return int(x509.RSA)
@@ -36,7 +37,7 @@ func PublicKeyAlgFromSignerAlg(signerAlg string) int {
 
 func SignatureAlgFromSignerAlg(signerAlg string) int {
 	switch(signerAlg) {
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		return int(x509.ECDSAWithSHA256)
 	case "rsa1024", "rsa2048", "rsa3072":
 		return int(x509.SHA256WithRSA)
@@ -62,8 +63,10 @@ func SignerTypeFromSuiteName(suiteName string) *string {
 	switch suiteName {
 	case Basic128BitCipherSuite:
 		return ptrFromString("ecdsap256")
-	case Basic256BitCipherSuite:
+	case Basic192BitCipherSuite:
 		return ptrFromString("ecdsap384")
+	case Basic256BitCipherSuite:
+		return ptrFromString("ecdsap521")
 	default:
 		return nil
 	}
@@ -72,7 +75,7 @@ func SignerTypeFromSuiteName(suiteName string) *string {
 
 func DeriverTypeFromSuiteName(suiteName string) *string {
 	switch suiteName {
-	case Basic128BitCipherSuite, Basic256BitCipherSuite:
+	case Basic128BitCipherSuite, Basic192BitCipherSuite, Basic256BitCipherSuite:
 		return ptrFromString("hdkf-sha256")
 	default:
 		return nil
@@ -84,8 +87,10 @@ func HmacTypeFromSuiteName(suiteName string) *string {
 	switch suiteName {
 	case Basic128BitCipherSuite:
 		return ptrFromString("hmacsha256")
-	case Basic256BitCipherSuite:
+	case Basic192BitCipherSuite:
 		return ptrFromString("hmacsha384")
+	case Basic256BitCipherSuite:
+		return ptrFromString("hmacsha512")
 	default:
 		return nil
 	}

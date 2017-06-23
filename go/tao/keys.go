@@ -175,6 +175,9 @@ func KeyComponentsFromSigner(s *Signer) ([][]byte, error) {
 
 func KeyComponentsFromVerifier(v *Verifier) ([][]byte, error) {
 	var keyComponents [][]byte
+	if v.header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
 	switch *v.header.KeyType {
 	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
 		// Serialize modulus, public-exponent, private-exponent, P, Q
@@ -243,23 +246,25 @@ func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
 
 func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
 	var publicKey crypto.PublicKey
+	if k.KeyHeader == nil {
+		return nil, errors.New("Empty key header")
+	}
 	switch *k.KeyHeader.KeyType {
-	case "rsa1024-public":
-	case "rsa2048-public":
-	case "rsa3072-public":
+	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
 		rsaKey := new(rsa.PublicKey)
 		err := DeserializeRsaPublicComponents(rsaKey, k.KeyComponents)
 		if err != nil {
 			return nil, errors.New("Can't DeserializeRsaPublicComponents")
 		}
 		publicKey = crypto.PublicKey(rsaKey)
-	case "ecdsap256-public":
-	case "ecdsap384-public":
+		return publicKey, nil
+	case "ecdsap256-public", "ecdsap521-public", "ecdsap384-public":
 		ecKey, err := DeserializeEcdsaPublicComponents(k.KeyComponents[0])
 		if err != nil {
 			return nil, errors.New("Can't DeserializeEcdsaPublicComponents")
 		}
 		publicKey = crypto.PublicKey(ecKey)
+		return publicKey, nil
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
@@ -364,6 +369,10 @@ func printKeyHeader(header CryptoHeader) {
 }
 
 func printKey(cryptoKey *CryptoKey) {
+	if cryptoKey.KeyHeader == nil {
+		fmt.Printf("No key header\n")
+		return
+	}
 	printKeyHeader(*cryptoKey.KeyHeader)
 	n := len(cryptoKey.KeyComponents)
 	for i := 0; i < n; i++ {
@@ -634,10 +643,13 @@ func SignerFromCryptoKey(k CryptoKey) *Signer {
 
 func VerifierFromCryptoKey(k CryptoKey) *Verifier {
 	publicKey, err := PublicKeyFromCryptoKey(k)
+fmt.Printf("PublicKeyFromCryptoKey failed " )
+fmt.Print(err)
 	if err != nil {
 		return nil
 	}
 	if k.KeyHeader.KeyType == nil {
+fmt.Printf("KEYTYPE NIL")
 		return nil
 	}
 	v := &Verifier{
@@ -680,7 +692,7 @@ func (s *Signer) GetVerifierFromSigner() *Verifier {
 	switch *s.header.KeyType {
 	case "rsa1024", "rsa2048", "rsa3072":
 		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil
@@ -691,7 +703,8 @@ func (s *Signer) GetVerifierFromSigner() *Verifier {
 	newHeader.KeyName = s.header.KeyName
 	newHeader.KeyEpoch = s.header.KeyEpoch
 	newHeader.KeyType = &newKeyType
-	newHeader.KeyPurpose = s.header.KeyPurpose
+	strVerifying := "verifying"
+	newHeader.KeyPurpose = &strVerifying
 	newHeader.KeyStatus = s.header.KeyStatus
 	v := &Verifier{
 		header:    &newHeader,
@@ -976,6 +989,7 @@ func UnmarshalKey(material []byte) (*Verifier, error) {
 	}
 	v := VerifierFromCryptoKey(k)
 	if v == nil {
+printKey(&k)
 		return nil, errors.New("VerifierFromCryptoKey failed")
 	}
 	return v, nil

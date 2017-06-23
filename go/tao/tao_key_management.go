@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
+"fmt"
 	// "io"
 	"io/ioutil"
 	"os"
@@ -359,6 +360,11 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 		}
 
 		k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
+		if k.VerifyingKey == nil {
+			return nil, errors.New("Can't get verifier from signer")
+		}
+fmt.Printf("Verifier: \n")
+printKeyHeader(*k.VerifyingKey.header)
 	}
 
 	if k.keyTypes&Crypting == Crypting {

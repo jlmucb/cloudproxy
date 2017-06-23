@@ -109,12 +109,11 @@ type Tao interface {
 //
 // Supported crypto suites
 //	Basic256BitCipherSuite is the USG "Top Secret" suite.  See
-// 	https://www.iad.gov/iad/programs/iad-initiatives/cnsa-suite.cfm   The choice
-//	of SHA-384 and P-384 make no sense to me since SHA-512 should be equivalent to
-//	AES-256 in security.  Oh well.
+// 	https://www.iad.gov/iad/programs/iad-initiatives/cnsa-suite.cfm.
 const (
 	Basic128BitCipherSuite = "sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256"
-	Basic256BitCipherSuite = "sign:ecdsap384,crypt:aes256-ctr-hmacsha384,derive:hdkf-sha256"
+	Basic192BitCipherSuite = "sign:ecdsap384,crypt:aes256-ctr-hmacsha384,derive:hdkf-sha256"
+	Basic256BitCipherSuite = "sign:ecdsap521,crypt:aes256-ctr-hmacsha512,derive:hdkf-sha256"
 )
 // The following variable, defined in "tao_cipher_suite.go," selects the cipher suite.
 // var TaoCryptoSuite = Basic128BitCipherSuite

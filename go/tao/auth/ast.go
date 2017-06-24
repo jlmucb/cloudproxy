@@ -407,6 +407,11 @@ func MakePredicate(name string, arg ...interface{}) Pred {
 
 // NewPrin returns a new Prin with the given key type and material.
 func NewPrin(keytype string, material []byte) Prin {
+if material == nil {
+fmt.Printf("***Newprin (%s): nil\n", keytype)
+} else {
+fmt.Printf("***Newprin (%s): %x\n", keytype, material)
+}
 	hash := sha256.Sum256(material)
 	return Prin{Type: keytype, KeyHash: Bytes(hash[:])}
 }

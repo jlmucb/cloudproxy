@@ -203,7 +203,7 @@ message Attestation {
   required string signer_type = 2;
 
   // The signer's public key, i.e. the un-hashed key material used within 
-  // clouddproxy/tao/auth.New*Prin().
+  // cloudproxy/tao/auth.New*Prin().
   required bytes signer_key = 3;
 
   // Signature over the serialized statement using TPM or Tao signing.

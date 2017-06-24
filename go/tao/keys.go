@@ -151,6 +151,9 @@ func DeserializeEcdsaPublicComponents(keyBytes []byte) (crypto.PrivateKey, error
 
 func KeyComponentsFromSigner(s *Signer) ([][]byte, error) {
 	var keyComponents [][]byte
+	if s.header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
 	switch *s.header.KeyType {
 	case "rsa1024", "rsa2048", "rsa3072":
 		// Serialize modulus, public-exponent, private-exponent, P, Q
@@ -159,7 +162,7 @@ func KeyComponentsFromSigner(s *Signer) ([][]byte, error) {
 			return nil, errors.New("Can't Serialize")
 		}
 		return keyComponents, nil
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		// Serialize
 		keyComponent, err := SerializeEcdsaPrivateComponents((s.privateKey).(*ecdsa.PrivateKey))
 		if err != nil {
@@ -201,6 +204,9 @@ func KeyComponentsFromVerifier(v *Verifier) ([][]byte, error) {
 
 func KeyComponentsFromCrypter(c *Crypter) ([][]byte, error) {
 	var keyComponents [][]byte
+	if c.header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
 	switch *c.header.KeyType {
 	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256",
 		"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha256", "aes256-cbc-hmacsha512":
@@ -214,6 +220,9 @@ func KeyComponentsFromCrypter(c *Crypter) ([][]byte, error) {
 
 func KeyComponentsFromDeriver(d *Deriver) ([][]byte, error) {
 	var keyComponents [][]byte
+	if d.header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
 	switch *d.header.KeyType {
 	case "hdkf-sha256":
 		keyComponents = append(keyComponents, d.secret)
@@ -225,6 +234,9 @@ func KeyComponentsFromDeriver(d *Deriver) ([][]byte, error) {
 }
 
 func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
+	if k.KeyHeader.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
 	switch *k.KeyHeader.KeyType {
 	case "rsa1024", "rsa2048", "rsa3072":
 		rsaKey := new(rsa.PrivateKey)
@@ -660,6 +672,9 @@ fmt.Printf("KEYTYPE NIL")
 }
 
 func CrypterFromCryptoKey(k CryptoKey) *Crypter {
+	if k.KeyHeader.KeyType == nil {
+		return nil
+	}
 	c := &Crypter{
 		header: k.KeyHeader,
 	}
@@ -689,11 +704,16 @@ func DeriverFromCryptoKey(k CryptoKey) *Deriver {
 
 func (s *Signer) GetVerifierFromSigner() *Verifier {
 	var pub crypto.PublicKey
+	if s.header.KeyType == nil {
+		return nil
+	}
 	switch *s.header.KeyType {
 	case "rsa1024", "rsa2048", "rsa3072":
 		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
+		break
 	case "ecdsap256", "ecdsap384", "ecdsap521":
 		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
+		break
 	default:
 		return nil
 	}
@@ -893,8 +913,11 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	// TODO(tmroeder): for compatibility with the C++ version, we should
 	// compute ECDSA signatures over hashes truncated to fit in the ECDSA
 	// signature.
+	if s.header.KeyType == nil {
+		return nil, errors.New("Empty header")
+	}
 	switch *s.header.KeyType {
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		R, S, err := ecdsa.Sign(rand.Reader, s.privateKey.(*ecdsa.PrivateKey), b)
 		if err != nil {
 			return nil, err
@@ -932,7 +955,7 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 	if v == nil || v.header == nil || v.header.KeyType == nil || sd.Header == nil || sd.Header.KeyType == nil {
 		return false, errors.New("NIL ptr")
 	}
-	if *v.header.KeyType != *sd.Header.KeyType {
+	if v.header.KeyType == nil || sd.Header.KeyType == nil || *v.header.KeyType != *sd.Header.KeyType {
 		return false, errors.New("Wrong signature algorithm")
 	}
 
@@ -989,7 +1012,6 @@ func UnmarshalKey(material []byte) (*Verifier, error) {
 	}
 	v := VerifierFromCryptoKey(k)
 	if v == nil {
-printKey(&k)
 		return nil, errors.New("VerifierFromCryptoKey failed")
 	}
 	return v, nil
@@ -1083,6 +1105,9 @@ func (c *Crypter) decryptAes128ctrHmacsha256(ciphertext []byte) ([]byte, error) 
 	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		return nil, errors.New("bad version")
 	}
+	if ed.Header.KeyType == nil || c.header.KeyType == nil {
+		return nil, errors.New("empty key header")
+	}
 	if *ed.Header.KeyType != *c.header.KeyType {
 		return nil, errors.New("bad key type")
 	}
@@ -1148,6 +1173,9 @@ func (c *Crypter) decryptAes256ctrHmacsha512(ciphertext []byte) ([]byte, error) 
 	}
 	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		return nil, errors.New("bad version")
+	}
+	if ed.Header.KeyType == nil || c.header.KeyType == nil {
+		return nil, errors.New("empty key header")
 	}
 	if *ed.Header.KeyType != "aes256-ctr-hmacsha512" {
 		return nil, errors.New("bad key type")
@@ -1251,4 +1279,46 @@ func UnmarshalSignerDER(signer []byte) (*Signer, error) {
         }
 	k.privateKey = privateKey
         return k, nil
+}
+
+func GenerateAnonymousSigner() *Signer {
+	keyName := "Anonymous_signer"
+	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+	if  keyType == nil {
+		return nil
+	}
+	keyPurpose := "signing"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+		return nil
+	}
+	return s
+}
+
+func GenerateAnonymousCrypter() *Crypter {
+	keyName := "Anonymous_crypter"
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "crypting"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	c, err := InitializeCrypter(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+		return nil
+	}
+	return c
+}
+
+func GenerateAnonymousDeriver() *Deriver {
+	keyName := "Anonymous_deriver"
+	keyType := DeriverTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "deriving"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	d, err := InitializeDeriver(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+		return nil
+	}
+	return d
 }

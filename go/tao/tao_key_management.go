@@ -176,6 +176,44 @@ type Keys struct {
 	Cert         *x509.Certificate
 }
 
+func printKeys(keys *Keys) {
+	fmt.Printf("dir: %s\n", keys.dir)
+	fmt.Printf("policy: %s\n", keys.policy)
+	fmt.Printf("Key types: ")
+	if keys.keyTypes&Signing != 0 {
+		fmt.Printf("Signing ")
+	}
+	if keys.keyTypes&Crypting != 0 {
+		fmt.Printf("Crypting ")
+	}
+	if keys.keyTypes&Deriving != 0 {
+		fmt.Printf("Deriving ")
+	}
+	fmt.Printf("\n")
+	if keys.SigningKey != nil {
+		printKeyHeader(*keys.SigningKey.header)
+	}
+	if keys.VerifyingKey != nil {
+		printKeyHeader(*keys.VerifyingKey.header)
+	}
+	if keys.CryptingKey != nil {
+		printKeyHeader(*keys.CryptingKey.header)
+	}
+	if keys.DerivingKey != nil {
+		printKeyHeader(*keys.DerivingKey.header)
+	}
+	if keys.Delegation != nil {
+		fmt.Printf("Delegation present\n")
+	} else {
+		fmt.Printf("Delegation empty\n")
+	}
+	if keys.Cert != nil {
+		fmt.Printf("Cert present\n")
+	} else {
+		fmt.Printf("Cert empty\n")
+	}
+}
+
 // Encodes Keys into protobuf
 func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 	// fill in keys, cert, attestation
@@ -251,13 +289,15 @@ func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
 		if ck.KeyHeader.KeyType == nil {
 			return nil, errors.New("Missing KeyType in CryptoHeader")
 		}
-		switch *ck.KeyHeader.KeyType {
-		default:
-		case "signing":
+		if cks.Cert != nil {
 			k.Cert, err = x509.ParseCertificate(cks.Cert)
 			if err != nil {
 				return nil, errors.New("Can't parse certificate")
 			}
+		}
+		switch *ck.KeyHeader.KeyType {
+		default:
+		case "signing":
 			k.SigningKey = SignerFromCryptoKey(ck)
 			if k.SigningKey == nil {
 				return nil, errors.New("Can't recover signing key from cryptokey")
@@ -346,47 +386,26 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 
 	var err error
 	if k.keyTypes&Signing == Signing {
-		keyName := "Temporary_Keys_signer"
-		keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
-		if  keyType == nil {
-			return nil, errors.New("nil signer type")
+		k.SigningKey = GenerateAnonymousSigner()
+		if k.SigningKey == nil {
+			return nil, errors.New("Can't generate signer")
 		}
-		keyPurpose := "signing"
-		keyStatus := "active"
-		keyEpoch := int32(1)
-		k.SigningKey, err = InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-		if err != nil {
-			return nil, err
-		}
-
 		k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
 		if k.VerifyingKey == nil {
 			return nil, errors.New("Can't get verifier from signer")
 		}
-fmt.Printf("Verifier: \n")
-printKeyHeader(*k.VerifyingKey.header)
 	}
 
 	if k.keyTypes&Crypting == Crypting {
-		keyName := "Temporary_Keys_crypter"
-		keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
-		keyPurpose := "crypting"
-		keyStatus := "active"
-		keyEpoch := int32(1)
-		k.CryptingKey, err = InitializeCrypter(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-		if err != nil {
-			return nil, err
+		k.CryptingKey = GenerateAnonymousCrypter()
+		if k.CryptingKey == nil {
+			return nil, errors.New("Can't generate crypter")
 		}
 	}
 
 	if k.keyTypes&Deriving == Deriving {
-		keyName := "Temporary_Keys_deriver"
-		keyType := DeriverTypeFromSuiteName(TaoCryptoSuite)
-		keyPurpose := "deriving"
-		keyStatus := "active"
-		keyEpoch := int32(1)
-		k.DerivingKey, err = InitializeDeriver(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
-		if err != nil {
+		k.DerivingKey = GenerateAnonymousDeriver()
+		if k.DerivingKey == nil {
 			return nil, err
 		}
 	}
@@ -450,6 +469,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 	}
 
 	if len(password) == 0 {
+fmt.Printf("len(password) ==0\n")
 		// This means there's no secret information: just load a public
 		// verifying key.
 		if k.keyTypes & ^Signing != 0 {
@@ -468,9 +488,11 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			return nil, err
 		}
 	} else {
+fmt.Printf("len(password) !=0\n")
 		// Check to see if there are already keys.
 		f, err := os.Open(k.PBEKeysetPath())
 		if err == nil {
+fmt.Printf("PATH 1\n")
 			defer f.Close()
 			ks, err := ioutil.ReadAll(f)
 			if err != nil {
@@ -479,17 +501,17 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 
 			data, err := PBEDecrypt(ks, password)
 			if err != nil {
-				return nil, err
+				//return nil, err
 			}
 			defer ZeroBytes(data)
+			data = ks
+fmt.Printf("ks: %x\n", ks)
 
 			var cks CryptoKeyset
-			if err = proto.Unmarshal(data, &cks); err != nil {
-				return nil, err
+			err = proto.Unmarshal(data, &cks)
+			if err != nil {
+				return nil, errors.New("Cant unmarshal keyset")
 			}
-
-			// TODO(tmroeder): defer zeroKeyset(&cks)
-
 			ktemp, err := UnmarshalKeyset(&cks)
 			if err != nil {
 				return nil, err
@@ -506,7 +528,9 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			k.VerifyingKey = ktemp.VerifyingKey
 			k.CryptingKey = ktemp.CryptingKey
 			k.DerivingKey = ktemp.DerivingKey
+			return k, nil
 		} else {
+fmt.Printf("PATH 2\n")
 			// Create and store a new set of keys.
 			k, err = NewTemporaryKeys(keyTypes)
 			if err != nil {
@@ -531,6 +555,8 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			if err != nil {
 				return nil, err
 			}
+			enc = m
+fmt.Printf("enc: %x\n", enc)
 
 			if err = util.WritePath(k.PBEKeysetPath(), enc, 0777, 0600); err != nil {
 				return nil, err
@@ -543,9 +569,10 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				}
 			}
 		}
+		return k, nil
 	}
+	return nil, errors.New("Shouldnt happen")
 
-	return k, nil
 }
 
 func (k *Keys) newCert(name *pkix.Name) (err error) {

@@ -14,6 +14,8 @@
 
 package tao
 
+/*
+
 import (
 	"fmt"
 	"io/ioutil"
@@ -371,3 +373,4 @@ func TestDatalogUnsignedSubprincipal(t *testing.T) {
 		t.Fatalf("Datalog guard has wrong name: %v", name)
 	}
 }
+*/

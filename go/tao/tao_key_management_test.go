@@ -15,9 +15,7 @@
 package tao
 
 import (
-	//"crypto/aes"
 	"crypto/rand"
-	//"crypto/sha256"
 	"bytes"
 	"crypto/x509"
 	"fmt"
@@ -329,7 +327,7 @@ func TestUnsealedUndelegatedKeysSaveLoad(t *testing.T) {
 func TestCorruptedCiphertext(t *testing.T) {
 	c := GenerateAnonymousCrypter()
 	if c == nil {
-		t.Fatal(err.Error())
+		t.Fatal("GenerateAnonymousCrypter failed")
 	}
 
 	data := []byte("Test data to encrypt")

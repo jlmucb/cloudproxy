@@ -99,7 +99,6 @@ func testNewDatalogDomain(t *testing.T) (*Domain, string) {
 	return d, tmpdir
 }
 
-/*
 func TestDomainDatalogSaveAndLoad(t *testing.T) {
 	d, tmpdir := testNewDatalogDomain(t)
 	defer os.RemoveAll(tmpdir)
@@ -128,4 +127,3 @@ func TestDomainDatalogSaveAndLoad(t *testing.T) {
 		t.Fatal("The string representation of the loaded datalog guard didn't match the original")
 	}
 }
-*/

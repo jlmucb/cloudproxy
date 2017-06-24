@@ -159,7 +159,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		}
 		// FIX
 		if keys.VerifyingKey == nil {
-			fmt.Printf("NO VERIFYING KEYS\n")
+			return nil, errors.New("Empty verifying key")
 		}
 		guard, err = NewDatalogGuardFromConfig(keys.VerifyingKey, dgi)
 		if err != nil {

@@ -652,11 +652,15 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	if password == nil || len(password) == 0 {
 		return nil, newError("null or empty password")
 	}
-	// FIX: Should follow cryptosuite
+	cipherName := CipherTypeFromSuiteName(TaoCryptoSuite)
+	hashName := HashTypeFromSuiteName(TaoCryptoSuite)
+	if cipherName == nil || hashName == nil {
+		return nil, errors.New("Bad cipher in PBEEncrypt")
+	}
 	pbed := &PBEData{
 		Version: CryptoVersion_CRYPTO_VERSION_2.Enum(),
-		Cipher:  proto.String("aes128-ctr"),
-		Hmac:    proto.String("sha256"),
+		Cipher:  proto.String(*cipherName),
+		Hmac:    proto.String(*hashName),
 		// The IV is required, so we include it, but this algorithm doesn't use it.
 		Iv:         make([]byte, aes.BlockSize),
 		Iterations: proto.Int32(4096),
@@ -681,15 +685,14 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	ver := CryptoVersion_CRYPTO_VERSION_2
 	keyName := "PBEKey"
 	keyEpoch := int32(1)
-	// FIX: Should be derived from cryptosuite
-	keyType := "aes128-ctr-hmacsha256"
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
 	keyPurpose := "crypting"
 	keyStatus := "active"
 	ch := &CryptoHeader{
 		Version:    &ver,
 		KeyName:    &keyName,
 		KeyEpoch:   &keyEpoch,
-		KeyType:    &keyType,
+		KeyType:    keyType,
 		KeyPurpose: &keyPurpose,
 		KeyStatus:  &keyStatus,
 	}
@@ -748,15 +751,17 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	ver := CryptoVersion_CRYPTO_VERSION_2
 	keyName := "PBEKey"
 	keyEpoch := int32(1)
-	// FIX: Should be derived from cryptosuite
-	keyType := "aes128-ctr-hmacsha256"
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return nil, newError("bad CrypterTypeFromSuiteName")
+	}
 	keyPurpose := "crypting"
 	keyStatus := "active"
 	ch := &CryptoHeader{
 		Version:    &ver,
 		KeyName:    &keyName,
 		KeyEpoch:   &keyEpoch,
-		KeyType:    &keyType,
+		KeyType:    keyType,
 		KeyPurpose: &keyPurpose,
 		KeyStatus:  &keyStatus,
 	}

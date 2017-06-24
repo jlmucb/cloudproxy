@@ -14,7 +14,6 @@
 
 package tao
 
-/*
 import (
 	"fmt"
 	"errors"
@@ -406,6 +405,7 @@ func TestACLGuardString(t *testing.T) {
 	}
 }
 
+/*
 func TestACLGuardSignedSubprincipal(t *testing.T) {
 	s, err := generateSigner()
 	if err != nil {

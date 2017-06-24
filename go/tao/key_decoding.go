@@ -97,6 +97,32 @@ func HmacTypeFromSuiteName(suiteName string) *string {
 	return nil
 }
 
+func CipherTypeFromSuiteName(suiteName string) *string {
+	switch suiteName {
+	case Basic128BitCipherSuite:
+		return ptrFromString("aes128-ctr")
+	case Basic192BitCipherSuite, Basic256BitCipherSuite:
+		return ptrFromString("aes256-ctr")
+	default:
+		return nil
+	}
+	return nil
+}
+
+func HashTypeFromSuiteName(suiteName string) *string {
+	switch suiteName {
+	case Basic128BitCipherSuite:
+		return ptrFromString("sha256")
+	case Basic192BitCipherSuite:
+		return ptrFromString("sha384")
+	case Basic256BitCipherSuite:
+		return ptrFromString("sha512")
+	default:
+		return nil
+	}
+	return nil
+}
+
 func IsSinger(keyType string) bool {
 	switch(keyType) {
 	default:

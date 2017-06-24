@@ -19,6 +19,7 @@ import (
 	//"crypto/rand"
 	//"crypto/sha256"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -169,6 +170,54 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 	}
 }
 
+func TestMarshalKeys(t *testing.T) {
+	k, err := NewTemporaryKeys(Signing | Crypting | Deriving)
+	if err != nil {
+		t.Fatal("NewTemporaryKeys fails")
+	}
+	fmt.Printf("\nGenerated keys\n")
+	printKeys(k)
+	pkInt := PublicKeyAlgFromSignerAlg(*k.SigningKey.header.KeyType)
+	sigInt := SignatureAlgFromSignerAlg(*k.SigningKey.header.KeyType)
+	if pkInt < 0 || sigInt < 0 {
+		t.Fatal("Bad sig algs")
+	}
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
+	}
+	cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("k.SigningKey.CreateSelfSignedX509 failed")
+	}
+	k.Cert = cert
+	cks, err := CryptoKeysetFromKeys(k)
+	if err != nil {
+		t.Fatal("CryptoKeysetFromKeys failed")
+	}
+	_, err = KeysFromCryptoKeyset(cks)
+	if err != nil {
+		t.Fatal("CryptoKeysetFromKeys failed")
+	}
+	b, err := MarshalKeyset(cks)
+	var newCks CryptoKeyset
+	err = UnmarshalKeyset(b, &newCks)
+	if err != nil {
+		t.Fatal("UnmarshalKeyset failed")
+	}
+	nb, err := MarshalKeys(k)
+	if err != nil {
+		t.Fatal("MarshalKey failed")
+	}
+	newKeys, err := UnmarshalKeys(nb)
+	if err != nil {
+		t.Fatal("UnmarshalKeys failed")
+	}
+	fmt.Printf("\nNewkeys\n")
+	printKeys(newKeys)
+}
 
 // TODO
 

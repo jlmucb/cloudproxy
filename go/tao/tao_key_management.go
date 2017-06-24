@@ -214,10 +214,10 @@ func printKeys(keys *Keys) {
 	}
 }
 
-// Encodes Keys into protobuf
-func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
+// Encodes Keys to Cryptokeyset
+func CryptoKeysetFromKeys(k *Keys) (*CryptoKeyset, error) {
 	// fill in keys, cert, attestation
-	var cks [][]byte
+	var keyList [][]byte
 	if k.keyTypes&Signing == Signing {
 		ck := &CryptoKey{
 			KeyHeader: k.SigningKey.header,
@@ -231,7 +231,7 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 		if err != nil {
 			return nil, errors.New("Can't serialize signing key")
 		}
-		cks = append(cks, serializedCryptoKey)
+		keyList = append(keyList, serializedCryptoKey)
 	}
 
 	if k.keyTypes&Crypting == Crypting {
@@ -247,7 +247,7 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 		if err != nil {
 			return nil, errors.New("Can't serialize crypting key")
 		}
-		cks = append(cks, serializedCryptoKey)
+		keyList = append(keyList, serializedCryptoKey)
 	}
 
 	if k.keyTypes&Deriving == Deriving {
@@ -263,21 +263,21 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 		if err != nil {
 			return nil, errors.New("Can't serialize deriving key")
 		}
-		cks = append(cks, serializedCryptoKey)
+		keyList = append(keyList, serializedCryptoKey)
 	}
 
-	ckset := &CryptoKeyset{
-		Keys: cks,
+	cks := &CryptoKeyset{
+		Keys: keyList,
 	}
 	if k.Cert != nil {
-		ckset.Cert = k.Cert.Raw
+		cks.Cert = k.Cert.Raw
 	}
-	return ckset, nil
+	cks.Delegation = k.Delegation
+	return cks, nil
 }
 
-// UnmarshalKeyset decodes a CryptoKeyset into a temporary Keys structure. Note
-// that this Keys structure doesn't have any of its variables set.
-func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
+// KeysFromCryptoKeyset decodes a CryptoKeyset into a Keys structure.
+func KeysFromCryptoKeyset(cks *CryptoKeyset) (*Keys, error) {
 	k := new(Keys)
 
 	for i := 0; i < len(cks.Keys); i++ {
@@ -317,8 +317,43 @@ func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
 			k.keyTypes |= Deriving
 		}
 	}
-
+	k.Cert = nil
+	if cks.Cert != nil {
+		cert, err := x509.ParseCertificate(cks.Cert)
+		if err != nil {
+			return nil, err
+		}
+		k.Cert = cert
+	} else {
+		k.Cert = nil
+	}
+	k.Delegation= cks.Delegation
 	return k, nil
+}
+
+func MarshalKeyset(cks *CryptoKeyset) ([]byte, error) {
+	return proto.Marshal(cks)
+}
+
+func UnmarshalKeyset(buf []byte, cks *CryptoKeyset) error {
+	return proto.Unmarshal(buf, cks)
+}
+
+func MarshalKeys(k *Keys) ([]byte, error) {
+	cks, err := CryptoKeysetFromKeys(k)
+	if err != nil {
+		return nil, err
+	}
+	return MarshalKeyset(cks)
+}
+
+func UnmarshalKeys(b []byte) (*Keys, error) {
+	var cks CryptoKeyset
+	err := UnmarshalKeyset(b, &cks)
+	if err != nil {
+		return nil, errors.New("Can't unmarshal key set")
+	}
+	return KeysFromCryptoKeyset(&cks)
 }
 
 // The paths to the filename used by the Keys type.
@@ -463,30 +498,24 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 		return nil, newError("bad init call: no path for keys")
 	}
 
+
 	k := &Keys{
 		keyTypes: keyTypes,
 		dir:      path,
 	}
-
 	if len(password) == 0 {
 fmt.Printf("len(password) ==0\n")
-		// This means there's no secret information: just load a public
-		// verifying key.
-		if k.keyTypes & ^Signing != 0 {
+		// This means there's no secret information: just load a public verifying key.
+		if keyTypes & ^Signing != 0 {
 			return nil, newError("without a password, only a verifying key can be loaded")
 		}
 
-		err := k.loadCert()
+		v, err := FromX509(k.Cert)
 		if err != nil {
 			return nil, err
 		}
-		if k.Cert == nil {
-			return nil, newError("no password and can't load cert: %s", k.X509Path())
-		}
-
-		if k.VerifyingKey, err = FromX509(k.Cert); err != nil {
-			return nil, err
-		}
+		k.VerifyingKey = v
+		return k, nil
 	} else {
 fmt.Printf("len(password) !=0\n")
 		// Check to see if there are already keys.
@@ -507,22 +536,18 @@ fmt.Printf("PATH 1\n")
 			data = ks
 fmt.Printf("ks: %x\n", ks)
 
-			var cks CryptoKeyset
-			err = proto.Unmarshal(data, &cks)
-			if err != nil {
-				return nil, errors.New("Cant unmarshal keyset")
-			}
-			ktemp, err := UnmarshalKeyset(&cks)
+			ktemp, err := UnmarshalKeys(data)
 			if err != nil {
 				return nil, err
 			}
 
 			// Note that this loads the certificate if it's
 			// present, and it returns nil otherwise.
-			err = k.loadCert()
+			cert, err := loadCert(k.X509Path())
 			if err != nil {
 				return nil, err
 			}
+			k.Cert = cert
 
 			k.SigningKey = ktemp.SigningKey
 			k.VerifyingKey = ktemp.VerifyingKey
@@ -539,18 +564,12 @@ fmt.Printf("PATH 2\n")
 
 			k.dir = path
 
-			cks, err := MarshalKeyset(k)
-			if err != nil {
-				return nil, err
-			}
-
-			// TODO(tmroeder): defer zeroKeyset(cks)
-
-			m, err := proto.Marshal(cks)
+			m, err := MarshalKeys(k)
 			if err != nil {
 				return nil, err
 			}
 			defer ZeroBytes(m)
+
 			enc, err := PBEEncrypt(m, password)
 			if err != nil {
 				return nil, err
@@ -591,22 +610,21 @@ func (k *Keys) newCert(name *pkix.Name) (err error) {
 	return nil
 }
 
-func (k *Keys) loadCert() error {
-	f, err := os.Open(k.X509Path())
+func loadCert(path string) (*x509.Certificate, error) {
+	f, err := os.Open(path)
 	// Allow this operation to fail silently, since there isn't always a
 	// certificate available.
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	defer f.Close()
 
 	der, err := ioutil.ReadAll(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	k.Cert, err = x509.ParseCertificate(der)
-	return err
+	return x509.ParseCertificate(der)
 }
 
 // NewTemporaryTaoDelegatedKeys initializes a set of temporary keys under a host
@@ -807,18 +825,13 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 // Save serializes, seals, and writes a key set to disk. It calls t.Seal().
 func (k *Keys) Save(t Tao) error {
 	// Marshal key set.
-	cks, err := MarshalKeyset(k)
+	m, err := MarshalKeys(k)
 	if err != nil {
 		return err
 	}
-	cks.Delegation = k.Delegation
+	// cks.Delegation = k.Delegation
 
 	// TODO(tmroeder): defer zeroKeyset(cks)
-
-	m, err := proto.Marshal(cks)
-	if err != nil {
-		return err
-	}
 	defer ZeroBytes(m)
 
 	data, err := t.Seal(m, k.policy)
@@ -861,7 +874,6 @@ func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 		return nil, err
 	}
 
-	var cks CryptoKeyset
 	if t != nil {
 		data, p, err := t.Unseal(ks)
 		if err != nil {
@@ -872,32 +884,11 @@ func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 		if p != policy {
 			return nil, errors.New("invalid policy from Unseal")
 		}
-		if err = proto.Unmarshal(data, &cks); err != nil {
-			return nil, err
-		}
-
+		return UnmarshalKeys(data)
 	} else {
-		if err = proto.Unmarshal(ks, &cks); err != nil {
-			return nil, err
-		}
+		return UnmarshalKeys(ks)
 	}
-
-	// TODO(tmroeder): defer zeroKeyset(&cks)
-
-	ktemp, err := UnmarshalKeyset(&cks)
-	if err != nil {
-		return nil, err
-	}
-
-	k.SigningKey = ktemp.SigningKey
-	k.VerifyingKey = ktemp.VerifyingKey
-	k.CryptingKey = ktemp.CryptingKey
-	k.DerivingKey = ktemp.DerivingKey
-
-	// Read the delegation.
-	k.Delegation = cks.Delegation
-
-	return k, nil
+	return nil,errors.New("Shouldnt happen") 
 }
 
 // NewSecret creates and encrypts a new secret value of the given length, or it
@@ -949,13 +940,7 @@ func (k *Keys) NewSecret(file string, length int) ([]byte, error) {
 // SaveKeyset serializes and saves a Keys object to disk in plaintext.
 func SaveKeyset(k *Keys, dir string) error {
 	k.dir = dir
-	cks, err := MarshalKeyset(k)
-	if err != nil {
-		return err
-	}
-	cks.Delegation = k.Delegation
-
-	m, err := proto.Marshal(cks)
+	m, err := MarshalKeys(k)
 	if err != nil {
 		return err
 	}
@@ -966,3 +951,4 @@ func SaveKeyset(k *Keys, dir string) error {
 
 	return nil
 }
+

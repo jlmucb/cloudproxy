@@ -536,6 +536,7 @@ fmt.Printf("PATH 1\n")
 
 			// Note that this loads the certificate if it's
 			// present, and it returns nil otherwise.
+			k.Cert = nil
 			cert, err := loadCert(k.X509Path())
 			if err != nil {
 				return nil, err
@@ -553,6 +554,24 @@ fmt.Printf("PATH 2\n")
 			k, err = NewTemporaryKeys(keyTypes)
 			if err != nil {
 				return nil, err
+			}
+
+			// Make cert?
+			if k.Cert == nil {
+				signerAlg := SignerTypeFromSuiteName(TaoCryptoSuite)
+				if signerAlg == nil {
+					return nil, errors.New("SignerTypeFromSuiteName failed")
+				}
+				pkInt := PublicKeyAlgFromSignerAlg(*signerAlg)
+				skInt := SignatureAlgFromSignerAlg(*signerAlg)
+				if pkInt < 0 || skInt < 0 {
+					return nil, errors.New("Can't get PublicKeyAlgFromSignerAlg")
+				}
+				k.Cert, err = k.SigningKey.CreateSelfSignedX509(pkInt, skInt, 1,
+					&pkix.Name{Organization: []string{"Identity of some Tao service"}})
+				if err != nil {
+					return nil, errors.New("Can't create CreateSelfSignedX509")
+				}
 			}
 
 			k.dir = path

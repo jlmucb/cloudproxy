@@ -18,6 +18,7 @@ import (
 	//"crypto/aes"
 	//"crypto/rand"
 	//"crypto/sha256"
+	"bytes"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -219,47 +220,55 @@ func TestMarshalKeys(t *testing.T) {
 	printKeys(newKeys)
 }
 
-// TODO
+func TestPBEEncryptDecrypt(t *testing.T) {
+	pt := []byte("I am plaintext")
+	pw := []byte("I am a password")
+	ct, err := PBEEncrypt(pt, pw)
+	if err != nil {
+		t.Fatal("Can't PBEEncrypt")
+	}
+	dpt, err := PBEDecrypt(ct, pw)
+	if err != nil {
+		t.Fatal("Can't PBEDecrypt")
+	}
+	if !bytes.Equal(pt, dpt) {
+		t.Fatal("Plain and decrypted cipher don't match")
+	}
+}
 
 func TestTaoDelegatedKeys(t *testing.T) {
-	/*
-	    *	FIX
-	   	ft, err := NewSoftTao("", nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't initialize a SoftTao:", err)
-	   	}
+   	ft, err := NewSoftTao("", nil)
+   	if err != nil {
+   		t.Fatal("Couldn't initialize a SoftTao:", err)
+   	}
 
-	   	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
-	   	if err != nil {
-	   		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
-	   	}
-	*/
+   	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
+   	if err != nil {
+   		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
+   	}
 }
 
 func TestNewOnDiskTaoSealedKeys(t *testing.T) {
-	/*
-	    *	FIX
-	   	tempDir, err := ioutil.TempDir("", "TestInitHosted")
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	   	defer os.RemoveAll(tempDir)
+   	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+   	if err != nil {
+   		t.Fatal(err.Error())
+   	}
+   	defer os.RemoveAll(tempDir)
 
-	   	ft, err := NewSoftTao("", nil)
-	   	if err != nil {
-	   		t.Fatal("Couldn't initialize a SoftTao:", err)
-	   	}
+   	ft, err := NewSoftTao("", nil)
+   	if err != nil {
+   		t.Fatal("Couldn't initialize a SoftTao:", err)
+   	}
 
-	   	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
-	   	if err != nil {
-	   		t.Fatal("Couldn't initialize a hosted keyset:", err)
-	   	}
+   	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+   	if err != nil {
+   		t.Fatal("Couldn't initialize a hosted keyset:", err)
+   	}
 
-	   	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
-	   	if err != nil {
-	   		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
-	   	}
-	*/
+   	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+   	if err != nil {
+   		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
+   	}
 }
 
 // Test generating a new set of keys and saving/loading them to/from the disk unsealed.

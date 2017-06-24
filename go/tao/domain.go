@@ -297,12 +297,13 @@ fmt.Printf("LOADDOMAIN\n")
 	if err != nil {
 		return nil, err
 	}
-fmt.Printf("XXXXXXX\n")
-return nil, errors.New("STOPPED")
+/*
+	FIX
 	keys.VerifyingKey = keys.SigningKey.GetVerifierFromSigner()
 	if keys.VerifyingKey == nil {
 		return nil, errors.New("Can't GetVeriferFromSigner")
 	}
+*/
 fmt.Printf("After making Verifying key\n")
 
 	var guard Guard

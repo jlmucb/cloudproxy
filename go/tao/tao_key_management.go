@@ -289,14 +289,9 @@ func KeysFromCryptoKeyset(cks *CryptoKeyset) (*Keys, error) {
 		if ck.KeyHeader.KeyType == nil {
 			return nil, errors.New("Missing KeyType in CryptoHeader")
 		}
-		if cks.Cert != nil {
-			k.Cert, err = x509.ParseCertificate(cks.Cert)
-			if err != nil {
-				return nil, errors.New("Can't parse certificate")
-			}
-		}
-		switch *ck.KeyHeader.KeyType {
+		switch *ck.KeyHeader.KeyPurpose {
 		default:
+			return nil, errors.New("Unknown purpose")
 		case "signing":
 			k.SigningKey = SignerFromCryptoKey(ck)
 			if k.SigningKey == nil {
@@ -530,11 +525,9 @@ fmt.Printf("PATH 1\n")
 
 			data, err := PBEDecrypt(ks, password)
 			if err != nil {
-				//return nil, err
+				return nil, err
 			}
 			defer ZeroBytes(data)
-			data = ks
-fmt.Printf("ks: %x\n", ks)
 
 			ktemp, err := UnmarshalKeys(data)
 			if err != nil {
@@ -563,7 +556,6 @@ fmt.Printf("PATH 2\n")
 			}
 
 			k.dir = path
-
 			m, err := MarshalKeys(k)
 			if err != nil {
 				return nil, err
@@ -574,8 +566,6 @@ fmt.Printf("PATH 2\n")
 			if err != nil {
 				return nil, err
 			}
-			enc = m
-fmt.Printf("enc: %x\n", enc)
 
 			if err = util.WritePath(k.PBEKeysetPath(), enc, 0777, 0600); err != nil {
 				return nil, err

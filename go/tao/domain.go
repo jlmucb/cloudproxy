@@ -138,9 +138,6 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 	if err != nil {
 		return nil, err
 	}
-fmt.Printf("CREATEDOMAIN\n")
-printKeys(keys)
-
 	var guard Guard
 	switch cfg.DomainInfo.GetGuardType() {
 	case "ACLs":
@@ -160,17 +157,10 @@ printKeys(keys)
 		dgi := DatalogGuardDetails{
 			SignedRulesPath: proto.String(path.Join(configDir, rulesPath)),
 		}
-if keys.SigningKey == nil {
-fmt.Printf("NO SIGNING KEY\n")
-}
-if keys.VerifyingKey == nil {
-fmt.Printf("NO VERIFYING KEYS\n")
-// FIX
-keys.VerifyingKey = keys.SigningKey.GetVerifierFromSigner()
-if keys.VerifyingKey == nil {
-fmt.Printf("NO SIGNER EITHER\n")
-}
-}
+		// FIX
+		if keys.VerifyingKey == nil {
+			fmt.Printf("NO VERIFYING KEYS\n")
+		}
 		guard, err = NewDatalogGuardFromConfig(keys.VerifyingKey, dgi)
 		if err != nil {
 			return nil, err
@@ -263,15 +253,6 @@ func (d *Domain) Save() error {
 	ds := proto.MarshalTextString(&d.Config)
 	fmt.Fprint(file, ds)
 	file.Close()
-fmt.Printf("Calling Save: \n")
-if d.Keys.SigningKey == nil {
-fmt.Printf("empty signing key\n")
-} else {
-if d.Keys.SigningKey.header == nil {
-} else {
-printKeyHeader(*d.Keys.SigningKey.header)
-}
-}
 	return d.Guard.Save(d.Keys.SigningKey)
 }
 
@@ -286,7 +267,6 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	if err != nil {
 		return nil, err
 	}
-fmt.Printf("LOADDOMAIN\n")
 	if err := proto.UnmarshalText(string(d), &cfg); err != nil {
 		return nil, err
 	}
@@ -297,14 +277,14 @@ fmt.Printf("LOADDOMAIN\n")
 	if err != nil {
 		return nil, err
 	}
-/*
-	FIX
-	keys.VerifyingKey = keys.SigningKey.GetVerifierFromSigner()
+
+	// FIX
 	if keys.VerifyingKey == nil {
-		return nil, errors.New("Can't GetVeriferFromSigner")
+		keys.VerifyingKey = keys.SigningKey.GetVerifierFromSigner()
+		if keys.VerifyingKey == nil {
+			return nil, errors.New("Can't GetVeriferFromSigner")
+		}
 	}
-*/
-fmt.Printf("After making Verifying key\n")
 
 	var guard Guard
 
@@ -319,7 +299,6 @@ fmt.Printf("After making Verifying key\n")
 		default:
 			return nil, errUnknownGuardType
 		}
-fmt.Printf("Calling NewCachedGuard\n")
 		guard = NewCachedGuard(keys.VerifyingKey, guardType,
 			cfg.DomainInfo.GetGuardNetwork(),
 			cfg.DomainInfo.GetGuardAddress(),
@@ -337,7 +316,6 @@ fmt.Printf("Calling NewCachedGuard\n")
 				SignedAclsPath: proto.String(path.Join(configDir,
 					cfg.AclGuardInfo.GetSignedAclsPath())),
 			}
-fmt.Printf("Calling LoadACLGuard\n")
 			guard, err = LoadACLGuard(keys.VerifyingKey, agi)
 			if err != nil {
 				return nil, err
@@ -351,7 +329,6 @@ fmt.Printf("Calling LoadACLGuard\n")
 				SignedRulesPath: proto.String(path.Join(configDir,
 					cfg.DatalogGuardInfo.GetSignedRulesPath())),
 			}
-fmt.Printf("Calling NewDatalogGuardFromConfig\n")
 			datalogGuard, err := NewDatalogGuardFromConfig(keys.VerifyingKey, dgi)
 			if err != nil {
 				return nil, err
@@ -361,10 +338,8 @@ fmt.Printf("Calling NewDatalogGuardFromConfig\n")
 			}
 			guard = datalogGuard
 		case "AllowAll":
-fmt.Printf("AllowAll\n")
 			guard = LiberalGuard
 		case "DenyAll":
-fmt.Printf("DenyAll\n")
 			guard = ConservativeGuard
 		default:
 			return nil, errUnknownGuardType

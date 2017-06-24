@@ -655,13 +655,10 @@ func SignerFromCryptoKey(k CryptoKey) *Signer {
 
 func VerifierFromCryptoKey(k CryptoKey) *Verifier {
 	publicKey, err := PublicKeyFromCryptoKey(k)
-fmt.Printf("PublicKeyFromCryptoKey failed " )
-fmt.Print(err)
 	if err != nil {
 		return nil
 	}
 	if k.KeyHeader.KeyType == nil {
-fmt.Printf("KEYTYPE NIL")
 		return nil
 	}
 	v := &Verifier{

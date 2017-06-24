@@ -16,7 +16,7 @@ package tao
 
 import (
 	//"crypto/aes"
-	//"crypto/rand"
+	"crypto/rand"
 	//"crypto/sha256"
 	"bytes"
 	"crypto/x509"
@@ -237,154 +237,145 @@ func TestPBEEncryptDecrypt(t *testing.T) {
 }
 
 func TestTaoDelegatedKeys(t *testing.T) {
-   	ft, err := NewSoftTao("", nil)
-   	if err != nil {
-   		t.Fatal("Couldn't initialize a SoftTao:", err)
-   	}
+	ft, err := NewSoftTao("", nil)
+	if err != nil {
+		t.Fatal("Couldn't initialize a SoftTao:", err)
+	}
 
-   	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
-   	if err != nil {
-   		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
-   	}
+	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
+	if err != nil {
+		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
+	}
 }
 
 func TestNewOnDiskTaoSealedKeys(t *testing.T) {
-   	tempDir, err := ioutil.TempDir("", "TestInitHosted")
-   	if err != nil {
-   		t.Fatal(err.Error())
-   	}
-   	defer os.RemoveAll(tempDir)
+	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer os.RemoveAll(tempDir)
 
-   	ft, err := NewSoftTao("", nil)
-   	if err != nil {
-   		t.Fatal("Couldn't initialize a SoftTao:", err)
-   	}
+	ft, err := NewSoftTao("", nil)
+	if err != nil {
+		t.Fatal("Couldn't initialize a SoftTao:", err)
+	}
 
-   	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
-   	if err != nil {
-   		t.Fatal("Couldn't initialize a hosted keyset:", err)
-   	}
+	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+	if err != nil {
+		t.Fatal("Couldn't initialize a hosted keyset:", err)
+	}
 
-   	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
-   	if err != nil {
-   		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
-   	}
+	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+	if err != nil {
+		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
+	}
 }
 
 // Test generating a new set of keys and saving/loading them to/from the disk unsealed.
 func TestUnsealedDelegatedKeysSaveLoad(t *testing.T) {
-	/*
-	    *	FIX
-	   	tempDir, err := ioutil.TempDir("", "TestInitHosted")
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	   	defer os.RemoveAll(tempDir)
+	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer os.RemoveAll(tempDir)
 
-	   	ft, err := NewSoftTao("", nil)
-	   	if err != nil {
-	   		t.Error("Couldn't initialize a SoftTao:", err)
-	   		return
-	   	}
+	ft, err := NewSoftTao("", nil)
+	if err != nil {
+		t.Error("Couldn't initialize a SoftTao:", err)
+		return
+	}
 
-	   	k, err := NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
-	   	if err != nil {
-	   		t.Error("failed to generate keys:", err)
-	   		return
-	   	}
+	k, err := NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
+	if err != nil {
+		t.Error("failed to generate keys:", err)
+		return
+	}
 
-	   	if err = SaveKeyset(k, tempDir); err != nil {
-	   		t.Error("failed to save keys:", err)
-	   		return
-	   	}
+	if err = SaveKeyset(k, tempDir); err != nil {
+		t.Error("failed to save keys:", err)
+		return
+	}
 
-	   	if _, err = LoadKeys(Signing|Crypting|Deriving, nil, tempDir, SealPolicyDefault); err != nil {
-	   		t.Error("failed to load keys:", err)
-	   	}
-	*/
+	if _, err = LoadKeys(Signing|Crypting|Deriving, nil, tempDir, SealPolicyDefault); err != nil {
+		t.Error("failed to load keys:", err)
+	}
 }
 
 // Test generating a new set of keys and saving/loading them to/from the disk
 // unsealed without a delegation.
 func TestUnsealedUndelegatedKeysSaveLoad(t *testing.T) {
-	/*
-	    *	FIX
-	   	tempDir, err := ioutil.TempDir("", "TestInitHosted")
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
-	   	defer os.RemoveAll(tempDir)
+	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer os.RemoveAll(tempDir)
 
-	   	k, err := NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, nil)
-	   	if err != nil {
-	   		t.Error("failed to generate keys:", err)
-	   		return
-	   	}
+	k, err := NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, nil)
+	if err != nil {
+		t.Error("failed to generate keys:", err)
+		return
+	}
 
-	   	if err = SaveKeyset(k, tempDir); err != nil {
-	   		t.Error("failed to save keys:", err)
-	   		return
-	   	}
+	if err = SaveKeyset(k, tempDir); err != nil {
+		t.Error("failed to save keys:", err)
+		return
+	}
 
-	   	if _, err = LoadKeys(Signing|Crypting|Deriving, nil, tempDir, SealPolicyDefault); err != nil {
-	   		t.Error("failed to load keys:", err)
-	   	}
-	*/
+	if _, err = LoadKeys(Signing|Crypting|Deriving, nil, tempDir, SealPolicyDefault); err != nil {
+		t.Error("failed to load keys:", err)
+	}
 }
 
 func TestCorruptedCiphertext(t *testing.T) {
-	/*
-	    *	FIX
-	   	c, err := GenerateCrypter()
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
+	c := GenerateAnonymousCrypter()
+	if c == nil {
+		t.Fatal(err.Error())
+	}
 
-	   	data := []byte("Test data to encrypt")
-	   	crypted, err := c.Encrypt(data)
-	   	if err != nil {
-	   		t.Fatal(err.Error())
-	   	}
+	data := []byte("Test data to encrypt")
+	crypted, err := c.Encrypt(data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
-	   	var ed EncryptedData
-	   	if err := proto.Unmarshal(crypted, &ed); err != nil {
-	   		t.Fatal("Could not unmarshal the encrypted data")
-	   	}
+	var ed EncryptedData
+	if err := proto.Unmarshal(crypted, &ed); err != nil {
+		t.Fatal("Could not unmarshal the encrypted data")
+	}
 
-	   	// Read random data for the ciphertext.
-	   	if _, err := rand.Read(ed.Ciphertext); err != nil {
-	   		t.Fatal("Could not read random data into the ciphertext")
-	   	}
+	// Read random data for the ciphertext.
+	if _, err := rand.Read(ed.Ciphertext); err != nil {
+		t.Fatal("Could not read random data into the ciphertext")
+	}
 
-	   	crypted2, err := proto.Marshal(&ed)
-	   	if err != nil {
-	   		t.Fatal("Could not marshal the corrupted ciphertext")
-	   	}
+	crypted2, err := proto.Marshal(&ed)
+	if err != nil {
+		t.Fatal("Could not marshal the corrupted ciphertext")
+	}
 
-	   	if _, err := c.Decrypt(crypted2); err == nil {
-	   		t.Fatal("Incorrectly succeeded at decrypting corrupted ciphertext")
-	   	}
+	if _, err := c.Decrypt(crypted2); err == nil {
+		t.Fatal("Incorrectly succeeded at decrypting corrupted ciphertext")
+	}
 
-	   	// Corrupt each bit individually and make sure the test fails for any
-	   	// single bit flip. The range is over the first ciphertext, but this is
-	   	// identical to the range of the unmarshalled ciphertext in this loop.
-	   	for i := range ed.Ciphertext {
-	   		var ed2 EncryptedData
-	   		if err := proto.Unmarshal(crypted, &ed2); err != nil {
-	   			t.Fatal("Could not unmarshal the encrypted data a second time")
-	   		}
+	// Corrupt each bit individually and make sure the test fails for any
+	// single bit flip. The range is over the first ciphertext, but this is
+	// identical to the range of the unmarshalled ciphertext in this loop.
+	for i := range ed.Ciphertext {
+		var ed2 EncryptedData
+		if err := proto.Unmarshal(crypted, &ed2); err != nil {
+			t.Fatal("Could not unmarshal the encrypted data a second time")
+		}
 
-	   		// Corrupt a single bit in the ciphertext.
-	   		ed2.Ciphertext[i] ^= ed2.Ciphertext[i]
+		// Corrupt a single bit in the ciphertext.
+		ed2.Ciphertext[i] ^= ed2.Ciphertext[i]
 
-	   		crypted3, err := proto.Marshal(&ed2)
-	   		if err != nil {
-	   			t.Fatal("Could not marshal a second corrupted ciphertext")
-	   		}
+		crypted3, err := proto.Marshal(&ed2)
+		if err != nil {
+			t.Fatal("Could not marshal a second corrupted ciphertext")
+		}
 
-	   		if _, err := c.Decrypt(crypted3); err == nil {
-	   			t.Fatal("Incorrectly succeeded at decrypting a second corrupted ciphertext")
-	   		}
-	   	}
-	*/
+		if _, err := c.Decrypt(crypted3); err == nil {
+			t.Fatal("Incorrectly succeeded at decrypting a second corrupted ciphertext")
+		}
+	}
 }

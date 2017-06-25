@@ -15,6 +15,7 @@
 package tao
 
 import (
+"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -113,7 +114,8 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		return signer, nil
 	case "key":
 		// Signer is ECDSA key, use Tao signature verification.
-		v, err := UnmarshalKey(a.SignerKey)
+		// TODO v, err := UnmarshalKey(a.SignerKey)
+		v, err := VerifierKeyFromCanonicalKeyBytes(a.SignerKey)
 		if err != nil {
 			return auth.Prin{}, err
 		}
@@ -137,6 +139,7 @@ func (a *Attestation) Validate() (auth.Says, error) {
 	if err != nil {
 		return auth.Says{}, err
 	}
+fmt.Printf("Valid Signer\n")
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
 		return auth.Says{}, err
@@ -149,10 +152,12 @@ func (a *Attestation) Validate() (auth.Says, error) {
 	} else {
 		return auth.Says{}, newError("tao: attestation statement has wrong type: %T", f)
 	}
+fmt.Printf("Speaker: %x, Signer: %x\n", stmt.Speaker, signer)
 	if a.SerializedDelegation == nil {
 		// Case (1), no delegation present.
 		// Require that stmt.Speaker be a subprincipal of (or identical to) a.signer.
 		if !auth.SubprinOrIdentical(stmt.Speaker, signer) {
+fmt.Printf("FAILES HERE\n")
 			return auth.Says{}, newError("tao: attestation statement signer (%v) does not evidently speak for issuer (%v)", signer, stmt.Speaker)
 		}
 	} else {
@@ -220,11 +225,15 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attesta
 		return nil, err
 	}
 
+	sk, err := s.GetVerifierFromSigner().CanonicalKeyBytesFromVerifier()
+	if err != nil {
+		return nil, err
+	}
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
 		SignerType:          proto.String("key"),
-		SignerKey:           s.GetVerifierFromSigner().MarshalKey(),
+		SignerKey:           sk,
 	}
 
 	if len(delegation) > 0 {

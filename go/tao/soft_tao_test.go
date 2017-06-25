@@ -102,9 +102,16 @@ func TestSoftTaoAttest(t *testing.T) {
 		t.Fatal("Couldn't get own name:", err)
 	}
 
+	kb, err := ft.(*SoftTao).keys.SigningKey.CanonicalKeyBytesFromSigner()
+	if err != nil {
+		t.Fatal("Couldn't get universal name from signingkey\n")
+	}
+
 	stmt := auth.Speaksfor{
-		Delegate:  auth.NewKeyPrin([]byte("BogusKeyBytes1")),
+		// Delegate:  auth.NewKeyPrin([]byte("BogusKeyBytes1")),
+		Delegate:  auth.NewKeyPrin(kb),
 		Delegator: self,
+		// Delegator: self,
 	}
 
 	a, err := ft.Attest(nil, nil, nil, stmt)
@@ -114,12 +121,9 @@ func TestSoftTaoAttest(t *testing.T) {
 	if a== nil {
 	}
 
-/*
-	FIX
 	// Make sure the attestation passes basic sanity checks.
 	_, err = a.Validate()
 	if err != nil {
 		t.Fatalf("The attestation produced by the SoftTao didn't pass validation: %s", err)
 	}
- */
 }

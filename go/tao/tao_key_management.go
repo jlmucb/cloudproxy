@@ -499,7 +499,6 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 		dir:      path,
 	}
 	if len(password) == 0 {
-fmt.Printf("len(password) ==0\n")
 		// This means there's no secret information: just load a public verifying key.
 		if keyTypes & ^Signing != 0 {
 			return nil, newError("without a password, only a verifying key can be loaded")
@@ -512,11 +511,9 @@ fmt.Printf("len(password) ==0\n")
 		k.VerifyingKey = v
 		return k, nil
 	} else {
-fmt.Printf("len(password) !=0\n")
 		// Check to see if there are already keys.
 		f, err := os.Open(k.PBEKeysetPath())
 		if err == nil {
-fmt.Printf("PATH 1\n")
 			defer f.Close()
 			ks, err := ioutil.ReadAll(f)
 			if err != nil {
@@ -549,7 +546,6 @@ fmt.Printf("PATH 1\n")
 			k.DerivingKey = ktemp.DerivingKey
 			return k, nil
 		} else {
-fmt.Printf("PATH 2\n")
 			// Create and store a new set of keys.
 			k, err = NewTemporaryKeys(keyTypes)
 			if err != nil {

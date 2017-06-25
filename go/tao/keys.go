@@ -730,6 +730,30 @@ func (s *Signer) GetVerifierFromSigner() *Verifier {
 	return v
 }
 
+func VerifierKeyFromCanonicalKeyBytes(vb []byte) (*Verifier, error) {
+	publicKey, err := x509.ParsePKIXPublicKey(vb)
+	if err != nil {
+		return nil, err
+	}
+	keyName := "Anonymous_verifier"
+	keyType := VerifierTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "verifying"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	ch := &CryptoHeader {
+		KeyName: &keyName,
+		KeyType: keyType,
+		KeyPurpose: &keyPurpose,
+		KeyStatus: &keyStatus,
+		KeyEpoch: &keyEpoch,
+	}
+	v := &Verifier{
+		header: ch,
+		publicKey: publicKey,
+	}
+	return v, nil
+}
+
 func (v *Verifier) GetVerifierPublicKey() crypto.PublicKey {
 	return v.publicKey
 }
@@ -739,32 +763,53 @@ func (s *Signer) GetSignerPrivateKey() crypto.PrivateKey {
 }
 
 func (v *Verifier) CanonicalKeyBytesFromVerifier() ([]byte, error) {
-	kr, err := x509.MarshalPKIXPublicKey(v.publicKey)
-	if err != nil {
-		return kr, err
-	}
-	// Now hash with type
-	// Note: not sure this is needed since we now use MarshalPKIXPublic
-	b := append([]byte(*v.header.KeyType), kr...)
-	h := sha256.Sum256(b)
-	return h[0:32], err
+	return x509.MarshalPKIXPublicKey(v.publicKey)
 }
 
 func (s *Signer) CanonicalKeyBytesFromSigner() ([]byte, error) {
 	return s.GetVerifierFromSigner().CanonicalKeyBytesFromVerifier()
 }
 
+func MakeUniversalKeyNameFromCanonicalBytes(cn []byte) []byte {
+	// TODO: Should the algorithm be selected from TaoCryptoSuite
+	h := sha256.Sum256(cn)
+fmt.Printf("MakeUniversalKeyNameFromCanonicalBytes.  cn: %x, h: %x\n", cn, h)
+	return h[0:32]
+}
+
+func  (s *Signer) UniversalKeyNameFromSigner() ([]byte, error) {
+	return s.GetVerifierFromSigner().UniversalKeyNameFromVerifier()
+}
+
+func  (v *Verifier) UniversalKeyNameFromVerifier() ([]byte, error) {
+	kb, err :=  v.CanonicalKeyBytesFromVerifier()
+	if err != nil {
+		return nil, err
+	}
+	return  MakeUniversalKeyNameFromCanonicalBytes(kb), nil
+}
+
 // ToPrincipal produces a "key" type Prin for this signer. This contains a
 // serialized CryptoKey for the public portion of the signing key.
 func (s *Signer) ToPrincipal() auth.Prin {
-	var data []byte
+	var empty []byte
+	// Note: ToPrincipal returns keybytes not universal name
+	data, err := s.CanonicalKeyBytesFromSigner()
+	if err != nil {
+		return auth.NewKeyPrin(empty)
+	}
 	return auth.NewKeyPrin(data)
 }
 
 // ToPrincipal produces a "key" type Prin for this verifier. This contains a
 // hash of a serialized CryptoKey for this key.
 func (v *Verifier) ToPrincipal() auth.Prin {
-	var data []byte
+	// Note: ToPrincipal returns keybytes not universal name
+	var empty []byte
+	data, err := v.CanonicalKeyBytesFromVerifier()
+	if err != nil {
+		return auth.NewKeyPrin(empty)
+	}
 	return auth.NewKeyPrin(data)
 }
 
@@ -991,6 +1036,7 @@ func (v *Verifier) MarshalKey() []byte {
 	k.KeyHeader = v.header
 	keyComponent, err := SerializeEcdsaPublicComponents((v.publicKey).(*ecdsa.PublicKey))
 	if err != nil {
+		return nil
 	}
 	k.KeyComponents = append(k.KeyComponents, keyComponent)
 	return MarshalCryptoKey(k)

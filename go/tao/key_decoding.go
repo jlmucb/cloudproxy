@@ -73,6 +73,14 @@ func SignerTypeFromSuiteName(suiteName string) *string {
 	return nil
 }
 
+func VerifierTypeFromSuiteName(suiteName string) *string {
+	n := SignerTypeFromSuiteName(suiteName)
+	if n == nil {
+		return nil
+	}
+	return ptrFromString(*n + "-public")
+}
+
 func DeriverTypeFromSuiteName(suiteName string) *string {
 	switch suiteName {
 	case Basic128BitCipherSuite, Basic192BitCipherSuite, Basic256BitCipherSuite:

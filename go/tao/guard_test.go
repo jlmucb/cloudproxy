@@ -46,14 +46,11 @@ func testTrivialGuardAuthorize(t *testing.T, tg Guard, expect bool) {
 	}
 }
 
-/*
-	FIX
 func testTrivialGuardRetract(t *testing.T, tg Guard, expect bool) {
 	if err := tg.Retract(testPrin, "testop", []string{}); (err == nil) != expect {
 		t.Fatal("Retract command unexpected result on trivial guard")
 	}
 }
-*/
 
 func testTrivialGuardIsAuthorized(t *testing.T, tg Guard, expect bool) {
 	b := tg.IsAuthorized(testPrin, "testop", []string{})
@@ -68,13 +65,11 @@ func testTrivialGuardAddRule(t *testing.T, tg Guard, expect bool) {
 	}
 }
 
-/*
 func testTrivialGuardRetractRule(t *testing.T, tg Guard, expect bool) {
 	if err := tg.RetractRule("fake rule"); (err == nil) != expect {
 		t.Fatal("RetractRule command unexpected result on trivial guard")
 	}
 }
-*/
 
 func testTrivialGuardClear(t *testing.T, tg Guard) {
 	if err := tg.Clear(); err != nil {
@@ -116,26 +111,18 @@ func TestTrivialLiberalGuardAuthorize(t *testing.T) {
 	testTrivialGuardAuthorize(t, testNewTrivialLiberalGuard(t), true)
 }
 
-/*
-	FIX
 func TestTrivialLiberalGuardRetract(t *testing.T) {
 	testTrivialGuardRetract(t, testNewTrivialLiberalGuard(t), false)
 }
-*/
 
 func TestTrivialLiberalGuardIsAuthorized(t *testing.T) {
 	testTrivialGuardIsAuthorized(t, testNewTrivialLiberalGuard(t), true)
 }
 
-/*
-	FIX
 func TestTrivialLiberalGuardAddRule(t *testing.T) {
 	testTrivialGuardAddRule(t, testNewTrivialLiberalGuard(t), true)
 }
-*/
 
-/*
-	FIX
 func TestTrivialLiberalGuardRetractRule(t *testing.T) {
 	testTrivialGuardRetractRule(t, testNewTrivialLiberalGuard(t), false)
 }
@@ -207,4 +194,3 @@ func TestTrivialConservativeGuardRuleDebugString(t *testing.T) {
 func TestTrivialConservativeGuardDebugString(t *testing.T) {
 	testTrivialGuardDebugString(t, testNewTrivialConservativeGuard(t), "Trivial Conservative Policy (a.k.a. \"deny all\")")
 }
-*/

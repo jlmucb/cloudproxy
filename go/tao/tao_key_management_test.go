@@ -157,12 +157,6 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 		t.Fatal("Couldn't create on-disk PBE keys:", err)
 	}
 
-	// FIX?
-
-	if k.SigningKey == nil || k.CryptingKey != nil || k.DerivingKey != nil {
-		t.Fatal("Couldn't generate the right keys")
-	}
-
 	_, err = NewOnDiskPBEKeys(Signing, password, tempDir, nil)
 	if err != nil {
 		t.Fatal("Couldn't recover the serialized keys:", err)

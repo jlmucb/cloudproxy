@@ -1066,7 +1066,6 @@ func (v *Verifier) SignsForPrincipal(prin auth.Prin) bool {
 
 // FromX509 creates a Verifier from an X509 certificate.
 func FromX509(cert *x509.Certificate) (*Verifier, error) {
-	// FIX
 	keyType := ptrFromString("ecdsap256-public")
 	keyEpoch := int32(1)
 	h := &CryptoHeader {
@@ -1293,7 +1292,7 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 // This code is duplicated in VerifierFromCanonicalBytes
 // MarshalSignerDER serializes the signer to DER.
 func MarshalSignerDER(s *Signer) ([]byte, error) {
-	// FIX: only ecdsa is supported
+	// TODO: only ecdsa is supported, but this code is redundant now.
 	if s.header.KeyType == nil {
 		return nil, errors.New("Unsupported alg for MarshalSignerDER")
 	}
@@ -1309,7 +1308,6 @@ func MarshalSignerDER(s *Signer) ([]byte, error) {
 // UnmarshalSignerDER deserializes a Signer from DER.
 func UnmarshalSignerDER(signer []byte) (*Signer, error) {
 	// TODO: only ecdsa is supported
-	// FIX
 	keyName := "Unnamed ECDSA signer"
 	keyEpoch := int32(1)
 	keyType := "ecdsap256"

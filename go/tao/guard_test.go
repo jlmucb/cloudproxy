@@ -112,7 +112,7 @@ func TestTrivialLiberalGuardAuthorize(t *testing.T) {
 }
 
 /*
-	FIX
+	FIX TEST
 func TestTrivialLiberalGuardRetract(t *testing.T) {
 	testTrivialGuardRetract(t, testNewTrivialLiberalGuard(t), false)
 }
@@ -127,7 +127,7 @@ func TestTrivialLiberalGuardAddRule(t *testing.T) {
 }
 
 /*
-	FIX
+	FIX TEST
 func TestTrivialLiberalGuardRetractRule(t *testing.T) {
 	testTrivialGuardRetractRule(t, testNewTrivialLiberalGuard(t), false)
 }
@@ -158,14 +158,14 @@ func TestTrivialLiberalGuardDebugString(t *testing.T) {
 }
 
 /*
-	FIX
+	FIX TEST
 func TestTrivialConservativeGuardAuthorize(t *testing.T) {
 	testTrivialGuardAuthorize(t, testNewTrivialConservativeGuard(t), false)
 }
 */
 
 /*
-	FIX
+	FIX TEST
 func TestTrivialConservativeGuardRetract(t *testing.T) {
 	testTrivialGuardRetract(t, testNewTrivialConservativeGuard(t), true)
 }
@@ -176,7 +176,7 @@ func TestTrivialConservativeGuardIsAuthorized(t *testing.T) {
 }
 
 /*
-	FIX
+	FIX TEST
 func TestTrivialConservativeGuardAddRule(t *testing.T) {
 	testTrivialGuardAddRule(t, testNewTrivialConservativeGuard(t), false)
 }

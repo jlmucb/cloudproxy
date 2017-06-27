@@ -406,7 +406,7 @@ func TestACLGuardString(t *testing.T) {
 }
 
 /*
-	FIX test
+	FIX TEST
 func TestACLGuardSignedSubprincipal(t *testing.T) {
 	s, err := generateSigner()
 	if err != nil {

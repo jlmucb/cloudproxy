@@ -474,6 +474,7 @@ func TestCerts(t *testing.T) {
 	}
 
 /*
+	FIX TEST
 	der, err = s.CreateSelfSignedDER(int(x509.RSA), int(x509.SHA256WithRSA),
 		int64(10), NewX509Name(details))
 	if err != nil {

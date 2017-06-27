@@ -22,7 +22,6 @@ func ptrFromString(str string) *string {
 	return &str
 }
 
-// FIX
 func PublicKeyAlgFromSignerAlg(signerAlg string) int {
 	switch(signerAlg) {
 	case "ecdsap256", "ecdsap384", "ecdsap521":

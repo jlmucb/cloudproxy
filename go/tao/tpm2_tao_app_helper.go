@@ -200,7 +200,7 @@ func HandleQuote(network, addr, pass, path string, details X509Details) error {
 			log.Printf("Quote server: Couldn't read request from channel: %s\n", err)
 			continue
 		}
-		// FIX
+		// FIX: only ecdsa is supported here, should check type
 		response, err := tpm2.ProcessQuoteDomainRequest(request,
 			(policyKey.SigningKey.GetSignerPrivateKey()).(*ecdsa.PrivateKey), policyKey.Cert.Raw)
 		if err != nil {

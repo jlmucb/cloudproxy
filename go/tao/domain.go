@@ -158,7 +158,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		dgi := DatalogGuardDetails{
 			SignedRulesPath: proto.String(path.Join(configDir, rulesPath)),
 		}
-		// FIX
+		// Fix?
 		if keys.VerifyingKey == nil {
 			return nil, errors.New("Empty verifying key")
 		}
@@ -226,7 +226,7 @@ func (d *Domain) CreatePublicCachedDomain(network, addr string, ttl int64) (*Dom
 		return nil, err
 	}
 /*
-	FIX: Kevin, taking this ou makes the test work, what's it all about?
+	REVIEW: Kevin, taking this ou makes the test work, what's it all about?
 	inFile, err := os.Open(d.Keys.X509Path())
 	if err != nil {
 		return nil, err
@@ -282,7 +282,7 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 		return nil, err
 	}
 
-	// FIX?
+	// Fix?
 	if keys.VerifyingKey == nil {
 		keys.VerifyingKey = keys.SigningKey.GetVerifierFromSigner()
 		if keys.VerifyingKey == nil {

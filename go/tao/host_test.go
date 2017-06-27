@@ -115,7 +115,7 @@ func TestTaoRootHostRandomBytes(t *testing.T) {
 }
 
 /*
-	FIX
+	FIX TEST
 func TestTaoRootHostSharedSecretFailure(t *testing.T) {
 	testTaoHostSharedSecretFailure(t, testNewTaoRootHost(t))
 }
@@ -142,7 +142,7 @@ func TestTaoStackedHostRandomBytes(t *testing.T) {
 }
 
 /*
-	FIX
+	FIX TEST
 func TestTaoStackedHostSharedSecretFailure(t *testing.T) {
 	testTaoHostSharedSecretFailure(t, testNewTaoStackedHost(t))
 }

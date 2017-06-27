@@ -91,7 +91,7 @@ func TestDatalogSaveReload(t *testing.T) {
 }
 
 /*
-	FIX
+	FIX TEST
 func TestDatalogAuthorizeRetract(t *testing.T) {
 	g, _, tmpdir, err := makeDatalogGuard()
 	if err != nil {

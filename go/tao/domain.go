@@ -226,7 +226,7 @@ func (d *Domain) CreatePublicCachedDomain(network, addr string, ttl int64) (*Dom
 		return nil, err
 	}
 /*
-	REVIEW: Kevin, taking this ou makes the test work, what's it all about?
+	REVIEW: Kevin, taking this out makes the test work, what's it all about?
 	inFile, err := os.Open(d.Keys.X509Path())
 	if err != nil {
 		return nil, err

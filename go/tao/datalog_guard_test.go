@@ -17,8 +17,8 @@ package tao
 import (
 	"fmt"
 	"io/ioutil"
-	// "os"
-	// "testing"
+	"os"
+	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -56,8 +56,6 @@ var subj = auth.NewKeyPrin([]byte("test1"))  // key([1b4f0e9851971998e732078544c
 var subj2 = auth.NewKeyPrin([]byte("test2")) // key([60303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752])
 
 
-/*
-	FIX
 func TestDatalogSaveReload(t *testing.T) {
 	g, keys, tmpdir, err := makeDatalogGuard()
 	if err != nil {
@@ -92,6 +90,8 @@ func TestDatalogSaveReload(t *testing.T) {
 	}
 }
 
+/*
+	FIX
 func TestDatalogAuthorizeRetract(t *testing.T) {
 	g, _, tmpdir, err := makeDatalogGuard()
 	if err != nil {
@@ -124,6 +124,7 @@ func TestDatalogAuthorizeRetract(t *testing.T) {
 		t.Fatal("authorized, should have been denied")
 	}
 }
+*/
 
 func TestDatalogRules(t *testing.T) {
 	g, _, tmpdir, err := makeDatalogGuard()
@@ -374,4 +375,3 @@ func TestDatalogUnsignedSubprincipal(t *testing.T) {
 		t.Fatalf("Datalog guard has wrong name: %v", name)
 	}
 }
-*/

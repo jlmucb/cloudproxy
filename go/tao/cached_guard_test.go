@@ -14,11 +14,9 @@
 
 package tao
 
-/* 
- 	FIX
 
 import (
-	// "crypto/x509/pkix"
+	"crypto/x509/pkix"
 	"fmt"
 	"net"
 	"os"
@@ -99,7 +97,6 @@ func TestCachingDatalogLoad(t *testing.T) {
 	}
 	defer os.RemoveAll(configDir)
 	defer os.RemoveAll(configDir + ".pub")
-
 	public, err := LoadDomain(path.Join(configDir+".pub", "tao.config"), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -306,4 +303,3 @@ func TestCachingDatalogValidatePeerAttestation(t *testing.T) {
 		t.Error("failed to verity attestation:", err)
 	}
 }
-*/

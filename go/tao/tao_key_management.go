@@ -497,6 +497,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 	k := &Keys{
 		keyTypes: keyTypes,
 		dir:      path,
+		Cert: 	  nil,
 	}
 	if len(password) == 0 {
 		// This means there's no secret information: just load a public verifying key.
@@ -504,7 +505,11 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			return nil, newError("without a password, only a verifying key can be loaded")
 		}
 
-		v, err := FromX509(k.Cert)
+		derCert, err := loadCert(k.X509Path())
+		if err != nil  || derCert == nil {
+			return nil, errors.New("Couldn't load cert")
+		}
+		v, err := FromX509(derCert)
 		if err != nil {
 			return nil, err
 		}
@@ -526,24 +531,28 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			}
 			defer ZeroBytes(data)
 
-			ktemp, err := UnmarshalKeys(data)
+			k, err := UnmarshalKeys(data)
 			if err != nil {
 				return nil, err
 			}
 
 			// Note that this loads the certificate if it's
 			// present, and it returns nil otherwise.
-			k.Cert = nil
-			cert, err := loadCert(k.X509Path())
-			if err != nil {
-				return nil, err
+			if k.Cert == nil {
+				cert, err := loadCert(k.X509Path())
+				if err != nil {
+					return nil, err
+				}
+				k.Cert = cert
+				if k.Cert == nil {
+					k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
+				} else {
+					k.VerifyingKey, err = FromX509(cert)
+					if err != nil {
+						return nil, errors.New("Can't parse retrieved cert")
+					}
+				}
 			}
-			k.Cert = cert
-
-			k.SigningKey = ktemp.SigningKey
-			k.VerifyingKey = ktemp.VerifyingKey
-			k.CryptingKey = ktemp.CryptingKey
-			k.DerivingKey = ktemp.DerivingKey
 			return k, nil
 		} else {
 			// Create and store a new set of keys.
@@ -563,10 +572,11 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if pkInt < 0 || skInt < 0 {
 					return nil, errors.New("Can't get PublicKeyAlgFromSignerAlg")
 				}
-				k.Cert, err = k.SigningKey.CreateSelfSignedX509(pkInt, skInt, 1,
+				cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, skInt, 1,
 					&pkix.Name{Organization: []string{"Identity of some Tao service"}})
 				if err != nil {
 					return nil, errors.New("Can't create CreateSelfSignedX509")
+				k.Cert = cert
 				}
 			}
 

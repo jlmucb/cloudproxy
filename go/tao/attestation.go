@@ -15,7 +15,6 @@
 package tao
 
 import (
-"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -139,7 +138,6 @@ func (a *Attestation) Validate() (auth.Says, error) {
 	if err != nil {
 		return auth.Says{}, err
 	}
-fmt.Printf("Valid Signer\n")
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
 		return auth.Says{}, err
@@ -152,12 +150,11 @@ fmt.Printf("Valid Signer\n")
 	} else {
 		return auth.Says{}, newError("tao: attestation statement has wrong type: %T", f)
 	}
-fmt.Printf("Speaker: %x, Signer: %x\n", stmt.Speaker, signer)
+	// FIX fmt.Printf("Speaker: %x, Signer: %x\n", stmt.Speaker, signer)
 	if a.SerializedDelegation == nil {
 		// Case (1), no delegation present.
 		// Require that stmt.Speaker be a subprincipal of (or identical to) a.signer.
 		if !auth.SubprinOrIdentical(stmt.Speaker, signer) {
-fmt.Printf("FAILES HERE\n")
 			return auth.Says{}, newError("tao: attestation statement signer (%v) does not evidently speak for issuer (%v)", signer, stmt.Speaker)
 		}
 	} else {

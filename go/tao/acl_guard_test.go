@@ -406,6 +406,7 @@ func TestACLGuardString(t *testing.T) {
 }
 
 /*
+	FIX test
 func TestACLGuardSignedSubprincipal(t *testing.T) {
 	s, err := generateSigner()
 	if err != nil {
@@ -425,6 +426,7 @@ func TestACLGuardSignedSubprincipal(t *testing.T) {
 		t.Fatalf("ACL guard has wrong name: %v", name)
 	}
 }
+*/
 
 func TestACLGuardUnsignedSubprincipal(t *testing.T) {
 	g := NewACLGuard(nil, ACLGuardDetails{})
@@ -437,4 +439,3 @@ func TestACLGuardUnsignedSubprincipal(t *testing.T) {
 		t.Fatalf("ACL guard has wrong name: %v", name)
 	}
 }
-*/

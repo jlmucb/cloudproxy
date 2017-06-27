@@ -773,7 +773,6 @@ func (s *Signer) CanonicalKeyBytesFromSigner() ([]byte, error) {
 func MakeUniversalKeyNameFromCanonicalBytes(cn []byte) []byte {
 	// TODO: Should the algorithm be selected from TaoCryptoSuite
 	h := sha256.Sum256(cn)
-fmt.Printf("MakeUniversalKeyNameFromCanonicalBytes.  cn: %x, h: %x\n", cn, h)
 	return h[0:32]
 }
 
@@ -1067,9 +1066,18 @@ func (v *Verifier) SignsForPrincipal(prin auth.Prin) bool {
 
 // FromX509 creates a Verifier from an X509 certificate.
 func FromX509(cert *x509.Certificate) (*Verifier, error) {
-	var h CryptoHeader
+	// FIX
+	keyType := ptrFromString("ecdsap256-public")
+	keyEpoch := int32(1)
+	h := &CryptoHeader {
+		KeyName: ptrFromString("Anonymous verifying key"),
+		KeyType: keyType,
+		KeyPurpose: ptrFromString("verifying"),
+		KeyEpoch: &keyEpoch,
+		KeyStatus: ptrFromString("active"),
+	}
 	v := &Verifier{
-		header:    &h,
+		header:    h,
 		publicKey: cert.PublicKey,
 	}
 	return v, nil
@@ -1282,6 +1290,7 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	}
 }
 
+// This code is duplicated in VerifierFromCanonicalBytes
 // MarshalSignerDER serializes the signer to DER.
 func MarshalSignerDER(s *Signer) ([]byte, error) {
 	// FIX: only ecdsa is supported

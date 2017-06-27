@@ -408,11 +408,11 @@ func MakePredicate(name string, arg ...interface{}) Pred {
 // NewPrin returns a new Prin with the given key type and material.
 func NewPrin(keytype string, material []byte) Prin {
 /* FIX
-if material == nil {
-fmt.Printf("***Newprin (%s): nil\n", keytype)
-} else {
-fmt.Printf("***Newprin (%s): %x\n", keytype, material)
-}
+	if material == nil {
+		fmt.Printf("***Newprin (%s): nil\n", keytype)
+	} else {
+		fmt.Printf("***Newprin (%s): %x\n", keytype, material)
+	}
 */
 	// TODO: This might depend on the CryptoSuite.
 	// See MakeUniversalKeyNameFromCanonicalBytes in keys.go.

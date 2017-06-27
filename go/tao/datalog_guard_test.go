@@ -90,8 +90,6 @@ func TestDatalogSaveReload(t *testing.T) {
 	}
 }
 
-/*
-	FIX TEST
 func TestDatalogAuthorizeRetract(t *testing.T) {
 	g, _, tmpdir, err := makeDatalogGuard()
 	if err != nil {
@@ -124,7 +122,6 @@ func TestDatalogAuthorizeRetract(t *testing.T) {
 		t.Fatal("authorized, should have been denied")
 	}
 }
-*/
 
 func TestDatalogRules(t *testing.T) {
 	g, _, tmpdir, err := makeDatalogGuard()

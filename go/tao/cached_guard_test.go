@@ -14,7 +14,6 @@
 
 package tao
 
-
 import (
 	"crypto/x509/pkix"
 	"fmt"
@@ -40,6 +39,7 @@ var password = make([]byte, 32)
 var prin = auth.NewKeyPrin([]byte("Alice"))
 
 func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain, public *Domain, err error) {
+	password[0] = 1
 
 	// Create a domain with a Datalog guard and policy keys.
 	var policyDomainConfig DomainConfig
@@ -77,8 +77,6 @@ func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain
 	return
 }
 
-/*
-	FIX TEST
 func TestCachingDatalogLoad(t *testing.T) {
 	network := "tcp"
 	addr := "localhost:0"
@@ -113,7 +111,6 @@ func TestCachingDatalogLoad(t *testing.T) {
 	}
 	<-ch
 }
-*/
 
 func TestCachingDatalogReload(t *testing.T) {
 

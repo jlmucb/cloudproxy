@@ -505,11 +505,14 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			return nil, newError("without a password, only a verifying key can be loaded")
 		}
 
-		derCert, err := loadCert(k.X509Path())
-		if err != nil  || derCert == nil {
+		cert, err := loadCert(k.X509Path())
+		if err != nil  {
 			return nil, errors.New("Couldn't load cert")
 		}
-		v, err := FromX509(derCert)
+		if cert == nil {
+			return nil, errors.New("Empty cert")
+		}
+		v, err := FromX509(cert)
 		if err != nil {
 			return nil, err
 		}

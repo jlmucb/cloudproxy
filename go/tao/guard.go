@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	"github.com/jlmucb/cloudproxy/go/util"
+	// "github.com/jlmucb/cloudproxy/go/util"
 )
 
 // Guard is an interface for evaluating policy decisions.
@@ -119,7 +119,9 @@ func (t TrivialGuard) Save(key *Signer) error {
 // operation.
 func (t TrivialGuard) Authorize(name auth.Prin, op string, args []string) error {
 	if t != LiberalGuard {
-		return util.Logged(errTrivialGuard)
+		// FIX?
+		return errors.New("Can't authorize on this guard")
+		// return util.Logged(errTrivialGuard)
 	}
 	return nil
 }
@@ -133,7 +135,9 @@ func (t TrivialGuard) Authorize(name auth.Prin, op string, args []string) error 
 // in place authorizing the principal to perform the operation.
 func (t TrivialGuard) Retract(name auth.Prin, op string, args []string) error {
 	if t != ConservativeGuard {
-		return util.Logged(errTrivialGuard)
+		// FIX?
+		return errors.New("Can't retract from this guard")
+		// return util.Logged(errTrivialGuard)
 	}
 	return nil
 }
@@ -157,7 +161,9 @@ func (t TrivialGuard) IsAuthorized(name auth.Prin, op string, args []string) boo
 // converted to either a string or integer.
 func (t TrivialGuard) AddRule(rule string) error {
 	if t != LiberalGuard {
-		return util.Logged(errTrivialGuard)
+		// FIX?
+		return errors.New("Can't add on this guard")
+		// return util.Logged(errTrivialGuard)
 	}
 	return nil
 }
@@ -166,7 +172,9 @@ func (t TrivialGuard) AddRule(rule string) error {
 // equivalent Authorize() call.
 func (t TrivialGuard) RetractRule(rule string) error {
 	if t != ConservativeGuard {
-		return util.Logged(errTrivialGuard)
+		// FIX?
+		return errors.New("Can't retract rule from this guard")
+		// return util.Logged(errTrivialGuard)
 	}
 	return nil
 }

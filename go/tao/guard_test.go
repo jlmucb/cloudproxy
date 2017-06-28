@@ -111,11 +111,9 @@ func TestTrivialLiberalGuardAuthorize(t *testing.T) {
 	testTrivialGuardAuthorize(t, testNewTrivialLiberalGuard(t), true)
 }
 
-/* FIX TEST
 func TestTrivialLiberalGuardRetract(t *testing.T) {
 	testTrivialGuardRetract(t, testNewTrivialLiberalGuard(t), false)
 }
-*/
 
 func TestTrivialLiberalGuardIsAuthorized(t *testing.T) {
 	testTrivialGuardIsAuthorized(t, testNewTrivialLiberalGuard(t), true)
@@ -125,7 +123,6 @@ func TestTrivialLiberalGuardAddRule(t *testing.T) {
 	testTrivialGuardAddRule(t, testNewTrivialLiberalGuard(t), true)
 }
 
-/* FIX TEST
 func TestTrivialLiberalGuardRetractRule(t *testing.T) {
 	testTrivialGuardRetractRule(t, testNewTrivialLiberalGuard(t), false)
 }
@@ -133,7 +130,6 @@ func TestTrivialLiberalGuardRetractRule(t *testing.T) {
 func TestTrivialLiberalGuardClear(t *testing.T) {
 	testTrivialGuardClear(t, testNewTrivialLiberalGuard(t))
 }
-*/
 
 func TestTrivialLiberalGuardQuery(t *testing.T) {
 	testTrivialGuardQuery(t, testNewTrivialLiberalGuard(t), true)
@@ -155,11 +151,9 @@ func TestTrivialLiberalGuardDebugString(t *testing.T) {
 	testTrivialGuardDebugString(t, testNewTrivialLiberalGuard(t), "Trivial Liberal Policy (a.k.a. \"allow all\")")
 }
 
-/* FIX TEST
 func TestTrivialConservativeGuardAuthorize(t *testing.T) {
 	testTrivialGuardAuthorize(t, testNewTrivialConservativeGuard(t), false)
 }
-*/
 
 func TestTrivialConservativeGuardRetract(t *testing.T) {
 	testTrivialGuardRetract(t, testNewTrivialConservativeGuard(t), true)
@@ -169,11 +163,9 @@ func TestTrivialConservativeGuardIsAuthorized(t *testing.T) {
 	testTrivialGuardIsAuthorized(t, testNewTrivialConservativeGuard(t), false)
 }
 
-/* FIX TEST
 func TestTrivialConservativeGuardAddRule(t *testing.T) {
 	testTrivialGuardAddRule(t, testNewTrivialConservativeGuard(t), false)
 }
-*/
 
 func TestTrivialConservativeGuardRetractRule(t *testing.T) {
 	testTrivialGuardRetractRule(t, testNewTrivialConservativeGuard(t), true)

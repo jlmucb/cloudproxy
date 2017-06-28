@@ -189,7 +189,7 @@ func KeyComponentsFromVerifier(v *Verifier) ([][]byte, error) {
 			return nil, errors.New("Can't Serialize")
 		}
 		return keyComponents, nil
-	case "ecdsap256-public", "ecdsap384-public":
+	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public":
 		// Serialize
 		keyComponent, err := SerializeEcdsaPublicComponents((v.publicKey).(*ecdsa.PublicKey))
 		if err != nil {
@@ -587,6 +587,16 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
+	case "ecdsap521":
+		ecKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		if err != nil {
+			return nil
+		}
+		keyComponent, err := SerializeEcdsaPrivateComponents(ecKey)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
 	case "hdkf-sha256":
 		keyBuf, err := randBytes(32)
 		if err != nil {
@@ -855,7 +865,7 @@ func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix
 	switch *s.header.KeyType {
 	case "rsa1024", "rsa2048", "rsa3072":
 		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")
@@ -882,7 +892,7 @@ func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64, name *pki
 	switch *s.header.KeyType {
 	case "rsa1024", "rsa2048", "rsa3072":
 		pub = &(s.privateKey).(*rsa.PrivateKey).PublicKey
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		pub = &(s.privateKey).(*ecdsa.PrivateKey).PublicKey
 	default:
 		return nil, errors.New("Unsupported key type")
@@ -1001,7 +1011,7 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 	}
 
 	switch *v.header.KeyType {
-	case "ecdsap256-public", "ecdsap384-public":
+	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public":
 		var ecSig ecdsaSignature
 		// We ignore the first parameter, since we don't mind if there's more
 		// data after the signature.
@@ -1031,28 +1041,39 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 
 // MarshalKey serializes a Verifier.
 func (v *Verifier) MarshalKey() []byte {
-	var k CryptoKey
-	k.KeyHeader = v.header
-	keyComponent, err := SerializeEcdsaPublicComponents((v.publicKey).(*ecdsa.PublicKey))
-	if err != nil {
+	var ck CryptoKey
+	if v.header == nil || v.header.KeyType == nil {
 		return nil
 	}
-	k.KeyComponents = append(k.KeyComponents, keyComponent)
-	return MarshalCryptoKey(k)
+	ck.KeyHeader = v.header
+
+
+	switch *v.header.KeyType {
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		keyComponent, err := SerializeEcdsaPublicComponents((v.publicKey).(*ecdsa.PublicKey))
+		if err != nil {
+			return nil
+		}
+		ck.KeyComponents = append(ck.KeyComponents, keyComponent)
+		return MarshalCryptoKey(ck)
+	default:
+		return nil
+	}
+	return nil
 }
 
 // UnmarshalKey deserializes a Verifier.
 func UnmarshalKey(material []byte) (*Verifier, error) {
-	var k CryptoKey
-	err := proto.Unmarshal(material, &k)
+	var ck CryptoKey
+	err := proto.Unmarshal(material, &ck)
 	if err != nil {
 		return nil, errors.New("Can't Unmarshal verifier")
 	}
 	// make sure its a verifying ecdsa key using sha
-	if *k.KeyHeader.KeyPurpose != "verifying" {
+	if *ck.KeyHeader.KeyPurpose != "verifying" {
 		return nil, errors.New("Not a verifying key")
 	}
-	v := VerifierFromCryptoKey(k)
+	v := VerifierFromCryptoKey(ck)
 	if v == nil {
 		return nil, errors.New("VerifierFromCryptoKey failed")
 	}
@@ -1064,10 +1085,58 @@ func (v *Verifier) SignsForPrincipal(prin auth.Prin) bool {
 	return auth.SubprinOrIdentical(prin, v.ToPrincipal())
 }
 
-// FromX509 creates a Verifier from an X509 certificate.
-func FromX509(cert *x509.Certificate) (*Verifier, error) {
-	keyType := ptrFromString("ecdsap256-public")
+func IsP256(ecPk *ecdsa.PublicKey) bool {
+	// This check is insufficient
+	if ecPk.Curve.Params().BitSize == 256 {
+		return true
+	}
+	return false
+}
+
+func IsP384(ecPk *ecdsa.PublicKey) bool {
+	if ecPk.Curve.Params().BitSize == 384 {
+		return true
+	}
+	return false
+}
+
+func IsP521(ecPk *ecdsa.PublicKey) bool {
+	if ecPk.Curve.Params().BitSize == 521 {
+		return true
+	}
+	return false
+}
+
+// VerifierFromX509 creates a Verifier from an X509 certificate.
+func VerifierFromX509(cert *x509.Certificate) (*Verifier, error) {
 	keyEpoch := int32(1)
+	var keyType *string
+	 if cert.PublicKeyAlgorithm == x509.ECDSA {
+		ecPk := cert.PublicKey.(*ecdsa.PublicKey)
+		if IsP256(ecPk) {
+			keyType = ptrFromString("ecdsap256-public")
+		} else if IsP384(ecPk) {
+			keyType = ptrFromString("ecdsap384-public")
+		} else if IsP521(ecPk) {
+			keyType = ptrFromString("ecdsap384-public")
+		} else {
+			return nil, errors.New("Unsupported ecdsa key type")
+		}
+	} else if cert.PublicKeyAlgorithm == x509.RSA {
+		rsaPk := cert.PublicKey.(*rsa.PublicKey)
+		if rsaPk.N.BitLen() > 1022 && rsaPk.N.BitLen() <= 1024 {
+			keyType = ptrFromString("rsa1024-public")
+		} else if rsaPk.N.BitLen() > 2046 && rsaPk.N.BitLen() <= 2048 {
+			keyType = ptrFromString("rsa2048-public")
+		} else if rsaPk.N.BitLen() > 3070 && rsaPk.N.BitLen() <= 3072 {
+			keyType = ptrFromString("rsa3072-public")
+		} else {
+			return nil, errors.New("Unsupported rsa key type")
+		}
+		return nil, errors.New("RSA not supported in FromX509")
+	} else {
+		return nil, errors.New("Unsupported PublicKeyAlgorithm")
+	}
 	h := &CryptoHeader {
 		KeyName: ptrFromString("Anonymous verifying key"),
 		KeyType: keyType,
@@ -1085,7 +1154,7 @@ func FromX509(cert *x509.Certificate) (*Verifier, error) {
 // Equals checks to see if the public key in the X.509 certificate matches the
 // public key in the verifier.
 func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
-	v2, err := FromX509(cert)
+	v2, err := VerifierFromX509(cert)
 	if err != nil {
 		return false
 	}
@@ -1297,7 +1366,7 @@ func MarshalSignerDER(s *Signer) ([]byte, error) {
 		return nil, errors.New("Unsupported alg for MarshalSignerDER")
 	}
 	switch(*s.header.KeyType) {
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
         	return x509.MarshalECPrivateKey((s.privateKey).(*ecdsa.PrivateKey))
 	default:
 		return nil, errors.New("Unsupported alg for MarshalSignerDER")

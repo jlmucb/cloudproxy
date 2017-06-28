@@ -512,7 +512,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 		if cert == nil {
 			return nil, errors.New("Empty cert")
 		}
-		v, err := FromX509(cert)
+		v, err := VerifierFromX509(cert)
 		if err != nil {
 			return nil, err
 		}
@@ -550,7 +550,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if k.Cert == nil {
 					k.VerifyingKey = k.SigningKey.GetVerifierFromSigner()
 				} else {
-					k.VerifyingKey, err = FromX509(cert)
+					k.VerifyingKey, err = VerifierFromX509(cert)
 					if err != nil {
 						return nil, errors.New("Can't parse retrieved cert")
 					}

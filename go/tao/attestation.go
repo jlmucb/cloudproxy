@@ -150,7 +150,7 @@ func (a *Attestation) Validate() (auth.Says, error) {
 	} else {
 		return auth.Says{}, newError("tao: attestation statement has wrong type: %T", f)
 	}
-	// FIX fmt.Printf("Speaker: %x, Signer: %x\n", stmt.Speaker, signer)
+
 	if a.SerializedDelegation == nil {
 		// Case (1), no delegation present.
 		// Require that stmt.Speaker be a subprincipal of (or identical to) a.signer.

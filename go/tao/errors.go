@@ -15,12 +15,15 @@
 package tao
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/jlmucb/cloudproxy/go/util"
+	// "github.com/jlmucb/cloudproxy/go/util"
 )
 
 // newError formats an error, logs it to glog, then returs it.
 func newError(msg string, args ...interface{}) error {
-	return util.Logged(fmt.Errorf(msg, args...))
+	// FIX?
+	// return util.Logged(fmt.Errorf(msg, args...))
+	return errors.New(fmt.Sprintf(msg, args...))
 }

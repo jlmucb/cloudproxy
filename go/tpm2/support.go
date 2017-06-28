@@ -146,6 +146,10 @@ func PublicKeyFromPrivate(priv interface{}) (*rsa.PublicKey) {
 	}
 }
 
+/*
+
+REMOVE THIS
+
 func Protect(keys []byte, in []byte) ([]byte, error) {
 	if in == nil {
 		return nil, nil
@@ -195,6 +199,7 @@ func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	}
 	return out, nil
 }
+*/
 
 func KDFA(alg uint16, key []byte, label string, contextU []byte,
 		contextV []byte, bits int) ([]byte, error) {

@@ -16,13 +16,9 @@ package domain_policy
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 func GetPublicDerFromEcdsaKey(ecKey *ecdsa.PublicKey) ([]byte, error) {
@@ -38,20 +34,8 @@ func SerializeRSAKeyToInternalName(rsaKey *rsa.PublicKey) ([]byte, error) {
 }
 
 func SerializeEcdsaKeyToInternalName(ecKey *ecdsa.PublicKey) ([]byte, error) {
-	m := &tao.ECDSA_SHA_VerifyingKeyV1{
-                Curve:    tao.NamedEllipticCurve_PRIME256_V1.Enum(),
-		EcPublic: elliptic.Marshal(ecKey.Curve, ecKey.X, ecKey.Y),
-	}
-	b, _ := proto.Marshal(m)
-
-	s := &tao.CryptoKey{
-		Version:   tao.CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Purpose:   tao.CryptoKey_VERIFYING.Enum(),
-		Algorithm: tao.CryptoKey_ECDSA_SHA.Enum(),
-		Key:       b,
-        }
-
-	return proto.Marshal(s)
+	// JLM
+	return x509.MarshalPKIXPublicKey(ecKey)
 }
 
 func GetKeyHash(s []byte) ([32]byte) {

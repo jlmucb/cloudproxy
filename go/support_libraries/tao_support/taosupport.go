@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -148,13 +149,9 @@ func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 
 	var request domain_policy.DomainCertRequest
 	request.Attestation, err = proto.Marshal(requesting_key.Delegation)
-	signer := requesting_key.SigningKey.GetSigner()
-	if signer == nil {
-		return nil, err
-	}
 	key_type := "ECDSA"
 	request.KeyType = &key_type
-	request.SubjectPublicKey, err = domain_policy.GetPublicDerFromEcdsaKey(&signer.PublicKey)
+	request.SubjectPublicKey, err = domain_policy.GetPublicDerFromEcdsaKey((requesting_key.SigningKey.GetPublicKeyFromSigner()).(*ecdsa.PublicKey))
 	if err != nil {
 		return nil, err
 	}
@@ -459,7 +456,10 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 		CommonName:   &publicString}
 	subjectname := tao.NewX509Name(&details)
 
-	derCert, err := k.SigningKey.CreateSelfSignedDER(subjectname)
+	keyType := k.SigningKey.GetCryptoHeaderFromSigner().KeyType
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*keyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*keyType)
+	derCert, err := k.SigningKey.CreateSelfSignedDER(pkInt, sigInt, int64(1), subjectname)
 	if err != nil {
 		return nil, nil, errors.New("Can't self sign cert\n")
 	}

@@ -14,7 +14,9 @@
 package tao
 
 import (
+	"crypto"
 	"crypto/aes"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -174,6 +176,15 @@ type Keys struct {
 	DerivingKey  *Deriver
 	Delegation   *Attestation
 	Cert         *x509.Certificate
+}
+
+func (signer *Signer) GetCryptoHeaderFromSigner() *CryptoHeader {
+	return signer.header
+}
+
+func (signer *Signer) GetPublicKeyFromSigner() crypto.PublicKey {
+	// FIX: for different key types
+	return signer.privateKey.(*ecdsa.PrivateKey).PublicKey
 }
 
 func printKeys(keys *Keys) {

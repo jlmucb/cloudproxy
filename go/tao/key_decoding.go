@@ -16,6 +16,7 @@ package tao
 
 import (
 	"crypto/x509"
+	"fmt"
 )
 
 func ptrFromString(str string) *string {
@@ -161,4 +162,86 @@ func IsDeriver(keyType string) bool {
 		return true
 	}
 	return false
+}
+
+func SymmetricKeySizeFromAlgorithmName(keyType string) *int {
+	var n int
+fmt.Printf("SymmetricKeySizeFromAlgorithmName: %s\n", keyType)
+	switch(keyType) {
+	default:
+		return nil
+	case "aes128-ctr-hmacsha256":
+		n = 16
+		return &n
+	case "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512":
+		n = 32
+		return &n
+	}
+	return nil
+}
+
+func HmacSizeFromAlgorithmName(keyType string) *int {
+	var n int
+	switch(keyType) {
+	default:
+		return nil
+	case "aes128-ctr-hmacsha256":
+		n = 32
+		return &n
+	case "aes256-ctr-hmacsha384":
+		n = 48
+		return &n
+	case "aes256-ctr-hmacsha512":
+		n = 64
+		return &n
+	}
+	return nil
+}
+
+func HmacKeySizeFromAlgorithmName(keyType string) *int {
+	var n int
+	switch(keyType) {
+	default:
+		return nil
+	case "aes128-ctr-hmacsha256":
+		n = 32
+		return &n
+	case "aes256-ctr-hmacsha384":
+		n = 48
+		return &n
+	case "aes256-ctr-hmacsha512":
+		n = 64
+		return &n
+	}
+	return nil
+}
+
+func CombinedKeySizeFromAlgorithmName(keyType string) *int {
+	var n int
+	switch(keyType) {
+	default:
+		return nil
+	case "aes128-ctr-hmacsha256":
+		n = 48
+		return &n
+	case "aes256-ctr-hmacsha384":
+		n = 64
+		return &n
+	case "aes256-ctr-hmacsha512":
+		n = 96
+		return &n
+	}
+	return nil
+}
+
+func SymmetricBlockSizeFromAlgorithmName(keyType string) *int {
+	var n int
+	switch(keyType) {
+	default:
+		return nil
+	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512":
+		n = 16
+		return &n
+	}
+	return &n
 }

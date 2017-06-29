@@ -19,6 +19,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha512"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -28,50 +29,121 @@ import (
 )
 
 func Protect(keys []byte, in []byte) ([]byte, error) {
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return nil, errors.New("Protect: Can't get key type from cipher suite")
+	}
+	encKeySize := SymmetricKeySizeFromAlgorithmName(*keyType)
+	if encKeySize == nil {
+		return nil, errors.New("Protect: Can't get symmetric key size from key type")
+	}
+	totalKeySize := CombinedKeySizeFromAlgorithmName(*keyType)
+	if totalKeySize == nil {
+		return nil, errors.New("Protect: Can't get total key size from key type")
+	}
+	blkSize := SymmetricBlockSizeFromAlgorithmName(*keyType)
+	if blkSize == nil {
+		return nil, errors.New("Protect: Can't get block size from key type")
+	}
 	if in == nil {
 		return nil, nil
 	}
-	out := make([]byte, len(in), len(in))
-	iv := make([]byte, 16, 16)
-	_, err := rand.Read(iv[0:16])
+	if len(keys) < *totalKeySize {
+		return nil, errors.New("Protect: Supplied key size too small")
+	}
+	iv := make([]byte, *blkSize, *blkSize)
+	_, err := rand.Read(iv[0:*blkSize])
 	if err != nil {
 		return nil, errors.New("Protect: Can't generate iv")
 	}
-	encKey := keys[0:16]
-	macKey := keys[16:32]
+	encKey := keys[0:*encKeySize]
+	macKey := keys[*encKeySize:*totalKeySize]
 	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, errors.New("Protect: Can't make crypter")
 	}
 	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in)
+	cipheredOut := make([]byte, len(in))
+	ctr.XORKeyStream(cipheredOut, in)
+	ivAndCiphered := append(iv, cipheredOut...)
 
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(append(iv, out...))
-	calculatedHmac := hm.Sum(nil)
-	return append(calculatedHmac, append(iv, out...)...), nil
+	var calculatedHmac []byte
+	switch(*keyType) {
+	default:
+		return nil, errors.New("unknown symmetric cipher suite")
+	case "aes128-ctr-hmacsha256":
+		hm := hmac.New(sha256.New, macKey)
+		hm.Write(ivAndCiphered)
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha384":
+		hm := hmac.New(sha512.New384, macKey)
+		hm.Write(ivAndCiphered)
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha512":
+		hm := hmac.New(sha512.New, macKey)
+		hm.Write(ivAndCiphered)
+		calculatedHmac = hm.Sum(nil)
+	}
+	return append(calculatedHmac, ivAndCiphered...), nil
 }
 
 func Unprotect(keys []byte, in []byte) ([]byte, error) {
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return nil, errors.New("Protect: Can't get key type from cipher suite")
+	}
+	encKeySize := SymmetricKeySizeFromAlgorithmName(*keyType)
+	if encKeySize == nil {
+		return nil, errors.New("Protect: Can't get symmetric key size from key type")
+	}
+	hmacKeySize := HmacKeySizeFromAlgorithmName(*keyType)
+	if hmacKeySize == nil {
+		return nil, errors.New("Protect: Can't get hmac key size from key type")
+	}
+	hmacSize := HmacKeySizeFromAlgorithmName(*keyType)
+	if hmacSize == nil {
+		return nil, errors.New("Protect: Can't get hmac size from key type")
+	}
+	totalKeySize := CombinedKeySizeFromAlgorithmName(*keyType)
+	if totalKeySize == nil {
+		return nil, errors.New("Protect: Can't get total key size from key type")
+	}
+	blkSize := SymmetricBlockSizeFromAlgorithmName(*keyType)
+	if blkSize == nil {
+		return nil, errors.New("Protect: Can't get block size from key type")
+	}
 	if in == nil {
 		return nil, nil
 	}
-	out := make([]byte, len(in)-48, len(in)-48)
-	var iv []byte
-	iv = in[32:48]
-	encKey := keys[0:16]
-	macKey := keys[16:32]
+	out := make([]byte, len(in) - *blkSize - *hmacSize, len(in) - *blkSize - *hmacSize)
+	iv := in[*hmacSize:*hmacSize + *blkSize]
+	encKey := keys[0:*encKeySize]
+	macKey := keys[*encKeySize:*totalKeySize]
 	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
 		return nil, errors.New("Unprotect: Can't make crypter")
 	}
 	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in[48:])
+	ctr.XORKeyStream(out, in[*hmacSize + *blkSize:])
 
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(in[32:])
-	calculatedHmac := hm.Sum(nil)
-	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
+	var calculatedHmac []byte
+	switch(*keyType) {
+	default:
+		return nil, errors.New("unknown symmetric cipher suite")
+	case "aes128-ctr-hmacsha256":
+		hm := hmac.New(sha256.New, macKey)
+		hm.Write(in[*hmacSize:])
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha384":
+		hm := hmac.New(sha512.New384, macKey)
+		hm.Write(in[*hmacSize:])
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha512":
+		hm := hmac.New(sha512.New, macKey)
+		hm.Write(in[*hmacSize:])
+		calculatedHmac = hm.Sum(nil)
+	}
+	if bytes.Compare(calculatedHmac, in[0:*hmacSize]) != 0 {
 		return nil, errors.New("Unprotect: Bad mac")
 	}
 	return out, nil
@@ -112,12 +184,12 @@ func WriteRollbackTable(rollBackTable *RollbackCounterTable, fileName string, ta
 	}
 	b, err := Protect(tableKey, blob)
 	if err != nil {
-		log.Printf("WriteRollbackTable: Protect failed\n")
+		log.Printf("WriteRollbackTable: Protect failed " + err.Error() + "\n")
 		return false
 	}
 	err = ioutil.WriteFile(fileName, b, 0644)
 	if err != nil {
-		log.Printf("WriteRollbackTable: WriteFile failed\n")
+		log.Printf("WriteRollbackTable: WriteFile failed " + err.Error() + "\n")
 		return false
 	}
 	return true
@@ -168,10 +240,18 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 	sealedKeyFileName string, tableFileName string) bool {
 	// TODO(jlm): child argument not used, remove?
 	// Generate new rollback table sealing keys
-	var newKeys [32]byte
-	rand.Read(newKeys[0:32])
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return false
+	}
+	totalKeySize := CombinedKeySizeFromAlgorithmName(*keyType)
+	if totalKeySize == nil {
+		return false
+	}
+	newKeys := make([]byte, *totalKeySize, *totalKeySize)
+	rand.Read(newKeys[0:*totalKeySize])
 
-	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:32], "self")
+	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:*totalKeySize], "self")
 	if err != nil {
 		log.Printf("SaveHostRollbackTable: Can't do RollbackProtectedSeal\n")
 		return false
@@ -183,7 +263,7 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 	}
 
 	// Save table.
-	if !WriteRollbackTable(t, tableFileName, newKeys[0:32]) {
+	if !WriteRollbackTable(t, tableFileName, newKeys[0:*totalKeySize]) {
 		log.Printf("WriteRollbackTable failed\n")
 		return false
 	}

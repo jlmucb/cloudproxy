@@ -86,7 +86,7 @@ func main() {
 	}
 
 	cert, err := x509.CreateCertificate(rand.Reader, &certificateTemplate,
-		policyKey.Cert, aik, policyKey.SigningKey.GetSigner())
+		policyKey.Cert, aik, policyKey.SigningKey)
 	if err != nil {
 		log.Fatalln("Can't create AIK certificate: ", err)
 	}

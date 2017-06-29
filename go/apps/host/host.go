@@ -35,7 +35,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/util/options"
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/golang/crypto/ssh/terminal"
+	// "golang.org/x/crypto/ssh/terminal"
 )
 
 var opts = []options.Option{
@@ -411,8 +412,17 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 				Organization: []string{keyName},
 				CommonName:   keyName,
 			}
+			keyType := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)
+			if keyType == nil {
+				return nil, errors.New("Bad key type")
+			}
+			pkAlg := tao.PublicKeyAlgFromSignerAlg(*keyType)
+			sigAlg := tao.SignatureAlgFromSignerAlg(*keyType)
+			if pkAlg < 0 || sigAlg < 0 {
+				return nil, errors.New("Bad Alg type")
+			}
 			cert, err = domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 0,
-				rootHost.GetVerifier(), &subject)
+				rootHost.GetVerifier(), pkAlg, sigAlg, &subject)
 			if err != nil {
 				return nil, err
 			}

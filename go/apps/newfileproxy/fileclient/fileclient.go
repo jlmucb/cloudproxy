@@ -24,6 +24,7 @@ import (
 	"path"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/taotataoo"
 	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
@@ -90,7 +91,7 @@ func main() {
 	if err != nil {
 		rand.Read(fileSecrets)
 	} else {
-		fileSecrets, err = taosupport.Unprotect(clientProgramData.ProgramSymKeys, encryptedFileSecrets)
+		fileSecrets, err = tao.Unprotect(clientProgramData.ProgramSymKeys, encryptedFileSecrets)
 		if err != nil {
 			fmt.Printf("fileclient: Error protecting data\n")
 		}
@@ -213,7 +214,7 @@ func main() {
 	}
 
 	// Encrypt and store the secret in fileclient's save area.
-	encryptedFileSecrets, err = taosupport.Protect(clientProgramData.ProgramSymKeys, fileSecrets)
+	encryptedFileSecrets, err = tao.Protect(clientProgramData.ProgramSymKeys, fileSecrets)
 	if err != nil {
 		fmt.Printf("fileclient: Error protecting data\n")
 	}

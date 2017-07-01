@@ -165,7 +165,7 @@ func main() {
 	if err != nil {
 		rand.Read(fileSecrets)
 		// Save encryption keys for table
-		encryptedFileSecrets, err = taosupport.Protect(serverProgramData.ProgramSymKeys, fileSecrets[:])
+		encryptedFileSecrets, err = tao.Protect(serverProgramData.ProgramSymKeys, fileSecrets[:])
 		if err != nil {
 			fmt.Printf("fileserver: Error protecting data\n")
 		}
@@ -174,7 +174,7 @@ func main() {
 			fmt.Printf("fileserver: error saving retrieved secret\n")
 		}
 	} else {
-		fileSecrets, err = taosupport.Unprotect(serverProgramData.ProgramSymKeys, encryptedFileSecrets)
+		fileSecrets, err = tao.Unprotect(serverProgramData.ProgramSymKeys, encryptedFileSecrets)
 		if err != nil {
 			fmt.Printf("fileserver: Error protecting data\n")
 		}

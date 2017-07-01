@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 func EncodeTime(t time.Time) (string, error) {
@@ -287,7 +287,7 @@ func (r *ResourceInfo) Read(directory string) ([]byte, error) {
 		return nil, err
 	}
 	if len(r.Keys) >= 32 {
-		out, err = taosupport.Unprotect(r.Keys, bytes_read)
+		out, err = tao.Unprotect(r.Keys, bytes_read)
 	} else {
 		out = bytes_read
 	}
@@ -304,7 +304,7 @@ func (r *ResourceInfo) Write(directory string, fileContents []byte) error {
 	filename := path.Join(directory, *r.Name)
 	if len(r.Keys) >= 32 {
 		// Encrypt
-		encrypted, err := taosupport.Protect(r.Keys, fileContents)
+		encrypted, err := tao.Protect(r.Keys, fileContents)
 		if err != nil {
 		}
 		err = ioutil.WriteFile(filename, encrypted, 0644)
@@ -330,7 +330,7 @@ func ReadTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []by
 	}
 	encryptedTable, err := ioutil.ReadFile(tableFileName)
 	if err == nil {
-		serializedTable, err := taosupport.Unprotect(fileSecrets, encryptedTable)
+		serializedTable, err := tao.Unprotect(fileSecrets, encryptedTable)
 		if err != nil {
 			return false
 		}
@@ -351,7 +351,7 @@ func SaveTable(table *ResourceMasterInfo, tableFileName string, fileSecrets []by
 	if err != nil {
 		return false
 	}
-	encryptedTable, err := taosupport.Protect(fileSecrets, serializedTable)
+	encryptedTable, err := tao.Protect(fileSecrets, serializedTable)
 	if err != nil {
 		return false
 	}	

@@ -72,7 +72,8 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	}
 
 	switch *request.KeyType {
-	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public":
+	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public",
+		"ecdsap256", "ecdsap384", "ecdsap521":
 		break
 	default:
 		log.Printf("Domain: bad key type")

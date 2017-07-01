@@ -113,7 +113,7 @@ func VerifySecretDisclosureDirective(policyKey *tao.Keys, directive *DirectiveMe
 	// Check directive signer matches policy key.
 	if bytes.Compare(
 		auth.Marshal(policyKey.SigningKey.ToPrincipal()), directive.GetSigner()) == 0 {
-		verifier = policyKey.SigningKey.GetVerifier()
+		verifier = policyKey.SigningKey.GetVerifierFromSigner()
 		delegatorStr = verifier.ToPrincipal().String()
 
 	} else {
@@ -133,7 +133,7 @@ func VerifySecretDisclosureDirective(policyKey *tao.Keys, directive *DirectiveMe
 			return nil, nil, nil, nil, errors.New(
 				"program cert not valid")
 		}
-		verifier, err = tao.FromX509(cert)
+		verifier, err = tao.VerifierFromX509(cert)
 		delegatorStr = cert.Subject.CommonName
 		if err != nil {
 			return nil, nil, nil, nil, err

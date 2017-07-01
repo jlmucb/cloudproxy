@@ -52,7 +52,10 @@ func NewDirectoryContext(path, network, addr string, timeout time.Duration,
 	}
 
 	// Create a certificate.
-	if dc.keys.Cert, err = dc.keys.SigningKey.CreateSelfSignedX509(x509Identity); err != nil {
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*dc.keys.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*dc.keys.SigningKey.Header.KeyType)
+	dc.keys.Cert, err = dc.keys.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), x509Identity)
+	if err != nil {
 		return nil, err
 	}
 

@@ -40,12 +40,12 @@ var encKey *tao.Keys
 
 var authorizedPrin = &auth.Prin{
 	Type: "program",
-	Key:  auth.Str("AuthorizedProgram"),
+	KeyHash:  auth.Str("AuthorizedProgram"),
 	Ext:  []auth.PrinExt{}}
 
 var unAuthorizedPrin = &auth.Prin{
 	Type: "program",
-	Key:  auth.Str("UnAuthorizedProgram"),
+	KeyHash:  auth.Str("UnAuthorizedProgram"),
 	Ext:  []auth.PrinExt{}}
 
 func TestReadObject(t *testing.T) {

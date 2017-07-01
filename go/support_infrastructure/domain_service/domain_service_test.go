@@ -285,7 +285,9 @@ func generatePolicyKey(t *testing.T) (*tao.Keys, *x509.Certificate) {
 		Organization: &google,
 		CommonName:   &subjectName}
 	subjectname := tao.NewX509Name(&details)
-	cert, err := k.SigningKey.CreateSelfSignedX509(subjectname)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*k.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*k.SigningKey.Header.KeyType)
+	cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), subjectname)
 	if err != nil {
 		t.Fatal("Can't self sign cert\n")
 	}
@@ -301,9 +303,11 @@ func generateEndorsementCertficate(t *testing.T, policyKey *tao.Keys, hwPublicKe
 		Organization: &google,
 		CommonName:   &machineName}
 	subject := tao.NewX509Name(&details)
-	signTemplate := tao.PrepareX509Template(subject)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
+	signTemplate := tao.PrepareX509Template(pkInt, sigInt, int64(1), subject)
 	derSignedCert, err := x509.CreateCertificate(rand.Reader, signTemplate, policyCert,
-		hwPublicKey, policyKey.SigningKey.GetSigner())
+		hwPublicKey, policyKey.SigningKey)
 	if err != nil {
 		t.Fatal(err)
 	}

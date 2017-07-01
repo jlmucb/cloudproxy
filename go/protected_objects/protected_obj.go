@@ -314,7 +314,7 @@ func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch
 	if err != nil {
 		return nil, errors.New("Can't make Protected Object")
 	}
-	encrypted, err := tpm2.Protect(protectorKeys, unencrypted)
+	encrypted, err := tao.Protect(protectorKeys, unencrypted)
 	if err != nil {
 		return nil, errors.New("Can't Protect Object")
 	}
@@ -324,7 +324,7 @@ func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch
 
 func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (*ObjectMessage, error) {
 	p := new(ObjectMessage)
-	unencrypted, err := tpm2.Unprotect(protectorKeys, obj.Blob)
+	unencrypted, err := tao.Unprotect(protectorKeys, obj.Blob)
 	if err != nil {
 		return nil, errors.New("Can't make Unprotect Object")
 	}

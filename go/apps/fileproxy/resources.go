@@ -466,7 +466,7 @@ func (m *ResourceMaster) AuthenticatePrincipal(ms *util.MessageStream, msg *Mess
 	if chains == nil || err != nil {
 		return nil, err
 	}
-	v, err := tao.FromX509(cert)
+	v, err := tao.VerifierFromX509(cert)
 	if err != nil {
 		return nil, err
 	}

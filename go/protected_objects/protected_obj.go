@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tpm2"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 func PrintObject(obj *ObjectMessage) {

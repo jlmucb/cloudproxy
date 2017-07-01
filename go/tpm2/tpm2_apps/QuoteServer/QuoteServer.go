@@ -13,6 +13,7 @@
 package main
 
 import (
+	"crypto/ecdsa"
 	"flag"
 	"fmt"
 	"log"
@@ -66,8 +67,9 @@ func HandleQuote(network, addr, pass, path string, details tao.X509Details) erro
 			log.Printf("Quote server: Couldn't read request from channel: %s\n", err)
 			continue
 		}
-		response, err := tpm2.ProcessQuoteDomainRequest(request, policyKey.SigningKey.GetSigner(),
-			policyKey.Cert.Raw)
+		// FIX
+		response, err := tpm2.ProcessQuoteDomainRequest(request,
+			policyKey.(*ecdsa.PrivateKey).SigningKey, policyKey.Cert.Raw)
 		if err != nil {
 			sendError(err, ms)
 			continue

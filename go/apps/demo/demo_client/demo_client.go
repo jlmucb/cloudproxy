@@ -91,8 +91,11 @@ func doClient(domain *tao.Domain) {
 	options.FailIf(err, "client: couldn't generate temporary Tao keys")
 
 	// TODO(tmroeder): fix the name
-	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
-		Organization: []string{"Google Tao Demo"}})
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
+	cert, err := keys.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1),
+		&pkix.Name{
+			Organization: []string{"Google Tao Demo"}})
 	options.FailIf(err, "client: couldn't create a self-signed X.509 cert")
 
 	// TODO(kwalsh) keys should save cert on disk if keys are on disk

@@ -74,7 +74,7 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error getting verifier from Program cert", err)
 	}
-	if v := programKey.VerifyingKey; !v.Equal(cert) {
+	if v := programKey.VerifyingKey; !v.KeyEqual(cert) {
 		log.Fatalf("Key in Program cert %v differs from expected value %v.", ver, v)
 	}
 

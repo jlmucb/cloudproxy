@@ -21,6 +21,10 @@ import (
 	"crypto/x509"
 )
 
+
+// FIX
+// Get rid of this file
+
 func GetPublicDerFromEcdsaKey(ecKey *ecdsa.PublicKey) ([]byte, error) {
 	return x509.MarshalPKIXPublicKey(ecKey)
 }

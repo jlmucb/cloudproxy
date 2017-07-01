@@ -14,8 +14,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -72,24 +70,25 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		log.Printf("Domain: Empty key type")
 		return false, errors.New("Empty key type")
 	}
-	if *request.KeyType != "ECDSA" {
+
+	switch *request.KeyType {
+	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public":
+		break
+	default:
 		log.Printf("Domain: bad key type")
 		return false, errors.New("Domain: bad key type")
 	}
-	subjectPublicKey, err := domain_policy.GetEcdsaKeyFromDer(request.SubjectPublicKey)
+
+	subjectVerifier, err := tao.VerifierKeyFromCanonicalKeyBytes(request.SubjectPublicKey)
 	if err != nil {
 		log.Printf("DomainRequest: can't get key from der")
 		return false, errors.New("DomainRequest: can't get key from der")
 	}
-
-	// Get hash of the public key subject.
-	serializedKey, err := domain_policy.SerializeEcdsaKeyToInternalName(subjectPublicKey.(*ecdsa.PublicKey))
-	if err != nil || serializedKey == nil {
-		log.Printf("DomainRequest: Can't serialize key to internal format\n")
-		return false, errors.New("DomainRequest: Can't serialize key to internal format")
+	subjectKeyHash, err := subjectVerifier.UniversalKeyNameFromVerifier()
+	if err != nil {
+		log.Printf("SimpleDomain DomainRequest: calculate universal name")
+		return false, errors.New("SimpleDomain DomainRequest: can't get key from der")
 	}
-	subjectKeyHash := domain_policy.GetKeyHash(serializedKey)
-
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	// TODO(jlm): Change this.
 	err = tao.ValidatePeerAttestation(&a, peerCert, guard)
@@ -175,8 +174,10 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	// issuerName := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
 	var sn big.Int
-	certificateTemplate := x509.Certificate{
+	certificateTemplate := &x509.Certificate{
 		SerialNumber: &sn,
+
+
 		Issuer:       *x509IssuerName,
 		Subject:      *x509SubjectName,
 		NotBefore:    notBefore,
@@ -184,18 +185,23 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
 	}
 
-	clientCert, err := x509.CreateCertificate(rand.Reader, &certificateTemplate,
-		policyKey.Cert, subjectPublicKey,
-		policyKey.SigningKey.GetSigner())
-	if err != nil {
-		log.Printf("Can't create client certificate. Error: %v\n", err)
-		return false, err
+	// FIX: pass certificate template
+	signerAlg := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)
+	if signerAlg == nil {
+		return false, errors.New("Bad suite")
 	}
+	pkAlg := tao.PublicKeyAlgFromSignerAlg(*signerAlg)
+	sigAlg := tao.SignatureAlgFromSignerAlg(*signerAlg)
+	if pkAlg < 0 || sigAlg < 0 {
+		return false, errors.New("Bad signing algs")
+	}
+	clientCert, err := policyKey.SigningKey.CreateSignedX509FromTemplate(policyKey.Cert, certificateTemplate,
+		subjectVerifier, pkAlg, sigAlg)
 
 	zero := int32(0)
 	var ra domain_policy.DomainCertResponse
 	ra.Error = &zero
-	ra.SignedCert = clientCert
+	ra.SignedCert = clientCert.Raw
 
 	// Add cert chain (just policy cert for now).
 	ra.CertChain = append(ra.CertChain, policyKey.Cert.Raw)
@@ -237,8 +243,11 @@ func main() {
 		log.Fatalln("simpledomainservice: Couldn't set up temporary keys for connection:", err)
 		return
 	}
-	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
-		Organization: []string{"Google Tao Demo"}})
+	pkAlg := tao.PublicKeyAlgFromSignerAlg(*keys.SigningKey.GetCryptoHeaderFromSigner().KeyType)
+	sigAlg := tao.SignatureAlgFromSignerAlg(*keys.SigningKey.GetCryptoHeaderFromSigner().KeyType)
+	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(pkAlg, sigAlg, int64(1),
+		&pkix.Name{
+			Organization: []string{"Google Tao Demo"}})
 	if err != nil {
 		log.Fatalln("simpledomainservice: Couldn't set up a self-signed cert:", err)
 		return

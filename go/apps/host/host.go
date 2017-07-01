@@ -408,7 +408,7 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 				return nil, errors.New("Domain policy key missing signing key")
 			}
 			keyName := "Soft Tao Key"
-			subject := pkix.Name{
+			subject := &pkix.Name{
 				Organization: []string{keyName},
 				CommonName:   keyName,
 			}
@@ -421,8 +421,12 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 			if pkAlg < 0 || sigAlg < 0 {
 				return nil, errors.New("Bad Alg type")
 			}
-			cert, err = domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 0,
-				rootHost.GetVerifier(), pkAlg, sigAlg, &subject)
+			verifier := rootHost.GetVerifier()
+			if verifier == nil {
+				return nil, errors.New("Verifier is nil in loadHost")
+			}
+			cert, err = domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 1,
+				verifier, pkAlg, sigAlg, subject)
 			if err != nil {
 				return nil, err
 			}

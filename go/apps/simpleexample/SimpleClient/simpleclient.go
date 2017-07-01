@@ -134,7 +134,7 @@ func main() {
 	retrieveSecret := respmsg.Data[0]
 
 	// Encrypt and store the secret in simpleclient's save area.
-	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)
+	out, err := tao.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)
 	if err != nil {
 		log.Fatalln("simpleclient: Error protecting data\n")
 	}

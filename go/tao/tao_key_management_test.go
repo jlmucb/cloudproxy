@@ -169,7 +169,7 @@ func TestMarshalKeys(t *testing.T) {
 		t.Fatal("NewTemporaryKeys fails")
 	}
 	fmt.Printf("\nGenerated keys\n")
-	printKeys(k)
+	PrintKeys(k)
 	pkInt := PublicKeyAlgFromSignerAlg(*k.SigningKey.header.KeyType)
 	sigInt := SignatureAlgFromSignerAlg(*k.SigningKey.header.KeyType)
 	if pkInt < 0 || sigInt < 0 {
@@ -209,7 +209,12 @@ func TestMarshalKeys(t *testing.T) {
 		t.Fatal("UnmarshalKeys failed")
 	}
 	fmt.Printf("\nNewkeys\n")
-	printKeys(newKeys)
+	PrintKeys(newKeys)
+	newCert, err := newKeys.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("newKeys.SigningKey.CreateSelfSignedX509 failed")
+	}
+	fmt.Printf("newCert: %x\n", newCert)
 }
 
 func TestPBEEncryptDecrypt(t *testing.T) {

@@ -18,6 +18,7 @@ import (
 	"crypto/aes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -178,16 +179,26 @@ type Keys struct {
 	Cert         *x509.Certificate
 }
 
-func (signer *Signer) GetCryptoHeaderFromSigner() *CryptoHeader {
-	return signer.header
+func (s *Signer) GetCryptoHeaderFromSigner() *CryptoHeader {
+	return s.header
 }
 
-func (signer *Signer) GetPublicKeyFromSigner() crypto.PublicKey {
-	// FIX: for different key types
-	return signer.privateKey.(*ecdsa.PrivateKey).PublicKey
+func (s *Signer) GetPublicKeyFromSigner() crypto.PublicKey {
+	switch *s.header.KeyType {
+	case "rsa1024", "rsa2048", "rsa3072":
+		return s.privateKey.(*rsa.PrivateKey).PublicKey
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		return s.privateKey.(*ecdsa.PrivateKey).PublicKey
+	default:
+		return nil
+	}
 }
 
-func printKeys(keys *Keys) {
+func (v *Verifier) GetPublicKeyFromVerifier() crypto.PublicKey {
+	return v.publicKey
+}
+
+func PrintKeys(keys *Keys) {
 	fmt.Printf("dir: %s\n", keys.dir)
 	fmt.Printf("policy: %s\n", keys.policy)
 	fmt.Printf("Key types: ")
@@ -202,16 +213,16 @@ func printKeys(keys *Keys) {
 	}
 	fmt.Printf("\n")
 	if keys.SigningKey != nil {
-		printKeyHeader(*keys.SigningKey.header)
+		PrintCryptoKeyHeader(*keys.SigningKey.header)
 	}
 	if keys.VerifyingKey != nil {
-		printKeyHeader(*keys.VerifyingKey.header)
+		PrintCryptoKeyHeader(*keys.VerifyingKey.header)
 	}
 	if keys.CryptingKey != nil {
-		printKeyHeader(*keys.CryptingKey.header)
+		PrintCryptoKeyHeader(*keys.CryptingKey.header)
 	}
 	if keys.DerivingKey != nil {
-		printKeyHeader(*keys.DerivingKey.header)
+		PrintCryptoKeyHeader(*keys.DerivingKey.header)
 	}
 	if keys.Delegation != nil {
 		fmt.Printf("Delegation present\n")
@@ -505,17 +516,16 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 	}
 
 
-	k := &Keys{
-		keyTypes: keyTypes,
-		dir:      path,
-		Cert: 	  nil,
-	}
 	if len(password) == 0 {
 		// This means there's no secret information: just load a public verifying key.
 		if keyTypes & ^Signing != 0 {
 			return nil, newError("without a password, only a verifying key can be loaded")
 		}
 
+		k := &Keys{
+			keyTypes: keyTypes,
+			dir:      path,
+		}
 		cert, err := loadCert(k.X509Path())
 		if err != nil  {
 			return nil, errors.New("Couldn't load cert")
@@ -523,6 +533,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 		if cert == nil {
 			return nil, errors.New("Empty cert")
 		}
+		k.Cert = cert
 		v, err := VerifierFromX509(cert)
 		if err != nil {
 			return nil, err
@@ -531,7 +542,11 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 		return k, nil
 	} else {
 		// Check to see if there are already keys.
-		f, err := os.Open(k.PBEKeysetPath())
+		tk := &Keys{
+			keyTypes: keyTypes,
+			dir:      path,
+		}
+		f, err := os.Open(tk.PBEKeysetPath())
 		if err == nil {
 			defer f.Close()
 			ks, err := ioutil.ReadAll(f)
@@ -549,6 +564,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			if err != nil {
 				return nil, err
 			}
+			k.dir = path
 
 			// Note that this loads the certificate if it's
 			// present, and it returns nil otherwise.
@@ -570,7 +586,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			return k, nil
 		} else {
 			// Create and store a new set of keys.
-			k, err = NewTemporaryKeys(keyTypes)
+			k, err := NewTemporaryKeys(keyTypes)
 			if err != nil {
 				return nil, err
 			}
@@ -616,8 +632,8 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 			}
+			return k, nil
 		}
-		return k, nil
 	}
 	return nil, errors.New("Shouldnt happen")
 

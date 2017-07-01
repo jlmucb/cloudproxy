@@ -15,13 +15,6 @@
 package tao_support
 
 import (
-	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/ecdsa"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -40,9 +33,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
-
-// We should get this from the keySetType later.
-const SizeofSymmetricKeys = 64
 
 type TaoProgramData struct {
 	// true after initialization.
@@ -72,14 +62,6 @@ type TaoProgramData struct {
 	ProgramFilePath *string
 }
 
-// Support functions
-func ZeroBytes(buf []byte) {
-	n := len(buf)
-	for i := 0; i < n; i++ {
-		buf[i] = 0
-	}
-}
-
 // This is not used now but Cloudproxy principals are in the Organization name.
 func PrincipalNameFromDERCert(derCert []byte) *string {
 	cert, err := x509.ParseCertificate(derCert)
@@ -99,14 +81,14 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 func (pp *TaoProgramData) ClearTaoProgramData() {
 	pp.Initialized = false
 	pp.KeySetType = ""
-	ZeroBytes([]byte(pp.TaoName))
-	ZeroBytes(pp.PolicyCert)
+	tao.ZeroBytes([]byte(pp.TaoName))
+	tao.ZeroBytes(pp.PolicyCert)
 	if pp.ProgramKey.SigningKey != nil {
 		// TODO(manferdelli): find out how to clear signingkey.
-		// ZeroBytes([]byte(*pp.ProgramKey))
+		// tao.ZeroBytes([]byte(*pp.ProgramKey))
 	}
-	ZeroBytes(pp.ProgramSymKeys)
-	ZeroBytes(pp.ProgramCert)
+	tao.ZeroBytes(pp.ProgramSymKeys)
+	tao.ZeroBytes(pp.ProgramCert)
 	pp.ProgramFilePath = nil
 }
 
@@ -149,9 +131,8 @@ func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 
 	var request domain_policy.DomainCertRequest
 	request.Attestation, err = proto.Marshal(requesting_key.Delegation)
-	key_type := "ECDSA"
-	request.KeyType = &key_type
-	request.SubjectPublicKey, err = domain_policy.GetPublicDerFromEcdsaKey((requesting_key.SigningKey.GetPublicKeyFromSigner()).(*ecdsa.PublicKey))
+	request.KeyType = requesting_key.SigningKey.GetCryptoHeaderFromSigner().KeyType
+	request.SubjectPublicKey, err = requesting_key.SigningKey.CanonicalKeyBytesFromSigner()
 	if err != nil {
 		return nil, err
 	}
@@ -279,6 +260,16 @@ func TaoParadigm(cfg *string, filePath *string, keySetType string, useSimpleDoma
 		return errors.New(fmt.Sprintln("TaoParadigm: Can't load domain. Error: ", err))
 	}
 
+	// Get key information
+	keyType := tao.CrypterTypeFromSuiteName(tao.TaoCryptoSuite)
+	if keyType == nil {
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypter type\n"))
+	}
+	symTotalKeySize := tao.CombinedKeySizeFromAlgorithmName(*keyType)
+	if symTotalKeySize == nil {
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypto suite crypter size\n"))
+	}
+
 	// Get policy cert.
 	if simpleDomain.Keys.Cert == nil {
 		return errors.New("TaoParadigm: Can't retrieve policy cert")
@@ -319,7 +310,7 @@ func TaoParadigm(cfg *string, filePath *string, keySetType string, useSimpleDoma
 			return errors.New("TaoParadigm: can't unseal symmetric keys. SealPolicy does not match.")
 		}
 	} else {
-		symKeys, err = InitializeSealedSymmetricKeys(*filePath, tao.Parent(), SizeofSymmetricKeys)
+		symKeys, err = InitializeSealedSymmetricKeys(*filePath, tao.Parent(), *symTotalKeySize)
 		if err != nil {
 			return errors.New(fmt.Sprintf("TaoParadigm: InitializeSealedSymmetricKeys error: %v", err))
 		}
@@ -459,11 +450,8 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	keyType := k.SigningKey.GetCryptoHeaderFromSigner().KeyType
 	pkInt := tao.PublicKeyAlgFromSignerAlg(*keyType)
 	sigInt := tao.SignatureAlgFromSignerAlg(*keyType)
-	derCert, err := k.SigningKey.CreateSelfSignedDER(pkInt, sigInt, int64(1), subjectname)
-	if err != nil {
-		return nil, nil, errors.New("Can't self sign cert\n")
-	}
-	cert, err := x509.ParseCertificate(derCert)
+
+	cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), subjectname)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -484,7 +472,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 		return nil, nil, err
 	}
 	_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
-	return k, derCert, nil
+	return k, k.Cert.Raw, nil
 }
 
 // Obtain a signing private key (usually a Program Key) from a sealed blob.
@@ -520,52 +508,3 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*t
 	return k, err
 }
 
-func Protect(keys []byte, in []byte) ([]byte, error) {
-	if in == nil {
-		return nil, nil
-	}
-	out := make([]byte, len(in), len(in))
-	iv := make([]byte, 16, 16)
-	_, err := rand.Read(iv[0:16])
-	if err != nil {
-		return nil, errors.New("Protect: Can't generate iv")
-	}
-	encKey := keys[0:16]
-	macKey := keys[16:32]
-	crypter, err := aes.NewCipher(encKey)
-	if err != nil {
-		return nil, errors.New("Protect: Can't make crypter")
-	}
-	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in)
-
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(append(iv, out...))
-	calculatedHmac := hm.Sum(nil)
-	return append(calculatedHmac, append(iv, out...)...), nil
-}
-
-func Unprotect(keys []byte, in []byte) ([]byte, error) {
-	if in == nil {
-		return nil, nil
-	}
-	out := make([]byte, len(in)-48, len(in)-48)
-	var iv []byte
-	iv = in[32:48]
-	encKey := keys[0:16]
-	macKey := keys[16:32]
-	crypter, err := aes.NewCipher(encKey)
-	if err != nil {
-		return nil, errors.New("Unprotect: Can't make crypter")
-	}
-	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in[48:])
-
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(in[32:])
-	calculatedHmac := hm.Sum(nil)
-	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
-		return nil, errors.New("Unprotect: Bad mac")
-	}
-	return out, nil
-}

@@ -354,7 +354,7 @@ func CryptoKeyFromDeriver(d *Deriver) (*CryptoKey, error) {
 }
 
 
-func printKeyHeader(header CryptoHeader) {
+func PrintCryptoKeyHeader(header CryptoHeader) {
 	if header.Version == nil || *header.Version != CryptoVersion_CRYPTO_VERSION_2 {
 		fmt.Printf("Wrong version\n")
 	}
@@ -380,12 +380,12 @@ func printKeyHeader(header CryptoHeader) {
 	}
 }
 
-func printKey(cryptoKey *CryptoKey) {
+func PrintCryptoKey(cryptoKey *CryptoKey) {
 	if cryptoKey.KeyHeader == nil {
 		fmt.Printf("No key header\n")
 		return
 	}
-	printKeyHeader(*cryptoKey.KeyHeader)
+	PrintCryptoKeyHeader(*cryptoKey.KeyHeader)
 	n := len(cryptoKey.KeyComponents)
 	for i := 0; i < n; i++ {
 		fmt.Printf("Component %d: %x\n", i, cryptoKey.KeyComponents[i])
@@ -781,7 +781,7 @@ func (s *Signer) CanonicalKeyBytesFromSigner() ([]byte, error) {
 }
 
 func MakeUniversalKeyNameFromCanonicalBytes(cn []byte) []byte {
-	// TODO: Should the algorithm be selected from TaoCryptoSuite
+	// FIX: Should the algorithm be selected from TaoCryptoSuite
 	h := sha256.Sum256(cn)
 	return h[0:32]
 }
@@ -897,6 +897,7 @@ func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64, name *pki
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
+
 	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, s.privateKey)
 	if err != nil {
 		return nil, err
@@ -913,18 +914,26 @@ func (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCe
 	return cert.CreateCRL(rand.Reader, s.privateKey, revokedCerts, now, expiry)
 }
 
-// CreateSignedX509 creates a signed X.509 certificate for some other subject's
+// CreateSignedX509FromTemplate creates a signed X.509 certificate for some other subject's
 // key.
-func (s *Signer) CreateSignedX509(caCert *x509.Certificate, sn int, subjectKey *Verifier,
-	pkAlg int, sigAlg int, subjectName *pkix.Name) (*x509.Certificate, error) {
-	template := PrepareX509Template(pkAlg, sigAlg, int64(sn), subjectName)
-	template.SerialNumber = new(big.Int).SetInt64(int64(sn))
+func (s *Signer) CreateSignedX509FromTemplate(caCert *x509.Certificate, template *x509.Certificate,
+	subjectKey *Verifier, pkAlg int, sigAlg int) (*x509.Certificate, error) {
 
 	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.publicKey, s.privateKey)
 	if err != nil {
 		return nil, err
 	}
 	return x509.ParseCertificate(der)
+}
+
+// CreateSignedX509 creates a signed X.509 certificate for some other subject's
+// key.
+// Should take template as argument.
+func (s *Signer) CreateSignedX509(caCert *x509.Certificate, sn int, subjectKey *Verifier,
+	pkAlg int, sigAlg int, subjectName *pkix.Name) (*x509.Certificate, error) {
+	template := PrepareX509Template(pkAlg, sigAlg, int64(sn), subjectName)
+	template.SerialNumber = new(big.Int).SetInt64(int64(sn))
+	return s.CreateSignedX509FromTemplate(caCert, template, subjectKey, pkAlg, sigAlg)
 }
 
 // Derive uses HKDF with HMAC-SHA256 to derive key bytes in its material

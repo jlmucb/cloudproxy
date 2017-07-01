@@ -258,7 +258,7 @@ func (d *Domain) Save() error {
 	return d.Guard.Save(d.Keys.SigningKey)
 }
 
-// LoadDomain initialize a Domain from an existing configuration file. If
+// LoadDomain initializes a Domain from an existing configuration file. If
 // password is nil, the object will be "locked", meaning that the policy private
 // signing key will not be available, new ACL entries or attestations can not be
 // signed, etc. Otherwise, password will be used to unlock the policy private

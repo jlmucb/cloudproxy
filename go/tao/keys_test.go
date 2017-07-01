@@ -47,7 +47,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate aes128-raw key\n")
 	}
 	fmt.Printf("Testing aes128-raw generation\n")
-	printKey(cryptoKey1)
+	PrintCryptoKey(cryptoKey1)
 	fmt.Printf("\n")
 	m1 := MarshalCryptoKey(*cryptoKey1)
 	if m1 == nil {
@@ -57,7 +57,7 @@ func TestGenerateKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't UnmarshalCryptoKey aes128-raw key\n")
 	}
-	printKey(cryptoKey1_d)
+	PrintCryptoKey(cryptoKey1_d)
 	fmt.Printf("\n")
 	crypter, err := aes.NewCipher(cryptoKey1_d.KeyComponents[0])
 	if err != nil {
@@ -87,7 +87,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate aes256-raw key\n")
 	}
 	fmt.Printf("Testing aes256-raw generation\n")
-	printKey(cryptoKey2)
+	PrintCryptoKey(cryptoKey2)
 	fmt.Printf("\n")
 	m2 := MarshalCryptoKey(*cryptoKey2)
 	if m2 == nil {
@@ -97,7 +97,7 @@ func TestGenerateKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't UnmarshalCryptoKey aes256-raw key\n")
 	}
-	printKey(cryptoKey2_d)
+	PrintCryptoKey(cryptoKey2_d)
 	fmt.Printf("\n")
 	crypter2, err := aes.NewCipher(cryptoKey2_d.KeyComponents[0])
 	if err != nil {
@@ -127,7 +127,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate aes128-ctr key\n")
 	}
 	fmt.Printf("Testing aes128-ctr generation\n")
-	printKey(cryptoKey3)
+	PrintCryptoKey(cryptoKey3)
 	fmt.Printf("\n")
 
 	// "aes256-ctr"
@@ -140,7 +140,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate aes256-ctr key\n")
 	}
 	fmt.Printf("Testing aes256-ctr generation\n")
-	printKey(cryptoKey4)
+	PrintCryptoKey(cryptoKey4)
 	fmt.Printf("\n")
 
 	// "aes128-cbc-hmacsha256"
@@ -153,7 +153,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate aes128-cbc-hmacsha256 key\n")
 	}
 	fmt.Printf("Testing aes128-cbc-hmacsha256 generation\n")
-	printKey(cryptoKey5)
+	PrintCryptoKey(cryptoKey5)
 	fmt.Printf("\n")
 
 	// "aes256-sha384-cbc"
@@ -166,7 +166,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate aes256-cbc-hmacsha384 key\n")
 	}
 	fmt.Printf("Testing aes256-cbc-hmacsha384 generation\n")
-	printKey(cryptoKey6)
+	PrintCryptoKey(cryptoKey6)
 	fmt.Printf("\n")
 
 	// "hmacsha256"
@@ -179,7 +179,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't hmacsha256 key\n")
 	}
 	fmt.Printf("Testing hmacsha256 generation\n")
-	printKey(cryptoKey7)
+	PrintCryptoKey(cryptoKey7)
 	fmt.Printf("\n")
 
 	// "hmacsha384"
@@ -192,7 +192,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate hmacsha384 key\n")
 	}
 	fmt.Printf("Testing hmacsha384 generation\n")
-	printKey(cryptoKey8)
+	PrintCryptoKey(cryptoKey8)
 	fmt.Printf("\n")
 
 	// "hmacsha512"
@@ -205,7 +205,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate hmacsha512 key\n")
 	}
 	fmt.Printf("Testing hmacsha512 generation\n")
-	printKey(cryptoKey9)
+	PrintCryptoKey(cryptoKey9)
 	fmt.Printf("\n")
 
 	// "rsa1024"
@@ -218,7 +218,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate rsa1024 key\n")
 	}
 	fmt.Printf("Testing rsa1024 generation\n")
-	printKey(cryptoKey10)
+	PrintCryptoKey(cryptoKey10)
 	fmt.Printf("\n")
 	m10 := MarshalCryptoKey(*cryptoKey10)
 	if m10 == nil {
@@ -228,7 +228,7 @@ func TestGenerateKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't UnmarshalCryptoKey rsa1024 key\n")
 	}
-	printKey(cryptoKey10_d)
+	PrintCryptoKey(cryptoKey10_d)
 	fmt.Printf("\n")
 
 	// "rsa2048"
@@ -241,7 +241,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate rsa2048 key\n")
 	}
 	fmt.Printf("Testing rsa2048 generation\n")
-	printKey(cryptoKey11)
+	PrintCryptoKey(cryptoKey11)
 	fmt.Printf("\n")
 
 	// "rsa3072"
@@ -254,7 +254,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate rsa3072 key\n")
 	}
 	fmt.Printf("Testing rsa3072 generation\n")
-	printKey(cryptoKey12)
+	PrintCryptoKey(cryptoKey12)
 	fmt.Printf("\n")
 
 	// "ecdsap256"
@@ -267,7 +267,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate ecdsap256 key\n")
 	}
 	fmt.Printf("Testing ecdsap256 generation\n")
-	printKey(cryptoKey13)
+	PrintCryptoKey(cryptoKey13)
 	fmt.Printf("\n")
 
 	// "ecdsap384"
@@ -280,7 +280,7 @@ func TestGenerateKeys(t *testing.T) {
 		t.Fatal("Can't generate ecdsap384 key\n")
 	}
 	fmt.Printf("Testing ecdsap384 generation\n")
-	printKey(cryptoKey14)
+	PrintCryptoKey(cryptoKey14)
 	fmt.Printf("\n")
 }
 
@@ -304,7 +304,7 @@ func TestKeyTranslate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't get key from signer\n")
 	}
-	printKey(ckNew)
+	PrintCryptoKey(ckNew)
 	sNew := SignerFromCryptoKey(*ck)
 	if sNew == nil {
 		t.Fatal("Can't get signer recovered key\n")
@@ -323,7 +323,7 @@ func TestKeyTranslate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't get key from signer\n")
 	}
-	printKey(ckNew)
+	PrintCryptoKey(ckNew)
 	sNew = SignerFromCryptoKey(*ck)
 	if sNew == nil {
 		t.Fatal("Can't get signer recovered key\n")
@@ -339,7 +339,7 @@ func TestKeyTranslate(t *testing.T) {
 		t.Fatal("Cannot get CryptoKeyFromVerifier\n")
 	}
 	v = VerifierFromCryptoKey(*ckNew)
-	printKey(ckNew)
+	PrintCryptoKey(ckNew)
 
 	// aes128-ctr-hmac256
 	keyType = "aes128-ctr-hmacsha256"
@@ -359,7 +359,7 @@ func TestKeyTranslate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate aes key from crypter\n")
 	}
-	printKey(ckNew)
+	PrintCryptoKey(ckNew)
 	c = CrypterFromCryptoKey(*ckNew)
 	if c == nil {
 		t.Fatal("Can't recover crypter from key\n")
@@ -381,7 +381,7 @@ func TestKeyTranslate(t *testing.T) {
 	if c == nil {
 		t.Fatal("Can't recover crypter from key\n")
 	}
-	printKey(ckNew)
+	PrintCryptoKey(ckNew)
 
 	// hdkf-sha256
 	keyType = "hdkf-sha256"
@@ -399,7 +399,7 @@ func TestKeyTranslate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't get key from deriver\n")
 	}
-	printKey(ckNew)
+	PrintCryptoKey(ckNew)
 	d = DeriverFromCryptoKey(*ckNew)
 	if d == nil {
 		t.Fatal("Can't get deriver from recovered key\n")
@@ -418,7 +418,7 @@ func TestKeyTranslate(t *testing.T) {
 		t.Fatal("Can't generate rsa key\n")
 	}
 	ckNew, err = CryptoKeyFromCrypter(c)
-	printKey(ckNew)
+	PrintCryptoKey(ckNew)
 }
 
 func TestCerts(t *testing.T) {
@@ -432,7 +432,7 @@ func TestCerts(t *testing.T) {
 	if sk == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
-	printKey(sk)
+	PrintCryptoKey(sk)
 	fmt.Printf("\n")
 
 	s := SignerFromCryptoKey(*sk)
@@ -466,7 +466,7 @@ func TestCerts(t *testing.T) {
 	if sk == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
-	printKey(sk)
+	PrintCryptoKey(sk)
 	fmt.Printf("\n")
 	s = SignerFromCryptoKey(*sk)
 	if s== nil {
@@ -503,7 +503,7 @@ func TestCanonicalBytes(t *testing.T) {
 	if signingKey == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
-	printKey(signingKey)
+	PrintCryptoKey(signingKey)
 	fmt.Printf("\n")
 
 	s := SignerFromCryptoKey(*signingKey)
@@ -523,7 +523,7 @@ func TestCanonicalBytes(t *testing.T) {
 	if signingKey == nil {
 		t.Fatal("Can't generate signing key\n")
 	}
-	printKey(signingKey)
+	PrintCryptoKey(signingKey)
 	fmt.Printf("\n")
 
 	s = SignerFromCryptoKey(*signingKey)
@@ -548,7 +548,7 @@ func TestNewCrypter(t *testing.T) {
 	if cryptingKey == nil {
 		t.Fatal("Can't generate crypting key\n")
 	}
-	printKey(cryptingKey)
+	PrintCryptoKey(cryptingKey)
 	fmt.Printf("\n")
 	c := CrypterFromCryptoKey(*cryptingKey)
 	if c == nil {
@@ -591,7 +591,7 @@ func TestDeriveSecret(t *testing.T) {
 	// if derivingKey == nil {
 	// t.Fatal("Can't generate deriving key\n")
 	// }
-	// printKey(derivingKey)
+	// PrintCryptoKey(derivingKey)
 	// d := DeriverFromCryptoKey(*derivingKey)
 	// if d == nil {
 	// t.Fatal("DeriveFromCryptoKey fails\n")
@@ -631,7 +631,7 @@ func TestSignAndVerify(t *testing.T) {
 	if cryptoKey1 == nil {
 		t.Fatal("Can't generate rsa2048 key\n")
 	}
-	printKey(cryptoKey1)
+	PrintCryptoKey(cryptoKey1)
 
 	// save
 	privateKey, err := PrivateKeyFromCryptoKey(*cryptoKey1)
@@ -694,7 +694,7 @@ func TestSignAndVerify(t *testing.T) {
 	if cryptoKey2 == nil {
 		t.Fatal("Can't generate ecdsap256key\n")
 	}
-	printKey(cryptoKey2)
+	PrintCryptoKey(cryptoKey2)
 
 	// save
 	privateKey, err = PrivateKeyFromCryptoKey(*cryptoKey2)
@@ -747,7 +747,7 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	if cryptoKey1 == nil {
 		t.Fatal("Can't generate aes128-ctr-hmacsha256 key\n")
 	}
-	printKey(cryptoKey1)
+	PrintCryptoKey(cryptoKey1)
 
 	c := CrypterFromCryptoKey(*cryptoKey1)
 	if c == nil {
@@ -778,7 +778,7 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	if cryptoKey2 == nil {
 		t.Fatal("Can't generate aes256-ctr-hmacsha256 key\n")
 	}
-	printKey(cryptoKey2)
+	PrintCryptoKey(cryptoKey2)
 
 	c = CrypterFromCryptoKey(*cryptoKey2)
 	if c == nil {

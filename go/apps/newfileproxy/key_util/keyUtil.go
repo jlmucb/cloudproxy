@@ -56,7 +56,7 @@ func main() {
 	policyKey := domain.Keys
 
 	var signerPriv interface{}
-	signerPriv = policyKey.SigningKey.GetSigner()
+	signerPriv = policyKey.SigningKey.PrivKey
 	var signerCertificate *x509.Certificate
 	signerCertificate = policyKey.Cert
 

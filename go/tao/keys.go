@@ -39,8 +39,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 
 	"golang.org/x/crypto/hkdf"
-	// "golang.org/x/crypto/pbkdf2"
-	//"github.com/golang/crypto/hkdf"
 )
 
 // ZeroBytes clears the bytes in a slice.
@@ -208,8 +206,7 @@ func KeyComponentsFromCrypter(c *Crypter) ([][]byte, error) {
 		return nil, errors.New("Empty key type")
 	}
 	switch *c.Header.KeyType {
-	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256",
-		"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha256", "aes256-cbc-hmacsha512":
+	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512":
 		keyComponents = append(keyComponents, c.EncryptingKeyBytes)
 		keyComponents = append(keyComponents, c.HmacKeyBytes)
 	default:
@@ -245,7 +242,7 @@ func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
 			return nil, errors.New("Can't DeserializeRsaPrivateComponents")
 		}
 		return crypto.PrivateKey(rsaKey), nil
-	case "ecdsap256", "ecdsap384":
+	case "ecdsap256", "ecdsap384", "ecdsap521":
 		ecKey, err := DeserializeEcdsaPrivateComponents(k.KeyComponents[0])
 		if err != nil {
 			return nil, errors.New("Can't DeserializeEcdsaPrivateComponents")
@@ -467,17 +464,6 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
-	case "aes256-ctr-hmacsha256":
-		keyBuf, err := randBytes(32)
-		if err != nil {
-			return nil
-		}
-		hmacBuf, err := randBytes(32)
-		if err != nil {
-			return nil
-		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
 	case "aes256-ctr-hmacsha512":
 		keyBuf, err := randBytes(32)
 		if err != nil {
@@ -489,28 +475,6 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
-	case "aes128-cbc-hmacsha256":
-		keyBuf, err := randBytes(16)
-		if err != nil {
-			return nil
-		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-		ivBuf, err := randBytes(32)
-		if err != nil {
-			return nil
-		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
-	case "aes256-cbc-hmacsha384":
-		keyBuf, err := randBytes(32)
-		if err != nil {
-			return nil
-		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
-		ivBuf, err := randBytes(48)
-		if err != nil {
-			return nil
-		}
-		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
 	case "hmacsha256":
 		keyBuf, err := randBytes(32)
 		if err != nil {
@@ -688,8 +652,7 @@ func CrypterFromCryptoKey(k CryptoKey) *Crypter {
 	case "aes128-ctr", "aes256-ctr":
 		c.EncryptingKeyBytes = k.KeyComponents[0]
 	case "aes128-gcm", "aes256-gcm",
-		"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", "aes256-ctr-hmacsha512",
-		"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha384":
+		"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512":
 		c.EncryptingKeyBytes = k.KeyComponents[0]
 		c.HmacKeyBytes = k.KeyComponents[1]
 	case "hmacsha256", "hmacsha384", "hmacsha512":
@@ -1330,6 +1293,75 @@ func (c *Crypter) decryptAes256ctrHmacsha512(ciphertext []byte) ([]byte, error) 
 	return plain, nil
 }
 
+func (c *Crypter) encryptAes256ctrHmacsha384(plain []byte) ([]byte, error) {
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// A ciphertext consists of an IV, encrypted bytes, and the output of
+	// HMAC-SHA384.
+	ciphertext := make([]byte, aes.BlockSize+len(plain))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := rand.Read(iv); err != nil {
+		return nil, err
+	}
+
+	s := cipher.NewCTR(block, iv)
+	s.XORKeyStream(ciphertext[aes.BlockSize:], plain)
+
+	mac := hmac.New(sha512.New384, c.HmacKeyBytes)
+	mac.Write(ciphertext)
+	m := mac.Sum(nil)
+
+	ed := &EncryptedData{
+		Header:     c.Header,
+		Iv:         iv,
+		Ciphertext: ciphertext[aes.BlockSize:],
+		Mac:        m,
+	}
+
+	return proto.Marshal(ed)
+}
+
+func (c *Crypter) decryptAes256ctrHmacsha384(ciphertext []byte) ([]byte, error) {
+	var ed EncryptedData
+	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
+		return nil, err
+	}
+	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
+		return nil, errors.New("bad version")
+	}
+	if ed.Header.KeyType == nil || c.Header.KeyType == nil {
+		return nil, errors.New("empty key header")
+	}
+	if *ed.Header.KeyType != "aes256-ctr-hmacsha384" {
+		return nil, errors.New("bad key type")
+	}
+
+	// Check the HMAC before touching the ciphertext.
+	fullCiphertext := make([]byte, len(ed.Iv)+len(ed.Ciphertext))
+	copy(fullCiphertext, ed.Iv)
+	copy(fullCiphertext[len(ed.Iv):], ed.Ciphertext)
+
+	mac := hmac.New(sha512.New384, c.HmacKeyBytes)
+	mac.Write(fullCiphertext)
+	m := mac.Sum(nil)
+	if !hmac.Equal(m, ed.Mac) {
+		return nil, errors.New("bad HMAC")
+	}
+
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	s := cipher.NewCTR(block, ed.Iv)
+	plain := make([]byte, len(ed.Ciphertext))
+	s.XORKeyStream(plain, ed.Ciphertext)
+	return plain, nil
+}
+
 // Encrypt encrypts plaintext into ciphertext with integrity
 // with a MAC.
 func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
@@ -1339,8 +1371,8 @@ func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
 	switch *c.Header.KeyType {
 	case "aes128-ctr-hmacsha256":
 		return c.encryptAes128ctrHmacsha256(plain)
-	case "aes256-ctr-hmacsha256":
-		return c.encryptAes128ctrHmacsha256(plain)
+	case "aes256-ctr-hmacsha384":
+		return c.encryptAes256ctrHmacsha384(plain)
 	case "aes256-ctr-hmacsha512":
 		return c.encryptAes256ctrHmacsha512(plain)
 	default:
@@ -1356,8 +1388,8 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	switch *c.Header.KeyType {
 	case "aes128-ctr-hmacsha256":
 		return c.decryptAes128ctrHmacsha256(ciphertext)
-	case "aes256-ctr-hmacsha256":
-		return c.decryptAes128ctrHmacsha256(ciphertext)
+	case "aes256-ctr-hmacsha384":
+		return c.decryptAes256ctrHmacsha384(ciphertext)
 	case "aes256-ctr-hmacsha512":
 		return c.decryptAes256ctrHmacsha512(ciphertext)
 	default:

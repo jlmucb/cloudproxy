@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/aes"
-	//"crypto/ecdsa"
-	// "crypto/sha256"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -27,8 +25,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	// "io/ioutil"
-	// "os"
 )
 
 func TestGenerateKeys(t *testing.T) {
@@ -143,29 +139,29 @@ func TestGenerateKeys(t *testing.T) {
 	PrintCryptoKey(cryptoKey4)
 	fmt.Printf("\n")
 
-	// "aes128-cbc-hmacsha256"
+	// "aes128-ctr-hmacsha256"
 	keyName = "keyName5"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey5 := GenerateCryptoKey("aes128-cbc-hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey5 := GenerateCryptoKey("aes128-ctr-hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey5 == nil {
-		t.Fatal("Can't generate aes128-cbc-hmacsha256 key\n")
+		t.Fatal("Can't generate aes128-ctr-hmacsha256 key\n")
 	}
-	fmt.Printf("Testing aes128-cbc-hmacsha256 generation\n")
+	fmt.Printf("Testing aes128-ctr-hmacsha256 generation\n")
 	PrintCryptoKey(cryptoKey5)
 	fmt.Printf("\n")
 
-	// "aes256-sha384-cbc"
+	// "aes256-sha384-ctr"
 	keyName = "keyName6"
 	keyEpoch = 2
 	keyPurpose = "crypting"
 	keyStatus = "active"
-	cryptoKey6 := GenerateCryptoKey("aes256-cbc-hmacsha384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey6 := GenerateCryptoKey("aes256-ctr-hmacsha384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey6 == nil {
-		t.Fatal("Can't generate aes256-cbc-hmacsha384 key\n")
+		t.Fatal("Can't generate aes256-ctr-hmacsha384 key\n")
 	}
-	fmt.Printf("Testing aes256-cbc-hmacsha384 generation\n")
+	fmt.Printf("Testing aes256-ctr-hmacsha384 generation\n")
 	PrintCryptoKey(cryptoKey6)
 	fmt.Printf("\n")
 
@@ -365,8 +361,8 @@ func TestKeyTranslate(t *testing.T) {
 		t.Fatal("Can't recover crypter from key\n")
 	}
 
-	// aes256-ctr-hmac256
-	keyType = "aes256-ctr-hmacsha256"
+	// aes256-ctr-hmac384
+	keyType = "aes256-ctr-hmacsha384"
 	keyName = "aes256Crypter"
 	keyStatus = "primary"
 	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
@@ -405,8 +401,8 @@ func TestKeyTranslate(t *testing.T) {
 		t.Fatal("Can't get deriver from recovered key\n")
 	}
 
-	// aes256-ctr-hmac256
-	keyType = "aes256-ctr-hmacsha256"
+	// aes256-ctr-hmac384
+	keyType = "aes256-ctr-hmacsha384"
 	keyName = "aes256Crypter"
 	keyStatus = "primary"
 	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
@@ -774,9 +770,9 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
-	cryptoKey2 := GenerateCryptoKey("aes256-ctr-hmacsha256", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	cryptoKey2 := GenerateCryptoKey("aes256-ctr-hmacsha384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey2 == nil {
-		t.Fatal("Can't generate aes256-ctr-hmacsha256 key\n")
+		t.Fatal("Can't generate aes256-ctr-hmacsha384 key\n")
 	}
 	PrintCryptoKey(cryptoKey2)
 

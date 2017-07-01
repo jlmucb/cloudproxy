@@ -30,11 +30,9 @@ enum CryptoVersion {
 //	"aes-128-raw", "aes-256-raw",
 //	"aes128-ctr", "aes256-ctr", 
 //	"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", 
-//	"aes128-gcm", "aes256-gcm", 
-//	"aes128-cbc-hmacsha256", "aes256-cbc-hmacsha256", "aes256-cbc-hmacsha512",
 //	"hmacsha256", "hmacsha384", "hmacsha512",
 //	"rsa1024", "rsa2048", "rsa3072"
-//	"ecdsap256", "ecdsap384"
+//	"ecdsap256", "ecdsap384", "ecdsap384",
 //	"rsa1024public", "rsa2048public", "rsa3072public"
 //	"ecdsap256public", "ecdsap384public"
 //	"hdkf-sha256"
@@ -70,7 +68,7 @@ message CryptoKeyset {
 // TODO(jlm): Should cipher/hmac be replaced by CryptoHeader?
 message PBEData {
   required CryptoVersion version = 1;
-  required string cipher = 2;  // "aes128-cbc"
+  required string cipher = 2;  // "aes128-ctr"
   required string hmac = 3;  // "sha256"
   required int32 iterations = 4;  // 4096
   required bytes iv = 5;

@@ -146,9 +146,7 @@ func IsCrypter(keyType string) bool {
 	switch(keyType) {
 	default:
 		return false
-	case "aes128-gcm", "aes256-gcm", "aes128-cbc-hmacsha256",
-	   "aes256-cbc-hmacsha256", "aes256-cbc-hmacsha512",
-	   "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256":
+	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256":
 		return true
 	}
 	return false

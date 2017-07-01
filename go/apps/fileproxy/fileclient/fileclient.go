@@ -87,7 +87,10 @@ func main() {
 	}
 
 	// Set up a temporary cert for communication with keyNegoServer.
-	fcKeys.Cert, err = fcKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(&tao.X509Details{
+	pkAlg := tao.PublicKeyAlgFromSignerAlg(*fcKeys.SigningKey.Header.KeyType)
+	sigAlg := tao.SignatureAlgFromSignerAlg(*fcKeys.SigningKey.Header.KeyType)
+	fcKeys.Cert, err = fcKeys.SigningKey.CreateSelfSignedX509(pkAlg, sigAlg,
+		int64(1), tao.NewX509Name(&tao.X509Details{
 		Country:      proto.String(*country),
 		Organization: proto.String(*org),
 		CommonName:   proto.String(taoName.String()),

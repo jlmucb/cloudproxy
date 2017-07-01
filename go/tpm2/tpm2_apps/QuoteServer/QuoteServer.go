@@ -69,7 +69,7 @@ func HandleQuote(network, addr, pass, path string, details tao.X509Details) erro
 		}
 		// FIX
 		response, err := tpm2.ProcessQuoteDomainRequest(request,
-			policyKey.(*ecdsa.PrivateKey).SigningKey, policyKey.Cert.Raw)
+			(policyKey.SigningKey).(*ecdsa.PrivateKey), policyKey.Cert.Raw)
 		if err != nil {
 			sendError(err, ms)
 			continue

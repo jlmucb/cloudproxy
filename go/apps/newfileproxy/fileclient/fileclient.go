@@ -24,7 +24,7 @@ import (
 	"path"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/taotataoo"
+	"github.com/jlmucb/cloudproxy/go/tao"
 	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"

@@ -52,7 +52,10 @@ func NewServer(path, network string, port int, x509Identity *pkix.Name, t tao.Ta
 	}
 
 	// Create a certificate.
-	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(x509Identity)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
+	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1),
+		x509Identity)
 	if err != nil {
 		return nil, err
 	}

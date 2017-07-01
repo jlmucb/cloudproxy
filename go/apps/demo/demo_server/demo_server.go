@@ -92,8 +92,11 @@ func doServer() {
 		options.FailIf(err, "server: failed to generate delegated keys")
 
 		// Create a certificate for the hp.
-		keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
-			Organization: []string{"Google Tao Demo"}})
+		pkInt := tao.PublicKeyAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
+		sigInt := tao.SignatureAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
+		keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1),
+			&pkix.Name{
+				Organization: []string{"Google Tao Demo"}})
 		options.FailIf(err, "server: couldn't create certificate")
 
 		g := domain.Guard

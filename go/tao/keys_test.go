@@ -469,24 +469,24 @@ func TestCerts(t *testing.T) {
 	PrintCryptoKey(sk)
 	fmt.Printf("\n")
 	s = SignerFromCryptoKey(*sk)
-	if s== nil {
+	if s == nil {
 		t.Fatal("Can't get signer from signing key\n")
 	}
 
-/*
-	FIX TEST
-	der, err = s.CreateSelfSignedDER(int(x509.RSA), int(x509.SHA256WithRSA),
-		int64(10), NewX509Name(details))
-	if err != nil {
-		t.Fatal("CreateSelfSignedDER failed, ", err, "\n")
-	}
-	fmt.Printf("Der: %x\n", der)
-	cert, err = s.CreateSelfSignedX509(int(x509.RSA), int(x509.SHA256WithRSA),
-		int64(10), NewX509Name(details))
-	if err != nil {
-		t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
-	}
-*/
+	/*
+		FIX TEST
+		der, err = s.CreateSelfSignedDER(int(x509.RSA), int(x509.SHA256WithRSA),
+			int64(10), NewX509Name(details))
+		if err != nil {
+			t.Fatal("CreateSelfSignedDER failed, ", err, "\n")
+		}
+		fmt.Printf("Der: %x\n", der)
+		cert, err = s.CreateSelfSignedX509(int(x509.RSA), int(x509.SHA256WithRSA),
+			int64(10), NewX509Name(details))
+		if err != nil {
+			t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
+		}
+	*/
 
 	// (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error)
 	// (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier,
@@ -599,8 +599,8 @@ func TestDeriveSecret(t *testing.T) {
 	buf := make([]byte, 32)
 	_, err := rand.Read(buf)
 	d := &Deriver{
-		header: ch,
-		secret: buf,
+		Header: ch,
+		Secret: buf,
 	}
 	fmt.Printf("\n")
 

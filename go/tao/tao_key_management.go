@@ -14,21 +14,16 @@
 package tao
 
 import (
-	"crypto"
 	"crypto/aes"
-	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
-	// "io"
 	"io/ioutil"
 	"os"
 	"path"
-	// "time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -62,7 +57,7 @@ func InitializeSigner(marshaledCryptoKey []byte, keyType string, keyName *string
 			k.Clear()
 			return nil, errors.New("Can't SignerFromCryptoKey")
 		}
-		if s.header.KeyPurpose == nil || *s.header.KeyPurpose != "signing" {
+		if s.Header.KeyPurpose == nil || *s.Header.KeyPurpose != "signing" {
 			k.Clear()
 			s.Clear()
 			return nil, errors.New("Recovered key not a signer")
@@ -77,7 +72,7 @@ func InitializeSigner(marshaledCryptoKey []byte, keyType string, keyName *string
 		k.Clear()
 		return nil, errors.New("Can't SignerFromCryptoKey")
 	}
-	if s.header.KeyPurpose == nil || *s.header.KeyPurpose != "signing" {
+	if s.Header.KeyPurpose == nil || *s.Header.KeyPurpose != "signing" {
 		k.Clear()
 		s.Clear()
 		return nil, errors.New("Recovered key not a signer")
@@ -101,7 +96,7 @@ func InitializeCrypter(marshaledCryptoKey []byte, keyType string, keyName *strin
 			k.Clear()
 			return nil, errors.New("Can't CrypterFromCryptoKey")
 		}
-		if c.header.KeyPurpose == nil || *c.header.KeyPurpose != "crypting" {
+		if c.Header.KeyPurpose == nil || *c.Header.KeyPurpose != "crypting" {
 			k.Clear()
 			c.Clear()
 			return nil, errors.New("Recovered key not a crypter")
@@ -116,7 +111,7 @@ func InitializeCrypter(marshaledCryptoKey []byte, keyType string, keyName *strin
 		k.Clear()
 		return nil, errors.New("Can't CrypterFromCryptoKey")
 	}
-	if c.header.KeyPurpose == nil || *c.header.KeyPurpose != "crypting" {
+	if c.Header.KeyPurpose == nil || *c.Header.KeyPurpose != "crypting" {
 		k.Clear()
 		c.Clear()
 		return nil, errors.New("Recovered key not a crypter")
@@ -140,7 +135,7 @@ func InitializeDeriver(marshaledCryptoKey []byte, keyType string, keyName *strin
 			k.Clear()
 			return nil, errors.New("Can't DeriverFromCryptoKey")
 		}
-		if d.header.KeyPurpose == nil || *d.header.KeyPurpose != "deriving" {
+		if d.Header.KeyPurpose == nil || *d.Header.KeyPurpose != "deriving" {
 			k.Clear()
 			return nil, errors.New("Recovered key not a deriver")
 		}
@@ -154,7 +149,7 @@ func InitializeDeriver(marshaledCryptoKey []byte, keyType string, keyName *strin
 		k.Clear()
 		return nil, errors.New("Can't DeriverFromCryptoKey")
 	}
-	if d.header.KeyPurpose == nil || *d.header.KeyPurpose != "deriving" {
+	if d.Header.KeyPurpose == nil || *d.Header.KeyPurpose != "deriving" {
 		k.Clear()
 		d.Clear()
 		return nil, errors.New("Recovered key not a deriver")
@@ -179,25 +174,6 @@ type Keys struct {
 	Cert         *x509.Certificate
 }
 
-func (s *Signer) GetCryptoHeaderFromSigner() *CryptoHeader {
-	return s.header
-}
-
-func (s *Signer) GetPublicKeyFromSigner() crypto.PublicKey {
-	switch *s.header.KeyType {
-	case "rsa1024", "rsa2048", "rsa3072":
-		return s.privateKey.(*rsa.PrivateKey).PublicKey
-	case "ecdsap256", "ecdsap384", "ecdsap521":
-		return s.privateKey.(*ecdsa.PrivateKey).PublicKey
-	default:
-		return nil
-	}
-}
-
-func (v *Verifier) GetPublicKeyFromVerifier() crypto.PublicKey {
-	return v.publicKey
-}
-
 func PrintKeys(keys *Keys) {
 	fmt.Printf("dir: %s\n", keys.dir)
 	fmt.Printf("policy: %s\n", keys.policy)
@@ -213,16 +189,16 @@ func PrintKeys(keys *Keys) {
 	}
 	fmt.Printf("\n")
 	if keys.SigningKey != nil {
-		PrintCryptoKeyHeader(*keys.SigningKey.header)
+		PrintCryptoKeyHeader(*keys.SigningKey.Header)
 	}
 	if keys.VerifyingKey != nil {
-		PrintCryptoKeyHeader(*keys.VerifyingKey.header)
+		PrintCryptoKeyHeader(*keys.VerifyingKey.Header)
 	}
 	if keys.CryptingKey != nil {
-		PrintCryptoKeyHeader(*keys.CryptingKey.header)
+		PrintCryptoKeyHeader(*keys.CryptingKey.Header)
 	}
 	if keys.DerivingKey != nil {
-		PrintCryptoKeyHeader(*keys.DerivingKey.header)
+		PrintCryptoKeyHeader(*keys.DerivingKey.Header)
 	}
 	if keys.Delegation != nil {
 		fmt.Printf("Delegation present\n")
@@ -242,7 +218,7 @@ func CryptoKeysetFromKeys(k *Keys) (*CryptoKeyset, error) {
 	var keyList [][]byte
 	if k.keyTypes&Signing == Signing {
 		ck := &CryptoKey{
-			KeyHeader: k.SigningKey.header,
+			KeyHeader: k.SigningKey.Header,
 		}
 		keyComponents, err := KeyComponentsFromSigner(k.SigningKey)
 		if err != nil {
@@ -258,7 +234,7 @@ func CryptoKeysetFromKeys(k *Keys) (*CryptoKeyset, error) {
 
 	if k.keyTypes&Crypting == Crypting {
 		ck := &CryptoKey{
-			KeyHeader: k.CryptingKey.header,
+			KeyHeader: k.CryptingKey.Header,
 		}
 		keyComponents, err := KeyComponentsFromCrypter(k.CryptingKey)
 		if err != nil {
@@ -274,7 +250,7 @@ func CryptoKeysetFromKeys(k *Keys) (*CryptoKeyset, error) {
 
 	if k.keyTypes&Deriving == Deriving {
 		ck := &CryptoKey{
-			KeyHeader: k.DerivingKey.header,
+			KeyHeader: k.DerivingKey.Header,
 		}
 		keyComponents, err := KeyComponentsFromDeriver(k.DerivingKey)
 		if err != nil {
@@ -344,7 +320,7 @@ func KeysFromCryptoKeyset(cks *CryptoKeyset) (*Keys, error) {
 	} else {
 		k.Cert = nil
 	}
-	k.Delegation= cks.Delegation
+	k.Delegation = cks.Delegation
 	return k, nil
 }
 
@@ -488,8 +464,8 @@ func NewSignedOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name
 	// If there's already a cert, then this means that there was already a
 	// keyset on disk, so don't create a new signed certificate.
 	if k.Cert == nil {
-		pkInt := PublicKeyAlgFromSignerAlg(*signer.SigningKey.header.KeyType)
-		sigInt := SignatureAlgFromSignerAlg(*signer.SigningKey.header.KeyType)
+		pkInt := PublicKeyAlgFromSignerAlg(*signer.SigningKey.Header.KeyType)
+		sigInt := SignatureAlgFromSignerAlg(*signer.SigningKey.Header.KeyType)
 		k.Cert, err = signer.SigningKey.CreateSignedX509(signer.Cert, serial, k.VerifyingKey, pkInt, sigInt, name)
 		if err != nil {
 			return nil, err
@@ -515,7 +491,6 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 		return nil, newError("bad init call: no path for keys")
 	}
 
-
 	if len(password) == 0 {
 		// This means there's no secret information: just load a public verifying key.
 		if keyTypes & ^Signing != 0 {
@@ -527,7 +502,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			dir:      path,
 		}
 		cert, err := loadCert(k.X509Path())
-		if err != nil  {
+		if err != nil {
 			return nil, errors.New("Couldn't load cert")
 		}
 		if cert == nil {
@@ -606,7 +581,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					&pkix.Name{Organization: []string{"Identity of some Tao service"}})
 				if err != nil {
 					return nil, errors.New("Can't create CreateSelfSignedX509")
-				k.Cert = cert
+					k.Cert = cert
 				}
 			}
 
@@ -640,8 +615,8 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 }
 
 func (k *Keys) newCert(name *pkix.Name) (err error) {
-	pkInt := PublicKeyAlgFromSignerAlg(*k.SigningKey.header.KeyType)
-	sigInt := SignatureAlgFromSignerAlg(*k.SigningKey.header.KeyType)
+	pkInt := PublicKeyAlgFromSignerAlg(*k.SigningKey.Header.KeyType)
+	sigInt := SignatureAlgFromSignerAlg(*k.SigningKey.Header.KeyType)
 	if pkInt < 0 || sigInt < 0 {
 		return errors.New("No signing algorithm")
 	}
@@ -938,7 +913,7 @@ func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 	} else {
 		return UnmarshalKeys(ks)
 	}
-	return nil,errors.New("Shouldnt happen") 
+	return nil, errors.New("Shouldnt happen")
 }
 
 // NewSecret creates and encrypts a new secret value of the given length, or it
@@ -1001,4 +976,3 @@ func SaveKeyset(k *Keys, dir string) error {
 
 	return nil
 }
-

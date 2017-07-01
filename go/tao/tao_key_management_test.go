@@ -15,8 +15,8 @@
 package tao
 
 import (
-	"crypto/rand"
 	"bytes"
+	"crypto/rand"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -37,15 +37,15 @@ func TestNewTemporaryKeys(t *testing.T) {
 		t.Fatal("Couldn't generate the right keys")
 	}
 
-	_, err = proto.Marshal(k.SigningKey.header)
+	_, err = proto.Marshal(k.SigningKey.Header)
 	if err != nil {
 		t.Fatal("Couldn't marshal signing key")
 	}
-	_, err = proto.Marshal(k.CryptingKey.header)
+	_, err = proto.Marshal(k.CryptingKey.Header)
 	if err != nil {
 		t.Fatal("Couldn't marshal crypting key")
 	}
-	_, err = proto.Marshal(k.DerivingKey.header)
+	_, err = proto.Marshal(k.DerivingKey.Header)
 	if err != nil {
 		t.Fatal("Couldn't marshal deriving key")
 	}
@@ -170,8 +170,8 @@ func TestMarshalKeys(t *testing.T) {
 	}
 	fmt.Printf("\nGenerated keys\n")
 	PrintKeys(k)
-	pkInt := PublicKeyAlgFromSignerAlg(*k.SigningKey.header.KeyType)
-	sigInt := SignatureAlgFromSignerAlg(*k.SigningKey.header.KeyType)
+	pkInt := PublicKeyAlgFromSignerAlg(*k.SigningKey.Header.KeyType)
+	sigInt := SignatureAlgFromSignerAlg(*k.SigningKey.Header.KeyType)
 	if pkInt < 0 || sigInt < 0 {
 		t.Fatal("Bad sig algs")
 	}

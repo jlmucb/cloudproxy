@@ -131,7 +131,7 @@ func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 
 	var request domain_policy.DomainCertRequest
 	request.Attestation, err = proto.Marshal(requesting_key.Delegation)
-	request.KeyType = requesting_key.SigningKey.GetCryptoHeaderFromSigner().KeyType
+	request.KeyType = requesting_key.SigningKey.Header.KeyType
 	request.SubjectPublicKey, err = requesting_key.SigningKey.CanonicalKeyBytesFromSigner()
 	if err != nil {
 		return nil, err
@@ -447,7 +447,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 		CommonName:   &publicString}
 	subjectname := tao.NewX509Name(&details)
 
-	keyType := k.SigningKey.GetCryptoHeaderFromSigner().KeyType
+	keyType := k.SigningKey.Header.KeyType
 	pkInt := tao.PublicKeyAlgFromSignerAlg(*keyType)
 	sigInt := tao.SignatureAlgFromSignerAlg(*keyType)
 
@@ -507,4 +507,3 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*t
 	k.Cert.Raw = programCert
 	return k, err
 }
-

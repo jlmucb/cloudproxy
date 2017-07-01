@@ -177,12 +177,11 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	certificateTemplate := &x509.Certificate{
 		SerialNumber: &sn,
 
-
-		Issuer:       *x509IssuerName,
-		Subject:      *x509SubjectName,
-		NotBefore:    notBefore,
-		NotAfter:     notAfter,
-		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
+		Issuer:    *x509IssuerName,
+		Subject:   *x509SubjectName,
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		KeyUsage:  x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
 	}
 
 	// FIX: pass certificate template
@@ -243,8 +242,8 @@ func main() {
 		log.Fatalln("simpledomainservice: Couldn't set up temporary keys for connection:", err)
 		return
 	}
-	pkAlg := tao.PublicKeyAlgFromSignerAlg(*keys.SigningKey.GetCryptoHeaderFromSigner().KeyType)
-	sigAlg := tao.SignatureAlgFromSignerAlg(*keys.SigningKey.GetCryptoHeaderFromSigner().KeyType)
+	pkAlg := tao.PublicKeyAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
+	sigAlg := tao.SignatureAlgFromSignerAlg(*keys.SigningKey.Header.KeyType)
 	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(pkAlg, sigAlg, int64(1),
 		&pkix.Name{
 			Organization: []string{"Google Tao Demo"}})

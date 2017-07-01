@@ -70,11 +70,11 @@ func main() {
 	if err != nil {
 		log.Fatalln("Program cert fails verification check.", err)
 	}
-	ver, err := tao.FromX509(cert)
+	ver, err := tao.VerifierFromX509(cert)
 	if err != nil {
 		log.Fatalln("Error getting verifier from Program cert", err)
 	}
-	if v := programKey.VerifyingKey; !v.Equals(cert) {
+	if v := programKey.VerifyingKey; !v.Equal(cert) {
 		log.Fatalf("Key in Program cert %v differs from expected value %v.", ver, v)
 	}
 
@@ -123,8 +123,11 @@ func generateEndorsementCertficate(policyKey *tao.Keys, policyCert *x509.Certifi
 		Organization: &google,
 		CommonName:   &machineName}
 	subject := tao.NewX509Name(&details)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
 	cert, err := policyKey.SigningKey.CreateSignedX509(
-		policyCert, 0, k.SigningKey.GetVerifier(), subject)
+		policyCert, 0, k.SigningKey.GetVerifierFromSigner(),
+		pkInt, sigInt, subject)
 	if err != nil {
 		log.Fatalln(err)
 	}

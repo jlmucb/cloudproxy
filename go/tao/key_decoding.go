@@ -16,7 +16,6 @@ package tao
 
 import (
 	"crypto/x509"
-	"fmt"
 )
 
 func ptrFromString(str string) *string {

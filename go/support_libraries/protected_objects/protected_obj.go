@@ -30,9 +30,20 @@ import (
 
 func PrintObject(obj *ObjectMessage) {
 	fmt.Printf("Object %s, epoch %d\n", *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch)
-	fmt.Printf("\ttype %s, status %s, notbefore: %s, notafter: %s\n", *obj.ObjType,
-		*obj.ObjStatus, *obj.NotBefore, *obj.NotAfter)
-	fmt.Printf("Object value: %x\n", obj.ObjVal)
+	if obj.ObjType != nil {
+		fmt.Printf("\ttype %s\n", *obj.ObjType)
+	}
+	if obj.ObjStatus != nil {
+		fmt.Printf("\tstatus %s\n", *obj.ObjStatus)
+	}
+	if obj.NotBefore != nil  && obj.NotBefore != nil {
+		fmt.Printf("\tnotbefore: %s, notafter: %s\n", *obj.NotBefore, *obj.NotAfter)
+	}
+	if obj.ObjVal != nil {
+		fmt.Printf("Object value: %x\n", obj.ObjVal)
+	} else {
+		fmt.Printf("Object value: nil\n")
+	}
 }
 
 func PrintProtectedObject(obj *ProtectedObjectMessage) {

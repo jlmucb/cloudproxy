@@ -1494,6 +1494,9 @@ func Protect(keys []byte, in []byte) ([]byte, error) {
 	if totalKeySize == nil {
 		return nil, errors.New("Protect: Can't get total key size from key type")
 	}
+	if *totalKeySize > len(keys) {
+		return nil, errors.New("Protect: Bad key size")
+	}
 	blkSize := SymmetricBlockSizeFromAlgorithmName(*keyType)
 	if blkSize == nil {
 		return nil, errors.New("Protect: Can't get block size from key type")
@@ -1543,27 +1546,30 @@ func Protect(keys []byte, in []byte) ([]byte, error) {
 func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
 	if keyType == nil {
-		return nil, errors.New("Protect: Can't get key type from cipher suite")
+		return nil, errors.New("Unprotect: Can't get key type from cipher suite")
 	}
 	encKeySize := SymmetricKeySizeFromAlgorithmName(*keyType)
 	if encKeySize == nil {
-		return nil, errors.New("Protect: Can't get symmetric key size from key type")
+		return nil, errors.New("Unprotect: Can't get symmetric key size from key type")
 	}
 	hmacKeySize := HmacKeySizeFromAlgorithmName(*keyType)
 	if hmacKeySize == nil {
-		return nil, errors.New("Protect: Can't get hmac key size from key type")
+		return nil, errors.New("Unprotect: Can't get hmac key size from key type")
 	}
 	hmacSize := HmacKeySizeFromAlgorithmName(*keyType)
 	if hmacSize == nil {
-		return nil, errors.New("Protect: Can't get hmac size from key type")
+		return nil, errors.New("Unprotect: Can't get hmac size from key type")
 	}
 	totalKeySize := CombinedKeySizeFromAlgorithmName(*keyType)
 	if totalKeySize == nil {
-		return nil, errors.New("Protect: Can't get total key size from key type")
+		return nil, errors.New("Unprotect: Can't get total key size from key type")
+	}
+	if *totalKeySize > len(keys) {
+		return nil, errors.New("Unprotect: Bad key size")
 	}
 	blkSize := SymmetricBlockSizeFromAlgorithmName(*keyType)
 	if blkSize == nil {
-		return nil, errors.New("Protect: Can't get block size from key type")
+		return nil, errors.New("Unprotect: Can't get block size from key type")
 	}
 	if in == nil {
 		return nil, nil

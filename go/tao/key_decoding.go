@@ -164,7 +164,6 @@ func IsDeriver(keyType string) bool {
 
 func SymmetricKeySizeFromAlgorithmName(keyType string) *int {
 	var n int
-fmt.Printf("SymmetricKeySizeFromAlgorithmName: %s\n", keyType)
 	switch(keyType) {
 	default:
 		return nil

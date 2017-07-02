@@ -577,12 +577,15 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if pkInt < 0 || skInt < 0 {
 					return nil, errors.New("Can't get PublicKeyAlgFromSignerAlg")
 				}
-				cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, skInt, 1,
-					&pkix.Name{Organization: []string{"Identity of some Tao service"}})
+				cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, skInt, int64(1),
+					&pkix.Name{
+						Organization: []string{"Identity of some Tao service"},
+						CommonName: "Service-name",
+					})
 				if err != nil {
 					return nil, errors.New("Can't create CreateSelfSignedX509")
-					k.Cert = cert
 				}
+				k.Cert = cert
 			}
 
 			k.dir = path

@@ -122,7 +122,7 @@ func main() {
 			IsCA: true,
 		}
 		endorsementCert, err = x509.CreateCertificate(rand.Reader, &signTemplate, policyKey.Cert,
-			hwPublic, policyKey.SigningKey.GetSigner())
+			hwPublic, policyKey.SigningKey)
 		if err != nil {
 			fmt.Println("Can't create endorsement certificate: ", err)
 			return

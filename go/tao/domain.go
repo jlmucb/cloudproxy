@@ -46,61 +46,120 @@ type Domain struct {
 	Guard      Guard
 }
 
+func PrintDomainDetails(x *DomainDetails) {
+	if x.Name != nil {
+		fmt.Printf("Domain Name: %s\n", *x.Name)
+	}
+	if x.PolicyKeysPath != nil {
+		fmt.Printf("PolicyKeysPath: %s\n", *x.PolicyKeysPath)
+	}
+	if x.GuardType != nil {
+		fmt.Printf("GuardType: %s\n", *x.GuardType)
+	}
+	if x.GuardNetwork != nil {
+		fmt.Printf("GuardNetwork: %s\n", *x.GuardNetwork)
+	}
+	if x.GuardAddress != nil {
+		fmt.Printf("GuardAddress: %s\n", *x.GuardAddress)
+	}
+	if x.GuardTtl != nil {
+		fmt.Printf("GuardTtl: %d\n", *x.GuardTtl)
+	}
+	if x.CipherSuite != nil {
+		fmt.Printf("CipherSuite: %s\n", *x.CipherSuite)
+	}
+
+}
+
 func PrintX509Details(x *X509Details) {
-/*
-  optional string common_name = 1;
-  optional string country = 2;
-  optional string state = 3;
-  optional string organization = 4;
-  optional string organizational_unit = 5;
-  optional int32 serial_number = 6;
-*/
+	if x.CommonName != nil {
+		fmt.Printf("CommonName: %s\n", *x.CommonName)
+	}
+	if x.Country != nil {
+		fmt.Printf("Country: %s\n", *x.Country)
+	}
+	if x.State != nil {
+		fmt.Printf("State: %s\n", *x.State)
+	}
+	if x.Organization != nil {
+		fmt.Printf("Organization: %s\n", *x.Organization)
+	}
+	if x.OrganizationalUnit != nil {
+		fmt.Printf("OrganizationalUnit: %s\n", *x.OrganizationalUnit)
+	}
+	if x.SerialNumber != nil {
+		fmt.Printf("SerialNumber: %d\n", *x.SerialNumber)
+	}
 }
 
 func PrintACLGuardDetails(x *ACLGuardDetails) {
-	//  optional string signed_acls_path = 1;
+	if x.SignedAclsPath != nil {
+		fmt.Printf("SignedAclsPath : %s\n", *x.SignedAclsPath)
+	}
 }
 
-func PrintDatalogGuard(x *DatalogGuard) {
-	//   optional string signed_rules_path = 2;
+func PrintDatalogGuardDetails(x *DatalogGuardDetails) {
+	if x.SignedRulesPath != nil {
+		fmt.Printf("SignedRulesPath: %s\n", *x.SignedRulesPath)
+	}
 }
 
 func PrintTPMDetails(x *TPMDetails) {
-/*
-  optional string tpm_path = 1;
-  optional string aik_path = 2;
-  // A string representing the IDs of PCRs, like "17,18".
-  optional string pcrs = 3;
-  // Path for AIK cert.
-  optional string aik_cert_path = 4;
- */
+	if x.TpmPath != nil {
+		fmt.Printf("TpmPath: %s\n", *x.TpmPath)
+	}
+	if x.AikPath != nil {
+		fmt.Printf("AikPath: %s\n", *x.AikPath)
+	}
+	if x.AikCertPath != nil {
+		fmt.Printf("AikCertPath: %s\n", *x.AikCertPath)
+	}
 }
 
 func PrintTPM2Details(x *TPM2Details) {
-	/*
-  optional string tpm2_info_dir = 1;
-  optional string tpm2_device = 2;
-  optional string tpm2_pcrs = 3;
-
-  optional string tpm2_ek_cert = 4;
-  optional string tpm2_quote_cert = 5;
-  optional string tpm2_seal_cert = 6;
-	 */
+	if x.Tpm2InfoDir != nil {
+		fmt.Printf("Tpm2InfoDir: %s\n", *x.Tpm2InfoDir)
+	}
+	if x.Tpm2Device != nil {
+		fmt.Printf("Tpm2Device: %s\n", *x.Tpm2Device)
+	}
+	if x.Tpm2EkCert != nil {
+		fmt.Printf("Tpm2EkCert: %s\n", *x.Tpm2EkCert)
+	}
+	if x.Tpm2QuoteCert != nil {
+		fmt.Printf("Tpm2QuoteCert: %s\n", *x.Tpm2QuoteCert)
+	}
+	if x.Tpm2SealCert != nil {
+		fmt.Printf("Tpm2SealCert: %s\n", *x.Tpm2SealCert)
+	}
 }
 
 func PrintDomainConfig(cf *DomainConfig) {
-/*
-  optional DomainDetails domain_info = 1;
-  optional X509Details x509_info = 2;
-  optional ACLGuardDetails acl_guard_info = 3;
-  optional DatalogGuardDetails datalog_guard_info = 4;
-  optional TPMDetails tpm_info = 5;
-  optional TPM2Details tpm2_info = 6;
- */
+	if cf.DomainInfo != nil {
+		PrintDomainDetails(cf.DomainInfo)
+	}
+	if cf.X509Info != nil {
+		PrintX509Details(cf.X509Info)
+	}
+	if cf.X509Info != nil {
+		PrintX509Details(cf.X509Info)
+	}
+	if cf.AclGuardInfo != nil {
+		PrintACLGuardDetails(cf.AclGuardInfo)
+	}
+	if cf.DatalogGuardInfo != nil {
+		PrintDatalogGuardDetails(cf.DatalogGuardInfo)
+	}
+	if cf.TpmInfo != nil {
+		PrintTPMDetails(cf.TpmInfo)
+	}
+	if cf.Tpm2Info != nil {
+		PrintTPM2Details(cf.Tpm2Info)
+	}
 }
 
 func PrintDomain(d *Domain) {
-	fmt.Print("ConfigPath: %s\n", d.ConfigPath)
+	fmt.Printf("ConfigPath: %s\n", d.ConfigPath)
 	PrintDomainConfig(&d.Config)
 	if d.Keys != nil {
 		PrintKeys(d.Keys)
@@ -240,6 +299,9 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 	if err != nil {
 		return nil, err
 	}
+fmt.Printf("CreateDomain\n")
+PrintDomain(d)
+fmt.Printf("\n")
 	return d, nil
 }
 

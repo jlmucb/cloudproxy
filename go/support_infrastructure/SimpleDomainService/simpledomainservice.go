@@ -91,6 +91,7 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		return false, errors.New("SimpleDomain DomainRequest: can't get key from der")
 	}
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+	log.Printf("Peer Cert: %x\n", peerCert)
 	// TODO(jlm): Change this.
 	err = tao.ValidatePeerAttestation(&a, peerCert, guard)
 	/*

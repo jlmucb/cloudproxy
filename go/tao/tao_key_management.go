@@ -41,8 +41,11 @@ const (
 	Deriving
 )
 
-// A Keys manages a set of signing, verifying, encrypting, and key-deriving
-// keys mainly for domains, including the policy domain and each tao.
+// The Keys structure manages a set of signing, verifying, encrypting,
+// and key-deriving // keys for many uses.  To some extent, the field
+// meanings will differ between uses.  The comments below are focused
+// on the use of the Keys structure for domains, including the policy
+// domain, and Tao's (Root and Stacked).
 type Keys struct {
 
 	// This is the directory the Keys structure is saved to and
@@ -58,27 +61,27 @@ type Keys struct {
 	// not included.
 	keyTypes KeyType
 
-	// This represents the private key used by this domain to sign statements.
+	// This represents the private key used to sign statements.
 	SigningKey   *Signer
 
 	// This represents the keys for the symmetric suite used to encrypt and
 	// integrity protect data.
 	CryptingKey  *Crypter
 
-	// This is the deriving key used to obtain keys from passwords.
+	// This is the deriving key used to obtain keys from a master secret
+	// like passwords in the case of domain keys.
 	DerivingKey  *Deriver
 
-	// This represents the public key of the entity that signed my certificate
-	// or delegation. If the Cert below is self signed, this is the public key
-	// of my signing key.  This is loaded from dir/cert.
+	// This represents the public key of the SigningKey.
 	VerifyingKey *Verifier
 
-	// This is an attestation by my host appointing the public key of the Signing key.
+	// This is an attestation by my host appointing the public key of
+	// the Signing key.  This caan be nil.
 	Delegation   *Attestation
 
-	// This is the certificate for my signing key signed by my host, or, in the case
-	// of a Root Tao, by the policy key or other authority.  If my signing key is self
-	// signed, this is the self signed cert.
+	// This is the certificate for my signing key.
+	// For a Root Tao, this cert is signed by the policy key or
+	// other authority.
 	Cert         *x509.Certificate
 }
 

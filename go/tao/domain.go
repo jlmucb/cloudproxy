@@ -46,6 +46,67 @@ type Domain struct {
 	Guard      Guard
 }
 
+func PrintX509Details(x *X509Details) {
+/*
+  optional string common_name = 1;
+  optional string country = 2;
+  optional string state = 3;
+  optional string organization = 4;
+  optional string organizational_unit = 5;
+  optional int32 serial_number = 6;
+*/
+}
+
+func PrintACLGuardDetails(x *ACLGuardDetails) {
+	//  optional string signed_acls_path = 1;
+}
+
+func PrintDatalogGuard(x *DatalogGuard) {
+	//   optional string signed_rules_path = 2;
+}
+
+func PrintTPMDetails(x *TPMDetails) {
+/*
+  optional string tpm_path = 1;
+  optional string aik_path = 2;
+  // A string representing the IDs of PCRs, like "17,18".
+  optional string pcrs = 3;
+  // Path for AIK cert.
+  optional string aik_cert_path = 4;
+ */
+}
+
+func PrintTPM2Details(x *TPM2Details) {
+	/*
+  optional string tpm2_info_dir = 1;
+  optional string tpm2_device = 2;
+  optional string tpm2_pcrs = 3;
+
+  optional string tpm2_ek_cert = 4;
+  optional string tpm2_quote_cert = 5;
+  optional string tpm2_seal_cert = 6;
+	 */
+}
+
+func PrintDomainConfig(cf *DomainConfig) {
+/*
+  optional DomainDetails domain_info = 1;
+  optional X509Details x509_info = 2;
+  optional ACLGuardDetails acl_guard_info = 3;
+  optional DatalogGuardDetails datalog_guard_info = 4;
+  optional TPMDetails tpm_info = 5;
+  optional TPM2Details tpm2_info = 6;
+ */
+}
+
+func PrintDomain(d *Domain) {
+	fmt.Print("ConfigPath: %s\n", d.ConfigPath)
+	PrintDomainConfig(&d.Config)
+	if d.Keys != nil {
+		PrintKeys(d.Keys)
+	}
+}
+
 var errUnknownGuardType = errors.New("unknown guard type")
 
 // SetDefaults sets each blank field of cfg to a reasonable default value.

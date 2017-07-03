@@ -554,8 +554,13 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				} else {
 					k.VerifyingKey, err = VerifierFromX509(cert)
 					if err != nil {
-						return nil, errors.New("Can't parse retrieved cert")
+						return nil, errors.New("Can't get verifying key (1)")
 					}
+				}
+			} else {
+				k.VerifyingKey, err = VerifierFromX509(k.Cert)
+				if err != nil {
+					return nil, errors.New("Can't get verifying key (2)")
 				}
 			}
 			return k, nil
@@ -565,6 +570,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			if err != nil {
 				return nil, err
 			}
+			k.dir = path
 
 			// Make cert?
 			if k.Cert == nil {
@@ -586,9 +592,12 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, errors.New("Can't create CreateSelfSignedX509")
 				}
 				k.Cert = cert
+				k.VerifyingKey, err = VerifierFromX509(cert)
+				if err != nil {
+					return nil, errors.New("Can't get verifier from cert")
+				}
 			}
 
-			k.dir = path
 			m, err := MarshalKeys(k)
 			if err != nil {
 				return nil, err

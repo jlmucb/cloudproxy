@@ -35,8 +35,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/util/options"
-	"github.com/golang/crypto/ssh/terminal"
-	// "golang.org/x/crypto/ssh/terminal"
+	// "github.com/golang/crypto/ssh/terminal"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var opts = []options.Option{
@@ -136,6 +136,9 @@ func Main() {
 	}
 	// Load the domain.
 	domain, err := tao.LoadDomain(domainConfigPath(), nil)
+fmt.Printf("Linux_host\n")
+tao.PrintDomain(domain)
+fmt.Printf("\n")
 
 	// Set $TAO_DOMAIN so it will be inherited by hosted programs
 	os.Unsetenv("TAO_DOMAIN")
@@ -408,8 +411,14 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 				return nil, errors.New("Domain policy key missing signing key")
 			}
 			keyName := "Soft Tao Key"
+			universalBytes, err :=  domain.Keys.SigningKey.UniversalKeyNameFromSigner()
+			if err != nil {
+				return nil, errors.New("Can't get universal name " + err.Error())
+			}
+			universalKeyName :=  fmt.Sprintf("key([%x])", universalBytes)
+			// TODO: Check with Kevin on the right way to do this
 			subject := &pkix.Name{
-				Organization: []string{keyName},
+				Organization: []string{universalKeyName},
 				CommonName:   keyName,
 			}
 			keyType := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)

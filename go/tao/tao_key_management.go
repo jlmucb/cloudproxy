@@ -41,6 +41,82 @@ const (
 	Deriving
 )
 
+// A Keys manages a set of signing, verifying, encrypting, and key-deriving
+// keys mainly for domains, including the policy domain and each tao.
+type Keys struct {
+
+	// This is the directory the Keys structure is saved and
+	// restored from.
+	dir    string
+
+	// This is the policy for the domain governing, for example, what
+	// the sealing/unsealing policy is.
+	policy string
+
+	// This is the key types for the keys generated for this structure.
+	// Note: the VerifyingKey is not generated for this structure so is
+	// not included
+	keyTypes KeyType
+
+	// This represents the private key used by this domain to sign statements.
+	SigningKey   *Signer
+
+	// This represents the keys for the symmetric suite used to encrypt and
+	// integrity protect data.
+	CryptingKey  *Crypter
+
+	// This is the deriving key used to obtain keys from passwords.
+	DerivingKey  *Deriver
+
+	// This represents the public key of the entity that signed my certificate
+	// or delegation. If the Cert below is self signed, this is the public key
+	// of my signing key.  This is loaded from dir/cert.
+	VerifyingKey *Verifier
+
+	// This is an attestation by my host appointing the public key of the Signing key.
+	Delegation   *Attestation
+
+	// This is my certificate signed by my host, or, in the case of a Root Tao, by the
+	// policy key or other authority.  If my signing key is self signed, this is the
+	// self signed cert and so is the public key of my signing key.
+	Cert         *x509.Certificate
+}
+
+// The paths to the filename used by the Keys type.
+const (
+	X509Path            = "cert"
+	PBEKeysetPath       = "keys"
+	PBESignerPath       = "signer"
+	SealedKeysetPath    = "sealed_keyset"
+	PlaintextKeysetPath = "plaintext_keyset"
+)
+
+// X509Path returns the path to the verifier key, stored as an X.509
+// certificate.
+func (k *Keys) X509Path() string {
+	if k.dir == "" {
+		return ""
+	}
+
+	return path.Join(k.dir, X509Path)
+}
+
+// PBEKeysetPath returns the path for stored keys.
+func (k *Keys) PBEKeysetPath() string {
+	if k.dir == "" {
+		return ""
+	}
+	return path.Join(k.dir, PBEKeysetPath)
+}
+
+// PBESignerPath returns the path for a stored signing key.
+func (k *Keys) PBESignerPath() string {
+	if k.dir == "" {
+		return ""
+	}
+	return path.Join(k.dir, PBESignerPath)
+}
+
 // Generate or restore a signer.
 // InitializeSigner uses marshaledCryptoKey to restore a signer from
 // a serialized CryptoKey if it's not nil; otherwise it generates one.
@@ -155,23 +231,6 @@ func InitializeDeriver(marshaledCryptoKey []byte, keyType string, keyName *strin
 		return nil, errors.New("Recovered key not a deriver")
 	}
 	return d, nil
-}
-
-// A Keys manages a set of signing, verifying, encrypting, and key-deriving
-// keys.
-type Keys struct {
-	dir    string
-	policy string
-
-	// Key types in this structure
-	keyTypes KeyType
-
-	SigningKey   *Signer
-	CryptingKey  *Crypter
-	VerifyingKey *Verifier
-	DerivingKey  *Deriver
-	Delegation   *Attestation
-	Cert         *x509.Certificate
 }
 
 func PrintKeys(keys *Keys) {
@@ -347,41 +406,6 @@ func UnmarshalKeys(b []byte) (*Keys, error) {
 		return nil, errors.New("Can't unmarshal key set")
 	}
 	return KeysFromCryptoKeyset(&cks)
-}
-
-// The paths to the filename used by the Keys type.
-const (
-	X509Path            = "cert"
-	PBEKeysetPath       = "keys"
-	PBESignerPath       = "signer"
-	SealedKeysetPath    = "sealed_keyset"
-	PlaintextKeysetPath = "plaintext_keyset"
-)
-
-// X509Path returns the path to the verifier key, stored as an X.509
-// certificate.
-func (k *Keys) X509Path() string {
-	if k.dir == "" {
-		return ""
-	}
-
-	return path.Join(k.dir, X509Path)
-}
-
-// PBEKeysetPath returns the path for stored keys.
-func (k *Keys) PBEKeysetPath() string {
-	if k.dir == "" {
-		return ""
-	}
-	return path.Join(k.dir, PBEKeysetPath)
-}
-
-// PBESignerPath returns the path for a stored signing key.
-func (k *Keys) PBESignerPath() string {
-	if k.dir == "" {
-		return ""
-	}
-	return path.Join(k.dir, PBESignerPath)
 }
 
 // SealedKeysetPath returns the path for a stored signing key.

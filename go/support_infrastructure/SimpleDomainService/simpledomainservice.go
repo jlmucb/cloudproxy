@@ -91,7 +91,13 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		return false, errors.New("SimpleDomain DomainRequest: can't get key from der")
 	}
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-	log.Printf("Peer Cert: %x\n", peerCert)
+	log.Printf("\n")
+	log.Printf("\nNumber of peer certs: %d\n", len(conn.(*tls.Conn).ConnectionState().PeerCertificates))
+	for i := 0; i < len(conn.(*tls.Conn).ConnectionState().PeerCertificates); i++ {
+		tao.PrintPKIXName("Issuer", &conn.(*tls.Conn).ConnectionState().PeerCertificates[i].Issuer)
+		tao.PrintPKIXName("Subject", &conn.(*tls.Conn).ConnectionState().PeerCertificates[i].Subject)
+		log.Printf("\n")
+	}
 	// TODO(jlm): Change this.
 	err = tao.ValidatePeerAttestation(&a, peerCert, guard)
 	/*
@@ -172,6 +178,12 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		CommonName:         localhost,
 		Country:            []string{us},
 	}
+
+	log.Printf("Signing cert for ")
+	tao.PrintPKIXName("Subject", x509SubjectName)
+	log.Printf(" with \n")
+	tao.PrintPKIXName("Issuer", x509IssuerName)
+	log.Printf("\n")
 
 	// issuerName := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1

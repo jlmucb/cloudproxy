@@ -41,6 +41,35 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+// A Signer is used to sign and verify signatures
+type Signer struct {
+	Header *CryptoHeader
+
+	PrivKey crypto.PrivateKey
+}
+
+// A Verifier is used to verify signatures.
+type Verifier struct {
+	Header *CryptoHeader
+
+	PubKey crypto.PublicKey
+}
+
+// A Crypter is used to encrypt and decrypt data.
+type Crypter struct {
+	Header *CryptoHeader
+
+	EncryptingKeyBytes []byte
+	HmacKeyBytes       []byte
+}
+
+// A Deriver is used to derive key material from a context using HKDF.
+type Deriver struct {
+	Header *CryptoHeader
+
+	Secret []byte
+}
+
 // ZeroBytes clears the bytes in a slice.
 func ZeroBytes(b []byte) {
 	for i := range b {
@@ -580,35 +609,6 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 	}
 	cryptoKey.KeyHeader = ch
 	return cryptoKey
-}
-
-// A Signer is used to sign and verify signatures
-type Signer struct {
-	Header *CryptoHeader
-
-	PrivKey crypto.PrivateKey
-}
-
-// A Verifier is used to verify signatures.
-type Verifier struct {
-	Header *CryptoHeader
-
-	PubKey crypto.PublicKey
-}
-
-// A Crypter is used to encrypt and decrypt data.
-type Crypter struct {
-	Header *CryptoHeader
-
-	EncryptingKeyBytes []byte
-	HmacKeyBytes       []byte
-}
-
-// A Deriver is used to derive key material from a context using HKDF.
-type Deriver struct {
-	Header *CryptoHeader
-
-	Secret []byte
 }
 
 func SignerFromCryptoKey(k CryptoKey) *Signer {

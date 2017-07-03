@@ -226,12 +226,12 @@ func (d *Domain) CreatePublicCachedDomain(network, addr string, ttl int64) (*Dom
 		return nil, err
 	}
 
-	inFile, err := os.Open(d.Keys.X509Path())
+	inFile, err := os.Open(d.Keys.X509VerifierPath())
 	if err != nil {
 		return nil, err
 	}
 	defer inFile.Close()
-	outFile, err := os.Create(newDomain.Keys.X509Path())
+	outFile, err := os.Create(newDomain.Keys.X509VerifierPath())
 	if err != nil {
 		return nil, err
 	}

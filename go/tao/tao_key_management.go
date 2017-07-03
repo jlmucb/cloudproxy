@@ -45,7 +45,7 @@ const (
 // keys mainly for domains, including the policy domain and each tao.
 type Keys struct {
 
-	// This is the directory the Keys structure is saved and
+	// This is the directory the Keys structure is saved to and
 	// restored from.
 	dir    string
 
@@ -53,9 +53,9 @@ type Keys struct {
 	// the sealing/unsealing policy is.
 	policy string
 
-	// This is the key types for the keys generated for this structure.
+	// This represents the key types for the keys generated for this structure.
 	// Note: the VerifyingKey is not generated for this structure so is
-	// not included
+	// not included.
 	keyTypes KeyType
 
 	// This represents the private key used by this domain to sign statements.
@@ -76,29 +76,28 @@ type Keys struct {
 	// This is an attestation by my host appointing the public key of the Signing key.
 	Delegation   *Attestation
 
-	// This is my certificate signed by my host, or, in the case of a Root Tao, by the
-	// policy key or other authority.  If my signing key is self signed, this is the
-	// self signed cert and so is the public key of my signing key.
+	// This is the certificate for my signing key signed by my host, or, in the case
+	// of a Root Tao, by the policy key or other authority.  If my signing key is self
+	// signed, this is the self signed cert.
 	Cert         *x509.Certificate
 }
 
 // The paths to the filename used by the Keys type.
 const (
-	X509Path            = "cert"
+	X509VerifierPath    = "cert"
 	PBEKeysetPath       = "keys"
 	PBESignerPath       = "signer"
 	SealedKeysetPath    = "sealed_keyset"
 	PlaintextKeysetPath = "plaintext_keyset"
 )
 
-// X509Path returns the path to the verifier key, stored as an X.509
+// X509VerifierPath returns the path to the verifier key, stored as an X.509
 // certificate.
-func (k *Keys) X509Path() string {
+func (k *Keys) X509VerifierPath() string {
 	if k.dir == "" {
 		return ""
 	}
-
-	return path.Join(k.dir, X509Path)
+	return path.Join(k.dir, X509VerifierPath)
 }
 
 // PBEKeysetPath returns the path for stored keys.
@@ -495,7 +494,7 @@ func NewSignedOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name
 			return nil, err
 		}
 
-		if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+		if err = util.WritePath(k.X509VerifierPath(), k.Cert.Raw, 0777, 0666); err != nil {
 			return nil, err
 		}
 	}
@@ -525,7 +524,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			keyTypes: keyTypes,
 			dir:      path,
 		}
-		cert, err := loadCert(k.X509Path())
+		cert, err := loadCert(k.X509VerifierPath())
 		if err != nil {
 			return nil, errors.New("Couldn't load cert")
 		}
@@ -568,7 +567,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			// Note that this loads the certificate if it's
 			// present, and it returns nil otherwise.
 			if k.Cert == nil {
-				cert, err := loadCert(k.X509Path())
+				cert, err := loadCert(k.X509VerifierPath())
 				if err != nil {
 					return nil, err
 				}
@@ -660,7 +659,7 @@ func (k *Keys) newCert(name *pkix.Name) (err error) {
 	if err != nil {
 		return err
 	}
-	if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+	if err = util.WritePath(k.X509VerifierPath(), k.Cert.Raw, 0777, 0666); err != nil {
 		return err
 	}
 	return nil

@@ -52,8 +52,8 @@ type Keys struct {
 	// restored from.
 	dir    string
 
-	// This is the policy for the domain governing, for example, what
-	// the sealing/unsealing policy is.
+	// This is the policy for the keys, for example, governing
+	// what the sealing/unsealing policy is.
 	policy string
 
 	// This represents the key types for the keys generated for this structure.
@@ -76,13 +76,17 @@ type Keys struct {
 	VerifyingKey *Verifier
 
 	// This is an attestation by my host appointing the public key of
-	// the Signing key.  This caan be nil.
+	// the Signing key.  This can be nil.
 	Delegation   *Attestation
 
-	// This is the certificate for my signing key.
+	// This is the certificate for the signing key.
 	// For a Root Tao, this cert is signed by the policy key or
-	// other authority.
+	// other authority.  It can be nil.
 	Cert         *x509.Certificate
+
+	// This is the certificate chain from the signer of Cert to the
+	// policy key (or other authority).
+	CertChain     []*x509.Certificate
 }
 
 // The paths to the filename used by the Keys type.
@@ -332,6 +336,9 @@ func CryptoKeysetFromKeys(k *Keys) (*CryptoKeyset, error) {
 		cks.Cert = k.Cert.Raw
 	}
 	cks.Delegation = k.Delegation
+	for i := 0; i < len(k.CertChain); i++ {
+		cks.CertChain = append(cks.CertChain,  k.CertChain[i].Raw)
+	}
 	return cks, nil
 }
 
@@ -378,8 +385,14 @@ func KeysFromCryptoKeyset(cks *CryptoKeyset) (*Keys, error) {
 			return nil, err
 		}
 		k.Cert = cert
-	} else {
-		k.Cert = nil
+	}
+	// CertChain
+	for i := 0; i < len(cks.CertChain); i++ {
+		cert, err := x509.ParseCertificate(cks.CertChain[i])
+		if err != nil {
+			return nil, err
+		}
+		k.CertChain =  append(k.CertChain, cert)
 	}
 	k.Delegation = cks.Delegation
 	return k, nil

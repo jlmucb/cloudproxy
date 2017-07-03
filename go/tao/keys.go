@@ -32,6 +32,7 @@ import (
 
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -793,6 +794,17 @@ func NewX509Name(p *X509Details) *pkix.Name {
 		Province:           []string{p.GetState()},
 		CommonName:         string(p.GetCommonName()),
 	}
+}
+
+func PrintPKIXName(title string, name *pkix.Name) {
+	log.Printf("%s common name: %s, ", title, name.CommonName)
+	for i := 0 ; i < len(name.Organization); i++ {
+		log.Printf("organization: %s, ", name.Organization[i])
+	}
+	for i := 0 ; i < len(name.OrganizationalUnit); i++ {
+		log.Printf("organization unit: %s, ", name.OrganizationalUnit[i])
+	}
+	log.Printf("\n")
 }
 
 // PrepareX509Template fills out an X.509 template for use in x509.CreateCertificate.

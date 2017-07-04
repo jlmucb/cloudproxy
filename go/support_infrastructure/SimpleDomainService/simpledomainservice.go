@@ -50,6 +50,7 @@ func IsAuthenticationValid(name *string) bool {
 	return true
 }
 
+
 // First return is terminate flag.
 func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, error) {
 	log.Printf("DomainRequest\n")
@@ -185,7 +186,6 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	tao.PrintPKIXName("Issuer", x509IssuerName)
 	log.Printf("\n")
 
-	// issuerName := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
 	var sn big.Int
 	certificateTemplate := &x509.Certificate{
@@ -241,6 +241,16 @@ func main() {
 		return
 	}
 	log.Printf("simpledomainservice: Loaded domain\n")
+	if domain.Keys.Cert == nil {
+		log.Printf("\nPolicy key Cert is nil\n")
+	} else {
+		log.Printf("\nPolicy Cert Issuer: \n")
+		tao.PrintPKIXName("Issuer", &domain.Keys.Cert.Issuer)
+		log.Printf("\nPolicy Cert Subject: \n")
+		tao.PrintPKIXName("Subject", &domain.Keys.Cert.Subject)
+		log.Printf("\n\n")
+	}
+	log.Printf("\n")
 
 	// Set up temporary keys for the connection, since the only thing that
 	// matters to the remote client is that they receive a correctly-signed new

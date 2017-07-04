@@ -115,6 +115,9 @@ func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
 	if requesting_key.Cert == nil {
 		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
 	}
+log.Printf("RequestDomainServiceCert Requestor Cert: \n")
+tao.PrintPKIXName("Subject", &requesting_key.Cert.Subject)
+log.Printf("\n")
 	tlsCert, err := tao.EncodeTLSCert(requesting_key)
 	if err != nil {
 		return nil, err
@@ -365,6 +368,8 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 	pool.AddCert(policyCert)
 
 	// Open the Tao Channel using the Program key.
+fmt.Printf("Program key:\n")
+tao.PrintKeys(&programObject.ProgramKey)
 	tlsc, err := tao.EncodeTLSCert(&programObject.ProgramKey)
 	if err != nil {
 		log.Fatalln("OpenTaoChannel, encode error: ", err)

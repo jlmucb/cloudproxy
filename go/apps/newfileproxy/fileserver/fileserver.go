@@ -26,7 +26,6 @@ import (
 	"path"
 
 	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
-	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
@@ -76,9 +75,14 @@ func server(serverAddr string, serverData *common.ServerData, serverProgramData 
 		log.Printf("fileserver, can't parse policyCert: ", err, "\n")
 		return
 	}
+	progCert, err := x509.ParseCertificate(serverProgramData.ProgramCert)
+	if err != nil {
+		log.Printf("fileserver, can't parse programCert: ", err, "\n")
+		return
+	}
 	// Make the policy cert the unique root of the verification chain.
 	pool.AddCert(policyCert)
-	tlsc, err := tao.EncodeTLSCert(&serverProgramData.ProgramKey)
+	tlsc, err := taosupport.EncodeTLSCertFromSigner(serverProgramData.ProgramSigningKey, progCert)
 	if err != nil {
 		log.Printf("fileserver, encode error: ", err, "\n")
 		return
@@ -151,7 +155,7 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	err := taosupport.TaoParadigm(simpleCfg, fileServerPath, "ECC-P-256.aes128.hmacaes256",
+	err := taosupport.TaoParadigm(simpleCfg, fileServerPath,
 		*useSimpleDomainService, *caAddr, &serverProgramData)
 	if err != nil {
 		log.Fatalln("fileserver: Can't establish Tao", err)
@@ -165,7 +169,7 @@ func main() {
 	if err != nil {
 		rand.Read(fileSecrets)
 		// Save encryption keys for table
-		encryptedFileSecrets, err = tao.Protect(serverProgramData.ProgramSymKeys, fileSecrets[:])
+		encryptedFileSecrets, err = serverProgramData.ProgramCryptingKey.Encrypt(fileSecrets[:])
 		if err != nil {
 			fmt.Printf("fileserver: Error protecting data\n")
 		}
@@ -174,7 +178,7 @@ func main() {
 			fmt.Printf("fileserver: error saving retrieved secret\n")
 		}
 	} else {
-		fileSecrets, err = tao.Unprotect(serverProgramData.ProgramSymKeys, encryptedFileSecrets)
+		fileSecrets, err = serverProgramData.ProgramCryptingKey.Decrypt(encryptedFileSecrets)
 		if err != nil {
 			fmt.Printf("fileserver: Error protecting data\n")
 		}

@@ -24,7 +24,6 @@ import (
 	"path"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tao"
 	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
 
 	"github.com/jlmucb/cloudproxy/go/apps/newfileproxy/common"
@@ -59,7 +58,7 @@ func main() {
 
 	// If TaoParadigm completes without error, clientProgramData contains all the
 	// Cloudproxy information needed throughout fileclient execution.
-	err := taosupport.TaoParadigm(simpleCfg, fileClientPath, "ECC-P-256.aes128.hmacaes256",
+	err := taosupport.TaoParadigm(simpleCfg, fileClientPath,
 		*useSimpleDomainService, *caAddr, &clientProgramData)
 	if err != nil {
 		fmt.Printf("fileclient: Can't establish Tao: ", err)
@@ -85,16 +84,13 @@ func main() {
 	secretsFileName := path.Join(*fileClientPath, "FileSecrets.bin")
 
 	// fileSecrets is used to encrypt/decrypt client files.
-	fileSecrets := make([]byte, 32)
+	fileSecrets := make([]byte, 48)
 
 	encryptedFileSecrets, err := ioutil.ReadFile(secretsFileName)
 	if err != nil {
 		rand.Read(fileSecrets)
 	} else {
-		fileSecrets, err = tao.Unprotect(clientProgramData.ProgramSymKeys, encryptedFileSecrets)
-		if err != nil {
-			fmt.Printf("fileclient: Error protecting data\n")
-		}
+		fileSecrets, err = clientProgramData.ProgramCryptingKey.Decrypt(encryptedFileSecrets)
 	}
 
 	// Get User Certificates and Private keys
@@ -214,7 +210,7 @@ func main() {
 	}
 
 	// Encrypt and store the secret in fileclient's save area.
-	encryptedFileSecrets, err = tao.Protect(clientProgramData.ProgramSymKeys, fileSecrets)
+	encryptedFileSecrets, err = clientProgramData.ProgramCryptingKey.Encrypt(fileSecrets)
 	if err != nil {
 		fmt.Printf("fileclient: Error protecting data\n")
 	}

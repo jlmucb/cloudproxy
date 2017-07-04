@@ -22,4 +22,5 @@ message SavedProgramData {
 	optional bytes crypting_key_blob = 5;
 	repeated bytes signer_cert_chain = 6;
 	optional string crypto_suite = 7;
+	optional string delegation = 8;
 }

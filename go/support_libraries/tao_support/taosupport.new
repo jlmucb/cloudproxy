@@ -50,6 +50,9 @@ type TaoProgramData struct {
 	// Program Crypting Key.
 	ProgramCryptingKey *tao.Crypter
 
+	// Delegation
+	Delegation *string
+
 	// Program Cert.
 	ProgramCert []byte
 
@@ -94,7 +97,7 @@ func (pp *TaoProgramData) ClearTaoProgramData() {
 
 // RequestDomainServiceCert requests the signed Program Cert from SimpleDomainService
 func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
-	v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
+		v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
 
 	// Note requesting program key contains a self-signed cert to open channel.
 	if requesting_key.Cert == nil {
@@ -172,6 +175,7 @@ func SerializeProgramData(programData *ProgramData) ([]byte, error) {
 	}
 	pd.SigningKeyBlob = MarshalCryptoKey(sck)
 	pd.CryptingKeyBlob = MarshalCryptoKey(cck)
+	pd.Delegation = programObject.Delegation
 	unsealed, err := proto.Marshal(pd)
 	if err != nil {
 		return nil, errors.New("Can't marshal SavedProgramData")
@@ -214,15 +218,58 @@ func InitProgramKeys(programData *ProgramData) error {
 	keyStatus := "active"
 	sck := GenerateCryptoKey(*signerKeyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if sck == nil {
+		return errors.New("TaoParadigm: Can't generate signer\n"))
 	}
 	programData.ProgramSigningKey = SignerFromCryptoKey(sck)
 	keyName = path.Join(programData.TaoName, "_Crypter")
 	keyPurpose = "crypting"
 	cck := GenerateCryptoKey(*crypterKeyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cck == nil {
+		return errors.New("TaoParadigm: Can't generate crypter\n"))
 	}
 	programData.ProgramCryptingKey = CrypterFromCryptoKey(cck)
-	retrun nil
+
+	self, err := tao.Parent().GetTaoName()
+	if err != nil {
+		return err
+	}
+	publicString := strings.Replace(self.String(), "(", "", -1)
+	publicString = strings.Replace(publicString, ")", "", -1)
+
+	// publicString is now a canonicalized Tao Principal name
+	us := "US"
+	google := "Google"
+	details := tao.X509Details{
+		Country:      &us,
+		Organization: &google,
+		CommonName:   &publicString}
+	subjectname := tao.NewX509Name(&details)
+
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*signerKeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*signerKeyType)
+
+	cert, err := programData.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), subjectname)
+	if err != nil {
+		return err
+	}
+
+	// Construct statement: "ProgramKey speaksfor Principal Name"
+	// ToPrincipal retrieves key's Tao Principal Name.
+	s := &auth.Speaksfor {
+		Delegate:  programData.SigningKey.ToPrincipal(),
+		Delegator: self
+		}
+	if s == nil {
+		return errors.New("Can't produce speaksfor")
+	}
+
+	// Sign attestation statement
+	programObject.Delegation, err = tao.Parent().Attest(&self, nil, nil, s)
+	if err != nil {
+		return err
+	}
+	// SerializedStatement?
+	return nil
 }
 
 func DeserializeProgramData(buf []byte, programObject *TaoProgramData) error {
@@ -265,6 +312,7 @@ func DeserializeProgramData(buf []byte, programObject *TaoProgramData) error {
 	for i := 0; i < len(savedProgramData.SignerCertChain) - 1; i++ {
 		programObject.CertChain= append(programObject.CertChain, SavedProgramData.SignerCertChain[i + 1])
 	}
+	programObject.Delegation = SavedProgramData.Delegation
 	return nil
 }
 
@@ -314,9 +362,9 @@ func TaoParadigm(cfg *string, filePath *string, useSimpleDomainService bool, caA
 	if err != nil {
 		return errors.New(fmt.Sprintln("TaoParadigm: Can't extend Tao Principal name. Error: ", err))
 	}
-	log.Printf("TaoParadigm: my name is %s\n", taoName)
 	programObject.TaoName = taoName
 	programObject.ProgramFilePath = filePath 
+	log.Printf("TaoParadigm: my name is %s\n", taoName)
 
 	err = GetProgramData(filePath, programObject)
 	if err != nil {
@@ -344,8 +392,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 	pool.AddCert(policyCert)
 
 	// Open the Tao Channel using the Program key.
-fmt.Printf("Program key:\n")
-tao.PrintKeys(&programObject.ProgramKey)
+fmt.Printf("Program key: %x\n", programObject.ProgramKey)
 	tlsc, err := tao.EncodeTLSCert(&programObject.ProgramKey)
 	if err != nil {
 		log.Fatalln("OpenTaoChannel, encode error: ", err)
@@ -366,113 +413,4 @@ tao.PrintKeys(&programObject.ProgramKey)
 	// Stream for Tao Channel.
 	ms := util.NewMessageStream(conn)
 	return ms, &peerName, nil
-}
-
-func SerializeKeys(programData *TaoProgramData) ([]byte, error) {
-}
-
-func SealData(material []byte) ([]byte, error) {
-}
-
-func UnsealData(material []byte) ([]byte, error) {
-}
-
-func SaveProgramData(filePath string, programData *TaoProgramData) bool {
-}
-
-func RecoverProgramData(filePath string, programData *TaoProgramData) bool {
-	_, err := os.Stat(path.Join(filePath, "savedKeys"))
-	if err != nil {
-		// Keys exist
-	}
-}
-
-func InitProgramData(t tao.Tao, programData *TaoProgramData) bool {
-	self, err := t.GetTaoName()
-	k, err := tao.NewTemporaryKeys(tao.Signing | tao.Crypting)
-	if k == nil || err != nil {
-		return nil, nil, errors.New("Can't generate keys")
-	}
-}
-
-// Create a Program Public/Private key.
-func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
-
-	self, err := t.GetTaoName()
-	k, err := tao.NewTemporaryKeys(tao.Signing)
-	if k == nil || err != nil {
-		return nil, nil, errors.New("Can't generate signing key")
-	}
-
-	publicString := strings.Replace(self.String(), "(", "", -1)
-	publicString = strings.Replace(publicString, ")", "", -1)
-
-	// publicString is now a canonicalized Tao Principal name
-	us := "US"
-	google := "Google"
-	details := tao.X509Details{
-		Country:      &us,
-		Organization: &google,
-		CommonName:   &publicString}
-	subjectname := tao.NewX509Name(&details)
-
-	keyType := k.SigningKey.Header.KeyType
-	pkInt := tao.PublicKeyAlgFromSignerAlg(*keyType)
-	sigInt := tao.SignatureAlgFromSignerAlg(*keyType)
-
-	cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), subjectname)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Construct statement: "ProgramKey (new key) speaksfor Principal Name"
-	// ToPrincipal retrieves key's Tao Principal Name.
-	k.Cert = cert
-	s := &auth.Speaksfor{
-		Delegate:  k.SigningKey.ToPrincipal(),
-		Delegator: self}
-	if s == nil {
-		return nil, nil, errors.New("Can't produce speaksfor")
-	}
-
-	// Sign attestation statement
-	k.Delegation, err = t.Attest(&self, nil, nil, s)
-	if err != nil {
-		return nil, nil, err
-	}
-	_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
-	return k, k.Cert.Raw, nil
-}
-
-// Obtain a signing private key (usually a Program Key) from a sealed blob.
-func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, programCert []byte) (*tao.Keys, error) {
-
-	// Recover public key from blob
-	k := &tao.Keys{}
-
-	cert, err := x509.ParseCertificate(programCert)
-	if err != nil {
-		return nil, err
-	}
-
-	/*
-		 * We don't use this now.
-		k.Delegation = new(tao.Attestation)
-		err = proto.Unmarshal(delegateBlob, k.Delegation)
-		if err != nil {
-			return nil, err
-		}
-	*/
-
-	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
-	if err != nil {
-		return nil, err
-	}
-	if policy != tao.SealPolicyDefault {
-		return nil, err
-	}
-	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
-	k.Cert = cert
-	k.Cert.Raw = programCert
-	return k, err
 }

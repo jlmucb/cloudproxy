@@ -50,7 +50,7 @@ type Keys struct {
 
 	// This is the directory the Keys structure is saved to and
 	// restored from.
-	dir    string
+	dir string
 
 	// This is the policy for the keys, for example, governing
 	// what the sealing/unsealing policy is.
@@ -62,31 +62,31 @@ type Keys struct {
 	keyTypes KeyType
 
 	// This represents the private key used to sign statements.
-	SigningKey   *Signer
+	SigningKey *Signer
 
 	// This represents the keys for the symmetric suite used to encrypt and
 	// integrity protect data.
-	CryptingKey  *Crypter
+	CryptingKey *Crypter
 
 	// This is the deriving key used to obtain keys from a master secret
 	// like passwords in the case of domain keys.
-	DerivingKey  *Deriver
+	DerivingKey *Deriver
 
 	// This represents the public key of the SigningKey.
 	VerifyingKey *Verifier
 
 	// This is an attestation by my host appointing the public key of
 	// the Signing key.  This can be nil.
-	Delegation   *Attestation
+	Delegation *Attestation
 
 	// This is the certificate for the signing key.
 	// For a Root Tao, this cert is signed by the policy key or
 	// other authority.  It can be nil.
-	Cert         *x509.Certificate
+	Cert *x509.Certificate
 
 	// This is the certificate chain from the signer of Cert to the
 	// policy key (or other authority).
-	CertChain     []*x509.Certificate
+	CertChain []*x509.Certificate
 }
 
 // The paths to the filename used by the Keys type.
@@ -337,7 +337,7 @@ func CryptoKeysetFromKeys(k *Keys) (*CryptoKeyset, error) {
 	}
 	cks.Delegation = k.Delegation
 	for i := 0; i < len(k.CertChain); i++ {
-		cks.CertChain = append(cks.CertChain,  k.CertChain[i].Raw)
+		cks.CertChain = append(cks.CertChain, k.CertChain[i].Raw)
 	}
 	return cks, nil
 }
@@ -392,7 +392,7 @@ func KeysFromCryptoKeyset(cks *CryptoKeyset) (*Keys, error) {
 		if err != nil {
 			return nil, err
 		}
-		k.CertChain =  append(k.CertChain, cert)
+		k.CertChain = append(k.CertChain, cert)
 	}
 	k.Delegation = cks.Delegation
 	return k, nil
@@ -623,7 +623,16 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			}
 
 			// reset cert and verifying keys
-			cert, err :=  k.SigningKey.CreateSelfSignedX509(pkInt, skInt, int64(1), name)
+			if name == nil {
+				us := "US"
+				textName := "Some Tao service"
+				name = &pkix.Name{
+					Organization: []string{textName},
+					CommonName:   textName,
+					Country:      []string{us},
+				}
+			}
+			cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, skInt, int64(1), name)
 			if err != nil {
 				return nil, errors.New("Can't create self signing cert")
 			}

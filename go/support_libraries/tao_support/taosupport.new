@@ -41,16 +41,14 @@ type TaoProgramData struct {
 	// Program name.
 	TaoName string
 
-	KeySetType string
-
 	// DER encoded policy cert for domain.
 	PolicyCert []byte
 
-	// Private program key.
-	ProgramKey tao.Signer
+	// Program Signing key.
+	ProgramSigningKey *tao.Signer
 
-	// Symmetric Keys for program.
-	ProgramSymKeys []byte
+	// Program Crypting Key.
+	ProgramCryptingKey *tao.Crypter
 
 	// Program Cert.
 	ProgramCert []byte
@@ -83,28 +81,15 @@ func (pp *TaoProgramData) ClearTaoProgramData() {
 	pp.KeySetType = ""
 	tao.ZeroBytes([]byte(pp.TaoName))
 	tao.ZeroBytes(pp.PolicyCert)
-	if pp.ProgramKey.SigningKey != nil {
+	if pp.ProgramSigningKey != nil {
 		// TODO(manferdelli): find out how to clear signingkey.
 		// tao.ZeroBytes([]byte(*pp.ProgramKey))
 	}
-	tao.ZeroBytes(pp.ProgramSymKeys)
+	if pp.ProgramCryptingKey != nil {
+		// TODO(manferdelli): find out how to clear signingkey.
+	}
 	tao.ZeroBytes(pp.ProgramCert)
 	pp.ProgramFilePath = nil
-}
-
-func (pp *TaoProgramData) FillTaoProgramData(keySetType string, policyCert []byte, taoName string,
-	programKey tao.Keys, symKeys []byte, programCert []byte, certChain [][]byte,
-	filePath *string) bool {
-	pp.KeySetType = keySetType
-	pp.PolicyCert = policyCert
-	pp.TaoName = taoName
-	pp.ProgramKey = programKey
-	pp.ProgramSymKeys = symKeys
-	pp.ProgramCert = programCert
-	pp.CertChain = certChain
-	pp.ProgramFilePath = filePath
-	pp.Initialized = true
-	return true
 }
 
 // RequestDomainServiceCert requests the signed Program Cert from SimpleDomainService
@@ -158,119 +143,16 @@ log.Printf("\n")
 	return &response, nil
 }
 
-func InitSymmetricKeys(keysize int) ([]byte, error) {
-	return tao.Parent().GetRandomBytes(keysize)
+func SealMaterial(material []byte) ([]byte, error) {
+	return tao.Parent().Seal(material, tao.SealPolicyDefault)
 }
 
-func InitProgramKey()  (*tao.Keys, error){
+func UnsealMaterial(material []byte) ([]byte, error) {
+	unsealed, _, err := tao.Parent().Unseal(material)
+	return unsealed, err
 }
 
-func GetSymmetricKeys(filePath string, t tao.Tao, keysize int) (
-	[]byte, error) {
-
-	// Make up symmetric key and save sealed version.
-	if err != nil {
-		return nil, errors.New("Can't get random bytes")
-	}
-	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
-	if err != nil {
-		return nil, errors.New("Can't seal random bytes")
-	}
-	ioutil.WriteFile(path.Join(filePath, "sealedsymmetricKey"), sealed, os.ModePerm)
-	return unsealed, nil
-}
-
-// Returns key, cert and cert chain
-func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain, useSimpleDomainService bool,
-	caAddr string) (*tao.Keys, []byte, [][]byte, error) {
-
-	k, derCert, err := CreateSigningKey(t)
-	if err != nil || derCert == nil {
-		log.Printf("InitializeSealedProgramKey: CreateSigningKey failed with error %s\n", err)
-		return nil, nil, nil, err
-	}
-
-	// Get program cert.
-	var programCert []byte
-	var certChain [][]byte
-	if useSimpleDomainService {
-		domain_response, err := RequestDomainServiceCert("tcp", caAddr, k, domain.Keys.VerifyingKey)
-		if err != nil || domain_response == nil {
-			log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
-			return nil, nil, nil, err
-		}
-		programCert = domain_response.SignedCert
-		certChain = domain_response.CertChain
-		k.Cert, err = x509.ParseCertificate(programCert)
-		if err != nil {
-			log.Printf("InitializeSealedProgramKey: Can't parse certificate\n")
-			return nil, nil, nil, err
-		}
-		k.Cert.Raw = programCert
-	} else {
-		cert, err := domain_service.RequestProgramCert(k.Delegation, k.VerifyingKey, "tcp", caAddr)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		k.Cert = cert
-		programCert = cert.Raw
-		// Cert chains?
-	}
-
-	// Serialize and save key blob
-	programKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
-	if err != nil {
-		return nil, nil, nil, errors.New("InitializeSealedProgramKey: Can't produce signing key blob")
-	}
-
-	sealedProgramKey, err := t.Seal(programKeyBlob, tao.SealPolicyDefault)
-	if err != nil {
-		return nil, nil, nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
-	}
-	err = ioutil.WriteFile(path.Join(filePath, "sealedsigningKey"), sealedProgramKey, os.ModePerm)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), programCert, os.ModePerm)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	/*
-		FIX
-		if certChain.size() > 0 {
-			// Save cert chain
-			FIX
-			err = ioutil.WriteFile(path.Join(filePath, "certChain"), certChain, os.ModePerm)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-		}
-	*/
-	return k, programCert, certChain, nil
-}
-
-// Load domain info for the domain and establish Clouproxy keys and properties.
-// This handles reading in existing (sealed) Cloudproxy keys and properties, or,
-// if this is the first call (or a call after state has been erased), this also
-// handles initialization of keys and certificates including interaction with the
-// domain signing service and storage of new sealed keys and certificates.
-// If TaoParadigm completes without error, programObject contains all the
-// Cloudproxy information needed throughout the calling program execution
-// ensures that this information is sealed and stored for subsequent invocations.
-//
-// More generally, TaoParadigm should take a keyset type that specifies the public
-// and symmetric key types and lengths but for now, its P-256 ECC and 64 bit symmetric
-// keys.  It should be part of the ProgramData.
-func TaoParadigm(cfg *string, filePath *string, keySetType string, useSimpleDomainService bool, caAddr string,
-	programObject *TaoProgramData) error {
-
-	// Load domain info for this domain.
-	simpleDomain, err := tao.LoadDomain(*cfg, nil)
-	if err != nil {
-		return errors.New(fmt.Sprintln("TaoParadigm: Can't load domain. Error: ", err))
-	}
-
-	// Get key information
+func InitProgramCryptingKey() ([]byte, error) {
 	keyType := tao.CrypterTypeFromSuiteName(tao.TaoCryptoSuite)
 	if keyType == nil {
 		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypter type\n"))
@@ -279,15 +161,103 @@ func TaoParadigm(cfg *string, filePath *string, keySetType string, useSimpleDoma
 	if symTotalKeySize == nil {
 		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypto suite crypter size\n"))
 	}
+	ck := GenerateCryptoKey(*keyType, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string)
+}
+
+func InitProgramSigningKey()  (*tao.Signer, error){
+}
+
+func SerializeProgramData(programData *ProgramData) ([]byte, error) {
+}
+
+func SaveProgramData(fileName string, programObject *TaoProgramData) error {
+	b, err := SerializeProgramData(programObject)
+	if err != nil {
+	}
+	sealed, err := SealMaterial(b)
+	if err != nil {
+	}
+	err = ioutil.WriteFile(fileName, sealed,  os.ModePerm)
+	if err != nil {
+	}
+	return nil
+}
+
+func InitProgramData(programData *ProgramData)  error {
+}
+
+func DeserializeProgramData(buf []byte, programObject *TaoProgramData) error {
+	unsealed, err := UnsealMaterial(programInfoBlob)
+	if err != nil {
+	}
+	var savedProgramData SavedProgramData
+	err = proto.Unmarshal(unsealed, &savedProgramData)
+	if err != nil {
+	}
+	if savedProgramData.FilePath !=  nil && programObject.FilePath != nil &&
+		*programObject.FilePath != *savedProgramData.ProgramFilePath {
+	}
+	if savedProgramData.PolicyCert !=  nil && programObject.PolicyCert != nil &&
+		*programObject.PolicyCert != *savedProgramData.PolicyCert {
+	}
+	if savedProgramData.ProgramName !=  nil && 
+		programObject.TaoName != savedProgramData.ProgramName {
+	}
+	if savedProgramData.CryptoSuite !=  nil && 
+		*savedProgramData.CryptoSuite != tao.TaoCryptoSuite {
+	}
+	sck, err := UnmarshalCryptoKey(savedProgramData.SigningKeyBlob)
+	if err != nil {
+	}
+	programObject.ProgramSigningKey = SignerFromCryptoKey(ck)
+	cck, err := UnmarshalCryptoKey(savedProgramData.CryptingKeyBlob)
+	if err != nil {
+	}
+	programObject.ProgramCryptingKey = CrypterFromCryptoKey(ck)
+
+	if (len(savedProgramData.SignerCertChain) > 0 {
+		programObject.ProgramCert = SavedProgramData.SignerCertChain[0]
+	}
+
+	for i := 0; i < len(savedProgramData.SignerCertChain) - 1; i++ {
+		programObject.CertChain= append(programObject.CertChain, SavedProgramData.SignerCertChain[i + 1])
+	}
+
+	return nil
+}
+
+func GetProgramData(path string, programObject *TaoProgramData) (err) {
+
+	fileName := path.Join(filePath, "protectedProgramKeys")
+	programInfoBlob, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		err = DeserializeProgramData(programInfoBlob, programObject)
+		if err != nil {
+		}
+	} else {
+		_= SaveProgramData(fileName, programObject)
+	}
+	return nil
+}
+
+
+// cfg is policy domain config info
+// filePath is path to program data
+func TaoParadigm(cfg *string, filePath *string, useSimpleDomainService bool, caAddr string,
+	programObject *TaoProgramData) error {
+
+	// Load domain info for this domain.
+	simpleDomain, err := tao.LoadDomain(*cfg, nil)
+	if err != nil {
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't load domain. Error: ", err))
+	}
 
 	// Get policy cert.
-	if simpleDomain.Keys.Cert == nil {
+	if simpleDomain.Keys.Cert == nil || simpleDomain.Keys.Cert.Raw == nil {
 		return errors.New("TaoParadigm: Can't retrieve policy cert")
 	}
-	derPolicyCert := simpleDomain.Keys.Cert.Raw
-	if derPolicyCert == nil {
-		return errors.New("TaoParadigm: Can't retrieve der encoded policy cert")
-	}
+	programObject.PolicyCert = simpleDomain.Keys.Cert.Raw
+
 
 	// Extend tao name with policy key
 	err = simpleDomain.ExtendTaoName(tao.Parent())
@@ -301,59 +271,14 @@ func TaoParadigm(cfg *string, filePath *string, keySetType string, useSimpleDoma
 		return errors.New(fmt.Sprintln("TaoParadigm: Can't extend Tao Principal name. Error: ", err))
 	}
 	log.Printf("TaoParadigm: my name is %s\n", taoName)
+	programObject.TaoName = taoName
+	programObject.ProgramFilePath = filePath 
 
-	// Get my keys and certificates.
-	sealedSymmetricKey, sealedProgramKey, programCert, certChain, err :=
-		LoadProgramKeys(*filePath)
+	err = GetProgramData(filePath, programObject)
 	if err != nil {
-		return errors.New(fmt.Sprintln("TaoParadigm: Can't retrieve existing key material. Error: ", err))
+		return err
 	}
-	// Unseal my symmetric keys, or initialize them.
-	var symKeys []byte
-	var policy string
-	if sealedSymmetricKey != nil {
-		symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey)
-		if err != nil {
-			return errors.New(fmt.Sprintln("TaoParadigm: can't unseal symmetric keys. Error: ", err))
-		}
-		if policy != tao.SealPolicyDefault {
-			return errors.New("TaoParadigm: can't unseal symmetric keys. SealPolicy does not match.")
-		}
-	} else {
-		symKeys, err = InitializeSealedSymmetricKeys(*filePath, tao.Parent(), *symTotalKeySize)
-		if err != nil {
-			return errors.New(fmt.Sprintf("TaoParadigm: InitializeSealedSymmetricKeys error: %v", err))
-		}
-	}
-	log.Printf("Unsealed symmetric keys\n")
-
-	// Get my Program private key if present or initialize it.
-	var programKey *tao.Keys
-	if sealedProgramKey != nil {
-		programKey, err = SigningKeyFromBlob(tao.Parent(), sealedProgramKey, programCert)
-		if err != nil {
-			return errors.New(fmt.Sprintln("TaoParadigm: SigningKeyFromBlob error: ", err))
-		}
-	} else {
-		// Get Program key.
-		programKey, programCert, certChain, err = InitializeSealedProgramKey(
-			*filePath, tao.Parent(), *simpleDomain, useSimpleDomainService, caAddr)
-		if err != nil {
-			return errors.New(fmt.Sprintln("TaoParadigm: InitializeSealedSigningKey error: ", err))
-		}
-		if programKey == nil {
-			return errors.New("TaoParadigm: InitializeSealedSigningKey error: programKey not loaded")
-		}
-	}
-	log.Printf("TaoParadigm: Retrieved Signing key\n")
-
-	// Initialize Program policy object.
-	ok := programObject.FillTaoProgramData(keySetType, derPolicyCert, taoName.String(),
-		*programKey, symKeys, programCert, certChain, filePath)
-	if !ok {
-		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
-	}
-
+	programObject.Initialized = true
 	return nil
 }
 

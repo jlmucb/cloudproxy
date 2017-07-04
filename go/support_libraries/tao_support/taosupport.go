@@ -195,6 +195,10 @@ func SaveProgramData(fileName string, programObject *TaoProgramData) error {
 	if err != nil {
 		return errors.New("Error writing program data")
 	}
+	err = ioutil.WriteFile(path.Join(fileName, "_cert"), []byte(programObject.ProgramCert), os.ModePerm)
+	if err != nil {
+		return errors.New("Error writing cert")
+	}
 	return nil
 }
 

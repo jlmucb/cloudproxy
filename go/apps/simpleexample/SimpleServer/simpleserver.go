@@ -190,6 +190,7 @@ func main() {
 		log.Fatalln("simpleserver: Can't establish Tao", err)
 	}
 	log.Printf("simpleserver name is %s\n", serverProgramData.TaoName)
+	log.Printf("simpleserver Cert is %x\n", serverProgramData.ProgramCert)
 
 	server(serverAddr, &serverProgramData)
 	log.Printf("simpleserver: done\n")

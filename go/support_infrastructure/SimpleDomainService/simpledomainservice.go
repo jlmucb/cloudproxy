@@ -72,6 +72,7 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		return false, errors.New("Empty key type")
 	}
 
+log.Printf("SimpleDomainService: got attestation and request ")
 	switch *request.KeyType {
 	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public",
 		"ecdsap256", "ecdsap384", "ecdsap521":
@@ -110,6 +111,7 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	*/
 
 	// Sign cert
+log.Printf("SimpleDomainService: signing cert")
 
 	// Get Program name and key info from delegation.
 	f, err := auth.UnmarshalForm(a.SerializedStatement)

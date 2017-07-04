@@ -25,11 +25,11 @@ import (
 	"log"
 	"os"
 	"path"
-	// "strings"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 
-	// "github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"
+	"github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"
 	"github.com/jlmucb/cloudproxy/go/support_libraries/domain_policy"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -97,19 +97,11 @@ func (pp *TaoProgramData) ClearTaoProgramData() {
 }
 
 // RequestDomainServiceCert requests the signed Program Cert from SimpleDomainService
-func RequestDomainServiceCert(network, addr string, requesting_key *tao.Keys,
+func RequestDomainServiceCert(network, addr string, requestingKey *tao.Signer,
+		requestorCert *x509.Certificate, delegation *tao.Attestation,
 		v *tao.Verifier) (*domain_policy.DomainCertResponse, error) {
 
-	// Note requesting program key contains a self-signed cert to open channel.
-	if requesting_key.Cert == nil {
-		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
-	}
-
-log.Printf("RequestDomainServiceCert Requestor Cert: \n")
-tao.PrintPKIXName("Subject", &requesting_key.Cert.Subject)
-log.Printf("\n")
-
-	tlsCert, err := tao.EncodeTLSCert(requesting_key)
+	tlsCert, err := EncodeTLSCertFromSigner(requestingKey, requestorCert)
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +116,12 @@ log.Printf("\n")
 	defer conn.Close()
 
 	var request domain_policy.DomainCertRequest
-	request.Attestation, err = proto.Marshal(requesting_key.Delegation)
-	request.KeyType = requesting_key.SigningKey.Header.KeyType
-	request.SubjectPublicKey, err = requesting_key.SigningKey.CanonicalKeyBytesFromSigner()
+	request.Attestation, err = proto.Marshal(delegation)
+	if err != nil {
+		return nil, err
+	}
+	request.KeyType = requestingKey.Header.KeyType
+	request.SubjectPublicKey, err = requestingKey.CanonicalKeyBytesFromSigner()
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +198,8 @@ func SaveProgramData(fileName string, programObject *TaoProgramData) error {
 	return nil
 }
 
-func InitProgramKeys(programData *TaoProgramData) error {
+func InitProgramKeys(d *tao.Domain, caAddr string, useSimpleDomainService bool,
+		 programData *TaoProgramData) error {
 	signerKeyType := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)
 	if signerKeyType == nil {
 		return errors.New(fmt.Sprintln("InitProgramKeys: Can't get signer type\n"))
@@ -238,8 +234,6 @@ func InitProgramKeys(programData *TaoProgramData) error {
 		return err
 	}
 
-/*
-	FIX?
 	publicString := strings.Replace(self.String(), "(", "", -1)
 	publicString = strings.Replace(publicString, ")", "", -1)
 
@@ -255,11 +249,10 @@ func InitProgramKeys(programData *TaoProgramData) error {
 	pkInt := tao.PublicKeyAlgFromSignerAlg(*signerKeyType)
 	sigInt := tao.SignatureAlgFromSignerAlg(*signerKeyType)
 
-	cert, err := programData.ProgramSigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), subjectname)
+	requestorCert, err := programData.ProgramSigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), subjectname)
 	if err != nil {
 		return err
 	}
-*/
 
 	// Construct statement: "ProgramKey speaksfor Principal Name"
 	// ToPrincipal retrieves key's Tao Principal Name.
@@ -276,7 +269,36 @@ func InitProgramKeys(programData *TaoProgramData) error {
 	if err != nil {
 		return err
 	}
+
 	// SerializedStatement?
+	var programCert []byte
+	if useSimpleDomainService {
+		domain_response, err := RequestDomainServiceCert("tcp", caAddr,
+			programData.ProgramSigningKey, requestorCert,
+			programData.Delegation, d.Keys.VerifyingKey)
+		if err != nil || domain_response == nil {
+			log.Printf("InitProgramKeys: error from RequestDomainServiceCert\n")
+			return err
+		}
+		programCert = domain_response.SignedCert
+		for i := 0; i < len(domain_response.CertChain); i++ {
+			programData.CertChain = append(programData.CertChain, domain_response.CertChain[i])
+		}
+		_, err = x509.ParseCertificate(programCert)
+		if err != nil {
+			log.Printf("InitProgramKeys: Can't parse certificate\n")
+			return err
+		}
+		programData.ProgramCert = programCert
+	} else {
+		signedCert, err := domain_service.RequestProgramCert(programData.Delegation, programData.ProgramSigningKey.GetVerifierFromSigner(), "tcp", caAddr)
+		if err != nil {
+			return err
+		}
+		programData.ProgramCert = signedCert.Raw
+		// Cert chains?
+	}
+
 	return nil
 }
 
@@ -327,17 +349,21 @@ func DeserializeProgramData(buf []byte, programObject *TaoProgramData) error {
 	return nil
 }
 
-func GetProgramData(progPath string, programObject *TaoProgramData) error {
+func GetProgramData(d *tao.Domain, caAddr string, progPath string, useSimpleDomainService bool,
+		programObject *TaoProgramData) error {
 
 	fileName := path.Join(progPath, "protectedProgramKeys")
 	programInfoBlob, err := ioutil.ReadFile(fileName)
-	if err != nil {
+	if err == nil {
 		err = DeserializeProgramData(programInfoBlob, programObject)
 		if err != nil {
+			return err
 		}
 	} else {
-		err := InitProgramKeys(programObject)
+		// FIX, should pass useSimpleDomainService flag
+		err := InitProgramKeys(d, caAddr, true, programObject)
 		if err != nil {
+			return err
 		}
 		_= SaveProgramData(fileName, programObject)
 	}
@@ -377,7 +403,7 @@ func TaoParadigm(cfg *string, filePath *string, useSimpleDomainService bool, caA
 	programObject.ProgramFilePath = filePath 
 	log.Printf("TaoParadigm: my name is %s\n", taoName)
 
-	err = GetProgramData(*filePath, programObject)
+	err = GetProgramData(simpleDomain, caAddr, *filePath, useSimpleDomainService, programObject)
 	if err != nil {
 		return err
 	}
@@ -427,7 +453,6 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 	pool.AddCert(policyCert)
 
 	// Open the Tao Channel using the Program key.
-fmt.Printf("Program key: %x\n", programObject.ProgramSigningKey)
 	tlsc, err := EncodeTLSCertFromSigner(programObject.ProgramSigningKey, cert)
 	if err != nil {
 		log.Fatalln("OpenTaoChannel, encode error: ", err)

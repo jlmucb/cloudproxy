@@ -17,10 +17,10 @@ package tao_support;
 message SavedProgramData {
 	optional string file_path = 1;
 	optional bytes policy_cert = 2;
-	optional bytes program_name = 3;
+	optional string program_name = 3;
 	optional bytes signing_key_blob = 4;
 	optional bytes crypting_key_blob = 5;
 	repeated bytes signer_cert_chain = 6;
 	optional string crypto_suite = 7;
-	optional string delegation = 8;
+	optional bytes delegation = 8;
 }

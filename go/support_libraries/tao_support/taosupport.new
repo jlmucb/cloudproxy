@@ -152,47 +152,88 @@ func UnsealMaterial(material []byte) ([]byte, error) {
 	return unsealed, err
 }
 
-func InitProgramCryptingKey() ([]byte, error) {
-	keyType := tao.CrypterTypeFromSuiteName(tao.TaoCryptoSuite)
-	if keyType == nil {
-		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypter type\n"))
-	}
-	symTotalKeySize := tao.CombinedKeySizeFromAlgorithmName(*keyType)
-	if symTotalKeySize == nil {
-		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypto suite crypter size\n"))
-	}
-	ck := GenerateCryptoKey(*keyType, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string)
-}
-
-func InitProgramSigningKey()  (*tao.Signer, error){
-}
-
 func SerializeProgramData(programData *ProgramData) ([]byte, error) {
+	var pd SavedProgramData
+	pd.FilePath = programData.ProgramFilePath
+	pd.PolicyCert = programData.PolicyCert
+	pd.ProgramName= programData.TaoName
+	pd.CryptoSuite = tao.TaoCryptoSuite
+	pd.SignerCertChain = append(pd.SignerCertChain, programData.ProgramCert)
+	for i := 0; i < programData.CertChain; i++ {
+		pd.SignerCertChain = append(pd.SignerCertChain, programData.CertChain[i])
+	}
+	sck, err := CryptoKeyFromSigner(programData.ProgramSigningKey)
+	if err != nil {
+		return nil, errors.New("Can't get CryptoKey from signer")
+	}
+	cck, err := CryptoKeyFromCrypter(programData.ProgramCryptingKey)
+	if err != nil {
+		return nil, errors.New("Can't get CryptoKey from crypter")
+	}
+	pd.SigningKeyBlob = MarshalCryptoKey(sck)
+	pd.CryptingKeyBlob = MarshalCryptoKey(cck)
+	unsealed, err := proto.Marshal(pd)
+	if err != nil {
+		return nil, errors.New("Can't marshal SavedProgramData")
+	}
+	sealed, err := SealMaterial(unsealed)
+	if err != nil {
+		return nil, errors.New("Can't seal marshalled SavedProgramData")
+	}
+	return sealed, nil
 }
 
 func SaveProgramData(fileName string, programObject *TaoProgramData) error {
 	b, err := SerializeProgramData(programObject)
 	if err != nil {
-	}
-	sealed, err := SealMaterial(b)
-	if err != nil {
+		return errors.New("Can't SerializeProgramData")
 	}
 	err = ioutil.WriteFile(fileName, sealed,  os.ModePerm)
 	if err != nil {
+		return errors.New("Error writing program data")
 	}
 	return nil
 }
 
-func InitProgramData(programData *ProgramData)  error {
+func InitProgramKeys(programData *ProgramData) error {
+	signerKeyType := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)
+	if signerKeyType == nil {
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't get signer type\n"))
+	}
+	crypterKeyType := tao.CrypterTypeFromSuiteName(tao.TaoCryptoSuite)
+	if crypterKeyType == nil {
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypter type\n"))
+	}
+	symTotalKeySize := tao.CombinedKeySizeFromAlgorithmName(*crypterKeyType)
+	if symTotalKeySize == nil {
+		return errors.New(fmt.Sprintln("TaoParadigm: Can't get crypto suite crypter size\n"))
+	}
+	keyName := path.Join(programData.TaoName, "_Signer")
+	keyEpoch := int32(1)
+	keyPurpose := "signing"
+	keyStatus := "active"
+	sck := GenerateCryptoKey(*signerKeyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if sck == nil {
+	}
+	programData.ProgramSigningKey = SignerFromCryptoKey(sck)
+	keyName = path.Join(programData.TaoName, "_Crypter")
+	keyPurpose = "crypting"
+	cck := GenerateCryptoKey(*crypterKeyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cck == nil {
+	}
+	programData.ProgramCryptingKey = CrypterFromCryptoKey(cck)
+	retrun nil
 }
 
 func DeserializeProgramData(buf []byte, programObject *TaoProgramData) error {
 	unsealed, err := UnsealMaterial(programInfoBlob)
 	if err != nil {
+		return errors.New("Can't unseal program material")
 	}
 	var savedProgramData SavedProgramData
 	err = proto.Unmarshal(unsealed, &savedProgramData)
 	if err != nil {
+		return errors.New("Can't unmarshal program material")
 	}
 	if savedProgramData.FilePath !=  nil && programObject.FilePath != nil &&
 		*programObject.FilePath != *savedProgramData.ProgramFilePath {
@@ -208,10 +249,12 @@ func DeserializeProgramData(buf []byte, programObject *TaoProgramData) error {
 	}
 	sck, err := UnmarshalCryptoKey(savedProgramData.SigningKeyBlob)
 	if err != nil {
+		return errors.New("Can't get cryptokey for signing key")
 	}
 	programObject.ProgramSigningKey = SignerFromCryptoKey(ck)
 	cck, err := UnmarshalCryptoKey(savedProgramData.CryptingKeyBlob)
 	if err != nil {
+		return errors.New("Can't get cryptokey for crypting key")
 	}
 	programObject.ProgramCryptingKey = CrypterFromCryptoKey(ck)
 
@@ -222,11 +265,10 @@ func DeserializeProgramData(buf []byte, programObject *TaoProgramData) error {
 	for i := 0; i < len(savedProgramData.SignerCertChain) - 1; i++ {
 		programObject.CertChain= append(programObject.CertChain, SavedProgramData.SignerCertChain[i + 1])
 	}
-
 	return nil
 }
 
-func GetProgramData(path string, programObject *TaoProgramData) (err) {
+func GetProgramData(path string, programObject *TaoProgramData) error {
 
 	fileName := path.Join(filePath, "protectedProgramKeys")
 	programInfoBlob, err := ioutil.ReadFile(fileName)
@@ -235,11 +277,13 @@ func GetProgramData(path string, programObject *TaoProgramData) (err) {
 		if err != nil {
 		}
 	} else {
+		err := InitProgramData(programObject)
+		if err != nil {
+		}
 		_= SaveProgramData(fileName, programObject)
 	}
 	return nil
 }
-
 
 // cfg is policy domain config info
 // filePath is path to program data

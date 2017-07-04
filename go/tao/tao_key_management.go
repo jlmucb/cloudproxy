@@ -624,6 +624,9 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 
 			// reset cert and verifying keys
 			cert, err :=  k.SigningKey.CreateSelfSignedX509(pkInt, skInt, int64(1), name)
+			if err != nil {
+				return nil, errors.New("Can't create self signing cert")
+			}
 			k.Cert = cert
 			k.VerifyingKey, err = VerifierFromX509(cert)
 

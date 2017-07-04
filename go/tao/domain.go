@@ -299,9 +299,6 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 	if err != nil {
 		return nil, err
 	}
-fmt.Printf("CreateDomain\n")
-PrintDomain(d)
-fmt.Printf("\n")
 	return d, nil
 }
 

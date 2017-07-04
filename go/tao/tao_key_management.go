@@ -611,31 +611,21 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			}
 			k.dir = path
 
-			// Make cert?
-			if k.Cert == nil {
-				signerAlg := SignerTypeFromSuiteName(TaoCryptoSuite)
-				if signerAlg == nil {
-					return nil, errors.New("SignerTypeFromSuiteName failed")
-				}
-				pkInt := PublicKeyAlgFromSignerAlg(*signerAlg)
-				skInt := SignatureAlgFromSignerAlg(*signerAlg)
-				if pkInt < 0 || skInt < 0 {
-					return nil, errors.New("Can't get PublicKeyAlgFromSignerAlg")
-				}
-				cert, err := k.SigningKey.CreateSelfSignedX509(pkInt, skInt, int64(1),
-					&pkix.Name{
-						Organization: []string{"Identity of some Tao service"},
-						CommonName: "Service-name",
-					})
-				if err != nil {
-					return nil, errors.New("Can't create CreateSelfSignedX509")
-				}
-				k.Cert = cert
-				k.VerifyingKey, err = VerifierFromX509(cert)
-				if err != nil {
-					return nil, errors.New("Can't get verifier from cert")
-				}
+			// Use correct cert name
+			signerAlg := SignerTypeFromSuiteName(TaoCryptoSuite)
+			if signerAlg == nil {
+				return nil, errors.New("SignerTypeFromSuiteName failed")
 			}
+			pkInt := PublicKeyAlgFromSignerAlg(*signerAlg)
+			skInt := SignatureAlgFromSignerAlg(*signerAlg)
+			if pkInt < 0 || skInt < 0 {
+				return nil, errors.New("Can't get PublicKeyAlgFromSignerAlg")
+			}
+
+			// reset cert and verifying keys
+			cert, err :=  k.SigningKey.CreateSelfSignedX509(pkInt, skInt, int64(1), name)
+			k.Cert = cert
+			k.VerifyingKey, err = VerifierFromX509(cert)
 
 			m, err := MarshalKeys(k)
 			if err != nil {

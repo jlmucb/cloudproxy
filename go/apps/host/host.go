@@ -136,9 +136,6 @@ func Main() {
 	}
 	// Load the domain.
 	domain, err := tao.LoadDomain(domainConfigPath(), nil)
-fmt.Printf("Linux_host\n")
-tao.PrintDomain(domain)
-fmt.Printf("\n")
 
 	// Set $TAO_DOMAIN so it will be inherited by hosted programs
 	os.Unsetenv("TAO_DOMAIN")

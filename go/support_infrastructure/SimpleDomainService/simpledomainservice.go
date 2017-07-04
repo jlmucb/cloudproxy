@@ -167,7 +167,6 @@ log.Printf("SimpleDomainService: signing cert")
 	notAfter := notBefore.Add(validFor)
 
 	us := "US"
-	issuerName := "Google"
 	localhost := "localhost"
 	x509SubjectName := &pkix.Name{
 		Organization:       []string{programPrincipalName},
@@ -175,17 +174,22 @@ log.Printf("SimpleDomainService: signing cert")
 		CommonName:         localhost,
 		Country:            []string{us},
 	}
+
+/*
+	FIX
+	issuerName := "Google"
 	x509IssuerName := &pkix.Name{
 		Organization:       []string{issuerName},
 		OrganizationalUnit: []string{issuerName},
 		CommonName:         localhost,
 		Country:            []string{us},
 	}
+ */
 
 	log.Printf("Signing cert for ")
 	tao.PrintPKIXName("Subject", x509SubjectName)
 	log.Printf(" with \n")
-	tao.PrintPKIXName("Issuer", x509IssuerName)
+	tao.PrintPKIXName("Issuer", &policyKey.Cert.Issuer)
 	log.Printf("\n")
 
 	SerialNumber = SerialNumber + 1
@@ -193,7 +197,8 @@ log.Printf("SimpleDomainService: signing cert")
 	certificateTemplate := &x509.Certificate{
 		SerialNumber: &sn,
 
-		Issuer:    *x509IssuerName,
+		// Issuer:    *x509IssuerName,
+		Issuer:    policyKey.Cert.Issuer,
 		Subject:   *x509SubjectName,
 		NotBefore: notBefore,
 		NotAfter:  notAfter,

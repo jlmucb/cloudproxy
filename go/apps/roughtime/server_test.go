@@ -27,9 +27,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/apps/roughtime/agl_roughtime/config"
 	"github.com/jlmucb/cloudproxy/go/tao"
-
-	"roughtime.googlesource.com/go/config"
 )
 
 var (

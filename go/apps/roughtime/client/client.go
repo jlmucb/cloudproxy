@@ -24,7 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"roughtime.googlesource.com/go/config"
+	"github.com/jlmucb/cloudproxy/go/apps/roughtime/agl_roughtime/config"
 
 	"github.com/jlmucb/cloudproxy/go/apps/roughtime"
 )

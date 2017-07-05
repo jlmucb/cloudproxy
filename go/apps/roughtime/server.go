@@ -29,11 +29,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/jlmucb/cloudproxy/go/apps/roughtime/agl_roughtime/config"
+	"github.com/jlmucb/cloudproxy/go/apps/roughtime/agl_roughtime/protocol"
 	"github.com/jlmucb/cloudproxy/go/tao"
 
 	"golang.org/x/crypto/ed25519"
-	"roughtime.googlesource.com/go/config"
-	"roughtime.googlesource.com/go/protocol"
 )
 
 type Server struct {

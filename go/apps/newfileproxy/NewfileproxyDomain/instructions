@@ -1,4 +1,4 @@
-0. SimpleDomainService should already be written
+0. SimpleDomainService should already be running
 1. intifileproxy
 2. initdomain
 	copy domains keys from policy_keys

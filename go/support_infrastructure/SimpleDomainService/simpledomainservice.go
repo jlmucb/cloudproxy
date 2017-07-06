@@ -285,6 +285,9 @@ func main() {
 	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
 	policyKey := domain.Keys
 	log.Printf("SimpleDomainService: policyKey: %v\n", policyKey)
+	log.Printf("SimpleDomainService: policyKey Subject: ")
+	tao.PrintPKIXName("Subject", &policyKey.Cert.Subject)
+	log.Printf("\n")
 
 	tlsc, err := tao.EncodeTLSCert(keys)
 	if err != nil {

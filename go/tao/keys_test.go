@@ -20,11 +20,14 @@ import (
 	"crypto/aes"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"fmt"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 func TestGenerateKeys(t *testing.T) {
@@ -946,4 +949,22 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	if !bytes.Equal(plain, decrypted) {
 		t.Fatal("plain and decrypted don't match")
 	}
+}
+
+func TestPdkfGeneration(t *testing.T) {
+	salt := []byte{0,1,2,3,4,5,6,7}
+	iterations := 1000
+	password := []byte("Stupid password")
+	key1 := pbkdf2.Key(password, salt, iterations, 16, sha256.New)
+	key2 := pbkdf2.Key(password, salt, iterations, 32, sha256.New)
+	key3 := pbkdf2.Key(password, salt, iterations, 32, sha512.New384)
+	key4 := pbkdf2.Key(password, salt, iterations, 32, sha512.New)
+	key5 := pbkdf2.Key(password, salt, iterations, 48, sha512.New384)
+	key6 := pbkdf2.Key(password, salt, iterations, 64, sha512.New)
+	fmt.Printf("key 1 (16, sha256): %x\n", key1)
+	fmt.Printf("key 2 (32, sha256): %x\n", key2)
+	fmt.Printf("key 3 (32, sha384): %x\n", key3)
+	fmt.Printf("key 4 (32, sha512): %x\n", key4)
+	fmt.Printf("key 5 (48, sha384): %x\n", key5)
+	fmt.Printf("key 6 (64, sha512): %x\n", key6)
 }

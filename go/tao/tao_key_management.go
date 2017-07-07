@@ -17,6 +17,7 @@ import (
 	"crypto/aes"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
@@ -757,13 +758,34 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
-
-	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
+	var aesKey []byte
+	var hmacKey []byte
+	switch TaoCryptoSuite  {
+	default:
+		return nil, errors.New("Unsupported cipher suite")
+	case Basic128BitCipherSuite:
+		// 128-bit AES key.
+		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+		defer ZeroBytes(aesKey)
+		// 64-byte HMAC-SHA256 key.
+		// TODO: Kevin, Why 64 and not 32?
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+		defer ZeroBytes(hmacKey)
+	case Basic192BitCipherSuite:
+		// 256-bit AES key.
+		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 32, sha512.New384)
+		defer ZeroBytes(aesKey)
+		// 48-byte HMAC-SHA384 key.
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 48, sha512.New384)
+		defer ZeroBytes(hmacKey)
+	case Basic256BitCipherSuite:
+		// 256-bit AES key.
+		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 32, sha512.New)
+		defer ZeroBytes(aesKey)
+		// 64-byte HMAC-SHA512 key.
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha512.New)
+		defer ZeroBytes(hmacKey)
+	}
 
 	ver := CryptoVersion_CRYPTO_VERSION_2
 	keyName := "PBEKey"
@@ -815,20 +837,32 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 		return nil, newError("bad version")
 	}
 
-	if *pbed.Cipher != "aes128-ctr" {
-		return nil, newError("bad cipher")
+	var aesKey []byte
+	var hmacKey []byte
+	switch TaoCryptoSuite  {
+	default:
+		return nil, errors.New("Unsupported cipher suite")
+	case Basic128BitCipherSuite:
+		// 128-bit AES key.
+		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+		defer ZeroBytes(aesKey)
+		// 64-byte HMAC-SHA256 key.
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	case Basic192BitCipherSuite:
+		// 256-bit AES key.
+		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 32, sha512.New384)
+		defer ZeroBytes(aesKey)
+		// 48-byte HMAC-SHA384 key.
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 48, sha512.New384)
+		defer ZeroBytes(hmacKey)
+	case Basic256BitCipherSuite:
+		// 256-bit AES key.
+		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 32, sha512.New)
+		defer ZeroBytes(aesKey)
+		// 64-byte HMAC-SHA512 key.
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha512.New)
+		defer ZeroBytes(hmacKey)
 	}
-
-	if *pbed.Hmac != "sha256" {
-		return nil, newError("bad hmac")
-	}
-
-	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
-
-	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
 
 	ck := new(CryptoKey)
 	ver := CryptoVersion_CRYPTO_VERSION_2

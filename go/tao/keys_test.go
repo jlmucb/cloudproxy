@@ -155,13 +155,21 @@ func TestGenerateKeys(t *testing.T) {
 	// "aes256-sha384-ctr"
 	keyName = "keyName6"
 	keyEpoch = 2
-	keyPurpose = "crypting"
-	keyStatus = "active"
 	cryptoKey6 := GenerateCryptoKey("aes256-ctr-hmacsha384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey6 == nil {
 		t.Fatal("Can't generate aes256-ctr-hmacsha384 key\n")
 	}
 	fmt.Printf("Testing aes256-ctr-hmacsha384 generation\n")
+	PrintCryptoKey(cryptoKey6)
+	fmt.Printf("\n")
+
+	// "aes256-sha512-ctr"
+	keyName = "keyName6.2"
+	cryptoKey6 = GenerateCryptoKey("aes256-ctr-hmacsha512", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey6 == nil {
+		t.Fatal("Can't generate aes256-ctr-hmacsha512 key\n")
+	}
+	fmt.Printf("Testing aes256-ctr-hmacsha512 generation\n")
 	PrintCryptoKey(cryptoKey6)
 	fmt.Printf("\n")
 
@@ -277,6 +285,19 @@ func TestGenerateKeys(t *testing.T) {
 	}
 	fmt.Printf("Testing ecdsap384 generation\n")
 	PrintCryptoKey(cryptoKey14)
+	fmt.Printf("\n")
+
+	// "ecdsap521"
+	keyName = "keyName15"
+	keyEpoch = 2
+	keyPurpose = "signing"
+	keyStatus = "primary"
+	cryptoKey15 := GenerateCryptoKey("ecdsap521", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey15 == nil {
+		t.Fatal("Can't generate ecdsap521 key\n")
+	}
+	fmt.Printf("Testing ecdsap521 generation\n")
+	PrintCryptoKey(cryptoKey15)
 	fmt.Printf("\n")
 }
 
@@ -419,7 +440,7 @@ func TestKeyTranslate(t *testing.T) {
 
 func TestCerts(t *testing.T) {
 
-	// ecdsa
+	// ecdsap256
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
@@ -455,9 +476,61 @@ func TestCerts(t *testing.T) {
 	}
 	fmt.Printf("Cert: %x\n", cert)
 
+	// ecdsap384
+	keyName = "keyName2"
+	sk = GenerateCryptoKey("ecdsap384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if sk == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	PrintCryptoKey(sk)
+	fmt.Printf("\n")
+
+	s = SignerFromCryptoKey(*sk)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
+	}
+
+	der, err = s.CreateSelfSignedDER(int(x509.ECDSA), int(x509.ECDSAWithSHA256),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedDER failed, ", err, "\n")
+	}
+	fmt.Printf("Der: %x\n", der)
+	cert, err = s.CreateSelfSignedX509(int(x509.ECDSA), int(x509.ECDSAWithSHA256),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
+	}
+	fmt.Printf("Cert: %x\n", cert)
+
+	// ecdsap521
+	keyName = "keyName3"
+	sk = GenerateCryptoKey("ecdsap521", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if sk == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	PrintCryptoKey(sk)
+	fmt.Printf("\n")
+
+	s = SignerFromCryptoKey(*sk)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
+	}
+
+	der, err = s.CreateSelfSignedDER(int(x509.ECDSA), int(x509.ECDSAWithSHA256),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedDER failed, ", err, "\n")
+	}
+	fmt.Printf("Der: %x\n", der)
+	cert, err = s.CreateSelfSignedX509(int(x509.ECDSA), int(x509.ECDSAWithSHA256),
+		int64(10), NewX509Name(details))
+	if err != nil {
+		t.Fatal("CreateSelfSignedX509 failed, ", err, "\n")
+	}
+	fmt.Printf("Cert: %x\n", cert)
+
 	// RSA
-	keyPurpose = "signing"
-	keyStatus = "active"
 	sk = GenerateCryptoKey("rsa2048", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if sk == nil {
 		t.Fatal("Can't generate signing key\n")
@@ -735,7 +808,7 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	var keyStatus string
 
 	fmt.Printf("\n")
-	keyName = "TestAes128-ctr-hmac-key"
+	keyName = "TestAes128-ctr-hmac256-key"
 	keyEpoch = 2
 	keyPurpose = "signing"
 	keyStatus = "primary"
@@ -764,12 +837,10 @@ func TestEncryptAndDecrypt(t *testing.T) {
 		t.Fatal("plain and decrypted don't match")
 	}
 
-	// Aes 256
+	// Aes 256-hmacsha384
 	fmt.Printf("\n")
-	keyName = "TestAes256-ctr-hmac-key"
+	keyName = "TestAes256-ctr-hmac384-key"
 	keyEpoch = 2
-	keyPurpose = "signing"
-	keyStatus = "primary"
 	cryptoKey2 := GenerateCryptoKey("aes256-ctr-hmacsha384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if cryptoKey2 == nil {
 		t.Fatal("Can't generate aes256-ctr-hmacsha384 key\n")
@@ -777,6 +848,33 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	PrintCryptoKey(cryptoKey2)
 
 	c = CrypterFromCryptoKey(*cryptoKey2)
+	if c == nil {
+		t.Fatal("Can't get crypter from cryptokey\n")
+	}
+	ciphertext, err = c.Encrypt(plain)
+	if err != nil {
+		t.Fatal("Can't encrypt, ", err, "\n")
+	}
+	fmt.Printf("Ciphertext: %x\n", ciphertext)
+	decrypted, err = c.Decrypt(ciphertext)
+	if err != nil {
+		t.Fatal("Can't decrypt, ", err, "\n")
+	}
+	fmt.Printf("Decrypted: %x\n", decrypted)
+	if !bytes.Equal(plain, decrypted) {
+		t.Fatal("plain and decrypted don't match")
+	}
+
+	// Aes 256-hmacsha512
+	fmt.Printf("\n")
+	keyName = "TestAes256-ctr-hmac512-key"
+	cryptoKey3 := GenerateCryptoKey("aes256-ctr-hmacsha512", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if cryptoKey3 == nil {
+		t.Fatal("Can't generate aes256-ctr-hmacsha512 key\n")
+	}
+	PrintCryptoKey(cryptoKey3)
+
+	c = CrypterFromCryptoKey(*cryptoKey3)
 	if c == nil {
 		t.Fatal("Can't get crypter from cryptokey\n")
 	}

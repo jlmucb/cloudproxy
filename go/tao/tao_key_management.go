@@ -768,8 +768,7 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
 		defer ZeroBytes(aesKey)
 		// 64-byte HMAC-SHA256 key.
-		// TODO: Kevin, Why 64 and not 32?
-		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 32, sha256.New)
 		defer ZeroBytes(hmacKey)
 	case Basic192BitCipherSuite:
 		// 256-bit AES key.
@@ -847,7 +846,7 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
 		defer ZeroBytes(aesKey)
 		// 64-byte HMAC-SHA256 key.
-		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+		hmacKey = pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 32, sha256.New)
 	case Basic192BitCipherSuite:
 		// 256-bit AES key.
 		aesKey = pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 32, sha512.New384)

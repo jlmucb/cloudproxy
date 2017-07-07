@@ -137,7 +137,7 @@ func IsSinger(keyType string) bool {
 	default:
 		return false
 	case "rsa1024", "rsa2048", "rsa3072",
-	     "ecdsap256", "ecdsap384":
+	     "ecdsap256", "ecdsap384", "ecdsap521":
 		return true
 	}
 	return false
@@ -237,7 +237,8 @@ func SymmetricBlockSizeFromAlgorithmName(keyType string) *int {
 	switch(keyType) {
 	default:
 		return nil
-	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512":
+	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512",
+		"aes128-raw", "aes256-raw":
 		n = 16
 		return &n
 	}

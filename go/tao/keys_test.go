@@ -303,7 +303,7 @@ func TestGenerateKeys(t *testing.T) {
 
 func TestKeyTranslate(t *testing.T) {
 
-	// Private keys
+	// Private keys --- RSA
 	keyType := "rsa1024"
 	keyName := "Rsatestkey"
 	keyEpoch := int32(1)
@@ -384,8 +384,25 @@ func TestKeyTranslate(t *testing.T) {
 
 	// aes256-ctr-hmac384
 	keyType = "aes256-ctr-hmacsha384"
-	keyName = "aes256Crypter"
+	keyName = "aes256Crypter384"
 	keyStatus = "primary"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate aes key\n")
+	}
+	c = CrypterFromCryptoKey(*ck)
+	if c == nil {
+		t.Fatal("Can't get crypter from key\n")
+	}
+	ckNew, err = CryptoKeyFromCrypter(c)
+	if c == nil {
+		t.Fatal("Can't recover crypter from key\n")
+	}
+	PrintCryptoKey(ckNew)
+
+	// aes256-ctr-hmac512
+	keyType = "aes256-ctr-hmacsha512"
+	keyName = "aes256Crypter"
 	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if ck == nil {
 		t.Fatal("Can't generate aes key\n")
@@ -563,7 +580,7 @@ func TestCerts(t *testing.T) {
 
 func TestCanonicalBytes(t *testing.T) {
 
-	// ecdsa
+	// ecdsa256
 	keyName := "keyName1"
 	keyEpoch := int32(1)
 	keyPurpose := "signing"
@@ -581,6 +598,44 @@ func TestCanonicalBytes(t *testing.T) {
 	}
 
 	cb, err := s.CanonicalKeyBytesFromSigner()
+	if err != nil {
+		t.Fatal("CanonicalKeyBytesFromSigner fails\n")
+	}
+	fmt.Printf("Canonical bytes: %x\n", cb)
+
+	// ecdsa384
+	signingKey = GenerateCryptoKey("ecdsap384", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if signingKey == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	PrintCryptoKey(signingKey)
+	fmt.Printf("\n")
+
+	s = SignerFromCryptoKey(*signingKey)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
+	}
+
+	cb, err = s.CanonicalKeyBytesFromSigner()
+	if err != nil {
+		t.Fatal("CanonicalKeyBytesFromSigner fails\n")
+	}
+	fmt.Printf("Canonical bytes: %x\n", cb)
+
+	// ecdsa521
+	signingKey = GenerateCryptoKey("ecdsap521", &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if signingKey == nil {
+		t.Fatal("Can't generate signing key\n")
+	}
+	PrintCryptoKey(signingKey)
+	fmt.Printf("\n")
+
+	s = SignerFromCryptoKey(*signingKey)
+	if s == nil {
+		t.Fatal("Can't get signer from key\n")
+	}
+
+	cb, err = s.CanonicalKeyBytesFromSigner()
 	if err != nil {
 		t.Fatal("CanonicalKeyBytesFromSigner fails\n")
 	}

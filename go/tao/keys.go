@@ -913,9 +913,27 @@ func (s *Signer) CreateSignedX509(caCert *x509.Certificate, sn int, subjectKey *
 // Derive uses HKDF with HMAC-SHA256 to derive key bytes in its material
 // parameter.
 func (d *Deriver) Derive(salt, context, material []byte) error {
-	f := hkdf.New(sha256.New, d.Secret, salt, context)
-	if _, err := f.Read(material); err != nil {
-		return err
+	if d.Header.KeyType == nil {
+		return errors.New("Unspecified HKDF") 
+	}
+	switch *d.Header.KeyType {
+	default:
+		return errors.New("Unsupported HKDF") 
+	case "hdkf-sha256":
+		f := hkdf.New(sha256.New, d.Secret, salt, context)
+		if _, err := f.Read(material); err != nil {
+			return err
+		}
+	case "hdkf-sha384":
+		f := hkdf.New(sha512.New384, d.Secret, salt, context)
+		if _, err := f.Read(material); err != nil {
+			return err
+		}
+	case "hdkf-sha512":
+		f := hkdf.New(sha512.New, d.Secret, salt, context)
+		if _, err := f.Read(material); err != nil {
+			return err
+		}
 	}
 
 	return nil

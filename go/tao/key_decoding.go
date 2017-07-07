@@ -86,6 +86,13 @@ func DeriverTypeFromSuiteName(suiteName string) *string {
 	switch suiteName {
 	case Basic128BitCipherSuite, Basic192BitCipherSuite, Basic256BitCipherSuite:
 		return ptrFromString("hdkf-sha256")
+	/*
+	// Replace later?
+	case Basic192BitCipherSuite:
+		return ptrFromString("hdkf-sha384")
+	case Basic256BitCipherSuite:
+		return ptrFromString("hdkf-sha512")
+	 */
 	default:
 		return nil
 	}

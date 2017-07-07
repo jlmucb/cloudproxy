@@ -50,8 +50,10 @@ func CrypterTypeFromSuiteName(suiteName string) *string {
 	switch suiteName {
 	case Basic128BitCipherSuite:
 		return ptrFromString("aes128-ctr-hmacsha256")
-	case Basic256BitCipherSuite:
+	case Basic192BitCipherSuite:
 		return ptrFromString("aes256-ctr-hmacsha384")
+	case Basic256BitCipherSuite:
+		return ptrFromString("aes256-ctr-hmacsha512")
 	default:
 		return nil
 	}

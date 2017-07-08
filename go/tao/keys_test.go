@@ -967,4 +967,56 @@ func TestPdkfGeneration(t *testing.T) {
 	fmt.Printf("key 4 (32, sha512): %x\n", key4)
 	fmt.Printf("key 5 (48, sha384): %x\n", key5)
 	fmt.Printf("key 6 (64, sha512): %x\n", key6)
+
+	keyType := "hdkf-sha256"
+	keyName := "sha256Deriver"
+	keyPurpose := "deriving"
+	keyEpoch := int32(1)
+	keyStatus := "primary"
+	context := []byte("I am a context")
+	ck := GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate deriver key\n")
+	}
+	d := DeriverFromCryptoKey(*ck)
+	if d == nil {
+		t.Fatal("Can't get deriver from key\n")
+	}
+	var material []byte
+	material = password
+	err := d.Derive(salt, context, material)
+	if err != nil {
+		t.Fatal("Can't get derive from material\n")
+	}
+	fmt.Printf("Derived (sha256): %x\n", material)
+
+	keyType = "hdkf-sha384"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate deriver key\n")
+	}
+	d = DeriverFromCryptoKey(*ck)
+	if d == nil {
+		t.Fatal("Can't get deriver from key\n")
+	}
+	err = d.Derive(salt, context, material)
+	if err != nil {
+		t.Fatal("Can't get derive from material\n")
+	}
+	fmt.Printf("Derived (sha384): %x\n", material)
+
+	keyType = "hdkf-sha512"
+	ck = GenerateCryptoKey(keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if ck == nil {
+		t.Fatal("Can't generate deriver key\n")
+	}
+	d = DeriverFromCryptoKey(*ck)
+	if d == nil {
+		t.Fatal("Can't get deriver from key\n")
+	}
+	err = d.Derive(salt, context, material)
+	if err != nil {
+		t.Fatal("Can't get derive from material\n")
+	}
+	fmt.Printf("Derived (sha512): %x\n", material)
 }

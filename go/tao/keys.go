@@ -596,6 +596,18 @@ func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurp
 			return nil
 		}
 		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "hdkf-sha384":
+		keyBuf, err := randBytes(48)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "hdkf-sha512":
+		keyBuf, err := randBytes(64)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
 	default:
 		return nil
 	}

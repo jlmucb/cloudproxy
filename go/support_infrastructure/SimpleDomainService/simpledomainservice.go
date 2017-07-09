@@ -175,17 +175,6 @@ log.Printf("SimpleDomainService: signing cert")
 		Country:            []string{us},
 	}
 
-/*
-	FIX
-	issuerName := "Google"
-	x509IssuerName := &pkix.Name{
-		Organization:       []string{issuerName},
-		OrganizationalUnit: []string{issuerName},
-		CommonName:         localhost,
-		Country:            []string{us},
-	}
- */
-
 	log.Printf("Signing cert for ")
 	tao.PrintPKIXName("Subject", x509SubjectName)
 	log.Printf(" with \n")
@@ -196,8 +185,6 @@ log.Printf("SimpleDomainService: signing cert")
 	var sn big.Int
 	certificateTemplate := &x509.Certificate{
 		SerialNumber: &sn,
-
-		// Issuer:    *x509IssuerName,
 		Issuer:    policyKey.Cert.Issuer,
 		Subject:   *x509SubjectName,
 		NotBefore: notBefore,
@@ -205,7 +192,6 @@ log.Printf("SimpleDomainService: signing cert")
 		KeyUsage:  x509.KeyUsageCertSign | x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
 	}
 
-	// FIX: pass certificate template
 	signerAlg := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)
 	if signerAlg == nil {
 		return false, errors.New("Bad suite")

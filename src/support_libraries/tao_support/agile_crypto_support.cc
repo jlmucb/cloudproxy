@@ -92,6 +92,10 @@ tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck) {
   return nullptr;
 }
 
+tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
+  return nullptr;
+}
+
 bool Signer::Sign(string& in, string* out) {
   if (ch_ == nullptr) {
     return false;
@@ -296,5 +300,9 @@ bool Unprotect(Crypter& crypter, string& in, string* out) {
 }
 
 bool UniversalKeyName(Verifier* v, string* out) {
+  return true;
+}
+
+bool KeyPrincipalBytes(Verifier* v, string* out) {
   return true;
 }

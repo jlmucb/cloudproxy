@@ -82,6 +82,7 @@ Signer* CryptoKeyToSigner(tao::CryptoKey& ck);
 Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck);
 tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck);
 tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck);
+tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck);
 
 bool Protect(Crypter& crypter, string& in, string* out);
 bool Unprotect(Crypter& crypter, string& in, string* out);
@@ -90,6 +91,7 @@ bool UniversalKeyName(Verifier* v, string* out);
 void PrintBytes(int size, byte* buf);
 bool ReadFile(string& file_name, string* out);
 bool WriteFile(string& file_name, string& in);
+bool KeyPrincipalBytes(Verifier* v, string* out);
 #endif
 
 

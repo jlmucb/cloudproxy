@@ -45,14 +45,14 @@ ifdef YOSEMITE
 	LINK=clang++
 	PROTO=protoc
 	AR=ar
-	LDFLAGS= -L$(LOCAL_LIB) -lgtest -lgflags -lprotobuf -lpthread
+	LDFLAGS= -L$(LOCAL_LIB) -L/usr/local/ssl/lib -lgtest -lgflags -lprotobuf -lpthread -lssl -lcrypto
 else
 	CC=g++
 	LINK=g++
 	PROTO=protoc
 	AR=ar
 	export LD_LIBRARY_PATH=/usr/local/lib
-	LDFLAGS= -L$(LD_LIBRARY_PATH) -lprotobuf -lgtest -lgflags -lpthread
+	LDFLAGS= -L$(LD_LIBRARY_PATH) -L/usr/local/ssl/lib -lprotobuf -lgtest -lgflags -lpthread -lssl -lcrypto
 endif
 
 O= $(OBJ_DIR)

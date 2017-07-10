@@ -52,7 +52,6 @@ typedef long long unsigned int64;
 bool SerializePublicKey(string& key_type, EVP_PKEY* key, string* out_buf);
 bool DeserializePublicKey(string& in_buf, string* key_type, EVP_PKEY** key);
 
-EVP_PKEY* GenerateKey(string& keyType, int keySize);
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
             EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req);
 bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign,

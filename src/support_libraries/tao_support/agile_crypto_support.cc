@@ -96,8 +96,36 @@ tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
   return nullptr;
 }
 
+bool SerializeECCKeyComponents(EC_KEY& ec_key, string* components[]) {
+  return false;
+}
+
+bool DeserializeECCKeyComponents(string* components[], EC_KEY* ec_key) {
+  return false;
+}
+
+/*
+bool SerializeAesCtrShaHmacKeyComponents(EC_KEY& ec_key, string* components[]) {
+  return false;
+}
+
+bool DeserializeAesCtrShaHmacKeyComponents(string* components[], EC_KEY* ec_key) {
+  return false;
+}
+ */
+
 bool GenerateCryptoKey(const string& type, tao::CryptoKey* ck) {
   if (type == string("ecdsap256")) {
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
+    if (ec_key == nullptr) {
+      printf("GenerateKey: couldn't generate ECC program key (1).\n");
+      return false;
+    }
+    if (1 != EC_KEY_generate_key(ec_key)) {
+      printf("GenerateKey: couldn't generate ECC program key(2).\n");
+      return false;
+    }
   } else if (type == string("ecdsap384")) {
   } else if (type == string("ecdsap521")) {
   } else if (type == string("aes128-ctr-hmacsha256")) {

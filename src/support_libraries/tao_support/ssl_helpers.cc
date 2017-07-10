@@ -202,39 +202,6 @@ bool BN_to_string(BIGNUM& n, string* out) {
   return true;
 }
 
-EVP_PKEY* GenerateKey(string& keyType, int keySize) {
-  EVP_PKEY* pKey = EVP_PKEY_new();
-  if (pKey == nullptr) {
-    return nullptr;
-  }
-  if (keyType == "RSA") {
-    RSA* rsa_key = RSA_generate_key(keySize, 0x010001ULL, nullptr, nullptr);
-    if (rsa_key == nullptr) {
-      printf("GenerateKey: couldn't generate RSA key.\n");
-      return nullptr;
-    }
-    EVP_PKEY_assign_RSA(pKey, rsa_key);
-    pKey->type = EVP_PKEY_RSA;
-  } else if (keyType == "ECC") {
-    EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
-    if (ec_key == nullptr) {
-      printf("GenerateKey: couldn't generate ECC program key (1).\n");
-      return nullptr;
-    }
-    if (1 != EC_KEY_generate_key(ec_key)) {
-      printf("GenerateKey: couldn't generate ECC program key(2).\n");
-      return nullptr;
-    }
-    EVP_PKEY_assign_EC_KEY(pKey, ec_key);
-    pKey->type = EVP_PKEY_EC;
-  } else {
-    printf("GenerateKey: unsupported key type.\n");
-    return nullptr;
-  }
-  return pKey;
-}
-
 class extEntry {
 public:
   char* key_;

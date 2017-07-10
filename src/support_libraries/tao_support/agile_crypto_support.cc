@@ -25,6 +25,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
+#include <openssl/err.h>
 
 const string Basic128BitCipherSuite("sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256");
 const string Basic192BitCipherSuite("sign:ecdsap384,crypt:aes256-ctr-hmacsha384,derive:hdkf-sha256");
@@ -96,27 +97,33 @@ tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
   return nullptr;
 }
 
-bool SerializeECCKeyComponents(EC_KEY& ec_key, string* components[]) {
-  return false;
+int SerializeECCKeyComponents(EC_KEY* ec_key, string* components[]) {
+  byte buf[4096];
+  int size_der = i2d_ECPrivateKey(ec_key, (byte**)&buf);
+  components[0] = new(string);
+  components[0]->assign((const char*)buf, size_der);
+  return 1;
 }
 
-bool DeserializeECCKeyComponents(string* components[], EC_KEY* ec_key) {
-  return false;
+bool DeserializeECCKeyComponents(EC_KEY* ec_key, int n, string components[]) {
+  byte buf[4096];
+  memcpy(buf, components[0].data(), components[0].size());
+  EC_KEY* ec = d2i_ECPrivateKey(&ec_key, (const byte**)&buf, components[0].size());
+  return true;
 }
 
-/*
-bool SerializeAesCtrShaHmacKeyComponents(EC_KEY& ec_key, string* components[]) {
-  return false;
-}
+bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
 
-bool DeserializeAesCtrShaHmacKeyComponents(string* components[], EC_KEY* ec_key) {
-  return false;
-}
- */
+  byte buf[128];
 
-bool GenerateCryptoKey(const string& type, tao::CryptoKey* ck) {
+  tao::CryptoHeader* ch = ck->mutable_key_header();
+  ch->set_key_epoch(1);
+  ch->set_key_status("active");
+  ch->set_version(tao::CRYPTO_VERSION_2);
+  ch->set_key_type(type);
   if (type == string("ecdsap256")) {
-    EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    ch->set_key_purpose("signing");
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(OBJ_txt2nid("secp256r1"));
     EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
     if (ec_key == nullptr) {
       printf("GenerateKey: couldn't generate ECC program key (1).\n");
@@ -126,11 +133,84 @@ bool GenerateCryptoKey(const string& type, tao::CryptoKey* ck) {
       printf("GenerateKey: couldn't generate ECC program key(2).\n");
       return false;
     }
+    string *components[5];
+    int n = SerializeECCKeyComponents(ec_key, components);
+    for (int i = 0; i < n; i++) {
+        string* kc = ck->add_key_components();
+        *kc = *components[i];
+    }
   } else if (type == string("ecdsap384")) {
+    ch->set_key_purpose("signing");
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(OBJ_txt2nid("secp384r1"));
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
+    if (ec_key == nullptr) {
+      printf("GenerateKey: couldn't generate ECC program key (1).\n");
+      return false;
+    }
+    if (1 != EC_KEY_generate_key(ec_key)) {
+      printf("GenerateKey: couldn't generate ECC program key(2).\n");
+      return false;
+    }
+    string *components[5];
+    int n = SerializeECCKeyComponents(ec_key, components);
+    for (int i = 0; i < n; i++) {
+        string* kc = ck->add_key_components();
+        *kc = *components[i];
+    }
   } else if (type == string("ecdsap521")) {
+    ch->set_key_purpose("signing");
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(OBJ_txt2nid("secp521r1"));
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
+    if (ec_key == nullptr) {
+      printf("GenerateKey: couldn't generate ECC program key (1).\n");
+      return false;
+    }
+    if (1 != EC_KEY_generate_key(ec_key)) {
+      printf("GenerateKey: couldn't generate ECC program key(2).\n");
+      return false;
+    }
+    string *components[5];
+    int n = SerializeECCKeyComponents(ec_key, components);
+    for (int i = 0; i < n; i++) {
+        string* kc = ck->add_key_components();
+        *kc = *components[i];
+    }
   } else if (type == string("aes128-ctr-hmacsha256")) {
+    ch->set_key_purpose("crypting");
+    int rc = RAND_bytes(buf, 48);
+    unsigned long err = ERR_get_error();
+    if (err != 1) {
+      printf("GenerateKey: couldn't generate random bytes.\n");
+      return false;
+    }
+    string* kc = ck->add_key_components();
+    kc->assign((const char*)&buf[0], 16);
+    kc = ck->add_key_components();
+    kc->assign((const char*)&buf[16], 32);
   } else if (type == string("aes256-ctr-hmacsha384")) {
+    ch->set_key_purpose("crypting");
+    int rc = RAND_bytes(buf, 80);
+    unsigned long err = ERR_get_error();
+    if (err != 1) {
+      printf("GenerateKey: couldn't generate random bytes.\n");
+      return false;
+    }
+    string* kc = ck->add_key_components();
+    kc->assign((const char*)&buf[0], 32);
+    kc = ck->add_key_components();
+    kc->assign((const char*)&buf[32], 48);
   } else if (type == string("aes256-ctr-hmacsha512")) {
+    ch->set_key_purpose("crypting");
+    int rc = RAND_bytes(buf, 96);
+    unsigned long err = ERR_get_error();
+    if (err != 1) {
+      printf("GenerateKey: couldn't generate random bytes.\n");
+      return false;
+    }
+    string* kc = ck->add_key_components();
+    kc->assign((const char*)&buf[0], 32);
+    kc = ck->add_key_components();
+    kc->assign((const char*)&buf[32], 64);
   } else {
     return false;
   }
@@ -139,6 +219,7 @@ bool GenerateCryptoKey(const string& type, tao::CryptoKey* ck) {
 
 void PrintCryptoHeader(const tao::CryptoHeader& ch) {
   if (ch.has_version()) {
+    printf("Version %d\n", ch.version());
   }
   if (ch.has_key_name()) {
     printf("Key name: %s\n", ch.key_name().c_str());
@@ -158,8 +239,13 @@ void PrintCryptoHeader(const tao::CryptoHeader& ch) {
 }
 
 void PrintCryptoKey(const tao::CryptoKey& ck) {
-  // PrintCryptoHeader(ck.key_header());
-  // Print key components
+  PrintCryptoHeader(ck.key_header());
+  for (int j = 0; j < ck.key_components_size(); j++) {
+    const string& kc = ck.key_components(j);
+    printf("Key component %d: ", j);
+    PrintBytes(kc.size(), (byte*)kc.data());
+    printf("\n");
+  }
 }
 
 bool Signer::Sign(string& in, string* out) {
@@ -368,5 +454,9 @@ bool UniversalKeyName(Verifier* v, string* out) {
 }
 
 bool KeyPrincipalBytes(Verifier* v, string* out) {
+  // EVP_PKEY* evp_key = EVP_PKEY_new();
+  // EVP_PKEY_set1_EC_KEY(evp_key, ec_key);
+  // EC_POINT* pub_key = EC_KEY_get0_public_key(ec_key);
+  // int size_der = i2d_PUBKEY(evp_key, (byte**)&buf);
   return true;
 }

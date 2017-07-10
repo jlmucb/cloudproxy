@@ -52,6 +52,11 @@ TEST(MarshalProgramStruct, all) {
 }
 
 TEST(KeyTranslate, All) {
+  tao::CryptoKey ck;
+  string type("ecdsap256");
+
+  EXPECT_TRUE(GenerateCryptoKey(type, &ck));
+  PrintCryptoKey(ck);
 }
 
 

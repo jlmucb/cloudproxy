@@ -328,8 +328,7 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
 
 bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& port, string& attestation_string,
-                              string& endorsement_cert,
-                              string* program_cert,
+                              string& endorsement_cert, string* program_cert,
                               std::list<string>* certChain) {
 
   if (policyCertificate_ == nullptr) {

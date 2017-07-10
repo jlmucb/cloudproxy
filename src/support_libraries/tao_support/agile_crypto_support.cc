@@ -184,4 +184,3 @@ bool Unprotect(Crypter& crypter, string& in, string* out) {
 bool UniversalKeyName(Verifier* v, string* out) {
   return true;
 }
-#endif

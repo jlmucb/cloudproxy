@@ -203,11 +203,11 @@ bool TaoProgramData::Attest(string& to_attest, string* attested) {
   return tao_->Attest(to_attest, attested);
 }
 
-bool TaoProgramData::Seal(string& data, string* sealed) {
+bool TaoProgramData::SealMaterial(string& data, string* sealed) {
   return tao_->Seal(data, Tao::SealPolicyDefault, sealed);
 }
 
-bool TaoProgramData::Unseal(string& sealed, string* unsealed) {
+bool TaoProgramData::UnsealMaterial(string& sealed, string* unsealed) {
   string policy;
   return tao_->Unseal(sealed, unsealed, &policy);
 }
@@ -230,7 +230,7 @@ bool TaoProgramData::RollbackProtectedUnseal(string& sealed, string* data, strin
 }
 
 bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* tao,
-       string& policy_cert_file_name, string& program_path, string& network,
+       string& cfg_file_name, string& program_path, string& network,
        string& address, string& port, bool useSimpleService) {
 
   cipher_suite_ = cipher_suite;
@@ -243,7 +243,7 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
   port_ = port;
   useSimpleService_ = useSimpleService;
 
-  // Read policy cert.
+  // Read policy cert from config.
   if (!ReadFile(policy_cert_file_name_, &policy_cert_)) {
     printf("Can't read policy cert.\n");
     return false;
@@ -267,6 +267,8 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
   // Make policy key verifier.
 
   // Policy verifier.
+  // Note that we use the policy cert to figure out which cipher
+  //   suite to use.
   //  policy_verifying_key_
   int key_type = EVP_PKEY_id(evp_policy_key);
   if (EVP_PKEY_EC == key_type) {
@@ -408,16 +410,30 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
 
 bool TaoProgramData::SaveProgramData(tao_support::SavedProgramData& pd, string* out) {
   // Serialize and Seal
-  return false;
+  string serialized;
+  if (!pd.SerializeToString(&serialized)) {
+    return false;
+  }
+  if (!SealMaterial(serialized, out)) {
+    return false;
+  }
+  return true;
 }
 
 bool TaoProgramData::RecoverProgramData(string in, tao_support::SavedProgramData* pd) {
   // Unseal and deserialize
-  return false;
+  string unsealed;
+  if (!UnsealMaterial(in, &unsealed)) {
+    return false;
+  }
+  if (!pd->ParseFromString(unsealed)) {
+    return false;
+  }
+  return true;
 }
 
 bool TaoProgramData::InitProgramData(tao_support::SavedProgramData* pd) {
-        return false;
+  return false;
 }
 
 bool TaoProgramData::GetProgramData() {
@@ -435,33 +451,45 @@ bool TaoProgramData::GetProgramData() {
   if (!ReadFile(protected_keys_file_name, &encrypted_saved_program_data)) {
     // need to init keys
     if (!InitProgramData(&program_data)) {
+      return false;
     }
     if (!SaveProgramData(program_data, &encrypted_saved_program_data)) {
+      return false;
     }
     if (!WriteFile(protected_keys_file_name, encrypted_saved_program_data)) {
+      return false;
     }
+    // Save cert too.
   } else {
     // decrypt program keys
     if (!RecoverProgramData(encrypted_saved_program_data, &saved_program_data)) {
+      return false;
     }
   }
 
   // Fill corresponding TaoProgramData values
   if (program_data.file_path() != nullptr) {
+      return false;
   }
-  if (program_data.policy_cert() != nullptr) {
+  if (!program_data.has_policy_cert()) {
+      return false;
   }
-  if (program_data.program_name() != nullptr) {
+  if (!program_data.has_program_name()) {
+      return false;
   }
-  if (program_data.signing_key_blob() != nullptr) {
+  if (!program_data.signing_key_blob()) {
+      return false;
+  }
+  if (!program_data.has_crypting_key_blob()) {
     // Unmarshal cryptokey first
   }
-  if (program_data.crypting_key_blob () != nullptr) {
-    // Unmarshal cryptokey first
+  if (program_data.has_crypto_suite()) {
   }
-  if (program_data.crypto_suite() != nullptr) {
-  }
-  if (program_data.delegation() != nullptr) {
+  // Unmarshal program cryptokey
+  // Translate to Signer and Verifier
+  // Unmarshal crypter cryptokey
+  // Translate to Crypter
+  if (program_data.has_delegation()) {
   }
  // repeated bytes signer_cert_chain
   return true;

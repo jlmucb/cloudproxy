@@ -52,37 +52,8 @@ using std::vector;
 // and downloaded on or about August 6, 2015.
 // File: helpers.cc
 
-
-void PrintBytes(int n, byte* in) {
-  for (int i = 0; i < n; i++) printf("%02x", in[i]);
-}
-
-bool ReadFile(string& file_name, string* out) {
-  struct stat file_info;
-  int k = stat(file_name.c_str(), &file_info);
-  if (k != 0)
-    return false;
-  unique_ptr<byte> buf(new byte[file_info.st_size]);
-  int fd = open(file_name.c_str(), O_RDONLY);
-  if (fd < 0)
-    return false;
-  size_t n = read(fd, buf.get(), file_info.st_size);
-  out->assign((const char*)buf.get(), n);
-  close(fd);
-  return true;
-}
-
-bool WriteFile(string& file_name, string& in) {
-  int fd = creat(file_name.c_str(), S_IRWXU | S_IRWXG);
-  if (fd < 0)
-    return false;
-  int n = write(fd, (byte*)in.data(), in.size());
-  close(fd);
-  return n > 0;
-  return true;
-}
-
-bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
+bool SerializePublicKey(string& key_type, EVP_PKEY* key, string* out_buf) {
+/*
   simpleexample_messages::PrivateKeyMessage msg;
 
   if (key_type == "RSA") {
@@ -115,10 +86,12 @@ bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf) {
   if (!msg.SerializeToString(out_buf)) {
     return false;
   }
+*/
   return true;
 }
 
-bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
+bool DeserializePublicKey(string& in_buf, string* key_type, EVP_PKEY** key) {
+/*
   simpleexample_messages::PrivateKeyMessage msg;
 
   if (!msg.ParseFromString(in_buf)) {
@@ -157,6 +130,7 @@ bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key) {
     printf("DeserializePrivateKey: Unknown key type\n");
     return false;
   }
+*/
   return true;
 }
 
@@ -886,113 +860,4 @@ int SslRead(SSL* ssl, int size, byte* buf) {
 
 int SslWrite(SSL* ssl, int size, byte* buf) {
   return SSL_write(ssl, buf, size);
-}
-
-// TODO: consider using std::to_string
-int NumHexInBytes(int size, byte* in) { return 2 * size; }
-
-int NumBytesInHex(char* in) {
-  if (in == nullptr)
-    return -1;
-  int len = strlen(in);
-  return ((len + 1) / 2);
-}
-
-char ValueToHex(byte x) {
-  if (x >= 0 && x <= 9) {
-    return x + '0';
-  } else if (x >= 10 && x <= 15) {
-    return x - 10 + 'a';
-  } else {
-    return ' ';
-  }
-}
-
-byte HexToValue(char x) {
-  if (x >= '0' && x <= '9') {
-    return x - '0';
-  } else if (x >= 'a' && x <= 'f') {
-    return x + 10 - 'a';
-  } else {
-    return 0;
-  }
-}
-
-string* ByteToHexLeftToRight(int size, byte* in) {
-  if (in == nullptr)
-    return nullptr;
-  int n = NumHexInBytes(size, in);
-  string* out = new string(n, 0);
-  char* str = (char*)out->c_str();
-  byte a, b;
-
-  while (size > 0) {
-    a = (*in) >> 4;
-    b = (*in) & 0xf;
-    in++;
-    *(str++) = ValueToHex(a);
-    *(str++) = ValueToHex(b);
-    size--;
-  }
-  return out;
-}
-
-int HexToByteLeftToRight(char* in, int size, byte* out) {
-  if (in == nullptr)
-    return -1;
-  int n = NumBytesInHex(in);
-  int m = strlen(in);
-  byte a, b;
-
-  if (n > size) {
-    return -1;
-  }
-  while (m > 0) {
-    a = HexToValue(*(in++));
-    b = HexToValue(*(in++));
-    *(out++) = (a << 4) | b;
-    m -= 2;
-  }
-  return n;
-}
-
-string* ByteToHexRightToLeft(int size, byte* in) {
-  if (in == nullptr)
-    return nullptr;
-  int n = NumHexInBytes(size, in);
-  string* out = new string(n, 0);
-  char* str = (char*)out->c_str();
-  byte a, b;
-
-  in += size - 1;
-  while (size > 0) {
-    a = (*in) >> 4;
-    b = (*in) & 0xf;
-    in--;
-    *(str++) = ValueToHex(a);
-    *(str++) = ValueToHex(b);
-    size--;
-  }
-  return out;
-}
-
-int HexToByteRightToLeft(char* in, int size, byte* out) {
-  if (in == nullptr) {
-    return -1;
-  }
-  int n = NumBytesInHex(in);
-  int m = strlen(in);
-  byte a, b;
-
-  out += n - 1;
-  if (m < 0) {
-    return -1;
-  }
-  while (m > 0) {
-    a = HexToValue(*(in++));
-    b = HexToValue(*(in++));
-    *(out--) = (a << 4) | b;
-    m -= 2;
-  }
-  return n;
 }

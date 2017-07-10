@@ -49,12 +49,8 @@ typedef unsigned char byte;
 typedef long long unsigned int64;
 #endif
 
-void PrintBytes(int n, byte* in);
-bool ReadFile(string& file_name, string* out);
-bool WriteFile(string& file_name, string& in);
-
-bool SerializePrivateKey(string& key_type, EVP_PKEY* key, string* out_buf);
-bool DeserializePrivateKey(string& in_buf, string* key_type, EVP_PKEY** key);
+bool SerializePublicKey(string& key_type, EVP_PKEY* key, string* out_buf);
+bool DeserializePublicKey(string& in_buf, string* key_type, EVP_PKEY** key);
 
 EVP_PKEY* GenerateKey(string& keyType, int keySize);
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,

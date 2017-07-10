@@ -96,6 +96,19 @@ tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
   return nullptr;
 }
 
+bool GenerateCryptoKey(const string& type, tao::CryptoKey* ck) {
+  if (type == string("ecdsap256")) {
+  } else if (type == string("ecdsap384")) {
+  } else if (type == string("ecdsap521")) {
+  } else if (type == string("aes128-ctr-hmacsha256")) {
+  } else if (type == string("aes256-ctr-hmacsha384")) {
+  } else if (type == string("aes256-ctr-hmacsha512")) {
+  } else {
+    return false;
+  }
+  return true;
+}
+
 void PrintCryptoHeader(const tao::CryptoHeader& ch) {
   if (ch.has_version()) {
   }
@@ -245,8 +258,6 @@ bool Deriver::Derive(string& salt, string& context, string& in,  string* out) {
   *out = in;
   return true;
 }
-
-bool Protect(Crypter& crypter, string& in, string* out);
 
 string* CryptoSuiteName_to_CrypterName(string& cipher_suite) {
   if (cipher_suite == Basic128BitCipherSuite) {

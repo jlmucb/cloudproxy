@@ -61,9 +61,11 @@ int main(int argc, char **argv) {
   TaoProgramData client_program_data;
   TaoChannel client_channel;
 
+  client_program_data.ClearProgramData();
+
   string tcp("tcp");
-  string cipher_suite("sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256");
-  if (!client_program_data.InitTao(cipher_suite, msg.get(), tao.get(), FLAGS_config_file,
+  string cipher_suite("ECC-P-256.aes128.hmacaes256");
+  if (!client_program_data.InitTao(msg.get(), tao.get(), FLAGS_config_file,
             FLAGS_client_path, tcp, FLAGS_domain_server_host,
             FLAGS_domain_server_port, cipher_suite, true)) {
     printf("client_program_data.InitTao failed\n");

@@ -52,11 +52,36 @@ TEST(MarshalProgramStruct, all) {
 }
 
 TEST(KeyTranslate, All) {
-  tao::CryptoKey ck;
+  tao::CryptoKey ck1;
   string type("ecdsap256");
 
-  EXPECT_TRUE(GenerateCryptoKey(type, &ck));
-  PrintCryptoKey(ck);
+  EXPECT_TRUE(GenerateCryptoKey(type, &ck1));
+  PrintCryptoKey(ck1);
+
+  tao::CryptoKey ck2;
+  type= "ecdsap384";
+  EXPECT_TRUE(GenerateCryptoKey(type, &ck2));
+  PrintCryptoKey(ck2);
+
+  tao::CryptoKey ck3;
+  type= "ecdsap521";
+  EXPECT_TRUE(GenerateCryptoKey(type, &ck3));
+  PrintCryptoKey(ck3);
+
+  tao::CryptoKey ck4;
+  type= "aes128-ctr-hmacsha256";
+  EXPECT_TRUE(GenerateCryptoKey(type, &ck4));
+  PrintCryptoKey(ck4);
+
+  tao::CryptoKey ck5;
+  type= "aes256-ctr-hmacsha384";
+  EXPECT_TRUE(GenerateCryptoKey(type, &ck5));
+  PrintCryptoKey(ck5);
+
+  tao::CryptoKey ck6;
+  type= "aes256-ctr-hmacsha512";
+  EXPECT_TRUE(GenerateCryptoKey(type, &ck6));
+  PrintCryptoKey(ck6);
 }
 
 

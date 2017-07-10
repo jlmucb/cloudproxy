@@ -98,9 +98,11 @@ tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
 }
 
 int SerializeECCKeyComponents(EC_KEY* ec_key, string* components[]) {
-  byte buf[4096];
-  int size_der = i2d_ECPrivateKey(ec_key, (byte**)&buf);
-  components[0] = new(string);
+  byte buf[512];
+  byte* pb = buf;
+
+  int size_der = i2d_ECPrivateKey(ec_key, nullptr);
+  size_der = i2d_ECPrivateKey(ec_key, (byte**)&pb);
   components[0]->assign((const char*)buf, size_der);
   return 1;
 }
@@ -116,6 +118,12 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
 
   byte buf[128];
 
+  // Fix this leak
+  string *components[5];
+  for (int j = 0; j < 5; j++) {
+    components[j] = new(string);
+  }
+
   tao::CryptoHeader* ch = ck->mutable_key_header();
   ch->set_key_epoch(1);
   ch->set_key_status("active");
@@ -123,17 +131,17 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
   ch->set_key_type(type);
   if (type == string("ecdsap256")) {
     ch->set_key_purpose("signing");
-    EC_KEY* ec_key = EC_KEY_new_by_curve_name(OBJ_txt2nid("secp256r1"));
-    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
+    int k = OBJ_txt2nid("prime256v1");
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(k);
     if (ec_key == nullptr) {
       printf("GenerateKey: couldn't generate ECC program key (1).\n");
       return false;
     }
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
     if (1 != EC_KEY_generate_key(ec_key)) {
       printf("GenerateKey: couldn't generate ECC program key(2).\n");
       return false;
     }
-    string *components[5];
     int n = SerializeECCKeyComponents(ec_key, components);
     for (int i = 0; i < n; i++) {
         string* kc = ck->add_key_components();
@@ -141,7 +149,8 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
     }
   } else if (type == string("ecdsap384")) {
     ch->set_key_purpose("signing");
-    EC_KEY* ec_key = EC_KEY_new_by_curve_name(OBJ_txt2nid("secp384r1"));
+    int k = OBJ_txt2nid("secp384r1");
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(k);
     EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
     if (ec_key == nullptr) {
       printf("GenerateKey: couldn't generate ECC program key (1).\n");
@@ -151,7 +160,6 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
       printf("GenerateKey: couldn't generate ECC program key(2).\n");
       return false;
     }
-    string *components[5];
     int n = SerializeECCKeyComponents(ec_key, components);
     for (int i = 0; i < n; i++) {
         string* kc = ck->add_key_components();
@@ -159,17 +167,17 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
     }
   } else if (type == string("ecdsap521")) {
     ch->set_key_purpose("signing");
-    EC_KEY* ec_key = EC_KEY_new_by_curve_name(OBJ_txt2nid("secp521r1"));
-    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
+    int k = OBJ_txt2nid("secp521r1");
+    EC_KEY* ec_key = EC_KEY_new_by_curve_name(k);
     if (ec_key == nullptr) {
       printf("GenerateKey: couldn't generate ECC program key (1).\n");
       return false;
     }
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
     if (1 != EC_KEY_generate_key(ec_key)) {
       printf("GenerateKey: couldn't generate ECC program key(2).\n");
       return false;
     }
-    string *components[5];
     int n = SerializeECCKeyComponents(ec_key, components);
     for (int i = 0; i < n; i++) {
         string* kc = ck->add_key_components();

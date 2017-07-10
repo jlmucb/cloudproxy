@@ -185,7 +185,8 @@ void TaoProgramData::Print() {
     printf("Program object is NOT initialized\n");
     return;
   }
-  printf("Program object is NOT initialized\n");
+  printf("Program object is initialized\n");
+  printf("Cipher suite: %s\n", cipher_suite_.c_str());
   printf("Tao name: %s\n", marshalled_tao_name_.c_str());
   printf("Policy cert: ");
   PrintBytes(policy_cert_.size(), (byte*)policy_cert_.data());printf("\n");

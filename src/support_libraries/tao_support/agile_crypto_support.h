@@ -56,10 +56,6 @@ public:
   bool Verify(string& in, string* out);
 };
 
-tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
-  return nullptr;
-}
-
 class Crypter {
 public:
   tao::CryptoHeader* ch_;
@@ -92,6 +88,8 @@ void PrintBytes(int size, byte* buf);
 bool ReadFile(string& file_name, string* out);
 bool WriteFile(string& file_name, string& in);
 bool KeyPrincipalBytes(Verifier* v, string* out);
+void PrintCryptoHeader(const tao::CryptoHeader& ch);
+void PrintCryptoKey(const tao::CryptoKey& ck);
 #endif
 
 

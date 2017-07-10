@@ -96,6 +96,31 @@ tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
   return nullptr;
 }
 
+void PrintCryptoHeader(const tao::CryptoHeader& ch) {
+  if (ch.has_version()) {
+  }
+  if (ch.has_key_name()) {
+    printf("Key name: %s\n", ch.key_name().c_str());
+  }
+  if (ch.has_key_epoch()) {
+    printf("Key epoch: %d\n", ch.key_epoch());
+  }
+  if (ch.has_key_type()) {
+    printf("Key type: %s\n", ch.key_type().c_str());
+  }
+  if (ch.has_key_purpose()) {
+    printf("Key purpose: %s\n", ch.key_purpose().c_str());
+  }
+  if (ch.has_key_status()) {
+    printf("Key status: %s\n", ch.key_status().c_str());
+  }
+}
+
+void PrintCryptoKey(const tao::CryptoKey& ck) {
+  // PrintCryptoHeader(ck.key_header());
+  // Print key components
+}
+
 bool Signer::Sign(string& in, string* out) {
   if (ch_ == nullptr) {
     return false;

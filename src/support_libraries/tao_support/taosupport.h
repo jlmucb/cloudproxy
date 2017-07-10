@@ -43,7 +43,10 @@ private:
   string cipher_suite_;
 
   // Program path
-  string path_;
+  string program_path_;
+
+  // Policy cert file name (including path).
+  string policy_cert_file_name_;
 
   // network
   string network_;

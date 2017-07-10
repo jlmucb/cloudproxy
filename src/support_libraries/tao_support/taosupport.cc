@@ -230,13 +230,13 @@ bool TaoProgramData::RollbackProtectedUnseal(string& sealed, string* data, strin
 }
 
 bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* tao,
-       string& cfg, string& path, string& network, string& address, string& port,
-       bool useSimpleService) {
+       string& policy_cert_file_name, string& program_path, string& network,
+       string& address, string& port, bool useSimpleService) {
 
-  // Set tao and msg for later calls.
+  cipher_suite_ = cipher_suite;
   msg_ = msg;
   tao_ = tao;
-  cipher_suite_ = cipher_suite;
+  policy_cert_file_name_ = policy_cert_file_name;
   path_ = path;
   network_ = network;
   address_ = address;
@@ -244,8 +244,7 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
   useSimpleService_ = useSimpleService;
 
   // Read policy cert.
-  string policy_cert_file = path + "/policy_keys/cert";
-  if (!ReadFile(policy_cert_file, &policy_cert_)) {
+  if (!ReadFile(policy_cert_file_name_, &policy_cert_)) {
     printf("Can't read policy cert.\n");
     return false;
   }
@@ -265,6 +264,8 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
     return false;
   }
 
+  // Make policy key verifier.
+
   // Policy verifier.
   //  policy_verifying_key_
   int key_type = EVP_PKEY_id(evp_policy_key);
@@ -275,28 +276,16 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
     return false;
   }
 
-/*
-  optional string file_path = 1;
-        optional bytes policy_cert = 2;
-        optional string program_name = 3;
-        optional bytes signing_key_blob = 4;
-        optional bytes crypting_key_blob = 5;
-        repeated bytes signer_cert_chain = 6;
-        optional string crypto_suite = 7;
-        optional bytes delegation = 8;
- */
-
   // Extend principal name, with hash of policy public key.
-  string policy_hash_str;
-  if(!GetKeyBytes(evp_policy_key, &policy_hash_str)) {
-    printf("Can't get key bytes.\n");
+  string universal_name;
+  if(!UniversalKeyName(policy_verifying_key_, &universal_name)) {
     return false;
   }
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
 
   std::vector<std::unique_ptr<tao::Term>> w;
-  w.push_back(tao::make_unique<tao::Bytes>(policy_hash_str.data()));
+  w.push_back(tao::make_unique<tao::Bytes>(universal_name.data()));
   v.push_back(tao::make_unique<tao::PrinExt> ("PolicyKey", std::move(w)));
   tao::SubPrin p(std::move(v));
   string subprin;
@@ -429,7 +418,7 @@ bool TaoProgramData::RecoverProgramData(string in, tao_support::SavedProgramData
 }
 
 bool TaoProgramData::InitProgramData(tao_support::SavedProgramData* pd) {
-	return false;
+        return false;
 }
 
 bool TaoProgramData::GetProgramData() {

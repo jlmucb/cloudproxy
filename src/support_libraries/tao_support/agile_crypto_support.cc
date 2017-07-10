@@ -72,36 +72,150 @@ bool WriteFile(string& file_name, string& in) {
   return true;
 }
 
+Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck) {
+  return nullptr;
+}
+
+Signer* CryptoKeyToSigner(tao::CryptoKey& ck) {
+  return nullptr;
+}
+
+Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck) {
+  return nullptr;
+}
+
+tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck) {
+  return nullptr;
+}
+
+tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck) {
+  return nullptr;
+}
+
 bool Signer::Sign(string& in, string* out) {
-	*out = in;
-	return true;
+  if (ch_ == nullptr) {
+    return false;
+  }
+  if (!ch_->has_key_type()) {
+    return false;
+  }
+  if (!ch_->has_key_purpose()) {
+    return false;
+  }
+  if (ch_->key_purpose() != string("verifying")) {
+    return false;
+  }
+  if (ch_->key_type() == string("ecdsap256")) {
+  } else if (ch_->key_type() == string("ecdsap384")) {
+  } else if (ch_->key_type() == string("ecdsap521")) {
+  } else {
+    return false;
+  }
+  
+  *out = in;
+  return true;
 }
 
 bool Signer::Verify(string& in, string* out) {
-	*out = in;
-	return true;
+  if (ch_ == nullptr) {
+    return false;
+  }
+  if (!ch_->has_key_type()) {
+    return false;
+  }
+  if (!ch_->has_key_purpose()) {
+    return false;
+  }
+  if (ch_->key_purpose() != string("verifying")) {
+    return false;
+  }
+  if (ch_->key_type() == string("ecdsap256")) {
+  } else if (ch_->key_type() == string("ecdsap384")) {
+  } else if (ch_->key_type() == string("ecdsap521")) {
+  } else {
+    return false;
+  }
+  
+  *out = in;
+  return true;
 }
 
 bool Verifier::Verify(string& in, string* out) {
-	*out = in;
-	return true;
+  if (ch_ == nullptr) {
+    return false;
+  }
+  if (!ch_->has_key_type()) {
+    return false;
+  }
+  if (!ch_->has_key_purpose()) {
+    return false;
+  }
+  if (ch_->key_purpose() != string("verifying")) {
+    return false;
+  }
+  if (ch_->key_type() == string("ecdsap256-public")) {
+  } else if (ch_->key_type() == string("ecdsap384-public")) {
+  } else if (ch_->key_type() == string("ecdsap521-public")) {
+  } else {
+    return false;
+  }
+  
+  *out = in;
+  return true;
 }
 
 bool Crypter::Encrypt(string& in, string* out) {
-	*out = in;
-	return true;
+  if (ch_ == nullptr) {
+    return false;
+  }
+  if (!ch_->has_key_type()) {
+    return false;
+  }
+  if (!ch_->has_key_purpose()) {
+    return false;
+  }
+  if (ch_->key_purpose() != string("verifying")) {
+    return false;
+  }
+  if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
+  } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
+  } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
+  } else {
+    return false;
+  }
+  
+  *out = in;
+  return true;
 }
 
 bool Crypter::Decrypt(string& in, string* out) {
-	*out = in;
-	return true;
+  if (ch_ == nullptr) {
+    return false;
+  }
+  if (!ch_->has_key_type()) {
+    return false;
+  }
+  if (!ch_->has_key_purpose()) {
+    return false;
+  }
+  if (ch_->key_purpose() != string("verifying")) {
+    return false;
+  }
+  if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
+  } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
+  } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
+  } else {
+    return false;
+  }
+  
+  *out = in;
+  return true;
 }
 
 bool Deriver::Derive(string& salt, string& context, string& in,  string* out) {
-	*out = in;
-	return true;
+  *out = in;
+  return true;
 }
-
 
 bool Protect(Crypter& crypter, string& in, string* out);
 

@@ -56,6 +56,10 @@ public:
   bool Verify(string& in, string* out);
 };
 
+tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck) {
+  return nullptr;
+}
+
 class Crypter {
 public:
   tao::CryptoHeader* ch_;
@@ -72,6 +76,12 @@ class Deriver {
 
   bool Derive(string& salt, string& context, string& in,  string* out);
 };
+
+Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck);
+Signer* CryptoKeyToSigner(tao::CryptoKey& ck);
+Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck);
+tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck);
+tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck);
 
 bool Protect(Crypter& crypter, string& in, string* out);
 bool Unprotect(Crypter& crypter, string& in, string* out);

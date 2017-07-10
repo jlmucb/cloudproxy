@@ -20,6 +20,8 @@
 #include "tao/tao_rpc.h"
 #include "tao/util.h"
 
+#include "agile_crypto_support.h"
+
 #include "attestation.pb.h"
 
 #include <openssl/rsa.h>
@@ -148,13 +150,4 @@ public:
   bool GetRequest(int* size, byte* in);
   void Print();
 };
-
-bool GetKeyBytes(EVP_PKEY* pKey, string* bytes_out);
-
-bool Protect(string& crypter_suite, int sizeKey, byte* key, int sizeIn, byte* in,
-             int* sizeOut, byte* out);
-bool Unprotect(string& crypter_suite, int sizeKey, byte* key, int sizeIn, byte* in,
-             int* sizeOut, byte* out);
 #endif
-
-

@@ -75,6 +75,7 @@ class Deriver {
 
 bool Protect(Crypter& crypter, string& in, string* out);
 bool Unprotect(Crypter& crypter, string& in, string* out);
+bool UniversalKeyName(Verifier* v, string* out);
 
 void PrintBytes(int size, byte* buf);
 bool ReadFile(string& file_name, string* out);

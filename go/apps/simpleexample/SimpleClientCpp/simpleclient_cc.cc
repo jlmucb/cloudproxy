@@ -90,8 +90,8 @@ int main(int argc, char **argv) {
          client_channel.peer_name_.c_str()) ;
 
   // Send a simple request and get response.
-  simpleexample_messages::SimpleMessage req_message;
-  simpleexample_messages::SimpleMessage resp_message;
+  tao_support::SimpleMessage req_message;
+  tao_support::SimpleMessage resp_message;
   req_message.set_message_type(simpleexample_messages::REQUEST);
   req_message.set_request_type("SecretRequest");
   string req_string;
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     if (!resp_message.ParseFromString(resp_string)) {
       printf("simpleclient: Error in parsing request from GetRequest\n");
     }
-printf("about to set secret %d\n", resp_message.data_size());
+    printf("about to set secret %d\n", resp_message.data_size());
     if (resp_message.data_size() > 0) {
       const char* secret = (const char*) resp_message.data(0).data();
       printf("\nsimpleclient: secret is %s, done\n", secret);

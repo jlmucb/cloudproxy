@@ -49,7 +49,7 @@ TEST(ReadWrite, all) {
 }
 
 TEST(MarshalProgramStruct, all) {
-	// tao::SavedProgramData pd;
+        // tao::SavedProgramData pd;
 }
 
 TEST(SigningCryptingVerifying, all) {
@@ -60,6 +60,11 @@ TEST(SigningCryptingVerifying, all) {
   PrintCryptoKey(ckSigner);
 
   Signer* s = CryptoKeyToSigner(ckSigner);
+  string msg("123456");
+  string sig;
+
+  EXPECT_TRUE(s->Sign(msg, &sig));
+  EXPECT_TRUE(s->Verify(msg, sig));
 
 
 //   Verifier* VerifierFromSigner(Signer* s);

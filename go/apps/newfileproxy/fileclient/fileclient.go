@@ -91,6 +91,10 @@ func main() {
 		rand.Read(fileSecrets)
 	} else {
 		fileSecrets, err = clientProgramData.ProgramCryptingKey.Decrypt(encryptedFileSecrets)
+		if err != nil {
+			fmt.Printf("fileclient: can't decrypt program key\n")
+			return
+		}
 	}
 
 	// Get User Certificates and Private keys

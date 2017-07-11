@@ -85,12 +85,12 @@ bool DeserializeECCKeyComponents(string component, EC_KEY* ec_key);
 
 bool Protect(Crypter& crypter, string& in, string* out);
 bool Unprotect(Crypter& crypter, string& in, string* out);
+bool KeyPrincipalBytes(Verifier* v, string* out);
 bool UniversalKeyName(Verifier* v, string* out);
 
 void PrintBytes(int size, byte* buf);
 bool ReadFile(string& file_name, string* out);
 bool WriteFile(string& file_name, string& in);
-bool KeyPrincipalBytes(Verifier* v, string* out);
 void PrintCryptoHeader(const tao::CryptoHeader& ch);
 void PrintCryptoKey(const tao::CryptoKey& ck);
 #endif

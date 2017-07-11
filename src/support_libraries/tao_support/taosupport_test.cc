@@ -51,6 +51,44 @@ TEST(ReadWrite, all) {
 TEST(MarshalProgramStruct, all) {
 }
 
+TEST(SigningCryptingVerifying, all) {
+
+//   bool Sign(string& in, string* out);
+//   bool Verify(string& msg, string& sig);
+//   bool Encrypt(string& in, string* iv, string* mac, string* out);
+//   bool Decrypt(string& in, string& iv, string& mac, string* out);
+//   Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck);
+//   Signer* CryptoKeyToSigner(tao::CryptoKey& ck);
+//   Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck);
+//   bool GenerateCryptoKey(string& type, tao::CryptoKey* ck);
+//   tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck);
+//   tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck);
+//   tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck);
+//   bool SerializeECCKeyComponents(EC_KEY* ec_key, string* component);
+//   bool DeserializeECCKeyComponents(string component, EC_KEY* ec_key);
+}
+
+TEST(Protect_Unprotect, all) {
+//  bool Protect(Crypter& crypter, string& in, string* out);
+//  bool Unprotect(Crypter& crypter, string& in, string* out);
+}
+
+TEST(Certs, all) {
+//  bool GenerateX509CertificateRequest(string& key_type, string& common_name,
+//            EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req);
+//bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign,
+//                         string& signing_issuer,string& keyUsage,
+//                         string& extendedKeyUsage,
+//                         int64 duration, EVP_PKEY* signedKey,
+//                         X509_REQ* req, bool verify_req_sig, X509* cert);
+//bool VerifyX509CertificateChain(X509* cacert, X509* cert);
+}
+
+TEST(KeyBytes, all) {
+// bool KeyPrincipalBytes(Verifier* v, string* out);
+// bool UniversalKeyName(Verifier* v, string* out);
+}
+
 TEST(KeyTranslate, All) {
   tao::CryptoKey ck1;
   string type("ecdsap256");

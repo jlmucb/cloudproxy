@@ -535,7 +535,39 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac, string* out) {
     out->assign((const char*)t_buf, in.size());
     free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
+    uint64_t ctr[2] = {0ULL, 0ULL};
+    byte* t_buf = (byte*) malloc(in.size());
+    byte mac[48];
+    unsigned int mac_size = 48;
+    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
+    HMAC_CTX ctx;
+    HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha384(), NULL);
+    HMAC_Update(&ctx, (byte*) ed.ciphertext().data(), ed.ciphertext().size());
+    HMAC_Final(&ctx, (byte*)mac, &mac_size);
+    HMAC_CTX_cleanup(&ctx);
+    if (!EqualBytes(mac, mac_size, (byte*)ed.mac().data(), ed.mac().size()))
+      return false;
+    out->assign((const char*)t_buf, in.size());
+    free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
+    uint64_t ctr[2] = {0ULL, 0ULL};
+    byte* t_buf = (byte*) malloc(in.size());
+    byte mac[64];
+    unsigned int mac_size = 64;
+    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
+    HMAC_CTX ctx;
+    HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha512(), NULL);
+    HMAC_Update(&ctx, (byte*) ed.ciphertext().data(), ed.ciphertext().size());
+    HMAC_Final(&ctx, (byte*)mac, &mac_size);
+    HMAC_CTX_cleanup(&ctx);
+    if (!EqualBytes(mac, mac_size, (byte*)ed.mac().data(), ed.mac().size()))
+      return false;
+    out->assign((const char*)t_buf, in.size());
+    free(t_buf);
   } else {
     return false;
   }
@@ -646,13 +678,22 @@ bool Unprotect(Crypter& c, string& in, string* out) {
 }
 
 bool UniversalKeyName(Verifier* v, string* out) {
+  string t_out;
+  if (!KeyPrincipalBytes(v, &t_out))
+    return false;
+  byte mac[32];
+  SHA256_CTX sha256;
+  SHA256_Init(&sha256);
+  SHA256_Update(&sha256, t_out.data(), t_out.size());
+  SHA256_Final(mac, &sha256);
+  out->assign((const char*)mac, 32);
   return true;
 }
 
 bool KeyPrincipalBytes(Verifier* v, string* out) {
-  // EVP_PKEY* evp_key = EVP_PKEY_new();
-  // EVP_PKEY_set1_EC_KEY(evp_key, ec_key);
-  // EC_POINT* pub_key = EC_KEY_get0_public_key(ec_key);
-  // int size_der = i2d_PUBKEY(evp_key, (byte**)&buf);
+  byte buf[512];
+  byte* pb = buf;
+  int size_der = i2d_PUBKEY(v->vk_, (byte**)&pb);
+  out->assign((const char*)buf, size_der);
   return true;
 }

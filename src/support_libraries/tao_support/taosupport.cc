@@ -21,7 +21,8 @@
 #include "tao/tao_rpc.h"
 #include "tao/util.h"
 
-#include "helpers.h"
+#include "agile_crypto_support.h"
+#include "ssl_helpers.h"
 #include "taosupport.h"
 
 #include <openssl/ssl.h>

@@ -51,7 +51,7 @@ public:
 class Verifier {
 public:
   tao::CryptoHeader* ch_;
-  EVP_PKEY* sk_;
+  EVP_PKEY* vk_;
 
   bool Verify(string& in, string* out);
 };
@@ -80,6 +80,8 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck);
 tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck);
 tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck);
 tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck);
+bool SerializeECCKeyComponents(EC_KEY* ec_key, string* component);
+bool DeserializeECCKeyComponents(string component, EC_KEY* ec_key);
 
 bool Protect(Crypter& crypter, string& in, string* out);
 bool Unprotect(Crypter& crypter, string& in, string* out);

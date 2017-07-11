@@ -86,13 +86,48 @@ bool WriteFile(string& file_name, string& in) {
 }
 
 Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck) {
-  if (ck.key_header().key_type() == string("ecdsap256-public")) {
+
+  EVP_PKEY* pk = EVP_PKEY_new();
+  EC_KEY* ec_key = nullptr;
+  int k;
+
+  if (ck.key_header().key_type()  == string("ecdsap256-public")) {
+    k = OBJ_txt2nid("prime256v1");
+    ec_key = EC_KEY_new_by_curve_name(k);
+    if (ec_key == nullptr) {
+        printf("GenerateKey: couldn't generate ECC program key (1).\n");
+        return nullptr;
+    }
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
   } else if (ck.key_header().key_type() == string("ecdsap384-public")) {
+    k = OBJ_txt2nid("secp384r1");
+    ec_key = EC_KEY_new_by_curve_name(k);
+    if (ec_key == nullptr) {
+        printf("GenerateKey: couldn't generate ECC program key (1).\n");
+        return nullptr;
+    }
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
   } else if (ck.key_header().key_type() == string("ecdsap521-public")) {
+    k = OBJ_txt2nid("secp521r1");
+    ec_key = EC_KEY_new_by_curve_name(k);
+    if (ec_key == nullptr) {
+        printf("GenerateKey: couldn't generate ECC program key (1).\n");
+        return nullptr;
+    }
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
   } else {
     return nullptr;
   }
-  return nullptr;
+  int n = ck.key_components().size();
+  if (!DeserializeECCKeyComponents(ck.key_components(0), ec_key)) {
+    return nullptr;
+  }
+  Verifier* v = new(Verifier);
+  v->ch_ = new(tao::CryptoHeader);
+  *v->ch_ = ck.key_header();
+  EVP_PKEY_set1_EC_KEY(pk, ec_key);
+  v->vk_ = pk;
+  return v;
 }
 
 Signer* CryptoKeyToSigner(tao::CryptoKey& ck) {
@@ -369,7 +404,7 @@ bool Signer::Sign(string& in, string* out) {
   if (!ch_->has_key_purpose()) {
     return false;
   }
-  if (ch_->key_purpose() != string("verifying")) {
+  if (ch_->key_purpose() != string("signing")) {
     return false;
   }
 
@@ -416,7 +451,7 @@ bool Signer::Verify(string& msg, string& serialized_sig) {
   if (!ch_->has_key_purpose()) {
     return false;
   }
-  if (ch_->key_purpose() != string("verifying")) {
+  if (ch_->key_purpose() != string("signing")) {
     return false;
   }
 
@@ -455,7 +490,7 @@ bool Signer::Verify(string& msg, string& serialized_sig) {
   return result == 1;
 }
 
-bool Verifier::Verify(string& in, string* out) {
+bool Verifier::Verify(string& msg, string& serialized_sig) {
   if (ch_ == nullptr) {
     return false;
   }
@@ -468,14 +503,40 @@ bool Verifier::Verify(string& in, string* out) {
   if (ch_->key_purpose() != string("verifying")) {
     return false;
   }
-  if (ch_->key_type() != string("ecdsap256-public") &&
-      ch_->key_type() != string("ecdsap384-public") &&
-      ch_->key_type() != string("ecdsap521-public")) {
+
+  byte digest[128];
+  int dig_len;
+  byte signature[2048];
+  int sig_len;
+  if (ch_->key_type() == string("ecdsap256")) {
+    dig_len = 32;
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (byte*)msg.data(), msg.size());
+    SHA256_Final(digest, &sha256);
+  } else if (ch_->key_type() != string("ecdsap384")) {
+    dig_len = 48;
+    SHA512_CTX sha384;
+    SHA384_Init(&sha384);
+    SHA384_Update(&sha384, (byte*)msg.data(), msg.size());
+    SHA384_Final(digest, &sha384);
+  } else if (ch_->key_type() != string("ecdsap521")) {
+    dig_len = 64;
+    SHA512_CTX sha512;
+    SHA512_Init(&sha512);
+    SHA512_Update(&sha512, (byte*)msg.data(), msg.size());
+    SHA512_Final(digest, &sha512);
+  } else {
     return false;
   }
-  
-  *out = in;
-  return true;
+
+  ECDSA_SIG sig;
+  if (!EC_SIG_deserialize(serialized_sig, &sig)) {
+    return false;
+  }
+  EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(vk_);
+  int result = ECDSA_do_verify((const byte*) digest, dig_len, (const ECDSA_SIG *) &sig, ec_key);
+  return result == 1;
 }
 
 bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {

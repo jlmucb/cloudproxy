@@ -53,7 +53,7 @@ public:
   tao::CryptoHeader* ch_;
   EVP_PKEY* vk_;
 
-  bool Verify(string& in, string* out);
+  bool Verify(string& msg, string& serialized_sig);
 };
 
 class Crypter {

@@ -108,13 +108,7 @@ public:
   X509* GetPeerCert();
 };
 
-char ValueToHex(byte x);
-byte HexToValue(char x);
-
-string* ByteToHexLeftToRight(int, byte*);
-string* ByteToHexRightToLeft(int, byte*);
-int HexToByteLeftToRight(char*, int, byte*);
-int HexToByteRightToLeft(char*, int, byte*);
-
+bool EC_SIG_serialize(ECDSA_SIG* sig, string* out);
+bool EC_SIG_deserialize(string& in, ECDSA_SIG* sig);
 #endif
 

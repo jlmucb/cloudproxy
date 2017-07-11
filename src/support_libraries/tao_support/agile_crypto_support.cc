@@ -372,18 +372,41 @@ bool Signer::Sign(string& in, string* out) {
   if (ch_->key_purpose() != string("verifying")) {
     return false;
   }
+
+  byte digest[128];
+  int dig_len;
+  byte signature[2048];
+  int sig_len;
   if (ch_->key_type() == string("ecdsap256")) {
-  } else if (ch_->key_type() == string("ecdsap384")) {
-  } else if (ch_->key_type() == string("ecdsap521")) {
+    dig_len = 32;
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (byte*)in.data(), in.size());
+    SHA256_Final(digest, &sha256);
+  } else if (ch_->key_type() != string("ecdsap384")) {
+    dig_len = 48;
+    SHA512_CTX sha384;
+    SHA384_Init(&sha384);
+    SHA384_Update(&sha384, (byte*)in.data(), in.size());
+    SHA384_Final(digest, &sha384);
+  } else if (ch_->key_type() != string("ecdsap521")) {
+    dig_len = 64;
+    SHA512_CTX sha512;
+    SHA512_Init(&sha512);
+    SHA512_Update(&sha512, (byte*)in.data(), in.size());
+    SHA512_Final(digest, &sha512);
   } else {
     return false;
   }
-  
-  *out = in;
+  EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(sk_);
+  ECDSA_SIG* sig = ECDSA_do_sign((const byte*) digest, dig_len, ec_key);
+  if (!EC_SIG_serialize(sig, out)) {
+    return false;
+  }
   return true;
 }
 
-bool Signer::Verify(string& in, string* out) {
+bool Signer::Verify(string& msg, string& serialized_sig) {
   if (ch_ == nullptr) {
     return false;
   }
@@ -396,15 +419,40 @@ bool Signer::Verify(string& in, string* out) {
   if (ch_->key_purpose() != string("verifying")) {
     return false;
   }
+
+  byte digest[128];
+  int dig_len;
+  byte signature[2048];
+  int sig_len;
   if (ch_->key_type() == string("ecdsap256")) {
-  } else if (ch_->key_type() == string("ecdsap384")) {
-  } else if (ch_->key_type() == string("ecdsap521")) {
+    dig_len = 32;
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (byte*)msg.data(), msg.size());
+    SHA256_Final(digest, &sha256);
+  } else if (ch_->key_type() != string("ecdsap384")) {
+    dig_len = 48;
+    SHA512_CTX sha384;
+    SHA384_Init(&sha384);
+    SHA384_Update(&sha384, (byte*)msg.data(), msg.size());
+    SHA384_Final(digest, &sha384);
+  } else if (ch_->key_type() != string("ecdsap521")) {
+    dig_len = 64;
+    SHA512_CTX sha512;
+    SHA512_Init(&sha512);
+    SHA512_Update(&sha512, (byte*)msg.data(), msg.size());
+    SHA512_Final(digest, &sha512);
   } else {
     return false;
   }
-  
-  *out = in;
-  return true;
+
+  ECDSA_SIG sig;
+  if (!EC_SIG_deserialize(serialized_sig, &sig)) {
+    return false;
+  }
+  EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(sk_);
+  int result = ECDSA_do_verify((const byte*) digest, dig_len, (const ECDSA_SIG *) &sig, ec_key);
+  return result == 1;
 }
 
 bool Verifier::Verify(string& in, string* out) {

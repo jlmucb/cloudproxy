@@ -27,6 +27,7 @@
 #include <thread>
 
 #include <messages.pb.h>
+#include <keys.pb.h>
 
 using std::string;
 using std::unique_ptr;
@@ -100,6 +101,32 @@ bool BN_to_string(BIGNUM& n, string* out) {
 
   int len = BN_bn2bin(&n, buf);
   out->assign((const char*)buf, len);
+  return true;
+}
+
+bool EC_SIG_serialize(ECDSA_SIG* sig, string* out) {
+  string* r_out = BN_to_bin(*sig->r);
+  string* s_out = BN_to_bin(*sig->s);
+  tao::EcdsaSig serialized_proto;
+  serialized_proto.set_r_val(*r_out);
+  serialized_proto.set_s_val(*s_out);
+  delete r_out;
+  delete s_out;
+  if (!serialized_proto.SerializeToString(out)) {
+    return false;
+  }
+  return true;
+}
+
+bool EC_SIG_deserialize(string& in, ECDSA_SIG* sig) {
+  tao::EcdsaSig serialized_proto;
+  if (!serialized_proto.ParseFromString(in)) {
+    return false;
+  }
+  BIGNUM* r = bin_to_BN(serialized_proto.r_val().size(), (byte*)serialized_proto.r_val().data());
+  BIGNUM* s = bin_to_BN(serialized_proto.s_val().size(), (byte*)serialized_proto.s_val().data());
+  sig->r = r;
+  sig->s = s;
   return true;
 }
 

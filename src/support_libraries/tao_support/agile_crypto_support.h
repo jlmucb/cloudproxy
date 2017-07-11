@@ -45,7 +45,7 @@ public:
   EVP_PKEY* sk_;
 
   bool Sign(string& in, string* out);
-  bool Verify(string& in, string* out);
+  bool Verify(string& msg, string& sig);
 };
 
 class Verifier {

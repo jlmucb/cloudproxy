@@ -59,6 +59,9 @@ TEST(SigningCryptingVerifying, all) {
   EXPECT_TRUE(GenerateCryptoKey(type, &ckSigner));
   PrintCryptoKey(ckSigner);
 
+  Signer* s = CryptoKeyToSigner(ckSigner);
+
+
 //   Verifier* VerifierFromSigner(Signer* s);
 //   Verifier* VerifierFromCertificate(string& der);
 //   bool Sign(string& in, string* out);
@@ -98,6 +101,7 @@ TEST(KeyBytes, all) {
 }
 
 TEST(KeyTranslate, All) {
+/*
   tao::CryptoKey ck1;
   string type("ecdsap256");
 
@@ -128,6 +132,7 @@ TEST(KeyTranslate, All) {
   type= "aes256-ctr-hmacsha512";
   EXPECT_TRUE(GenerateCryptoKey(type, &ck6));
   PrintCryptoKey(ck6);
+ */
 }
 
 

@@ -163,7 +163,9 @@ Signer* CryptoKeyToSigner(tao::CryptoKey& ck) {
   } else {
     return nullptr;
   }
-  int n = ck.key_components().size();
+  if (ck.key_components().size() < 1) {
+    return nullptr;
+  }
   if (!DeserializeECCKeyComponents(ck.key_components(0), ec_key)) {
     return nullptr;
   }
@@ -179,13 +181,13 @@ Verifier* VerifierFromSigner(Signer* s) {
   Verifier* v = new(Verifier);
   EC_KEY* ec_pub_key = nullptr;
   if (s->ch_->key_type() == string("aes128-ctr-hmacsha256")) {
-  	ec_pub_key = EC_KEY_new_by_curve_name(NID_secp256k1);
+        ec_pub_key = EC_KEY_new_by_curve_name(NID_secp256k1);
   } else if (s->ch_->key_type() != string("aes256-ctr-hmacsha384")) {
-	int k = OBJ_txt2nid("secp384r1");
-  	ec_pub_key = EC_KEY_new_by_curve_name(k);
+        int k = OBJ_txt2nid("secp384r1");
+        ec_pub_key = EC_KEY_new_by_curve_name(k);
   } else if (s->ch_->key_type() == string("aes256-ctr-hmacsha512")) {
-	int k = OBJ_txt2nid("secp521r1");
-  	ec_pub_key = EC_KEY_new_by_curve_name(k);
+        int k = OBJ_txt2nid("secp521r1");
+        ec_pub_key = EC_KEY_new_by_curve_name(k);
   } else {
     return nullptr;
   }
@@ -219,13 +221,24 @@ Verifier* VerifierFromCertificate(string& der) {
   if (v->vk_->type != EVP_PKEY_EC) {
     return nullptr;
   }
-  // EC_METHOD_get_field_type(meth);
-  // EC_METHOD *EC_POINT_method_of(const EC_POINT *point);
-  // EC_F_ECP_NIST_MOD_521
-  // ch->set_key_type("ecdsap256-public");
+  EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(v->vk_);
+  const EC_GROUP *ecgrp = EC_KEY_get0_group(ec_key);
+  const char* s_type = OBJ_nid2sn(EC_GROUP_get_curve_name(ecgrp));
   ch->set_key_epoch(1);
   ch->set_key_purpose("verifying");
   ch->set_key_status("active");
+  if (s_type == nullptr) {
+    return nullptr;
+  }
+  if (strcmp(s_type, "prime256v1") == 0) {
+    ch->set_key_type("ecdsap256-public");
+  } else if (strcmp(s_type, "secp384r1") == 0) {
+    ch->set_key_type("ecdsap384-public");
+  } else if (strcmp(s_type, "secp521r1") == 0) {
+    ch->set_key_type("ecdsap521-public");
+  } else {
+    return nullptr;
+  }
   v->ch_ = ch;
   return v;
 }
@@ -314,8 +327,9 @@ bool SerializeECCKeyComponents(EC_KEY* ec_key, string* component) {
 
 bool DeserializeECCKeyComponents(string component, EC_KEY* ec_key) {
   byte buf[4096];
+  byte* pb = buf;
   memcpy(buf, component.data(), component.size());
-  EC_KEY* ec = d2i_ECPrivateKey(&ec_key, (const byte**)&buf, component.size());
+  EC_KEY* ec = d2i_ECPrivateKey(&ec_key, (const byte**)&pb, component.size());
   return true;
 }
 

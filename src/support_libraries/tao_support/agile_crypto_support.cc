@@ -17,8 +17,10 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <sys/types.h>
 
 #include "agile_crypto_support.h"
+#include "ssl_helpers.h"
 
 #include <openssl/ssl.h>
 #include <openssl/rsa.h>
@@ -36,6 +38,16 @@ void PrintBytes(int size, byte* buf) {
   for (int i = 0; i < size; i++) {
     printf("%02x", buf[i]);
   }
+}
+
+bool EqualBytes(byte* in1, int size1, byte* in2, int size2) {
+  if (size1 != size2)
+    return false;
+  for (int i = 0; i < size1; i++) {
+    if (in1[i] != in2[i])
+      return false;
+  }
+  return true;
 }
 
 bool ReadFile(string& file_name, string* out) {
@@ -408,10 +420,9 @@ bool Verifier::Verify(string& in, string* out) {
   if (ch_->key_purpose() != string("verifying")) {
     return false;
   }
-  if (ch_->key_type() == string("ecdsap256-public")) {
-  } else if (ch_->key_type() == string("ecdsap384-public")) {
-  } else if (ch_->key_type() == string("ecdsap521-public")) {
-  } else {
+  if (ch_->key_type() != string("ecdsap256-public") &&
+      ch_->key_type() != string("ecdsap384-public") &&
+      ch_->key_type() != string("ecdsap521-public")) {
     return false;
   }
   
@@ -419,7 +430,77 @@ bool Verifier::Verify(string& in, string* out) {
   return true;
 }
 
-bool Crypter::Encrypt(string& in, string* out) {
+bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
+  if (ch_ == nullptr) {
+    return false;
+  }
+  if (!ch_->has_key_type()) {
+    return false;
+  }
+  if (!ch_->has_key_purpose()) {
+    return false;
+  }
+  if (ch_->key_purpose() != string("crypting")) {
+    return false;
+  }
+  if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
+    uint64_t ctr[2] = {0ULL, 0ULL};
+    byte* t_buf = (byte*) malloc(in.size());
+    byte mac[32];
+    unsigned int mac_size = 32;
+    if (!Aes128CtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
+    HMAC_CTX ctx;
+    HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha256(), NULL);
+    HMAC_Update(&ctx, t_buf, in.size());
+    HMAC_Final(&ctx, (byte*)mac, &mac_size);
+    HMAC_CTX_cleanup(&ctx);
+    out->assign((const char*)t_buf, in.size());
+    iv->assign((const char*)ctr, 16);
+    mac_out->assign((const char*)&mac, 32);
+    free(t_buf);
+  } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
+    uint64_t ctr[2] = {0ULL, 0ULL};
+    byte* t_buf = (byte*) malloc(in.size());
+    byte mac[48];
+    unsigned int mac_size = 48;
+    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
+    HMAC_CTX ctx;
+    HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha384(), NULL);
+    HMAC_Update(&ctx, t_buf, in.size());
+    HMAC_Final(&ctx, (byte*)mac, &mac_size);
+    HMAC_CTX_cleanup(&ctx);
+    out->assign((const char*)t_buf, in.size());
+    iv->assign((const char*)ctr, 16);
+    mac_out->assign((const char*)&mac, 32);
+    free(t_buf);
+  } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
+    uint64_t ctr[2] = {0ULL, 0ULL};
+    byte* t_buf = (byte*) malloc(in.size());
+    byte mac[64];
+    unsigned int mac_size = 64;
+    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
+    HMAC_CTX ctx;
+    HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha512(), NULL);
+    HMAC_Update(&ctx, t_buf, in.size());
+    HMAC_Final(&ctx, (byte*)mac, &mac_size);
+    HMAC_CTX_cleanup(&ctx);
+    out->assign((const char*)t_buf, in.size());
+    iv->assign((const char*)ctr, 16);
+    mac_out->assign((const char*)&mac, 32);
+    free(t_buf);
+  } else {
+    return false;
+  }
+  return true;
+}
+
+bool Crypter::Decrypt(string& in, string& iv, string& mac, string* out) {
   if (ch_ == nullptr) {
     return false;
   }
@@ -432,38 +513,32 @@ bool Crypter::Encrypt(string& in, string* out) {
   if (ch_->key_purpose() != string("verifying")) {
     return false;
   }
+  tao::EncryptedData ed;
+  if (ed.ParseFromString(in)) {
+    return false;
+  }
   if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
+    uint64_t ctr[2] = {0ULL, 0ULL};
+    byte* t_buf = (byte*) malloc(in.size());
+    byte mac[32];
+    unsigned int mac_size = 32;
+    if (!Aes128CtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
+    HMAC_CTX ctx;
+    HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha256(), NULL);
+    HMAC_Update(&ctx, (byte*) ed.ciphertext().data(), ed.ciphertext().size());
+    HMAC_Final(&ctx, (byte*)mac, &mac_size);
+    HMAC_CTX_cleanup(&ctx);
+    if (!EqualBytes(mac, mac_size, (byte*)ed.mac().data(), ed.mac().size()))
+      return false;
+    out->assign((const char*)t_buf, in.size());
+    free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
   } else {
     return false;
   }
-  
-  *out = in;
-  return true;
-}
-
-bool Crypter::Decrypt(string& in, string* out) {
-  if (ch_ == nullptr) {
-    return false;
-  }
-  if (!ch_->has_key_type()) {
-    return false;
-  }
-  if (!ch_->has_key_purpose()) {
-    return false;
-  }
-  if (ch_->key_purpose() != string("verifying")) {
-    return false;
-  }
-  if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
-  } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
-  } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
-  } else {
-    return false;
-  }
-  
-  *out = in;
   return true;
 }
 
@@ -540,12 +615,34 @@ bool UnmarshalSavedProgramData(tao_support::SavedProgramData* pd, string in) {
   return true;
 }
 
-bool Protect(Crypter& crypter, string& in, string* out) {
-  return crypter.Encrypt(in, out);
+bool Protect(Crypter& c, string& in, string* out) {
+  string iv;
+  string mac_out;
+  string t_out;
+  if (!c.Encrypt(in, &iv, &mac_out, &t_out))
+    return false;
+  tao::EncryptedData* ed = new(tao::EncryptedData);
+  tao::CryptoHeader* ch = new(tao::CryptoHeader);
+  *ch = *c.ch_;
+  ed->set_allocated_header(ch);
+  ed->set_iv(iv);
+  ed->set_ciphertext(t_out);
+  ed->set_mac(mac_out);
+  ed->SerializeToString(out);
+  return true;
 }
 
-bool Unprotect(Crypter& crypter, string& in, string* out) {
-  return crypter.Decrypt(in, out);
+bool Unprotect(Crypter& c, string& in, string* out) {
+  tao::EncryptedData ed;
+  if (!ed.ParseFromString(in)) {
+    return false;
+  }
+  string in_buf = ed.ciphertext();
+  string iv = ed.iv();
+  string mac_in = ed.iv();
+  if (c.Decrypt(in_buf, iv, mac_in, out))
+    return false;
+  return true;
 }
 
 bool UniversalKeyName(Verifier* v, string* out) {

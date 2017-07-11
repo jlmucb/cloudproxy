@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include <helpers.h>
+#include <ssl_helpers.h>
 
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -52,88 +52,6 @@ using std::vector;
 // and downloaded on or about August 6, 2015.
 // File: helpers.cc
 
-bool SerializePublicKey(string& key_type, EVP_PKEY* key, string* out_buf) {
-/*
-  simpleexample_messages::PrivateKeyMessage msg;
-
-  if (key_type == "RSA") {
-    RSA* rsa_key = EVP_PKEY_get1_RSA(key);
-    msg.set_allocated_rsa_key(new simpleexample_messages::RsaPrivateKeyMessage());
-    string* m_str = BN_to_bin(*rsa_key->n);
-    msg.mutable_rsa_key()->set_m(*m_str);
-    string* e_str = BN_to_bin(*rsa_key->e);
-    msg.mutable_rsa_key()->set_e(*e_str);
-    string* d_str = BN_to_bin(*rsa_key->d);
-    msg.mutable_rsa_key()->set_d(*d_str);
-    msg.set_key_type("RSA");
-  } else if (key_type == "ECC") {
-    EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(key);
-    msg.set_allocated_ec_key(new simpleexample_messages::EcPrivateKeyMessage());
-    byte out[4096];
-    byte* ptr = out;
-    int n = i2d_ECPrivateKey(ec_key, &ptr);
-    if (n <= 0) {
-      printf("Can't i2d ECC private key\n");
-      return false;
-    }
-    msg.mutable_ec_key()->set_der_blob((void*)out, (size_t)n);
-    msg.set_key_type("ECC");
-  } else {
-    printf("SerializePrivateKey: Unknown key type\n");
-    return false;
-  }
-
-  if (!msg.SerializeToString(out_buf)) {
-    return false;
-  }
-*/
-  return true;
-}
-
-bool DeserializePublicKey(string& in_buf, string* key_type, EVP_PKEY** key) {
-/*
-  simpleexample_messages::PrivateKeyMessage msg;
-
-  if (!msg.ParseFromString(in_buf)) {
-    return false;
-  }
-  key_type->assign(msg.key_type());
-  if (msg.key_type() == "RSA") {
-    if (!msg.has_rsa_key()) {
-      return false;
-    }
-    RSA* rsa_key = RSA_new();
-    if (msg.rsa_key().has_m())
-      rsa_key->n = bin_to_BN(msg.rsa_key().m().size(), (byte*)msg.rsa_key().m().data());
-    if (msg.rsa_key().has_e())
-      rsa_key->e = bin_to_BN(msg.rsa_key().e().size(), (byte*)msg.rsa_key().e().data());
-    if (msg.rsa_key().has_d())
-      rsa_key->d = bin_to_BN(msg.rsa_key().d().size(), (byte*)msg.rsa_key().d().data());
-      EVP_PKEY* pKey = new EVP_PKEY();
-      EVP_PKEY_assign_RSA(pKey, rsa_key);
-      *key = pKey;
-  } else if (msg.key_type() == "ECC") {
-    if (!msg.has_ec_key()) {
-      return false;
-    }
-    const byte* ptr = (byte*)msg.ec_key().der_blob().data();
-    EC_KEY* ec_key = d2i_ECPrivateKey(nullptr, &ptr,
-                                      msg.ec_key().der_blob().size());
-    if (ec_key == nullptr) {
-      printf("Can't i2d ECC private key\n");
-      return false;
-    }
-    EVP_PKEY* pKey = new EVP_PKEY();
-    EVP_PKEY_assign_EC_KEY(pKey, ec_key);
-    *key = pKey;
-  } else {
-    printf("DeserializePrivateKey: Unknown key type\n");
-    return false;
-  }
-*/
-  return true;
-}
-
 // standard buffer size
 #define MAX_SIZE_PARAMS 4096
 
@@ -163,23 +81,6 @@ void PrintPrivateRSAKey(RSA& key) {
     BN_print_fp(stdout, key.q);
     printf("\n");
   }
-#if 0
-  if (key.dmp1 != nullptr) {
-    printf("\ndmp1: \n");
-    BN_print_fp(stdout, key.dmp1);
-    printf("\n");
-  }
-  if (key.dmq1 != nullptr) {
-    printf("\ndmq1: \n");
-    BN_print_fp(stdout, key.dmq1);
-    printf("\n");
-  }
-  if (key.iqmp != nullptr) {
-    printf("\niqmp: \n");
-    BN_print_fp(stdout, key.iqmp);
-    printf("\n");
-  }
-#endif
 }
 
 BIGNUM* bin_to_BN(int len, byte* buf) {
@@ -388,10 +289,9 @@ void XorBlocks(int size, byte* in1, byte* in2, byte* out) {
     out[i] = in1[i] ^ in2[i];
 }
 
-bool AesCtrCrypt(int key_size_bits, byte* key, int size,
-                 byte* in, byte* out) {
+bool Aes128CtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
+                    byte* in, byte* out) {
   AES_KEY ectx;
-  uint64_t ctr[2] = {0ULL, 0ULL};
   byte block[32];
 
   if (key_size_bits != 128) {
@@ -399,6 +299,27 @@ bool AesCtrCrypt(int key_size_bits, byte* key, int size,
   }
   
   AES_set_encrypt_key(key, 128, &ectx);
+  while (size > 0) {
+    ctr[1]++;
+    AES_encrypt((byte*)ctr, block, &ectx);
+    XorBlocks(16, block, in, out);
+    in += 16;
+    out += 16;
+    size -= 16;
+  }
+  return true;
+}
+
+bool Aes256CtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
+                    byte* in, byte* out) {
+  AES_KEY ectx;
+  byte block[32];
+
+  if (key_size_bits != 256) {
+    return false;
+  }
+  
+  AES_set_encrypt_key(key, 256, &ectx);
   while (size > 0) {
     ctr[1]++;
     AES_encrypt((byte*)ctr, block, &ectx);

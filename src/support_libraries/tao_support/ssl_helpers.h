@@ -49,9 +49,6 @@ typedef unsigned char byte;
 typedef long long unsigned int64;
 #endif
 
-bool SerializePublicKey(string& key_type, EVP_PKEY* key, string* out_buf);
-bool DeserializePublicKey(string& in_buf, string* key_type, EVP_PKEY** key);
-
 bool GenerateX509CertificateRequest(string& key_type, string& common_name,
             EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req);
 bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign,
@@ -66,12 +63,10 @@ string* BN_to_bin(BIGNUM& n);
 bool BN_to_string(BIGNUM& n, string* out);
 
 void XorBlocks(int size, byte* in1, byte* in2, byte* out);
-bool AesCtrCrypt(int key_size_bits, byte* key, int size,
-                 byte* in, byte* out);
-bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
-                   int* out_size, byte* out);
-bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
-                   int* out_size, byte* out);
+bool Aes128CtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
+                    byte* in, byte* out);
+bool Aes256CtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
+                    byte* in, byte* out);
 
 #define SSL_NO_SERVER_VERIFY_NO_CLIENT_AUTH 0
 #define SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY 1

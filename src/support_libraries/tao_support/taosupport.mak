@@ -56,8 +56,8 @@ else
 endif
 
 O= $(OBJ_DIR)
-dobj=	$(O)/taosupport_test.o $(O)/agile_crypto_support.o $(O)/keys.pb.o $(O)/attestation.pb.o
-# $(O)/taosupport.o
+dobj=	$(O)/taosupport_test.o $(O)/agile_crypto_support.o $(O)/keys.pb.o $(O)/attestation.pb.o \
+        $(O)/ssl_helpers.o # $(O)/taosupport.o
 
 all:	taosupport_test.exe
 clean:
@@ -77,6 +77,10 @@ $(O)/taosupport_test.o: $(ST)/taosupport_test.cc
 $(O)/agile_crypto_support.o: $(ST)/agile_crypto_support.cc
 	@echo "compiling agile_crypto_support.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/agile_crypto_support.o $(ST)/agile_crypto_support.cc
+
+$(O)/ssl_helpers.o: $(ST)/ssl_helpers.cc
+	@echo "compiling ssl_helpers.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/ssl_helpers.o $(ST)/ssl_helpers.cc
 
 $(O)/keys.pb.o: $(SP)/keys.pb.cc
 	@echo "compiling keys.pb.cc"

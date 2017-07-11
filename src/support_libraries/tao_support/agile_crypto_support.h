@@ -62,8 +62,8 @@ public:
   string* encryptingKeyBytes_;
   string* hmacKeyBytes_;
 
-  bool Encrypt(string& in, string* out);
-  bool Decrypt(string& in, string* out);
+  bool Encrypt(string& in, string* iv, string* mac, string* out);
+  bool Decrypt(string& in, string& iv, string& mac, string* out);
 };
 
 class Deriver {

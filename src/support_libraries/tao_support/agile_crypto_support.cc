@@ -177,9 +177,16 @@ Signer* CryptoKeyToSigner(tao::CryptoKey& ck) {
 
 Verifier* VerifierFromSigner(Signer* s) {
   Verifier* v = new(Verifier);
-  if (s->ch_->key_type() != string("aes128-ctr-hmacsha256") &&
-      s->ch_->key_type() != string("aes256-ctr-hmacsha384") &&
-      s->ch_->key_type() == string("aes256-ctr-hmacsha512")) {
+  EC_KEY* ec_pub_key = nullptr;
+  if (s->ch_->key_type() == string("aes128-ctr-hmacsha256")) {
+  	ec_pub_key = EC_KEY_new_by_curve_name(NID_secp256k1);
+  } else if (s->ch_->key_type() != string("aes256-ctr-hmacsha384")) {
+	int k = OBJ_txt2nid("secp384r1");
+  	ec_pub_key = EC_KEY_new_by_curve_name(k);
+  } else if (s->ch_->key_type() == string("aes256-ctr-hmacsha512")) {
+	int k = OBJ_txt2nid("secp521r1");
+  	ec_pub_key = EC_KEY_new_by_curve_name(k);
+  } else {
     return nullptr;
   }
   tao::CryptoHeader* ch = new(tao::CryptoHeader);
@@ -188,7 +195,6 @@ Verifier* VerifierFromSigner(Signer* s) {
   v->ch_ = ch;
   v->vk_ = EVP_PKEY_new();
   EC_KEY* priv_key = EVP_PKEY_get1_EC_KEY(s->sk_);
-  EC_KEY* ec_pub_key = EC_KEY_new_by_curve_name(NID_secp256k1);
   const EC_POINT* pub_key = EC_KEY_get0_public_key(priv_key);
   EVP_PKEY_set1_EC_KEY(v->vk_, ec_pub_key);
   return v;
@@ -208,7 +214,18 @@ Verifier* VerifierFromCertificate(string& der) {
   Verifier* v = new(Verifier);
   v->vk_ = X509_get_pubkey(cert);
   tao::CryptoHeader* ch = new(tao::CryptoHeader);
-  // ch->set_key_type(ch->key_type() + "-public");
+  ch->set_version(tao::CRYPTO_VERSION_2);
+  // Figure out type from vk_
+  if (v->vk_->type != EVP_PKEY_EC) {
+    return nullptr;
+  }
+  // EC_METHOD_get_field_type(meth);
+  // EC_METHOD *EC_POINT_method_of(const EC_POINT *point);
+  // EC_F_ECP_NIST_MOD_521
+  // ch->set_key_type("ecdsap256-public");
+  ch->set_key_epoch(1);
+  ch->set_key_purpose("verifying");
+  ch->set_key_status("active");
   v->ch_ = ch;
   return v;
 }

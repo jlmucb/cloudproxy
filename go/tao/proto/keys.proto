@@ -130,3 +130,8 @@ message KeyDerivationPDU {
   required string context = 3;
   required fixed32 index = 4;
 }
+
+message EcdsaSig {
+  required bytes r_val = 1;
+  required bytes s_val = 2;
+}

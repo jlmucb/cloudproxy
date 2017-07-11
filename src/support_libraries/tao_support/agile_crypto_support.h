@@ -76,6 +76,8 @@ class Deriver {
 Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck);
 Signer* CryptoKeyToSigner(tao::CryptoKey& ck);
 Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck);
+Verifier* VerifierFromSigner(Signer* s);
+Verifier* VerifierFromCertificate(string& der);
 bool GenerateCryptoKey(string& type, tao::CryptoKey* ck);
 tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck);
 tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck);

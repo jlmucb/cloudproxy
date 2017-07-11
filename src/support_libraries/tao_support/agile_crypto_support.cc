@@ -175,6 +175,44 @@ Signer* CryptoKeyToSigner(tao::CryptoKey& ck) {
   return s;
 }
 
+Verifier* VerifierFromSigner(Signer* s) {
+  Verifier* v = new(Verifier);
+  if (s->ch_->key_type() != string("aes128-ctr-hmacsha256") &&
+      s->ch_->key_type() != string("aes256-ctr-hmacsha384") &&
+      s->ch_->key_type() == string("aes256-ctr-hmacsha512")) {
+    return nullptr;
+  }
+  tao::CryptoHeader* ch = new(tao::CryptoHeader);
+  *ch = *(s->ch_);
+  ch->set_key_type(ch->key_type() + "-public");
+  v->ch_ = ch;
+  v->vk_ = EVP_PKEY_new();
+  EC_KEY* priv_key = EVP_PKEY_get1_EC_KEY(s->sk_);
+  EC_KEY* ec_pub_key = EC_KEY_new_by_curve_name(NID_secp256k1);
+  const EC_POINT* pub_key = EC_KEY_get0_public_key(priv_key);
+  EVP_PKEY_set1_EC_KEY(v->vk_, ec_pub_key);
+  return v;
+}
+
+Verifier* VerifierFromCertificate(string& der) {
+  X509 *cert;
+  byte buf[2048];
+  int len = 2048;
+  byte* p = buf;
+  memcpy(buf, (byte*) der.data(), der.size());
+  len = der.size();
+
+  if (d2i_X509(&cert, (const byte**) &p, len) == NULL) {
+    return nullptr;
+  }
+  Verifier* v = new(Verifier);
+  v->vk_ = X509_get_pubkey(cert);
+  tao::CryptoHeader* ch = new(tao::CryptoHeader);
+  // ch->set_key_type(ch->key_type() + "-public");
+  v->ch_ = ch;
+  return v;
+}
+
 Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck) {
   if (ck.key_header().key_type() != string("aes128-ctr-hmacsha256") &&
       ck.key_header().key_type() != string("aes256-ctr-hmacsha384") &&

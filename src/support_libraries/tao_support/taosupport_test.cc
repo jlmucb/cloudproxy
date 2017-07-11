@@ -49,10 +49,18 @@ TEST(ReadWrite, all) {
 }
 
 TEST(MarshalProgramStruct, all) {
+	// tao::SavedProgramData pd;
 }
 
 TEST(SigningCryptingVerifying, all) {
+  tao::CryptoKey ckSigner;
+  string type("ecdsap256");
 
+  EXPECT_TRUE(GenerateCryptoKey(type, &ckSigner));
+  PrintCryptoKey(ckSigner);
+
+//   Verifier* VerifierFromSigner(Signer* s);
+//   Verifier* VerifierFromCertificate(string& der);
 //   bool Sign(string& in, string* out);
 //   bool Verify(string& msg, string& sig);
 //   bool Encrypt(string& in, string* iv, string* mac, string* out);

@@ -23,7 +23,9 @@
 #include <memory>
 #include <cmath>
 
+#include <ssl_helpers.h>
 #include <agile_crypto_support.h>
+#include <openssl/rand.h> 
 
 using std::string;
 
@@ -49,10 +51,13 @@ TEST(ReadWrite, all) {
 }
 
 TEST(MarshalProgramStruct, all) {
-        // tao::SavedProgramData pd;
+  // tao::SavedProgramData pd;
 }
 
 TEST(SigningCryptingVerifying, all) {
+#ifdef FAKE_RAND_BYTES
+  printf("Using fake random numbers\n");
+#endif
   tao::CryptoKey ckSigner;
   string type("ecdsap256");
 
@@ -60,53 +65,109 @@ TEST(SigningCryptingVerifying, all) {
   PrintCryptoKey(ckSigner);
 
   Signer* s = CryptoKeyToSigner(ckSigner);
+  EXPECT_TRUE(s != nullptr);
   string msg("123456");
   string sig;
 
   EXPECT_TRUE(s->Sign(msg, &sig));
   EXPECT_TRUE(s->Verify(msg, sig));
+#if 0
+  Verifier* v = VerifierFromSigner(s);
+  EXPECT_TRUE(v != nullptr);
+  // EXPECT_TRUE(v->Verify(msg, sig));
+  // Verifier* VerifierFromCertificate(string& der);
 
+  type = "aes128-ctr-hmacsha256";
+  tao::CryptoKey ckCrypter;
 
-//   Verifier* VerifierFromSigner(Signer* s);
-//   Verifier* VerifierFromCertificate(string& der);
-//   bool Sign(string& in, string* out);
-//   bool Verify(string& msg, string& sig);
-//   bool Encrypt(string& in, string* iv, string* mac, string* out);
-//   bool Decrypt(string& in, string& iv, string& mac, string* out);
-//   Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck);
-//   Signer* CryptoKeyToSigner(tao::CryptoKey& ck);
-//   Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck);
-//   bool GenerateCryptoKey(string& type, tao::CryptoKey* ck);
-//   tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck);
-//   tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck);
-//   tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck);
-//   bool SerializeECCKeyComponents(EC_KEY* ec_key, string* component);
-//   bool DeserializeECCKeyComponents(string component, EC_KEY* ec_key);
+  EXPECT_TRUE(GenerateCryptoKey(type, &ckCrypter));
+  PrintCryptoKey(ckCrypter);
+
+  Crypter* c= CryptoKeyToCrypter(ckCrypter);
+  EXPECT_TRUE(c != nullptr);
+
+  string mac;
+  string iv;
+  string encrypted;
+  string decrypted;
+  EXPECT_TRUE(c->Encrypt(msg, &iv, &mac, &encrypted));
+  EXPECT_TRUE(c->Decrypt(encrypted, iv, mac, &decrypted));
+  EXPECT_TRUE(msg == decrypted);
+
+  tao::CryptoKey* ckC =  CrypterToCryptoKey(c);
+  EXPECT_TRUE(ckC != nullptr);
+  tao::CryptoKey* ckS = SignerToCryptoKey(s);
+  EXPECT_TRUE(ckS != nullptr);
+  tao::CryptoKey* ckV = VerifierToCryptoKey(v);
+  EXPECT_TRUE(ckV != nullptr);
+#endif
 }
 
 TEST(Protect_Unprotect, all) {
-//  bool Protect(Crypter& crypter, string& in, string* out);
-//  bool Unprotect(Crypter& crypter, string& in, string* out);
+  string type("aes128-ctr-hmacsha256");
+  tao::CryptoKey ckCrypter;
+
+  EXPECT_TRUE(GenerateCryptoKey(type, &ckCrypter));
+  PrintCryptoKey(ckCrypter);
+
+  Crypter* c= CryptoKeyToCrypter(ckCrypter);
+  EXPECT_TRUE(c != nullptr);
+#if 0
+  string msg("123456");
+  string encrypted;
+  string decrypted;
+  EXPECT_TRUE(Protect(*c, msg, &encrypted));
+  EXPECT_TRUE(Unprotect(*c, encrypted, &decrypted));
+  EXPECT_TRUE(msg == decrypted);
+#endif
 }
 
 TEST(Certs, all) {
-//  bool GenerateX509CertificateRequest(string& key_type, string& common_name,
-//            EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req);
-//bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign,
-//                         string& signing_issuer,string& keyUsage,
-//                         string& extendedKeyUsage,
-//                         int64 duration, EVP_PKEY* signedKey,
-//                         X509_REQ* req, bool verify_req_sig, X509* cert);
-//bool VerifyX509CertificateChain(X509* cacert, X509* cert);
+#if 0
+  tao::CryptoKey ckSigner;
+  string type("ecdsap256");
+
+  EXPECT_TRUE(GenerateCryptoKey(type, &ckSigner));
+  PrintCryptoKey(ckSigner);
+
+  Signer* s = CryptoKeyToSigner(ckSigner);
+  EXPECT_TRUE(s != nullptr);
+  string common_name("common_name");
+  X509_REQ* req = X509_REQ_new();
+  EXPECT_TRUE(GenerateX509CertificateRequest(s->sk_, common_name, true, req));
+  
+  string issuer_name("issuer_name");
+  string keyUsage("");
+  string extendedKeyUsage("");
+  X509* cert= X509_new();
+  EXPECT_TRUE(SignX509Certificate(s->sk_, true, true, issuer_name, keyUsage,
+          extendedKeyUsage, int64_t(365 * 86400), s->sk_, req, true, cert));
+  // EXPECT_TRUE(VerifyX509CertificateChain(cert, cert));
+#endif
 }
 
 TEST(KeyBytes, all) {
-// bool KeyPrincipalBytes(Verifier* v, string* out);
-// bool UniversalKeyName(Verifier* v, string* out);
+  tao::CryptoKey ckSigner;
+  string type("ecdsap256");
+
+  EXPECT_TRUE(GenerateCryptoKey(type, &ckSigner));
+  PrintCryptoKey(ckSigner);
+
+  Signer* s = CryptoKeyToSigner(ckSigner);
+  EXPECT_TRUE(s != nullptr);
+
+#if 0
+  Verifier* v = VerifierFromSigner(s);
+  EXPECT_TRUE(v != nullptr);
+  string prinBytes;
+  string universal_name;
+  EXPECT_TRUE(KeyPrincipalBytes(v, &prinBytes));
+  EXPECT_TRUE(UniversalKeyName(v, &universal_name));
+#endif
 }
 
 TEST(KeyTranslate, All) {
-/*
+
   tao::CryptoKey ck1;
   string type("ecdsap256");
 
@@ -137,7 +198,6 @@ TEST(KeyTranslate, All) {
   type= "aes256-ctr-hmacsha512";
   EXPECT_TRUE(GenerateCryptoKey(type, &ck6));
   PrintCryptoKey(ck6);
- */
 }
 
 

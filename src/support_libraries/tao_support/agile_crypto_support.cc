@@ -357,6 +357,8 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
       return false;
     }
     if (!SerializeECCKeyComponents(ec_key, &component)) {
+      printf("GenerateKey: couldn't serialize ECC key.\n");
+      return false;
     }
     string* kc = ck->add_key_components();
     *kc = component;
@@ -374,6 +376,8 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
       return false;
     }
     if (!SerializeECCKeyComponents(ec_key, &component)) {
+      printf("GenerateKey: couldn't generate ECC program key(2).\n");
+      return false;
     }
   } else if (type == string("ecdsap521")) {
     ch->set_key_purpose("signing");
@@ -389,13 +393,18 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
       return false;
     }
     if (!SerializeECCKeyComponents(ec_key, &component)) {
+      printf("GenerateKey: couldn't serialize ECC key.\n");
+      return false;
     }
   } else if (type == string("aes128-ctr-hmacsha256")) {
     ch->set_key_purpose("crypting");
+#ifdef FAKE_RAND_BYTES
+    int rc = RAND_pseudo_bytes(buf, 48);
+#else
     int rc = RAND_bytes(buf, 48);
-    unsigned long err = ERR_get_error();
-    if (err != 1) {
-      printf("GenerateKey: couldn't generate random bytes.\n");
+#endif
+    if (rc != 1) {
+      printf("GenerateKey: couldn't generate random bytes %d.\n", rc);
       return false;
     }
     string* kc = ck->add_key_components();
@@ -404,9 +413,12 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
     kc->assign((const char*)&buf[16], 32);
   } else if (type == string("aes256-ctr-hmacsha384")) {
     ch->set_key_purpose("crypting");
+#ifdef FAKE_RAND_BYTES
+    int rc = RAND_pseudo_bytes(buf, 80);
+#else
     int rc = RAND_bytes(buf, 80);
-    unsigned long err = ERR_get_error();
-    if (err != 1) {
+#endif
+    if (rc != 1) {
       printf("GenerateKey: couldn't generate random bytes.\n");
       return false;
     }
@@ -416,9 +428,12 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
     kc->assign((const char*)&buf[32], 48);
   } else if (type == string("aes256-ctr-hmacsha512")) {
     ch->set_key_purpose("crypting");
+#ifdef FAKE_RAND_BYTES
+    int rc = RAND_pseudo_bytes(buf, 96);
+#else
     int rc = RAND_bytes(buf, 96);
-    unsigned long err = ERR_get_error();
-    if (err != 1) {
+#endif
+    if (rc != 1) {
       printf("GenerateKey: couldn't generate random bytes.\n");
       return false;
     }

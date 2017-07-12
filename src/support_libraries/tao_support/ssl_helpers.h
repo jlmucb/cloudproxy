@@ -49,8 +49,8 @@ typedef unsigned char byte;
 typedef long long unsigned int64;
 #endif
 
-bool GenerateX509CertificateRequest(string& key_type, string& common_name,
-            EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req);
+bool GenerateX509CertificateRequest(EVP_PKEY* subjectKey, string& common_name,
+            bool sign_request, X509_REQ* req);
 bool SignX509Certificate(EVP_PKEY* signingKey, bool f_isCa, bool f_canSign,
                          string& signing_issuer,string& keyUsage,
                          string& extendedKeyUsage,

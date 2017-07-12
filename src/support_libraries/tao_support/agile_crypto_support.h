@@ -79,9 +79,9 @@ Crypter* CryptoKeyToCrypter(tao::CryptoKey& ck);
 Verifier* VerifierFromSigner(Signer* s);
 Verifier* VerifierFromCertificate(string& der);
 bool GenerateCryptoKey(string& type, tao::CryptoKey* ck);
-tao::CryptoKey* SignerToCryptoKey(tao::CryptoKey& ck);
-tao::CryptoKey* VerifierToCryptoKey(tao::CryptoKey& ck);
-tao::CryptoKey* CrypterToCryptoKey(tao::CryptoKey& ck);
+tao::CryptoKey* SignerToCryptoKey(Signer* s);
+tao::CryptoKey* VerifierToCryptoKey(Verifier* v);
+tao::CryptoKey* CrypterToCryptoKey(Crypter* c);
 bool SerializeECCKeyComponents(EC_KEY* ec_key, string* component);
 bool DeserializeECCKeyComponents(string component, EC_KEY* ec_key);
 

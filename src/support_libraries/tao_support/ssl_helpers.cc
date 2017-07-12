@@ -184,8 +184,8 @@ bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
   return true;
 }
 
-bool GenerateX509CertificateRequest(string& key_type, string& common_name,
-            EVP_PKEY* subjectKey, bool sign_request, X509_REQ* req) {
+bool GenerateX509CertificateRequest(EVP_PKEY* subjectKey, string& common_name,
+            bool sign_request, X509_REQ* req) {
   X509_NAME* subject = X509_NAME_new();
   X509_REQ_set_version(req, 2L);
   if (subject == nullptr) {

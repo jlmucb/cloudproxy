@@ -37,7 +37,7 @@ ST= $(S)/tao_support
 SP= $(S)/protos
 INCLUDE= -I$(ST) -I$(SP) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I/usr/local/ssl/include
 
-CFLAGS=$(INCLUDE) -O3 -g -std=c++11  -Wno-deprecated-declarations #-Wall
+CFLAGS=$(INCLUDE) -O3 -g -std=c++11 -Wno-deprecated-declarations -DFAKE_RAND_BYTES #-Wall
 
 OSName = YOSEMITE
 ifdef YOSEMITE

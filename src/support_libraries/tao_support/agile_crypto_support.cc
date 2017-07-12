@@ -636,55 +636,56 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
   if (ch_->key_purpose() != string("crypting")) {
     return false;
   }
+  uint64_t ctr[2] = {0ULL, 0ULL};
+  iv->assign((const char*)ctr, 16);
   if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
-    uint64_t ctr[2] = {0ULL, 0ULL};
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[32];
     unsigned int mac_size = 32;
-    if (!Aes128CtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       return false;
     }
     HMAC_CTX ctx;
-    HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha256(), NULL);
+    HMAC_CTX_init(&ctx);
+    HMAC_Init_ex(&ctx, (byte*)hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha256(), NULL);
+    HMAC_Update(&ctx, (byte*)iv->data(), iv->size());
     HMAC_Update(&ctx, t_buf, in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
     out->assign((const char*)t_buf, in.size());
-    iv->assign((const char*)ctr, 16);
-    mac_out->assign((const char*)&mac, 32);
+    mac_out->assign((const char*)mac, mac_size);
     free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
-    uint64_t ctr[2] = {0ULL, 0ULL};
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[48];
     unsigned int mac_size = 48;
-    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       return false;
     }
     HMAC_CTX ctx;
+    HMAC_CTX_init(&ctx);
     HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha384(), NULL);
+    HMAC_Update(&ctx, (byte*)iv->data(), iv->size());
     HMAC_Update(&ctx, t_buf, in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
     out->assign((const char*)t_buf, in.size());
-    iv->assign((const char*)ctr, 16);
-    mac_out->assign((const char*)&mac, 32);
     free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
-    uint64_t ctr[2] = {0ULL, 0ULL};
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[64];
     unsigned int mac_size = 64;
-    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       return false;
     }
     HMAC_CTX ctx;
+    HMAC_CTX_init(&ctx);
     HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha512(), NULL);
+    HMAC_Update(&ctx, (byte*)iv->data(), iv->size());
     HMAC_Update(&ctx, t_buf, in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
     out->assign((const char*)t_buf, in.size());
-    iv->assign((const char*)ctr, 16);
     mac_out->assign((const char*)&mac, 32);
     free(t_buf);
   } else {
@@ -693,7 +694,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
   return true;
 }
 
-bool Crypter::Decrypt(string& in, string& iv, string& mac, string* out) {
+bool Crypter::Decrypt(string& in, string& iv, string& mac_in, string* out) {
   if (ch_ == nullptr) {
     return false;
   }
@@ -703,62 +704,69 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac, string* out) {
   if (!ch_->has_key_purpose()) {
     return false;
   }
-  if (ch_->key_purpose() != string("verifying")) {
+  if (ch_->key_purpose() != string("crypting")) {
     return false;
   }
-  tao::EncryptedData ed;
-  if (ed.ParseFromString(in)) {
-    return false;
-  }
+  uint64_t ctr[2] = {0ULL, 0ULL};
+  memcpy((byte*)ctr, (byte*) iv.data(), iv.size());
   if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
-    uint64_t ctr[2] = {0ULL, 0ULL};
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[32];
     unsigned int mac_size = 32;
-    if (!Aes128CtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
-      return false;
-    }
     HMAC_CTX ctx;
+    HMAC_CTX_init(&ctx);
     HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha256(), NULL);
-    HMAC_Update(&ctx, (byte*) ed.ciphertext().data(), ed.ciphertext().size());
+    HMAC_Update(&ctx, (byte*)iv.data(), iv.size());
+    HMAC_Update(&ctx, (byte*) in.data(), in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
-    if (!EqualBytes(mac, mac_size, (byte*)ed.mac().data(), ed.mac().size()))
+    if (!AesCtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      printf("AesCtrCrypt decrypt failed\n");
       return false;
+    }
     out->assign((const char*)t_buf, in.size());
+    if (!EqualBytes(mac, mac_size, (byte*)mac_in.data(), mac_in.size())) {
+      printf("mac mismatch\n");
+      return false;
+    }
     free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
-    uint64_t ctr[2] = {0ULL, 0ULL};
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[48];
     unsigned int mac_size = 48;
-    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
-      return false;
-    }
     HMAC_CTX ctx;
+    HMAC_CTX_init(&ctx);
     HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha384(), NULL);
-    HMAC_Update(&ctx, (byte*) ed.ciphertext().data(), ed.ciphertext().size());
+    HMAC_Update(&ctx, (byte*)iv.data(), iv.size());
+    HMAC_Update(&ctx, (byte*) in.data(), in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
-    if (!EqualBytes(mac, mac_size, (byte*)ed.mac().data(), ed.mac().size()))
+    if (!EqualBytes(mac, mac_size, (byte*)mac_in.data(), mac_in.size())) {
       return false;
+    }
+    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
     out->assign((const char*)t_buf, in.size());
     free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha512")) {
-    uint64_t ctr[2] = {0ULL, 0ULL};
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[64];
     unsigned int mac_size = 64;
-    if (!Aes256CtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
-      return false;
-    }
     HMAC_CTX ctx;
+    HMAC_CTX_init(&ctx);
     HMAC_Init_ex(&ctx, hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha512(), NULL);
-    HMAC_Update(&ctx, (byte*) ed.ciphertext().data(), ed.ciphertext().size());
+    HMAC_CTX_init(&ctx);
+    HMAC_Update(&ctx, (byte*)iv.data(), iv.size());
+    HMAC_Update(&ctx, (byte*) in.data(), in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
-    if (!EqualBytes(mac, mac_size, (byte*)ed.mac().data(), ed.mac().size()))
+    if (!EqualBytes(mac, mac_size, (byte*)mac_in.data(), mac_in.size())) {
       return false;
+    }
+    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+      return false;
+    }
     out->assign((const char*)t_buf, in.size());
     free(t_buf);
   } else {

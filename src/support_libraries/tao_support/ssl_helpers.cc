@@ -316,37 +316,12 @@ void XorBlocks(int size, byte* in1, byte* in2, byte* out) {
     out[i] = in1[i] ^ in2[i];
 }
 
-bool Aes128CtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
+bool AesCtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
                     byte* in, byte* out) {
   AES_KEY ectx;
   byte block[32];
 
-  if (key_size_bits != 128) {
-    return false;
-  }
-  
-  AES_set_encrypt_key(key, 128, &ectx);
-  while (size > 0) {
-    ctr[1]++;
-    AES_encrypt((byte*)ctr, block, &ectx);
-    XorBlocks(16, block, in, out);
-    in += 16;
-    out += 16;
-    size -= 16;
-  }
-  return true;
-}
-
-bool Aes256CtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
-                    byte* in, byte* out) {
-  AES_KEY ectx;
-  byte block[32];
-
-  if (key_size_bits != 256) {
-    return false;
-  }
-  
-  AES_set_encrypt_key(key, 256, &ectx);
+  AES_set_encrypt_key(key, key_size_bits, &ectx);
   while (size > 0) {
     ctr[1]++;
     AES_encrypt((byte*)ctr, block, &ectx);

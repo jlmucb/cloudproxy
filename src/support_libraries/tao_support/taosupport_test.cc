@@ -76,6 +76,7 @@ TEST(SigningCryptingVerifying, all) {
   EXPECT_TRUE(v != nullptr);
   // EXPECT_TRUE(v->Verify(msg, sig));
   // Verifier* VerifierFromCertificate(string& der);
+#endif
 
   type = "aes128-ctr-hmacsha256";
   tao::CryptoKey ckCrypter;
@@ -92,8 +93,18 @@ TEST(SigningCryptingVerifying, all) {
   string decrypted;
   EXPECT_TRUE(c->Encrypt(msg, &iv, &mac, &encrypted));
   EXPECT_TRUE(c->Decrypt(encrypted, iv, mac, &decrypted));
+printf("msg: ");
+PrintBytes(msg.size(), (byte*)msg.data());
+printf("\n");
+printf("encrypted: ");
+PrintBytes(encrypted.size(), (byte*)encrypted.data());
+printf("\n");
+printf("decrypted: ");
+PrintBytes(decrypted.size(), (byte*)decrypted.data());
+printf("\n");
   EXPECT_TRUE(msg == decrypted);
 
+#if 0
   tao::CryptoKey* ckC =  CrypterToCryptoKey(c);
   EXPECT_TRUE(ckC != nullptr);
   tao::CryptoKey* ckS = SignerToCryptoKey(s);
@@ -112,14 +123,12 @@ TEST(Protect_Unprotect, all) {
 
   Crypter* c= CryptoKeyToCrypter(ckCrypter);
   EXPECT_TRUE(c != nullptr);
-#if 0
   string msg("123456");
   string encrypted;
   string decrypted;
   EXPECT_TRUE(Protect(*c, msg, &encrypted));
   EXPECT_TRUE(Unprotect(*c, encrypted, &decrypted));
   EXPECT_TRUE(msg == decrypted);
-#endif
 }
 
 TEST(Certs, all) {

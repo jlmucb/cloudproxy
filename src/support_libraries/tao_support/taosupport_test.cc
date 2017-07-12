@@ -93,22 +93,23 @@ TEST(SigningCryptingVerifying, all) {
   string decrypted;
   EXPECT_TRUE(c->Encrypt(msg, &iv, &mac, &encrypted));
   EXPECT_TRUE(c->Decrypt(encrypted, iv, mac, &decrypted));
-printf("msg: ");
-PrintBytes(msg.size(), (byte*)msg.data());
-printf("\n");
-printf("encrypted: ");
-PrintBytes(encrypted.size(), (byte*)encrypted.data());
-printf("\n");
-printf("decrypted: ");
-PrintBytes(decrypted.size(), (byte*)decrypted.data());
-printf("\n");
   EXPECT_TRUE(msg == decrypted);
 
-#if 0
+  printf("msg: ");
+  PrintBytes(msg.size(), (byte*)msg.data());
+  printf("\n");
+  printf("encrypted: ");
+  PrintBytes(encrypted.size(), (byte*)encrypted.data());
+  printf("\n");
+  printf("decrypted: ");
+  PrintBytes(decrypted.size(), (byte*)decrypted.data());
+  printf("\n");
+
   tao::CryptoKey* ckC =  CrypterToCryptoKey(c);
   EXPECT_TRUE(ckC != nullptr);
   tao::CryptoKey* ckS = SignerToCryptoKey(s);
   EXPECT_TRUE(ckS != nullptr);
+#if 0
   tao::CryptoKey* ckV = VerifierToCryptoKey(v);
   EXPECT_TRUE(ckV != nullptr);
 #endif
@@ -132,7 +133,6 @@ TEST(Protect_Unprotect, all) {
 }
 
 TEST(Certs, all) {
-#if 0
   tao::CryptoKey ckSigner;
   string type("ecdsap256");
 
@@ -145,6 +145,7 @@ TEST(Certs, all) {
   X509_REQ* req = X509_REQ_new();
   EXPECT_TRUE(GenerateX509CertificateRequest(s->sk_, common_name, true, req));
   
+#if 0
   string issuer_name("issuer_name");
   string keyUsage("");
   string extendedKeyUsage("");

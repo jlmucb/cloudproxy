@@ -78,38 +78,46 @@ TEST(SigningCryptingVerifying, all) {
   // Verifier* VerifierFromCertificate(string& der);
 #endif
 
-  type = "aes128-ctr-hmacsha256";
-  tao::CryptoKey ckCrypter;
+  string types[3] = {
+    "aes128-ctr-hmacsha256",
+    "aes256-ctr-hmacsha384",
+    "aes256-ctr-hmacsha512",
+  };
+  for (int i = 0; i < 3; i++) {
+    type = types[i];
+    tao::CryptoKey ckCrypter;
+  
+    EXPECT_TRUE(GenerateCryptoKey(type, &ckCrypter));
+    PrintCryptoKey(ckCrypter);
 
-  EXPECT_TRUE(GenerateCryptoKey(type, &ckCrypter));
-  PrintCryptoKey(ckCrypter);
+    Crypter* c= CryptoKeyToCrypter(ckCrypter);
+    EXPECT_TRUE(c != nullptr);
 
-  Crypter* c= CryptoKeyToCrypter(ckCrypter);
-  EXPECT_TRUE(c != nullptr);
+    string mac;
+    string iv;
+    string encrypted;
+    string decrypted;
+    EXPECT_TRUE(c->Encrypt(msg, &iv, &mac, &encrypted));
 
-  string mac;
-  string iv;
-  string encrypted;
-  string decrypted;
-  EXPECT_TRUE(c->Encrypt(msg, &iv, &mac, &encrypted));
-  EXPECT_TRUE(c->Decrypt(encrypted, iv, mac, &decrypted));
-  EXPECT_TRUE(msg == decrypted);
+    printf("msg: ");
+    PrintBytes(msg.size(), (byte*)msg.data());
+    printf("\n");
+    printf("encrypted: ");
+    PrintBytes(encrypted.size(), (byte*)encrypted.data());
+    printf("\n");
 
-  printf("msg: ");
-  PrintBytes(msg.size(), (byte*)msg.data());
-  printf("\n");
-  printf("encrypted: ");
-  PrintBytes(encrypted.size(), (byte*)encrypted.data());
-  printf("\n");
-  printf("decrypted: ");
-  PrintBytes(decrypted.size(), (byte*)decrypted.data());
-  printf("\n");
+    EXPECT_TRUE(c->Decrypt(encrypted, iv, mac, &decrypted));
+    printf("decrypted: ");
+    PrintBytes(decrypted.size(), (byte*)decrypted.data());
+    printf("\n");
+    EXPECT_TRUE(msg == decrypted);
+  }
 
+#if 0
   tao::CryptoKey* ckC =  CrypterToCryptoKey(c);
   EXPECT_TRUE(ckC != nullptr);
   tao::CryptoKey* ckS = SignerToCryptoKey(s);
   EXPECT_TRUE(ckS != nullptr);
-#if 0
   tao::CryptoKey* ckV = VerifierToCryptoKey(v);
   EXPECT_TRUE(ckV != nullptr);
 #endif

@@ -316,7 +316,7 @@ tao::CryptoKey* CrypterToCryptoKey(Crypter* c) {
 }
 
 bool SerializeECCKeyComponents(EC_KEY* ec_key, string* component) {
-  byte buf[512];
+  byte buf[2048];
   byte* pb = buf;
 
   int size_der = i2d_ECPrivateKey(ec_key, nullptr);
@@ -379,6 +379,8 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
       printf("GenerateKey: couldn't generate ECC program key(2).\n");
       return false;
     }
+    string* kc = ck->add_key_components();
+    *kc = component;
   } else if (type == string("ecdsap521")) {
     ch->set_key_purpose("signing");
     int k = OBJ_txt2nid("secp521r1");
@@ -396,6 +398,8 @@ bool GenerateCryptoKey(string& type, tao::CryptoKey* ck) {
       printf("GenerateKey: couldn't serialize ECC key.\n");
       return false;
     }
+    string* kc = ck->add_key_components();
+    *kc = component;
   } else if (type == string("aes128-ctr-hmacsha256")) {
     ch->set_key_purpose("crypting");
 #ifdef FAKE_RAND_BYTES

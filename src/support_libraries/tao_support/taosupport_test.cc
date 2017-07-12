@@ -58,33 +58,44 @@ TEST(SigningCryptingVerifying, all) {
 #ifdef FAKE_RAND_BYTES
   printf("Using fake random numbers\n");
 #endif
-  tao::CryptoKey ckSigner;
-  string type("ecdsap256");
 
-  EXPECT_TRUE(GenerateCryptoKey(type, &ckSigner));
-  PrintCryptoKey(ckSigner);
-
-  Signer* s = CryptoKeyToSigner(ckSigner);
-  EXPECT_TRUE(s != nullptr);
+  string type;
   string msg("123456");
-  string sig;
 
-  EXPECT_TRUE(s->Sign(msg, &sig));
-  EXPECT_TRUE(s->Verify(msg, sig));
+  string s_types[3] = {
+    "ecdsap256",
+    "ecdsap384",
+    "ecdsap521",
+  };
+
+  for (int i = 0; i < 3; i++) {
+    tao::CryptoKey ckSigner;
+    type = s_types[i];
+
+    EXPECT_TRUE(GenerateCryptoKey(type, &ckSigner));
+    PrintCryptoKey(ckSigner);
+
+    Signer* s = CryptoKeyToSigner(ckSigner);
+    EXPECT_TRUE(s != nullptr);
+    string sig;
+
+    EXPECT_TRUE(s->Sign(msg, &sig));
+    EXPECT_TRUE(s->Verify(msg, sig));
 #if 0
-  Verifier* v = VerifierFromSigner(s);
-  EXPECT_TRUE(v != nullptr);
-  // EXPECT_TRUE(v->Verify(msg, sig));
-  // Verifier* VerifierFromCertificate(string& der);
+    Verifier* v = VerifierFromSigner(s);
+    EXPECT_TRUE(v != nullptr);
+    // EXPECT_TRUE(v->Verify(msg, sig));
+    // Verifier* VerifierFromCertificate(string& der);
 #endif
+  }
 
-  string types[3] = {
+  string c_types[3] = {
     "aes128-ctr-hmacsha256",
     "aes256-ctr-hmacsha384",
     "aes256-ctr-hmacsha512",
   };
   for (int i = 0; i < 3; i++) {
-    type = types[i];
+    type = c_types[i];
     tao::CryptoKey ckCrypter;
   
     EXPECT_TRUE(GenerateCryptoKey(type, &ckCrypter));

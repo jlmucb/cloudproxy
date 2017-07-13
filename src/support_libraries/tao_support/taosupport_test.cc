@@ -60,7 +60,7 @@ TEST(SigningCryptingVerifying, all) {
 #endif
 
   string type;
-  string msg("123456");
+  string msg("0123456789abcdef0123456789abcdef0123456789abcdef");
 
   string s_types[3] = {
     "ecdsap256",

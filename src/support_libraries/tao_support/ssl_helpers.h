@@ -63,7 +63,7 @@ string* BN_to_bin(BIGNUM& n);
 bool BN_to_string(BIGNUM& n, string* out);
 
 void XorBlocks(int size, byte* in1, byte* in2, byte* out);
-bool AesCtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
+bool AesCtrCrypt(string& iv, int key_size_bits, byte* key, int size,
                     byte* in, byte* out);
 #define SSL_NO_SERVER_VERIFY_NO_CLIENT_AUTH 0
 #define SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY 1

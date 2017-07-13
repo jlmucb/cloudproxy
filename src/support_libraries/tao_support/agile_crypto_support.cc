@@ -641,14 +641,23 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
     return false;
   }
 
-  uint64_t ctr[2] = {0ULL, 0ULL};
-  iv->assign((const char*)ctr, 16);
+  byte iv_vec[16];
+#ifdef FAKE_RAND_BYTES
+  int rc = RAND_pseudo_bytes(iv_vec, 16);
+#else
+  int rc = RAND_bytes(iv_vec, 16);
+#endif
+    if (rc != 1) {
+      printf("Encrypt: couldn't generate iv\n");
+      return false;
+    }
+  iv->assign((const char*)iv_vec, 16);
   if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[32];
     unsigned int mac_size = 32;
 
-    if (!AesCtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(*iv, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       return false;
     }
     HMAC_CTX ctx;
@@ -666,7 +675,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
     byte mac[48];
     unsigned int mac_size = 48;
 
-    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(*iv, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       return false;
     }
 
@@ -685,7 +694,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
     byte mac[64];
     unsigned int mac_size = 64;
 
-    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(*iv, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       return false;
     }
 
@@ -720,9 +729,6 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac_in, string* out) {
     return false;
   }
 
-  uint64_t ctr[2] = {0ULL, 0ULL};
-  memcpy((byte*)ctr, (byte*) iv.data(), iv.size());
-
   if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[32];
@@ -736,7 +742,7 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac_in, string* out) {
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
 
-    if (!AesCtrCrypt(ctr, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(iv, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       printf("AesCtrCrypt decrypt failed\n");
       return false;
     }
@@ -763,7 +769,7 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac_in, string* out) {
       printf("mac 256-384 mismatch\n");
       return false;
     }
-    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(iv, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       printf("AesCtrCrypt decrypt failed\n");
       return false;
     }
@@ -787,7 +793,7 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac_in, string* out) {
       printf("mac 256-512 mismatch\n");
       return false;
     }
-    if (!AesCtrCrypt(ctr, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
+    if (!AesCtrCrypt(iv, 256, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       printf("AesCtrCrypt decrypt failed\n");
       return false;
     }

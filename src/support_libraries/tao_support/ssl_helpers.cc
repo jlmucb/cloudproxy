@@ -316,19 +316,42 @@ void XorBlocks(int size, byte* in1, byte* in2, byte* out) {
     out[i] = in1[i] ^ in2[i];
 }
 
-bool AesCtrCrypt(uint64_t* ctr, int key_size_bits, byte* key, int size,
+void bumpCtr(uint64_t* ctr) {
+  uint64_t x = ctr[0] + 1;
+  if (x < ctr[0])
+    ctr[1]++;
+  ctr[0] = x;
+}
+
+void toLittleEndian(byte* in, uint64_t* ctr) {
+  byte* out = (byte*) ctr;
+  for (int i = 0; i < 16; i++)
+    out[15 - i] = in[i];
+}
+
+void toBigEndian(uint64_t* ctr, byte* out) {
+  byte* in = (byte*) ctr;
+  for (int i = 0; i < 16; i++)
+    out[15 - i] = in[i];
+}
+
+bool AesCtrCrypt(string& iv, int key_size_bits, byte* key, int size,
                     byte* in, byte* out) {
   AES_KEY ectx;
   byte block[32];
+  uint64_t ctr[2];
 
+  toLittleEndian((byte*)iv.data(), ctr);
   AES_set_encrypt_key(key, key_size_bits, &ectx);
+
   while (size > 0) {
-    ctr[1]++;
+    toBigEndian(ctr, block);
     AES_encrypt((byte*)ctr, block, &ectx);
     XorBlocks(16, block, in, out);
     in += 16;
     out += 16;
     size -= 16;
+    bumpCtr(ctr);
   }
   return true;
 }

@@ -81,12 +81,13 @@ TEST(SigningCryptingVerifying, all) {
 
     EXPECT_TRUE(s->Sign(msg, &sig));
     EXPECT_TRUE(s->Verify(msg, sig));
-#if 0
     Verifier* v = VerifierFromSigner(s);
     EXPECT_TRUE(v != nullptr);
-    // EXPECT_TRUE(v->Verify(msg, sig));
-    // Verifier* VerifierFromCertificate(string& der);
-#endif
+    EXPECT_TRUE(v->Verify(msg, sig));
+    tao::CryptoKey* ckS = SignerToCryptoKey(s);
+    EXPECT_TRUE(ckS != nullptr);
+    tao::CryptoKey* ckV = VerifierToCryptoKey(v);
+    EXPECT_TRUE(ckV != nullptr);
   }
 
   string c_types[3] = {
@@ -122,16 +123,10 @@ TEST(SigningCryptingVerifying, all) {
     PrintBytes(decrypted.size(), (byte*)decrypted.data());
     printf("\n");
     EXPECT_TRUE(msg == decrypted);
-  }
 
-#if 0
-  tao::CryptoKey* ckC =  CrypterToCryptoKey(c);
-  EXPECT_TRUE(ckC != nullptr);
-  tao::CryptoKey* ckS = SignerToCryptoKey(s);
-  EXPECT_TRUE(ckS != nullptr);
-  tao::CryptoKey* ckV = VerifierToCryptoKey(v);
-  EXPECT_TRUE(ckV != nullptr);
-#endif
+    tao::CryptoKey* ckC =  CrypterToCryptoKey(c);
+    EXPECT_TRUE(ckC != nullptr);
+  }
 }
 
 TEST(Protect_Unprotect, all) {
@@ -164,15 +159,26 @@ TEST(Certs, all) {
   X509_REQ* req = X509_REQ_new();
   EXPECT_TRUE(GenerateX509CertificateRequest(s->sk_, common_name, true, req));
   
-#if 0
   string issuer_name("issuer_name");
   string keyUsage("");
   string extendedKeyUsage("");
   X509* cert= X509_new();
   EXPECT_TRUE(SignX509Certificate(s->sk_, true, true, issuer_name, keyUsage,
-          extendedKeyUsage, int64_t(365 * 86400), s->sk_, req, true, cert));
-  // EXPECT_TRUE(VerifyX509CertificateChain(cert, cert));
-#endif
+          extendedKeyUsage, int64_t(365 * 86400), s->sk_, req, false, cert));
+  int len;
+
+  len = i2d_X509(cert, NULL);
+  byte* buf = (byte*)OPENSSL_malloc(len);
+  byte* p = buf;
+  i2d_X509(cert, &p);
+  printf("Der encoding: ");
+  PrintBytes(len, buf);
+  printf("\n");
+  string der;
+  der.assign((const char*)buf, len);
+  Verifier* v = VerifierFromCertificate(der);
+  EXPECT_TRUE(v != nullptr);
+  EXPECT_TRUE(VerifyX509CertificateChain(cert, cert));
 }
 
 TEST(KeyBytes, all) {
@@ -185,14 +191,12 @@ TEST(KeyBytes, all) {
   Signer* s = CryptoKeyToSigner(ckSigner);
   EXPECT_TRUE(s != nullptr);
 
-#if 0
   Verifier* v = VerifierFromSigner(s);
   EXPECT_TRUE(v != nullptr);
   string prinBytes;
   string universal_name;
   EXPECT_TRUE(KeyPrincipalBytes(v, &prinBytes));
   EXPECT_TRUE(UniversalKeyName(v, &universal_name));
-#endif
 }
 
 TEST(KeyTranslate, All) {

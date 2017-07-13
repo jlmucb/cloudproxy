@@ -194,11 +194,12 @@ Verifier* VerifierFromSigner(Signer* s) {
   tao::CryptoHeader* ch = new(tao::CryptoHeader);
   *ch = *(s->ch_);
   ch->set_key_type(ch->key_type() + "-public");
+  ch->set_key_purpose("verifying");
   v->ch_ = ch;
   v->vk_ = EVP_PKEY_new();
   EC_KEY* priv_key = EVP_PKEY_get1_EC_KEY(s->sk_);
-  const EC_POINT* pub_key = EC_KEY_get0_public_key(priv_key);
-  EVP_PKEY_set1_EC_KEY(v->vk_, ec_pub_key);
+  // FIX
+  EVP_PKEY_set1_EC_KEY(v->vk_, priv_key);
   return v;
 }
 
@@ -596,19 +597,19 @@ bool Verifier::Verify(string& msg, string& serialized_sig) {
   int dig_len;
   byte signature[2048];
   int sig_len;
-  if (ch_->key_type() == string("ecdsap256")) {
+  if (ch_->key_type() == string("ecdsap256-public")) {
     dig_len = 32;
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, (byte*)msg.data(), msg.size());
     SHA256_Final(digest, &sha256);
-  } else if (ch_->key_type() != string("ecdsap384")) {
+  } else if (ch_->key_type() != string("ecdsap384-public")) {
     dig_len = 48;
     SHA512_CTX sha384;
     SHA384_Init(&sha384);
     SHA384_Update(&sha384, (byte*)msg.data(), msg.size());
     SHA384_Final(digest, &sha384);
-  } else if (ch_->key_type() != string("ecdsap521")) {
+  } else if (ch_->key_type() != string("ecdsap521-public")) {
     dig_len = 64;
     SHA512_CTX sha512;
     SHA512_Init(&sha512);
@@ -620,9 +621,14 @@ bool Verifier::Verify(string& msg, string& serialized_sig) {
 
   ECDSA_SIG sig;
   if (!EC_SIG_deserialize(serialized_sig, &sig)) {
+    printf("Can't EC_SIG_deserialize\n");
     return false;
   }
   EC_KEY* ec_key = EVP_PKEY_get1_EC_KEY(vk_);
+  if (ec_key == nullptr) {
+    printf("EVP_PKEY_get1_EC_KEY failed\n");
+    return false;
+  }
   int result = ECDSA_do_verify((const byte*) digest, dig_len, (const ECDSA_SIG *) &sig, ec_key);
   return result == 1;
 }

@@ -34,7 +34,6 @@ DEFINE_bool(printall, false, "printall flag");
 
 
 TEST(ReadWrite, all) {
-
   string file_name("test_file_1");
   string test_string_in("12345\n");
   string test_string_out;
@@ -174,11 +173,27 @@ TEST(Certs, all) {
   printf("Der encoding: ");
   PrintBytes(len, buf);
   printf("\n");
+
   string der;
   der.assign((const char*)buf, len);
+  string file_name("test.cert");
+  EXPECT_TRUE(WriteFile(file_name, der));
+
+#if 0
   Verifier* v = VerifierFromCertificate(der);
   EXPECT_TRUE(v != nullptr);
+
+  string policy_file_name("policy_cert");
+  string new_der;
+  EXPECT_TRUE(ReadFile(policy_file_name, &new_der));
+  byte buf2[2048];
+  memcpy(buf2, (byte*)new_der.data(), new_der.size());
+  byte* q = buf2;
+
+  X509* p_cert = d2i_X509(nullptr, (const byte**)&q, new_der.size());
+  EXPECT_TRUE(p_cert != nullptr);
   EXPECT_TRUE(VerifyX509CertificateChain(cert, cert));
+#endif
 }
 
 TEST(KeyBytes, all) {

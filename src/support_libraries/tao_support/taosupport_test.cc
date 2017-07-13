@@ -143,6 +143,15 @@ TEST(Protect_Unprotect, all) {
   EXPECT_TRUE(Protect(*c, msg, &encrypted));
   EXPECT_TRUE(Unprotect(*c, encrypted, &decrypted));
   EXPECT_TRUE(msg == decrypted);
+  printf("msg: ");
+  PrintBytes(msg.size(), (byte*)msg.data());
+  printf("\n");
+  printf("encrypted: ");
+  PrintBytes(encrypted.size(), (byte*)encrypted.data());
+  printf("\n");
+  printf("decrypted: ");
+  PrintBytes(decrypted.size(), (byte*)decrypted.data());
+  printf("\n");
 }
 
 TEST(Certs, all) {
@@ -174,18 +183,16 @@ TEST(Certs, all) {
   PrintBytes(len, buf);
   printf("\n");
 
+  string msg("010203040506");
+  string sig;
   string der;
   der.assign((const char*)buf, len);
   string file_name("test.cert");
   EXPECT_TRUE(WriteFile(file_name, der));
-
-#if 0
   Verifier* v = VerifierFromCertificate(der);
   EXPECT_TRUE(v != nullptr);
-
-  EXPECT_TRUE(p_cert != nullptr);
-  EXPECT_TRUE(VerifyX509CertificateChain(cert, cert));
-#endif
+  EXPECT_TRUE(s->Sign(msg, &sig));
+  EXPECT_TRUE(v->Verify(msg, sig));
 
   string policy_file_name("./policy_cert");
   string new_der;
@@ -194,6 +201,7 @@ TEST(Certs, all) {
 
   X509* p_policy_cert = d2i_X509(nullptr, (const byte**)&q, new_der.size());
   EXPECT_TRUE(p_policy_cert != nullptr);
+  EXPECT_TRUE(VerifyX509CertificateChain(p_policy_cert, p_policy_cert));
 }
 
 TEST(KeyBytes, all) {

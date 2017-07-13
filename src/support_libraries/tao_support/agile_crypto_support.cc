@@ -204,14 +204,10 @@ Verifier* VerifierFromSigner(Signer* s) {
 }
 
 Verifier* VerifierFromCertificate(string& der) {
-  X509 *cert;
-  byte buf[2048];
-  int len = 2048;
-  byte* p = buf;
-  memcpy(buf, (byte*) der.data(), der.size());
-  len = der.size();
+  byte* p = (byte*)der.data();
 
-  if (d2i_X509(&cert, (const byte**) &p, len) == NULL) {
+  X509* cert = d2i_X509(nullptr, (const byte**) &p, der.size());
+  if (cert == nullptr) {
     return nullptr;
   }
   Verifier* v = new(Verifier);
@@ -658,6 +654,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
       return false;
     }
   iv->assign((const char*)iv_vec, 16);
+
   if (ch_->key_type() == string("aes128-ctr-hmacsha256")) {
     byte* t_buf = (byte*) malloc(in.size());
     byte mac[32];
@@ -666,6 +663,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
     if (!AesCtrCrypt(*iv, 128, (byte*)encryptingKeyBytes_->data(), in.size(), (byte*) in.data(), t_buf)) {
       return false;
     }
+
     HMAC_CTX ctx;
     HMAC_CTX_init(&ctx);
     HMAC_Init_ex(&ctx, (byte*)hmacKeyBytes_->data(), hmacKeyBytes_->size(), EVP_sha256(), NULL);
@@ -673,6 +671,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
     HMAC_Update(&ctx, t_buf, in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
+
     out->assign((const char*)t_buf, in.size());
     mac_out->assign((const char*)mac, mac_size);
     free(t_buf);
@@ -692,6 +691,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
     HMAC_Update(&ctx, t_buf, in.size());
     HMAC_Final(&ctx, (byte*)mac, &mac_size);
     HMAC_CTX_cleanup(&ctx);
+
     out->assign((const char*)t_buf, in.size());
     mac_out->assign((const char*)mac, mac_size);
     free(t_buf);
@@ -752,11 +752,11 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac_in, string* out) {
       printf("AesCtrCrypt decrypt failed\n");
       return false;
     }
-    out->assign((const char*)t_buf, in.size());
     if (!EqualBytes(mac, mac_size, (byte*)mac_in.data(), mac_in.size())) {
       printf("mac 128 mismatch\n");
       return false;
     }
+    out->assign((const char*)t_buf, in.size());
     free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
     byte* t_buf = (byte*) malloc(in.size());

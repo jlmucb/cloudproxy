@@ -674,6 +674,7 @@ bool Crypter::Encrypt(string& in, string* iv, string* mac_out, string* out) {
 
     out->assign((const char*)t_buf, in.size());
     mac_out->assign((const char*)mac, mac_size);
+
     free(t_buf);
   } else if (ch_->key_type() == string("aes256-ctr-hmacsha384")) {
     byte* t_buf = (byte*) malloc(in.size());
@@ -752,6 +753,7 @@ bool Crypter::Decrypt(string& in, string& iv, string& mac_in, string* out) {
       printf("AesCtrCrypt decrypt failed\n");
       return false;
     }
+
     if (!EqualBytes(mac, mac_size, (byte*)mac_in.data(), mac_in.size())) {
       printf("mac 128 mismatch\n");
       return false;
@@ -887,17 +889,21 @@ bool UnmarshalSavedProgramData(tao_support::SavedProgramData* pd, string in) {
 bool Protect(Crypter& c, string& in, string* out) {
   string iv;
   string mac_out;
-  string t_out;
-  if (!c.Encrypt(in, &iv, &mac_out, &t_out))
+  string encrypted_out;
+
+  if (!c.Encrypt(in, &iv, &mac_out, &encrypted_out))
     return false;
-  tao::EncryptedData* ed = new(tao::EncryptedData);
+
+  tao::EncryptedData ed;
   tao::CryptoHeader* ch = new(tao::CryptoHeader);
+
   *ch = *c.ch_;
-  ed->set_allocated_header(ch);
-  ed->set_iv(iv);
-  ed->set_ciphertext(t_out);
-  ed->set_mac(mac_out);
-  ed->SerializeToString(out);
+  ed.set_allocated_header(ch);
+  ed.set_iv(iv);
+  ed.set_ciphertext(encrypted_out);
+  ed.set_mac(mac_out);
+  ed.SerializeToString(out);
+
   return true;
 }
 
@@ -906,10 +912,11 @@ bool Unprotect(Crypter& c, string& in, string* out) {
   if (!ed.ParseFromString(in)) {
     return false;
   }
-  string in_buf = ed.ciphertext();
+  string encrypted_in = ed.ciphertext();
   string iv = ed.iv();
-  string mac_in = ed.iv();
-  if (c.Decrypt(in_buf, iv, mac_in, out))
+  string mac_in = ed.mac();
+
+  if (!c.Decrypt(encrypted_in, iv, mac_in, out))
     return false;
   return true;
 }

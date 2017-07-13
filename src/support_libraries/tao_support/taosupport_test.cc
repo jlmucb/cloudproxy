@@ -47,10 +47,7 @@ TEST(ReadWrite, all) {
   printf("\n");
   EXPECT_TRUE(test_string_in == test_string_out);
 
-}
-
-TEST(MarshalProgramStruct, all) {
-  // tao::SavedProgramData pd;
+  printf("\n");
 }
 
 TEST(SigningCryptingVerifying, all) {
@@ -126,6 +123,8 @@ TEST(SigningCryptingVerifying, all) {
     tao::CryptoKey* ckC =  CrypterToCryptoKey(c);
     EXPECT_TRUE(ckC != nullptr);
   }
+
+  printf("\n");
 }
 
 TEST(Protect_Unprotect, all) {
@@ -143,14 +142,7 @@ TEST(Protect_Unprotect, all) {
   EXPECT_TRUE(Protect(*c, msg, &encrypted));
   EXPECT_TRUE(Unprotect(*c, encrypted, &decrypted));
   EXPECT_TRUE(msg == decrypted);
-  printf("msg: ");
-  PrintBytes(msg.size(), (byte*)msg.data());
-  printf("\n");
-  printf("encrypted: ");
-  PrintBytes(encrypted.size(), (byte*)encrypted.data());
-  printf("\n");
-  printf("decrypted: ");
-  PrintBytes(decrypted.size(), (byte*)decrypted.data());
+
   printf("\n");
 }
 
@@ -202,6 +194,8 @@ TEST(Certs, all) {
   X509* p_policy_cert = d2i_X509(nullptr, (const byte**)&q, new_der.size());
   EXPECT_TRUE(p_policy_cert != nullptr);
   EXPECT_TRUE(VerifyX509CertificateChain(p_policy_cert, p_policy_cert));
+
+  printf("\n");
 }
 
 TEST(KeyBytes, all) {
@@ -220,6 +214,8 @@ TEST(KeyBytes, all) {
   string universal_name;
   EXPECT_TRUE(KeyPrincipalBytes(v, &prinBytes));
   EXPECT_TRUE(UniversalKeyName(v, &universal_name));
+
+  printf("\n");
 }
 
 TEST(KeyTranslate, All) {
@@ -254,6 +250,8 @@ TEST(KeyTranslate, All) {
   type= "aes256-ctr-hmacsha512";
   EXPECT_TRUE(GenerateCryptoKey(type, &ck6));
   PrintCryptoKey(ck6);
+
+  printf("\n");
 }
 
 

@@ -183,17 +183,17 @@ TEST(Certs, all) {
   Verifier* v = VerifierFromCertificate(der);
   EXPECT_TRUE(v != nullptr);
 
-  string policy_file_name("policy_cert");
-  string new_der;
-  EXPECT_TRUE(ReadFile(policy_file_name, &new_der));
-  byte buf2[2048];
-  memcpy(buf2, (byte*)new_der.data(), new_der.size());
-  byte* q = buf2;
-
-  X509* p_cert = d2i_X509(nullptr, (const byte**)&q, new_der.size());
   EXPECT_TRUE(p_cert != nullptr);
   EXPECT_TRUE(VerifyX509CertificateChain(cert, cert));
 #endif
+
+  string policy_file_name("./policy_cert");
+  string new_der;
+  EXPECT_TRUE(ReadFile(policy_file_name, &new_der));
+  byte* q = (byte*)new_der.data();
+
+  X509* p_policy_cert = d2i_X509(nullptr, (const byte**)&q, new_der.size());
+  EXPECT_TRUE(p_policy_cert != nullptr);
 }
 
 TEST(KeyBytes, all) {

@@ -71,9 +71,9 @@ bool ReadFile(string& file_name, string* out) {
     close(fd);
     return false;
   }
+  out->assign((const char*)buf, n);
   free(buf);
   close(fd);
-  out->assign((const char*)buf, n);
   return true;
 }
 

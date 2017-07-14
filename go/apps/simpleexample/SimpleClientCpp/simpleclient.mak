@@ -53,19 +53,15 @@ LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto -lssl -lchromium -lglog 
 LIB_EXTRA_MAC=-L/usr/local/ssl/lib  -L$(LD_LIBRARY_PATH)
 #endif
 
-dobj_simpleclient=$(O)/taosupport.o $(O)/helpers.o $(O)/ca.pb.o $(O)/attestation.pb.o \
-	$(O)/datalog_guard.pb.o $(O)/acl_guard.pb.o $(O)/messages.pb.o \
-	$(O)/domain_policy.pb.o $(O)/keys.pb.o $(O)/simpleclient_cc.o
+dobj_simpleclient=$(O)/taosupport.o $(O)/attestation.pb.o \
+	$(O)/agile_crypto_support.o $(O)/ssl_helpers.o  $(O)/taosupport.pb.o \
+	$(O)/messages.pb.o $(O)/domain_policy.pb.o $(O)/keys.pb.o $(O)/simpleclient_cc.o
+	#$(O)/datalog_guard.pb.o $(O)/acl_guard.pb.o \
 
-dobj_test=$(O)/helpers.o $(O)/messages.pb.o $(O)/helpers_test.o
-dobj_simple_server=$(O)/helpers.o $(O)/messages.pb.o $(O)/simple_server_test.o
-dobj_simple_client=$(O)/helpers.o $(O)/messages.pb.o $(O)/simple_client_test.o
 dobj_gen_keys=$(O)/helpers.o $(O)/messages.pb.o $(O)/gen_keys.o
 dobj_gen_keys_test=$(O)/helpers.o $(O)/messages.pb.o $(O)/gen_keys_test.o
-dobj_server=$(O)/helpers.o $(O)/messages.pb.o $(O)/server_test.o
-dobj_client=$(O)/helpers.o $(O)/messages.pb.o $(O)/client_test.o
 
-all:	$(EXE_DIR)/helpers_test.exe $(EXE_DIR)/simple_server_test.exe $(EXE_DIR)/simple_client_test.exe $(EXE_DIR)/simpleclient_cc.exe $(EXE_DIR)/gen_keys.exe $(EXE_DIR)/gen_keys_test.exe $(EXE_DIR)/server_test.exe $(EXE_DIR)/client_test.exe
+all:	$(EXE_DIR)/simpleclient_cc.exe
 
 clean:
 	@echo "removing object files"
@@ -78,99 +74,52 @@ $(EXE_DIR)/simpleclient_cc.exe: $(dobj_simpleclient)
 	$(LINK) -o $(EXE_DIR)/simpleclient_cc.exe $(dobj_simpleclient) \
 	$(LIB_EXTRA_MAC) -L/Domains -lauth -ltao $(LDFLAGS)
 
-$(EXE_DIR)/helpers_test.exe: $(dobj_test)
-	@echo "linking helpers_test"
-	$(LINK) -o $(EXE_DIR)/helpers_test.exe $(dobj_test) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
-
 $(EXE_DIR)/simple_client_test.exe: $(dobj_simple_client)
 	@echo "linking simple_client_test"
 	$(LINK) -o $(EXE_DIR)/simple_client_test.exe $(dobj_simple_client) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
 
-$(EXE_DIR)/simple_server_test.exe: $(dobj_simple_server)
-	@echo "linking simple_server_test"
-	$(LINK) -o $(EXE_DIR)/simple_server_test.exe $(dobj_simple_server) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
+$(O)/ssl_helpers.o: $(LIB_SOURCE)/tao_support/ssl_helpers.cc
+	@echo "compiling ssl_helpers.cc"
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/ssl_helpers.o $(LIB_SOURCE)/tao_support/ssl_helpers.cc
 
-$(EXE_DIR)/client_test.exe: $(dobj_client)
-	@echo "linking client_test"
-	$(LINK) -o $(EXE_DIR)/client_test.exe $(dobj_client) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
-
-$(EXE_DIR)/server_test.exe: $(dobj_server)
-	@echo "linking server_test"
-	$(LINK) -o $(EXE_DIR)/server_test.exe $(dobj_server) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
-
-$(EXE_DIR)/gen_keys_test.exe: $(dobj_gen_keys_test)
-	@echo "linking gen_keys_test"
-	$(LINK) -o $(EXE_DIR)/gen_keys_test.exe $(dobj_gen_keys_test) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
-
-$(EXE_DIR)/gen_keys.exe: $(dobj_gen_keys)
-	@echo "linking gen_keys"
-	$(LINK) -o $(EXE_DIR)/gen_keys.exe $(dobj_gen_keys) $(LIB_EXTRA_MAC) -L/Domains $(LDFLAGS_SHORT)
-
-$(O)/helpers.o: $(S)/helpers.cc
-	@echo "compiling helpers.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/helpers.o $(S)/helpers.cc
+$(O)/agile_crypto_support.o: $(LIB_SOURCE)/tao_support/agile_crypto_support.cc
+	@echo "compiling agile_crypto_support.cc"
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/agile_crypto_support.o $(LIB_SOURCE)/tao_support/agile_crypto_support.cc
 
 $(O)/domain_policy.pb.o: $(LIB_SOURCE)/protos/domain_policy.pb.cc
 	@echo "compiling domain_policy.pb.cc"
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/domain_policy.pb.o $(LIB_SOURCE)/protos/domain_policy.pb.cc
 
-$(O)/keys.pb.o: $(S)/keys.pb.cc
+$(O)/keys.pb.o: $(LIB_SOURCE)/protos/keys.pb.cc
 	@echo "compiling keys.pb.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/keys.pb.o $(S)/keys.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/keys.pb.o $(LIB_SOURCE)/protos/keys.pb.cc
 
-$(O)/ca.pb.o: $(S)/ca.pb.cc
-	@echo "compiling ca.pb.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/ca.pb.o $(S)/ca.pb.cc
-
-$(O)/messages.pb.o: $(S)/messages.pb.cc
+$(O)/messages.pb.o: $(LIB_SOURCE)/protos/messages.pb.cc
 	@echo "compiling messages.pb.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/messages.pb.o $(S)/messages.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/messages.pb.o $(LIB_SOURCE)/protos/messages.pb.cc
 
-$(O)/attestation.pb.o: $(S)/attestation.pb.cc
+$(O)/attestation.pb.o: $(LIB_SOURCE)/protos/attestation.pb.cc
 	@echo "compiling attestation.pb.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/attestation.pb.o $(S)/attestation.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/attestation.pb.o $(LIB_SOURCE)/protos/attestation.pb.cc
 
-$(O)/datalog_guard.pb.o: $(S)/datalog_guard.pb.cc
+$(O)/datalog_guard.pb.o: $(LIB_SOURCE)/protos/datalog_guard.pb.cc
 	@echo "compiling datalog_guard.pb.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/datalog_guard.pb.o $(S)/datalog_guard.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/datalog_guard.pb.o $(LIB_SOURCE)/protos/datalog_guard.pb.cc
 
-$(O)/acl_guard.pb.o: $(S)/acl_guard.pb.cc
+$(O)/acl_guard.pb.o: $(LIB_SOURCE)/protos/acl_guard.pb.cc
 	@echo "compiling acl_guard.pb.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/acl_guard.pb.o $(S)/acl_guard.pb.cc
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/acl_guard.pb.o $(LIB_SOURCE)/protos/acl_guard.pb.cc
 
 $(O)/taosupport.o: $(LIB_SOURCE)/tao_support/taosupport.cc
 	@echo "compiling taosupport.cc"
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/taosupport.o $(LIB_SOURCE)/tao_support/taosupport.cc
 
+$(O)/taosupport.pb.o: $(LIB_SOURCE)/tao_support/taosupport.pb.cc
+	@echo "compiling taosupport.pb.cc"
+	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/taosupport.pb.o $(LIB_SOURCE)/tao_support/taosupport.pb.cc
+
+
 $(O)/simpleclient_cc.o: $(S)/simpleclient_cc.cc
 	@echo "compiling simpleclient_cc.cc"
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/simpleclient_cc.o $(S)/simpleclient_cc.cc
-
-$(O)/helpers_test.o: $(S)/helpers_test.cc
-	@echo "compiling helpers_test.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/helpers_test.o $(S)/helpers_test.cc
-
-$(O)/simple_server_test.o: $(S)/simple_server_test.cc
-	@echo "compiling simple_server_test.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/simple_server_test.o $(S)/simple_server_test.cc
-
-$(O)/simple_client_test.o: $(S)/simple_client_test.cc
-	@echo "compiling simple_client_test.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/simple_client_test.o $(S)/simple_client_test.cc
-
-$(O)/server_test.o: $(S)/server_test.cc
-	@echo "compiling server_test.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/server_test.o $(S)/server_test.cc
-
-$(O)/client_test.o: $(S)/client_test.cc
-	@echo "compiling client_test.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/client_test.o $(S)/client_test.cc
-
-$(O)/gen_keys.o: $(S)/gen_keys.cc
-	@echo "compiling gen_keys.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/gen_keys.o $(S)/gen_keys.cc
-
-$(O)/gen_keys_test.o: $(S)/gen_keys_test.cc
-	@echo "compiling gen_keys_test.cc"
-	$(CC) $(CFLAGS) $(INCLUDE) -c -o $(O)/gen_keys_test.o $(S)/gen_keys_test.cc
 

@@ -19,7 +19,9 @@
 #include "tao/tao_rpc.h"
 #include "tao/util.h"
 
-#include "helpers.h"
+#include "ssl_helpers.h"
+#include "agile_crypto_support.h"
+#include "taosupport.h"
 
 using std::string;
 using std::unique_ptr;
@@ -32,11 +34,10 @@ using tao::MarshalSpeaksfor;
 using tao::Tao;
 using tao::TaoRPC;
 
-#include "helpers.h"
-#include "taosupport.h"
-
 // localhost is 127.0.0.1
-DEFINE_string(config_file, "/Domains/domain.simpleexample/tao.config",
+DEFINE_string(policy_key_path, "/Domains/domain.simpleexample/policy_keys",
+              "path to tao configuration");
+DEFINE_string(host_key_path, "/Domains/domain.simpleexample/linux_tao_host",
               "path to tao configuration");
 DEFINE_string(client_path, "/Domains/domain.simpleexample/SimpleClientCpp",
               "path to SimpleClient files");
@@ -63,9 +64,9 @@ int main(int argc, char **argv) {
 
   string tcp("tcp");
   string cipher_suite("sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256");
-  if (!client_program_data.InitTao(cipher_suite, msg.get(), tao.get(), FLAGS_config_file,
-            FLAGS_client_path, tcp, FLAGS_domain_server_host,
-            FLAGS_domain_server_port, cipher_suite, true)) {
+  if (!client_program_data.InitTao(cipher_suite, msg.get(), tao.get(), FLAGS_policy_key_path,
+            FLAGS_host_key_path, FLAGS_client_path, tcp, FLAGS_domain_server_host,
+            FLAGS_domain_server_port, true)) {
     printf("client_program_data.InitTao failed\n");
     return 1;
   }
@@ -92,7 +93,7 @@ int main(int argc, char **argv) {
   // Send a simple request and get response.
   tao_support::SimpleMessage req_message;
   tao_support::SimpleMessage resp_message;
-  req_message.set_message_type(simpleexample_messages::REQUEST);
+  req_message.set_message_type(1); // REQUEST
   req_message.set_request_type("SecretRequest");
   string req_string;
   if(!req_message.SerializeToString(&req_string)) {

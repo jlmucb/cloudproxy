@@ -11,7 +11,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License
 #    Project: New Cloudproxy Crypto
-#    File: symmetric.mak
+#    File: taosupport.mak
 
 ifndef SRC_DIR
 SRC_DIR=$(HOME)/src/github.com/jlmucb/cloudproxy/src
@@ -35,7 +35,7 @@ endif
 S= $(SRC_DIR)/support_libraries
 ST= $(S)/tao_support
 SP= $(S)/protos
-INCLUDE= -I$(ST) -I$(SP) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I/usr/local/ssl/include
+INCLUDE= -I$(ST) -I$(SP) -I$(SRC_DIR) -I/usr/local/include -I$(GOOGLE_INCLUDE) -I/usr/local/ssl/include
 
 CFLAGS=$(INCLUDE) -O3 -g -std=c++11 -Wno-deprecated-declarations -DFAKE_RAND_BYTES #-Wall
 
@@ -57,7 +57,7 @@ endif
 
 O= $(OBJ_DIR)
 dobj=	$(O)/taosupport_test.o $(O)/agile_crypto_support.o $(O)/keys.pb.o $(O)/attestation.pb.o \
-        $(O)/ssl_helpers.o # $(O)/taosupport.o
+        $(O)/ssl_helpers.o  $(O)/taosupport.o
 
 all:	taosupport_test.exe
 clean:
@@ -90,11 +90,10 @@ $(O)/attestation.pb.o: $(SP)/attestation.pb.cc
 	@echo "compiling attestation.pb.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/attestation.pb.o $(SP)/attestation.pb.cc
 
-#$(O)/taosupport.pb.o: $(ST)/taosupport.pb.cc
-#	@echo "compiling taosupport.pb.cc"
-#	$(CC) $(CFLAGS) -c -o $(O)/taosupport.pb.o $(ST)/taosupport.pb.cc
-#
-#$(O)/taosupport.o: $(ST)/taosupport.cc
-#	@echo "compiling taosupport.cc"
-#	$(CC) $(CFLAGS) -c -o $(O)/taosupport.o $(ST)/taosupport.cc
-#
+$(O)/taosupport.pb.o: $(ST)/taosupport.pb.cc
+	@echo "compiling taosupport.pb.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/taosupport.pb.o $(ST)/taosupport.pb.cc
+
+$(O)/taosupport.o: $(ST)/taosupport.cc
+	@echo "compiling taosupport.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/taosupport.o $(ST)/taosupport.cc

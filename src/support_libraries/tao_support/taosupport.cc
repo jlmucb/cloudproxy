@@ -32,7 +32,6 @@
 #include <openssl/rand.h>
 
 #include "keys.pb.h"
-#include "ca.pb.h"
 #include "domain_policy.pb.h"
 #include "auth.h"
 
@@ -91,26 +90,20 @@ void TaoProgramData::ClearProgramData() {
 
   tao_ = nullptr;
 
-  // TODO: erase key first.
-  // Clear private key.
-  if (program_key_ != nullptr) {
-    EVP_PKEY_free(program_key_);
-  }
-  program_key_ = nullptr;
+  // Clear
 
-  if (size_program_sym_key_ > 0 && program_sym_key_ != nullptr) {
-    memset(program_sym_key_, 0, size_program_sym_key_);
-    free(program_sym_key_);
-  }
+  //X509* policy_certificate_;
+  //Verifier* policy_verifying_key_;
+  // keys
+  //Signer* program_signing_key_;
+  //Verifier* verifying_key_;
+  //Crypter* crypting_key_;
+  //X509* program_certificate_;
 
-  if (policyCertificate_ != nullptr) {
-    X509_free(policyCertificate_);
+  if (policy_certificate_ != nullptr) {
+    X509_free(policy_certificate_);
   }
-  policyCertificate_ = nullptr;
-  if (programCertificate_ != nullptr) {
-    X509_free(programCertificate_);
-  }
-  programCertificate_ = nullptr;
+  policy_certificate_ = nullptr;
 }
 
 TaoProgramData::TaoProgramData() {
@@ -132,11 +125,7 @@ TaoProgramData::~TaoProgramData() {
 }
 
 void TaoProgramData::SetPolicyCertificate(X509* c) {
-  policyCertificate_ = c;
-}
-
-void TaoProgramData::SetProgramCertificate(X509* c) {
-  programCertificate_ = c;
+  policy_certificate_ = c;
 }
 
 bool TaoProgramData::GetTaoName(string* name) {
@@ -156,7 +145,7 @@ bool TaoProgramData::GetPolicyCert(string* cert) {
 X509* TaoProgramData::GetPolicyCertificate() {
   if (!initialized_)
     return nullptr;
-  return policyCertificate_;
+  return policy_certificate_;
 }
 
 bool TaoProgramData::GetCipherSuite(string* keyType) {
@@ -172,7 +161,7 @@ bool TaoProgramData::GetProgramCert(string* cert) {
 }
 
 X509* TaoProgramData::GetProgramCertificate() {
-  return programCertificate_;
+  return program_certificate_;
 }
 
 std::list<string>* TaoProgramData::GetCertChain() {
@@ -192,9 +181,8 @@ void TaoProgramData::Print() {
   printf("Policy cert: ");
   PrintBytes(policy_cert_.size(), (byte*)policy_cert_.data());printf("\n");
   printf("Program key: "); printf("TODO"); printf("\n");
-  printf("Sym key: ");PrintBytes(size_program_sym_key_, program_sym_key_);printf("\n");
   printf("Program cert: ");PrintBytes(program_cert_.size(), (byte*)program_cert_.data());printf("\n");
-  printf("Program path: %s\n", program_file_path_.c_str());
+  printf("Program path: %s\n", program_path_.c_str());
 }
 
 void TaoChannel::Print() {
@@ -232,14 +220,14 @@ bool TaoProgramData::RollbackProtectedUnseal(string& sealed, string* data, strin
 }
 
 bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* tao,
-       string& cfg_file_name, string& program_path, string& network,
+       string& policy_key_path, string& program_path, string& network,
        string& address, string& port, bool useSimpleService) {
 
   cipher_suite_ = cipher_suite;
   msg_ = msg;
   tao_ = tao;
-  policy_cert_file_name_ = policy_cert_file_name;
-  path_ = path;
+  policy_cert_file_name_ = policy_key_path + "/cert";
+  program_path_ = program_path;
   network_ = network;
   address_ = address;
   port_ = port;
@@ -251,45 +239,27 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
     return false;
   }
 
-  // Parse policy cert.
+  // Translate policy cert.
+  policy_verifying_key_ = VerifierFromCertificate(policy_cert_);
+  
   byte* pc = (byte*)policy_cert_.data();
-  X509* parsed_policy_cert = d2i_X509(nullptr, (const byte**)&pc,
+  policy_certificate_ = d2i_X509(nullptr, (const byte**)&pc,
           policy_cert_.size());
-  if (parsed_policy_cert == nullptr) {
+  if (policy_certificate_ == nullptr) {
     printf("Can't DER parse policy cert.\n");
     return false;
   }
 
-  EVP_PKEY* evp_policy_key = X509_get_pubkey(parsed_policy_cert);
-  if (evp_policy_key == nullptr) {
-    printf("Can't get policy public key from cert.\n");
-    return false;
-  }
-
-  // Make policy key verifier.
-
-  // Policy verifier.
-  // Note that we use the policy cert to figure out which cipher
-  //   suite to use.
-  //  policy_verifying_key_
-  int key_type = EVP_PKEY_id(evp_policy_key);
-  if (EVP_PKEY_EC == key_type) {
-  } else if (EVP_PKEY_RSA == key_type) {
-  } else {
-    printf("Unsupported key type.\n");
-    return false;
-  }
-
   // Extend principal name, with hash of policy public key.
-  string universal_name;
-  if(!UniversalKeyName(policy_verifying_key_, &universal_name)) {
+  string policy_principal_bytes;
+  if (!KeyPrincipalBytes(policy_verifying_key_, &policy_principal_bytes)) {
     return false;
   }
 
   std::vector<std::unique_ptr<tao::PrinExt>> v;
 
   std::vector<std::unique_ptr<tao::Term>> w;
-  w.push_back(tao::make_unique<tao::Bytes>(universal_name.data()));
+  w.push_back(tao::make_unique<tao::Bytes>(policy_principal_bytes.data()));
   v.push_back(tao::make_unique<tao::PrinExt> ("PolicyKey", std::move(w)));
   tao::SubPrin p(std::move(v));
   string subprin;
@@ -335,7 +305,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
                               string& endorsement_cert, string* program_cert,
                               std::list<string>* certChain) {
 
-  if (policyCertificate_ == nullptr) {
+  if (policy_certificate_ == nullptr) {
     printf("Policy cert is null.\n");
     return false;
   }
@@ -348,13 +318,17 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
   string keyUsage("critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
   string extendedKeyUsage("serverAuth,clientAuth");
 
-  EVP_PKEY* self = GenerateKey(key_type, 256);
+  EVP_PKEY* self = nullptr;
+  /* 
+    FIX
+   GenerateKey(key_type, 256);
+   */
   if (self == nullptr) {
     printf("Can't Generate temporary channel key.\n");
     return false;
   }
-  if (!GenerateX509CertificateRequest(key_type, common_name, self,
-         false, req)) {
+
+  if (!GenerateX509CertificateRequest(self, common_name, false, req)) {
     printf("Can't generate x509 request\n");
     return false;
   }
@@ -434,16 +408,16 @@ bool TaoProgramData::RecoverProgramData(string in, tao_support::SavedProgramData
   return true;
 }
 
-bool TaoProgramData::InitProgramData(tao_support::SavedProgramData* pd) {
+bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   return false;
 }
 
 bool TaoProgramData::GetProgramData() {
 
-  string protected_keys_file_name(path_);
+  string protected_keys_file_name(program_path_);
   protected_keys_file_name += "protectedProgramKeys";
   string cert_file_name;
-  cert_file_name = protected_keys_file_name | "_cert";
+  cert_file_name = protected_keys_file_name + "_cert";
 
   string encrypted_saved_program_data;
   tao_support::SavedProgramData program_data;
@@ -452,7 +426,7 @@ bool TaoProgramData::GetProgramData() {
 
   if (!ReadFile(protected_keys_file_name, &encrypted_saved_program_data)) {
     // need to init keys
-    if (!InitProgramData(&program_data)) {
+    if (!InitProgramKeys(&program_data)) {
       return false;
     }
     if (!SaveProgramData(program_data, &encrypted_saved_program_data)) {
@@ -464,13 +438,13 @@ bool TaoProgramData::GetProgramData() {
     // Save cert too.
   } else {
     // decrypt program keys
-    if (!RecoverProgramData(encrypted_saved_program_data, &saved_program_data)) {
+    if (!RecoverProgramData(encrypted_saved_program_data, &program_data)) {
       return false;
     }
   }
 
   // Fill corresponding TaoProgramData values
-  if (program_data.file_path() != nullptr) {
+  if (!program_data.has_file_path()) {
       return false;
   }
   if (!program_data.has_policy_cert()) {
@@ -479,7 +453,7 @@ bool TaoProgramData::GetProgramData() {
   if (!program_data.has_program_name()) {
       return false;
   }
-  if (!program_data.signing_key_blob()) {
+  if (!program_data.has_signing_key_blob()) {
       return false;
   }
   if (!program_data.has_crypting_key_blob()) {
@@ -503,6 +477,7 @@ TaoChannel::TaoChannel() {
 
 bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     string& serverAddress, string& port) {
+#if 0
 
   // Parse policy cert and program cert.
   string policy_cert;
@@ -569,6 +544,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
       peer_name_ = buf ;
     }
   }
+#endif
   return true;
 }
 

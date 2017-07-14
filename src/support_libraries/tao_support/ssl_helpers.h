@@ -107,5 +107,8 @@ public:
 
 bool EC_SIG_serialize(ECDSA_SIG* sig, string* out);
 bool EC_SIG_deserialize(string& in, ECDSA_SIG* sig);
+
+string* ByteToHexRightToLeft(int size, byte* in);
+string* ByteToHexLeftToRight(int size, byte* in);
 #endif
 

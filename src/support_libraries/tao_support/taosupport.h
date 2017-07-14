@@ -95,8 +95,8 @@ private:
   bool UnsealMaterial(string& sealed, string* unsealed);
   bool Attest(string& to_attest, string* attested);
 
-  bool SaveProgramData(string* out);
-  bool RecoverProgramData(string& in);
+  bool SaveProgramData(tao_support::SavedProgramData& pd, string* out);
+  bool RecoverProgramData(string in, tao_support::SavedProgramData* pd);
 
   bool InitProgramKeys(tao_support::SavedProgramData* pd);
   bool GetProgramData();
@@ -106,9 +106,9 @@ public:
   ~TaoProgramData();
 
   void ClearProgramData();
-  bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&,
-               string& network, string& address, string& port, string& cipher_suite,
-               bool useSimpleService);
+  bool InitTao(string& cipher_suite, tao::FDMessageChannel* msg, tao::Tao* tao,
+       string& policy_key_path, string& program_path, string& network,
+       string& address, string& port, bool useSimpleService);
 
   // Accessors
   bool ExtendName(string& subprin);
@@ -116,11 +116,15 @@ public:
 
   void Print();
 
+  bool GetCipherSuite(string* keyType);
+
   bool GetPolicyCert(string* cert);
-  X509* GetPolicyCertificate();
-  X509* GetProgramCertificate();
   bool GetProgramCert(string* cert);
+
+  void SetPolicyCertificate(X509* c);
+  X509* GetPolicyCertificate();
   void SetProgramCertificate(X509* c);
+  X509* GetProgramCertificate();
   std::list<string>* GetCertChain();
 
   bool InitCounter(string& label, int64_t& c);

@@ -57,7 +57,7 @@ endif
 
 O= $(OBJ_DIR)
 dobj=	$(O)/taosupport_test.o $(O)/agile_crypto_support.o $(O)/keys.pb.o $(O)/attestation.pb.o \
-        $(O)/ssl_helpers.o  $(O)/taosupport.o
+        $(O)/ssl_helpers.o  #$(O)/taosupport.o
 
 all:	taosupport_test.exe
 clean:
@@ -94,6 +94,6 @@ $(O)/taosupport.pb.o: $(ST)/taosupport.pb.cc
 	@echo "compiling taosupport.pb.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/taosupport.pb.o $(ST)/taosupport.pb.cc
 
-$(O)/taosupport.o: $(ST)/taosupport.cc
-	@echo "compiling taosupport.cc"
-	$(CC) $(CFLAGS) -c -o $(O)/taosupport.o $(ST)/taosupport.cc
+#$(O)/taosupport.o: $(ST)/taosupport.cc
+	#@echo "compiling taosupport.cc"
+	#$(CC) $(CFLAGS) -DOS_POSIX -c -o $(O)/taosupport.o $(ST)/taosupport.cc

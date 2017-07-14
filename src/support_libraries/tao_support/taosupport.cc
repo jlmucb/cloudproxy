@@ -53,6 +53,7 @@ using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::CodedOutputStream;
 using google::protobuf::io::StringOutputStream;
 using google::protobuf::io::ArrayInputStream;
+using tao::MarshalSpeaksfor;
 
 #define BUFSIZE 8192
 
@@ -90,15 +91,10 @@ void TaoProgramData::ClearProgramData() {
 
   tao_ = nullptr;
 
-  // Clear
-
-  //X509* policy_certificate_;
-  //Verifier* policy_verifying_key_;
-  // keys
-  //Signer* program_signing_key_;
-  //Verifier* verifying_key_;
-  //Crypter* crypting_key_;
-  //X509* program_certificate_;
+  // Clear keys
+  memset((byte*)verifying_key_, 0, sizeof(*verifying_key_));
+  memset((byte*)program_signing_key_, 0, sizeof(*program_signing_key_));
+  memset((byte*)crypting_key_, 0, sizeof(*crypting_key_));
 
   if (policy_certificate_ != nullptr) {
     X509_free(policy_certificate_);
@@ -164,10 +160,10 @@ X509* TaoProgramData::GetProgramCertificate() {
   return program_certificate_;
 }
 
-std::list<string>* TaoProgramData::GetCertChain() {
+std::list<string>* TaoProgramData::GetProgramCertChain() {
   if (!initialized_)
     return nullptr;
-  return &certs_in_chain_;
+  return &program_cert_chain_;
 }
 
 void TaoProgramData::Print() {
@@ -203,7 +199,7 @@ bool TaoProgramData::UnsealMaterial(string& sealed, string* unsealed) {
 }
 
 bool TaoProgramData::InitCounter(string& label, int64_t& c) {
-printf("Calling tao_->TaoProgramData::InitCounter(%llx)\n", tao_);
+printf("Calling tao_->TaoProgramData::InitCounter(%llx)\n", c);
   return tao_->InitCounter(label, c);
 }
 
@@ -220,18 +216,19 @@ bool TaoProgramData::RollbackProtectedUnseal(string& sealed, string* data, strin
 }
 
 bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* tao,
-       string& policy_key_path, string& program_path, string& network,
+       string& policy_key_path, string& host_key_path, string& program_path, string& network,
        string& address, string& port, bool useSimpleService) {
 
   cipher_suite_ = cipher_suite;
   msg_ = msg;
   tao_ = tao;
-  policy_cert_file_name_ = policy_key_path + "/cert";
   program_path_ = program_path;
   network_ = network;
   address_ = address;
   port_ = port;
   useSimpleService_ = useSimpleService;
+  host_cert_file_name_ = host_key_path + "/cert";
+  policy_cert_file_name_ = policy_key_path + "/cert";
 
   // Read policy cert from config.
   if (!ReadFile(policy_cert_file_name_, &policy_cert_)) {
@@ -249,6 +246,14 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
     printf("Can't DER parse policy cert.\n");
     return false;
   }
+
+  // Read host cert
+  if (!ReadFile(host_cert_file_name_, &host_cert_)) {
+    printf("Can't read host cert %s.\n", host_cert_file_name_.c_str());
+    return false;
+  }
+
+  // Read host cert chain
 
   // Extend principal name, with hash of policy public key.
   string policy_principal_bytes;
@@ -300,10 +305,9 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
   return true;
 }
 
-bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
-                              string& port, string& attestation_string,
-                              string& endorsement_cert, string* program_cert,
-                              std::list<string>* certChain) {
+bool TaoProgramData::RequestDomainServiceCert(string& attestation_string,
+                              string& host_cert, std::list<string> host_certs_chain,
+                              string* program_cert, std::list<string>* programCertChain) {
 
   if (policy_certificate_ == nullptr) {
     printf("Policy cert is null.\n");
@@ -312,38 +316,43 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
 
   X509_REQ* req = X509_REQ_new();;
   X509* cert = X509_new();
-  string key_type("ECC");
   string common_name("Fred");
   string issuer("Self");
   string keyUsage("critical,digitalSignature,keyEncipherment,keyAgreement,keyCertSign");
   string extendedKeyUsage("serverAuth,clientAuth");
 
-  EVP_PKEY* self = nullptr;
-  /* 
-    FIX
-   GenerateKey(key_type, 256);
-   */
-  if (self == nullptr) {
-    printf("Can't Generate temporary channel key.\n");
+  tao::CryptoKey sck;
+  string key_type;
+  if (!SignerAlgorithmNameFromCipherSuite(cipher_suite_, &key_type)) {
+    printf("RequestDomainServiceCert: Can't get signer alg name.\n");
+    return false;
+  }
+  if (!GenerateCryptoKey(key_type, &sck)) {
+    printf("RequestDomainServiceCert: Can't get signer key.\n");
+    return false;
+  }
+  Signer* s = CryptoKeyToSigner(sck);
+  if (s == nullptr) {
+    printf("RequestDomainServiceCert: Can't translate key.\n");
     return false;
   }
 
-  if (!GenerateX509CertificateRequest(self, common_name, false, req)) {
-    printf("Can't generate x509 request\n");
+  if (!GenerateX509CertificateRequest(s->sk_, common_name, false, req)) {
+    printf("RequestDomainServiceCert: Can't generate x509 request\n");
     return false;
   }
 
-  if (!SignX509Certificate(self, true, true, issuer, 
+  if (!SignX509Certificate(s->sk_, true, true, issuer, 
                            keyUsage, extendedKeyUsage, 86400,
-                           self, req, false, cert)) {
-    printf("Can't sign x509 request\n");
+                           s->sk_, req, false, cert)) {
+    printf("RequestDomainServiceCert: Can't sign x509 request\n");
     return false;
   }
 
   SslChannel domainChannel;
 
-  if (!domainChannel.InitClientSslChannel(network, address, port,
-        cert, cert, key_type, self,
+  if (!domainChannel.InitClientSslChannel(network_, address_, port_,
+        policy_certificate_, program_certificate_, key_type, s->sk_,
         SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY)) {
     printf("Can't init ssl channel to domain server.\n");
     return false;
@@ -379,7 +388,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& network, string& address,
 
   // Cert chain
   for (int j = 0; j < response.cert_chain_size(); j++) {
-      certChain->push_back(string(response.cert_chain(j)));
+      programCertChain->push_back(string(response.cert_chain(j)));
   }
   return true;
 }
@@ -409,13 +418,115 @@ bool TaoProgramData::RecoverProgramData(string in, tao_support::SavedProgramData
 }
 
 bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
-  return false;
+  string crypter_alg_name;
+  if (!CrypterAlgorithmNameFromCipherSuite(cipher_suite_, &crypter_alg_name)) {
+    printf("InitializeProgramKeys: can't get CrypterAlgorithmNameFromCipherSuite.\n");
+    return false;
+  }
+  string signer_alg_name;
+  if (!SignerAlgorithmNameFromCipherSuite(cipher_suite_, &signer_alg_name)) {
+    printf("InitializeProgramKeys: Can't get SignerAlgorithmNameFromCipherSuite.\n");
+    return false;
+  }
+  tao::CryptoKey eck;
+  if (!GenerateCryptoKey(crypter_alg_name, &eck)) {
+    printf("InitializeProgramKeys: Can't generate crypter key.\n");
+    return false;
+  }
+  tao::CryptoKey sck;
+  if (!GenerateCryptoKey(signer_alg_name, &sck)) {
+    printf("InitializeProgramKeys: Can't generate signer key.\n");
+    return false;
+  }
+
+  crypting_key_ = CryptoKeyToCrypter(eck);
+  if (crypting_key_ == nullptr) {
+    printf("InitializeProgramKeys: couldn't convert crypter crypto key to crypter.\n");
+    return false;
+  }
+  program_signing_key_ = CryptoKeyToSigner(sck);
+  if (program_signing_key_ == nullptr) {
+    printf("InitializeProgramKeys: couldn't convert signer crypto key to crypter.\n");
+    return false;
+  }
+  verifying_key_ = VerifierFromSigner(program_signing_key_);
+  if (verifying_key_ == nullptr) {
+    printf("InitializeProgramKeys: .\n");
+    return false;
+  }
+
+  string key_bytes;
+  if (!KeyPrincipalBytes(verifying_key_, &key_bytes)) {
+    printf("InitializeProgramKeys: couldn't get KeyPrincipalBytes.\n");
+    return false;
+  }
+
+  // Construct a delegation statement.
+  string msf;
+  if (!MarshalSpeaksfor(key_bytes, marshalled_tao_name_, &msf)) {
+    printf("InitializeProgramKeys: couldn't MarshalSpeaksfor.\n");
+    return false;
+  }
+  
+  // Get an attestation using delegation and program key;
+  string attestation_string;
+  if (!Attest(msf, &attestation_string)) {
+    printf("InitializeProgramKeys: couldn't Attest.\n");
+    return false;
+  }
+  
+  // Make cert request.
+  domain_policy::DomainCertRequest request;
+  request.set_attestation(attestation_string);
+  request.set_key_type(signer_alg_name);
+  // request.set_subject_public_key(out, n);
+
+  string request_string;
+  if (!request.SerializeToString(&request_string)) {
+    printf("InitializeProgramKey: couldn't serialize request.\n");
+    return false;
+  }
+
+  // Get Program Cert.
+  if (!RequestDomainServiceCert(attestation_string, host_cert_,
+        host_cert_chain_, &program_cert_, &program_cert_chain_)) {
+    printf("InitializeProgramKeys: couldn't RequestDomainServiceCert.\n");
+    return false;
+  }
+
+  string crypting_key_blob;
+  string signing_key_blob;
+
+  if (!eck.SerializeToString(&crypting_key_blob)) {
+    printf("InitializeProgramKeys: can't serialize crypting key.\n");
+    return false;
+  }
+  if (!sck.SerializeToString(&signing_key_blob)) {
+    printf("InitializeProgramKeys: can't serialize crypting key.\n");
+    return false;
+  }
+
+  pd->set_crypto_suite(cipher_suite_);
+  pd->set_file_path(program_path_);
+  pd->set_policy_cert(policy_cert_);
+  pd->set_program_name(tao_name_);
+  pd->set_signing_key_blob(signing_key_blob);
+  pd->set_crypting_key_blob(crypting_key_blob);
+  pd->set_delegation(attestation_string);
+/*
+  for (int i = 0; i < pd->signer_cert_chain_.size(); i++) {
+    string der_cert = pd->signer_cert_chain_(i);
+    program_cert_chain_.push_back(der_cert);
+  }
+ */
+
+  return true;
 }
 
 bool TaoProgramData::GetProgramData() {
 
   string protected_keys_file_name(program_path_);
-  protected_keys_file_name += "protectedProgramKeys";
+  protected_keys_file_name += "/protectedProgramKeys";
   string cert_file_name;
   cert_file_name = protected_keys_file_name + "_cert";
 
@@ -427,47 +538,82 @@ bool TaoProgramData::GetProgramData() {
   if (!ReadFile(protected_keys_file_name, &encrypted_saved_program_data)) {
     // need to init keys
     if (!InitProgramKeys(&program_data)) {
+      printf("GetProgramData: can't InitProgramKeys\n");
       return false;
     }
     if (!SaveProgramData(program_data, &encrypted_saved_program_data)) {
+      printf("GetProgramData: can't SaveProgramData\n");
       return false;
     }
     if (!WriteFile(protected_keys_file_name, encrypted_saved_program_data)) {
+      printf("GetProgramData: can't write savedProgramData\n");
       return false;
     }
     // Save cert too.
+    if (!WriteFile(cert_file_name, program_cert_)) {
+      printf("GetProgramData: can't write program cert\n");
+      return false;
+    }
   } else {
     // decrypt program keys
     if (!RecoverProgramData(encrypted_saved_program_data, &program_data)) {
+      printf("GetProgramData: can't RecoverProgramData\n");
       return false;
     }
   }
 
   // Fill corresponding TaoProgramData values
   if (!program_data.has_file_path()) {
+      printf("GetProgramData: no program path\n");
       return false;
   }
   if (!program_data.has_policy_cert()) {
+      printf("GetProgramData: no policy certt\n");
       return false;
   }
   if (!program_data.has_program_name()) {
       return false;
   }
   if (!program_data.has_signing_key_blob()) {
+      printf("GetProgramData: no signing key blob\n");
       return false;
   }
   if (!program_data.has_crypting_key_blob()) {
-    // Unmarshal cryptokey first
+      printf("GetProgramData: no crypting key blob\n");
+      return false;
   }
   if (program_data.has_crypto_suite()) {
+      printf("GetProgramData: no crypto suite\n");
+      return false;
   }
-  // Unmarshal program cryptokey
-  // Translate to Signer and Verifier
-  // Unmarshal crypter cryptokey
-  // Translate to Crypter
+
+  tao::CryptoKey sck;
+  tao::CryptoKey cck;
+  if (!sck.ParseFromString(program_data.signing_key_blob())) {
+      printf("GetProgramData: no crypto suite\n");
+      return false;
+  }
+  program_signing_key_ = CryptoKeyToSigner(sck);
+  if (program_signing_key_ == nullptr) {
+  }
+  if (!cck.ParseFromString(program_data.crypting_key_blob())) {
+      printf("GetProgramData: no crypto suite\n");
+      return false;
+  }
+  crypting_key_ = CryptoKeyToCrypter(cck);
+  if (crypting_key_ == nullptr) {
+  }
+  verifying_key_ = VerifierFromSigner(program_signing_key_);
+  if (verifying_key_ == nullptr) {
+      printf("GetProgramData: no crypting \n");
+      return false;
+  }
+
   if (program_data.has_delegation()) {
   }
- // repeated bytes signer_cert_chain
+
+  // repeated bytes signer_cert_chain
+
   return true;
 }
 

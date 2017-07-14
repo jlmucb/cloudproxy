@@ -50,6 +50,15 @@ TEST(ReadWrite, all) {
   printf("\n");
 }
 
+TEST(ciphernames, all) {
+  string crypter_name;
+  string signer_name;
+  extern string Basic128BitCipherSuite;
+  EXPECT_TRUE(CrypterAlgorithmNameFromCipherSuite(Basic128BitCipherSuite, &crypter_name));
+  EXPECT_TRUE(SignerAlgorithmNameFromCipherSuite(Basic128BitCipherSuite, &signer_name));
+  printf("crypter suite: %s, %s\n", crypter_name.c_str(), signer_name.c_str());
+}
+
 TEST(SigningCryptingVerifying, all) {
 #ifdef FAKE_RAND_BYTES
   printf("Using fake random numbers\n");

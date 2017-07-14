@@ -39,6 +39,10 @@ typedef unsigned char byte;
 using std::string;
 using std::unique_ptr;
 
+extern string Basic128BitCipherSuite;
+extern string Basic192BitCipherSuite;
+extern string Basic256BitCipherSuite;
+
 class Signer {
 public:
   tao::CryptoHeader* ch_;
@@ -67,11 +71,15 @@ public:
 };
 
 class Deriver {
+public:
   tao::CryptoHeader* ch_;
-  string* secretBytes_;
+  string* secret_bytes_;
 
   bool Derive(string& salt, string& context, string& in,  string* out);
 };
+
+bool CrypterAlgorithmNameFromCipherSuite(string& cipher_suite, string* crypter_name);
+bool SignerAlgorithmNameFromCipherSuite(string& cipher_suite, string* signer_name);
 
 Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck);
 Signer* CryptoKeyToSigner(tao::CryptoKey& ck);

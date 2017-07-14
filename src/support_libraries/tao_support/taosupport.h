@@ -52,8 +52,6 @@ private:
 
   // network
   string network_;
-
-  // Address of Authority.
   string address_;
   string port_;
 
@@ -66,9 +64,6 @@ private:
   // Tao object interface
   tao::Tao* tao_;
 
-  // Endorsement for AIK for TPM
-  string endorsement_cert_;
-
   // Marshalled tao name (a Prin).
   string marshalled_tao_name_;
 
@@ -79,6 +74,11 @@ private:
   X509* policy_certificate_;
   Verifier* policy_verifying_key_;
 
+  // host certificate.
+  string host_cert_file_name_;
+  string host_cert_;
+  std::list<string> host_cert_chain_;
+
   // keys
   Signer* program_signing_key_;
   Verifier* verifying_key_;
@@ -87,9 +87,7 @@ private:
   // Der encoded and parsed X509 program certificate.
   string program_cert_;
   X509* program_certificate_;
-
-  // Cert chain for Program Certificate.
-  std::list<string> certs_in_chain_;
+  std::list<string> program_cert_chain_;
 
   bool SealMaterial(string& to_seal, string* sealed);
   bool UnsealMaterial(string& sealed, string* unsealed);
@@ -107,8 +105,8 @@ public:
 
   void ClearProgramData();
   bool InitTao(string& cipher_suite, tao::FDMessageChannel* msg, tao::Tao* tao,
-       string& policy_key_path, string& program_path, string& network,
-       string& address, string& port, bool useSimpleService);
+       string& policy_key_path, string& host_key_path, string& program_path,
+       string& network, string& address, string& port, bool useSimpleService);
 
   // Accessors
   bool ExtendName(string& subprin);
@@ -125,7 +123,7 @@ public:
   X509* GetPolicyCertificate();
   void SetProgramCertificate(X509* c);
   X509* GetProgramCertificate();
-  std::list<string>* GetCertChain();
+  std::list<string>* GetProgramCertChain();
 
   bool InitCounter(string& label, int64_t& c);
   bool GetCounter(string& label, int64_t* c);
@@ -134,9 +132,9 @@ public:
 
 private:
   // This should be private.
-  bool RequestDomainServiceCert(string& network, string& address, string& port,
-          string& attestation_string, string& endorsement_cert,
-          string* program_cert, std::list<string>* certsinChain);
+  bool RequestDomainServiceCert(string& attestation_string, string& host_cert,
+          std::list<string> host_certs_chain, string* program_cert,
+          std::list<string>* program_certs_chain);
 };
 
 class TaoChannel {

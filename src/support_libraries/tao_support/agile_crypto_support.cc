@@ -29,10 +29,43 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 
-const string Basic128BitCipherSuite("sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256");
-const string Basic192BitCipherSuite("sign:ecdsap384,crypt:aes256-ctr-hmacsha384,derive:hdkf-sha256");
-const string Basic256BitCipherSuite("sign:ecdsap521,crypt:aes256-ctr-hmacsha512,derive:hdkf-sha256");
 
+string Basic128BitCipherSuite("sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256");
+string Basic192BitCipherSuite("sign:ecdsap384,crypt:aes256-ctr-hmacsha384,derive:hdkf-sha256");
+string Basic256BitCipherSuite("sign:ecdsap521,crypt:aes256-ctr-hmacsha512,derive:hdkf-sha256");
+
+
+bool CrypterAlgorithmNameFromCipherSuite(string& cipher_suite, string* crypter_name) {
+  if (cipher_suite == Basic128BitCipherSuite) {
+    *crypter_name = "aes128-ctr-hmacsha256";
+    return true;
+  } else if (cipher_suite == Basic192BitCipherSuite) {
+    *crypter_name = "aes256-ctr-hmacsha384";
+    return true;
+  } else if (cipher_suite == Basic256BitCipherSuite) {
+    *crypter_name = "aes256-ctr-hmacsha512";
+    return true;
+  } else {
+  return false;
+  }
+  return false;
+}
+
+bool SignerAlgorithmNameFromCipherSuite(string& cipher_suite, string* signer_name) {
+  if (cipher_suite == Basic128BitCipherSuite) {
+    *signer_name = "ecdsap256";
+    return true;
+  } else if (cipher_suite == Basic192BitCipherSuite) {
+    *signer_name = "ecdsap384";
+    return true;
+  } else if (cipher_suite == Basic256BitCipherSuite) {
+    *signer_name = "ecdsap521";
+    return true;
+  } else {
+  return false;
+  }
+  return false;
+}
 
 void PrintBytes(int size, byte* buf) {
   for (int i = 0; i < size; i++) {
@@ -118,7 +151,6 @@ Verifier* CryptoKeyToVerifier(tao::CryptoKey& ck) {
   } else {
     return nullptr;
   }
-  int n = ck.key_components().size();
   if (!DeserializeECCKeyComponents(ck.key_components(0), ec_key)) {
     return nullptr;
   }
@@ -327,6 +359,8 @@ bool DeserializeECCKeyComponents(string component, EC_KEY* ec_key) {
   byte* pb = buf;
   memcpy(buf, component.data(), component.size());
   EC_KEY* ec = d2i_ECPrivateKey(&ec_key, (const byte**)&pb, component.size());
+  if (ec == nullptr)
+    return false;
   return true;
 }
 
@@ -495,8 +529,6 @@ bool Signer::Sign(string& in, string* out) {
 
   byte digest[128];
   int dig_len;
-  byte signature[2048];
-  int sig_len;
   if (ch_->key_type() == string("ecdsap256")) {
     dig_len = 32;
     SHA256_CTX sha256;
@@ -542,8 +574,6 @@ bool Signer::Verify(string& msg, string& serialized_sig) {
 
   byte digest[128];
   int dig_len;
-  byte signature[2048];
-  int sig_len;
   if (ch_->key_type() == string("ecdsap256")) {
     dig_len = 32;
     SHA256_CTX sha256;
@@ -591,8 +621,6 @@ bool Verifier::Verify(string& msg, string& serialized_sig) {
 
   byte digest[128];
   int dig_len;
-  byte signature[2048];
-  int sig_len;
   if (ch_->key_type() == string("ecdsap256-public")) {
     dig_len = 32;
     SHA256_CTX sha256;

@@ -10,11 +10,18 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-#include <string>
-#include <stdlib.h>
 
 #ifndef __AGILE_CRYPTO_SUPPORT_H__
 #define __AGILE_CRYPTO_SUPPORT_H__
+
+#include <stdio.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string>
+#include <list>
 
 #include "taosupport.pb.h"
 #include "keys.pb.h"
@@ -22,15 +29,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-
-#include <string>
-#include <list>
-#include <stdio.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 
 #ifndef byte
 typedef unsigned char byte;

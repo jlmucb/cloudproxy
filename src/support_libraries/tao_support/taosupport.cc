@@ -389,20 +389,19 @@ bool TaoProgramData::RequestDomainServiceCert(string& request_string) {
     return false;
   }
 
+  // Get response and populate this with cert and cert chain.
   response_buf.assign((const char*)read_buf, bytes_read);
   domain_policy::DomainCertResponse response;
   if (!response.ParseFromString(response_buf)) {
     printf("Domain channel parse failure.\n");
     return false;
   }
-  // Fill in program cert.
   program_cert_.assign((const char*)response.signed_cert().data(),
                        response.signed_cert().size());
-
-  // Cert chain
   for (int j = 0; j < response.cert_chain_size(); j++) {
       program_cert_chain_->push_back(string(response.cert_chain(j)));
   }
+
   return true;
 }
 

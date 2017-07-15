@@ -24,7 +24,6 @@ import (
 
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/common"
 	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
-	// "github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 

@@ -271,7 +271,7 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
 
   // Extend principal name, with hash of policy public key.
   string policy_principal_bytes;
-  if (!KeyPrincipalBytes(policy_verifying_key_, &policy_principal_bytes)) {
+  if (!UniversalKeyName(policy_verifying_key_, &policy_principal_bytes)) {
     return false;
   }
 
@@ -365,9 +365,9 @@ bool TaoProgramData::RequestDomainServiceCert(string& request_string) {
   // Open request channel.
   SslChannel domainChannel;
   if (!domainChannel.InitClientSslChannel(network_, address_, port_,
-        policy_certificate_, program_certificate_, key_type, s->sk_,
+        cert, cert, key_type, s->sk_,
         SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY)) {
-    printf("Can't init ssl channel to domain server.\n");
+    printf("RequestDomainServiceCert: Can't init ssl channel to domain server.\n");
     return false;
   }
 
@@ -376,7 +376,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& request_string) {
                           (int)request_string.size(),
                           (byte*)request_string.data());
   if (bytes_written <= 0) {
-    printf("Domain channel write failure.\n");
+    printf("RequestDomainServiceCert: Domain channel write failure.\n");
     return false;
   }
   byte read_buf[BUFSIZE];
@@ -385,7 +385,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& request_string) {
   while ((bytes_read = SslMessageRead(domainChannel.GetSslChannel(), BUFSIZE, read_buf))
            == 0);
   if (bytes_read <= 0) {
-    printf("Domain channel read failure (%d).\n", bytes_read);
+    printf("RequestDomainServiceCert: Domain channel read failure (%d).\n", bytes_read);
     return false;
   }
 
@@ -399,7 +399,7 @@ bool TaoProgramData::RequestDomainServiceCert(string& request_string) {
   program_cert_.assign((const char*)response.signed_cert().data(),
                        response.signed_cert().size());
   for (int j = 0; j < response.cert_chain_size(); j++) {
-      program_cert_chain_->push_back(string(response.cert_chain(j)));
+      program_cert_chain_.push_back(string(response.cert_chain(j)));
   }
 
   return true;
@@ -468,7 +468,7 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   }
 
   string key_bytes;
-  if (!KeyPrincipalBytes(verifying_key_, &key_bytes)) {
+  if (!UniversalKeyName(verifying_key_, &key_bytes)) {
     printf("InitializeProgramKeys: couldn't get KeyPrincipalBytes.\n");
     return false;
   }
@@ -488,14 +488,14 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   }
 
   // Der serialize key
-  byte der_subj_key[4096];
+  byte der_subj_key[8196];
   byte* ptr = der_subj_key;
   int der_subj_key_size = i2d_PUBKEY(GetProgramKey(), &ptr);
   if (der_subj_key_size <= 0) {
     printf("Can't i2d ECC public key\n");
     return false;
   }
-  
+
   // Make cert request.
   domain_policy::DomainCertRequest request;
   request.set_attestation(attestation_string);
@@ -509,8 +509,7 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   }
 
   // Get Program Cert.
-  if (!RequestDomainServiceCert(request_string, host_cert_,
-        host_cert_chain_, &program_cert_, &program_cert_chain_)) {
+  if (!RequestDomainServiceCert(request_string)) {
     printf("InitializeProgramKeys: couldn't RequestDomainServiceCert.\n");
     return false;
   }
@@ -611,14 +610,14 @@ bool TaoProgramData::GetProgramData() {
   tao::CryptoKey sck;
   tao::CryptoKey cck;
   if (!sck.ParseFromString(program_data.signing_key_blob())) {
-      printf("GetProgramData: no crypto suite\n");
+      printf("GetProgramData: can't decode signing key blob\n");
       return false;
   }
   program_signing_key_ = CryptoKeyToSigner(sck);
   if (program_signing_key_ == nullptr) {
   }
   if (!cck.ParseFromString(program_data.crypting_key_blob())) {
-      printf("GetProgramData: no crypto suite\n");
+      printf("GetProgramData: can't decode crypting key blob\n");
       return false;
   }
   crypting_key_ = CryptoKeyToCrypter(cck);
@@ -626,11 +625,12 @@ bool TaoProgramData::GetProgramData() {
   }
   verifying_key_ = VerifierFromSigner(program_signing_key_);
   if (verifying_key_ == nullptr) {
-      printf("GetProgramData: no crypting \n");
+      printf("GetProgramData: can't get VerifierFromSigner\n");
       return false;
   }
 
   if (program_data.has_delegation()) {
+      printf("GetProgramData: no delegation\n");
   }
 
   // repeated bytes signer_cert_chain

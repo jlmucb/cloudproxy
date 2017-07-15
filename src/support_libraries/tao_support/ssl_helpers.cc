@@ -761,7 +761,7 @@ int SslMessageRead(SSL* ssl, int size, byte* buf) {
 int SslMessageWrite(SSL* ssl, int size, byte* buf) {
   // write 32 bit size and buffer
   int big_endian_size = __builtin_bswap32(size);
-  byte new_buf[4096];
+  byte new_buf[8192];
   memcpy(new_buf, (byte*)&big_endian_size, sizeof(int));
   memcpy(&new_buf[sizeof(int)], buf, size);
   return SslWrite(ssl, size + sizeof(int), new_buf) - sizeof(int);

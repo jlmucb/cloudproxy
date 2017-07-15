@@ -118,6 +118,8 @@ public:
 
   bool GetPolicyCert(string* cert);
   bool GetProgramCert(string* cert);
+  bool GetProgramKeyType(string* key_type);
+  EVP_PKEY* GetProgramKey();
 
   void SetPolicyCertificate(X509* c);
   X509* GetPolicyCertificate();
@@ -132,9 +134,7 @@ public:
 
 private:
   // This should be private.
-  bool RequestDomainServiceCert(string& attestation_string, string& host_cert,
-          std::list<string> host_certs_chain, string* program_cert,
-          std::list<string>* program_certs_chain);
+  bool RequestDomainServiceCert(string& request_string);
 };
 
 class TaoChannel {

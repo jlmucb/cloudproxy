@@ -151,6 +151,21 @@ bool TaoProgramData::GetCipherSuite(string* keyType) {
   return true;
 }
 
+void TaoProgramData::SetProgramCertificate(X509* certificate) {
+  program_certificate_ = certificate;
+}
+
+EVP_PKEY* TaoProgramData::GetProgramKey() {
+  return program_signing_key_->sk_;
+}
+
+bool TaoProgramData::GetProgramKeyType(string* key_type) {
+  if (!SignerAlgorithmNameFromCipherSuite(cipher_suite_, key_type)) {
+    return false;
+  }
+  return true;
+}
+
 bool TaoProgramData::GetProgramCert(string* cert) {
   *cert = program_cert_;
   return true;
@@ -240,8 +255,7 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
   policy_verifying_key_ = VerifierFromCertificate(policy_cert_);
   
   byte* pc = (byte*)policy_cert_.data();
-  policy_certificate_ = d2i_X509(nullptr, (const byte**)&pc,
-          policy_cert_.size());
+  policy_certificate_ = d2i_X509(nullptr, (const byte**)&pc, policy_cert_.size());
   if (policy_certificate_ == nullptr) {
     printf("Can't DER parse policy cert.\n");
     return false;
@@ -305,10 +319,9 @@ bool TaoProgramData::InitTao(string& cipher_suite, FDMessageChannel* msg, Tao* t
   return true;
 }
 
-bool TaoProgramData::RequestDomainServiceCert(string& attestation_string,
-                              string& host_cert, std::list<string> host_certs_chain,
-                              string* program_cert, std::list<string>* programCertChain) {
+bool TaoProgramData::RequestDomainServiceCert(string& request_string) {
 
+  // Set up a fake SSL channel, key does't matter
   if (policy_certificate_ == nullptr) {
     printf("Policy cert is null.\n");
     return false;
@@ -349,8 +362,8 @@ bool TaoProgramData::RequestDomainServiceCert(string& attestation_string,
     return false;
   }
 
+  // Open request channel.
   SslChannel domainChannel;
-
   if (!domainChannel.InitClientSslChannel(network_, address_, port_,
         policy_certificate_, program_certificate_, key_type, s->sk_,
         SSL_NO_SERVER_VERIFY_NO_CLIENT_VERIFY)) {
@@ -358,10 +371,10 @@ bool TaoProgramData::RequestDomainServiceCert(string& attestation_string,
     return false;
   }
 
-  // Format request and send it to Domain service and get response.
+  // Send request to Domain service and get response.
   int bytes_written = SslMessageWrite(domainChannel.GetSslChannel(),
-                          (int)attestation_string.size(),
-                          (byte*)attestation_string.data());
+                          (int)request_string.size(),
+                          (byte*)request_string.data());
   if (bytes_written <= 0) {
     printf("Domain channel write failure.\n");
     return false;
@@ -383,12 +396,12 @@ bool TaoProgramData::RequestDomainServiceCert(string& attestation_string,
     return false;
   }
   // Fill in program cert.
-  program_cert->assign((const char*)response.signed_cert().data(),
+  program_cert_.assign((const char*)response.signed_cert().data(),
                        response.signed_cert().size());
 
   // Cert chain
   for (int j = 0; j < response.cert_chain_size(); j++) {
-      programCertChain->push_back(string(response.cert_chain(j)));
+      program_cert_chain_->push_back(string(response.cert_chain(j)));
   }
   return true;
 }
@@ -474,12 +487,21 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
     printf("InitializeProgramKeys: couldn't Attest.\n");
     return false;
   }
+
+  // Der serialize key
+  byte der_subj_key[4096];
+  byte* ptr = der_subj_key;
+  int der_subj_key_size = i2d_PUBKEY(GetProgramKey(), &ptr);
+  if (der_subj_key_size <= 0) {
+    printf("Can't i2d ECC public key\n");
+    return false;
+  }
   
   // Make cert request.
   domain_policy::DomainCertRequest request;
   request.set_attestation(attestation_string);
   request.set_key_type(signer_alg_name);
-  // request.set_subject_public_key(out, n);
+  request.set_subject_public_key(der_subj_key, der_subj_key_size);
 
   string request_string;
   if (!request.SerializeToString(&request_string)) {
@@ -488,7 +510,7 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   }
 
   // Get Program Cert.
-  if (!RequestDomainServiceCert(attestation_string, host_cert_,
+  if (!RequestDomainServiceCert(request_string, host_cert_,
         host_cert_chain_, &program_cert_, &program_cert_chain_)) {
     printf("InitializeProgramKeys: couldn't RequestDomainServiceCert.\n");
     return false;
@@ -623,48 +645,10 @@ TaoChannel::TaoChannel() {
 
 bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     string& serverAddress, string& port) {
-#if 0
-
-  // Parse policy cert and program cert.
-  string policy_cert;
-  if (!client_program_data.GetPolicyCert(&policy_cert) ||
-       policy_cert.size() == 0 ) {
-    printf("No policy cert.\n");
-    return false;
-  }
-  X509* policyCertificate = nullptr;
-  byte* pc = (byte*)policy_cert.data();
-  policyCertificate = d2i_X509(nullptr,
-      (const byte**)&pc, policy_cert.size());
-  if (policyCertificate == nullptr) {
-    printf("Can't parse policy certificate.\n");
-    return false;
-  }
-  client_program_data.SetPolicyCertificate(policyCertificate);
-
-  string program_cert;
-  if (!client_program_data.GetProgramCert(&program_cert) ||
-       program_cert.size() == 0 ) {
-    printf("No program certificate.\n");
-    return false;
-  }
-
-  pc = (byte*)program_cert.data();
-  X509* programCertificate= d2i_X509(nullptr, (const byte**)&pc,
-        program_cert.size());
-  if (programCertificate == nullptr) {
-    printf("Can't translate program certificate.\n");
-    return false;
-  }
-  client_program_data.SetProgramCertificate(programCertificate);
-  if (client_program_data.GetProgramKey() == nullptr) {
-      printf("No program private key.\n");
-      return false;
-  }
 
   string key_type;
   if (!client_program_data.GetProgramKeyType(&key_type)) {
-      printf("No private key type.\n");
+      printf("OpenTaoChannel: No private key type.\n");
       return false;
   }
 
@@ -676,7 +660,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
                     key_type,
                     client_program_data.GetProgramKey(),
                     SSL_SERVER_VERIFY_CLIENT_VERIFY)) {
-    printf("Can't Init Ssl channel.\n");
+    printf("OpenTaoChannel: Can't Init Ssl channel.\n");
     return false;
   }
 
@@ -690,7 +674,7 @@ bool TaoChannel::OpenTaoChannel(TaoProgramData& client_program_data,
       peer_name_ = buf ;
     }
   }
-#endif
+
   return true;
 }
 

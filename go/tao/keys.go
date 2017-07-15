@@ -826,7 +826,7 @@ func PrepareX509Template(pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name
 		PublicKeyAlgorithm: x509.ECDSA,
 		Version:            2, // x509v3
 		// It's always allowed for self-signed certs to have serial 1.
-		SerialNumber: new(big.Int).SetInt64(1),
+		SerialNumber: new(big.Int).SetInt64(sn),
 		Subject:      *subjectName,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),

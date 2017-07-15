@@ -526,6 +526,13 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
     return false;
   }
 
+  byte* pc = (byte*)program_cert_.data();
+  program_certificate_ = d2i_X509(nullptr, (const byte**)&pc, program_cert_.size());
+  if (program_certificate_ == nullptr) {
+    printf("Can't DER parse program cert.\n");
+    return false;
+  }
+
   pd->set_crypto_suite(cipher_suite_);
   pd->set_file_path(program_path_);
   pd->set_policy_cert(policy_cert_);
@@ -533,6 +540,7 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   pd->set_signing_key_blob(signing_key_blob);
   pd->set_crypting_key_blob(crypting_key_blob);
   pd->set_delegation(attestation_string);
+  pd->set_program_cert(program_cert_);
 /*
   for (int i = 0; i < pd->signer_cert_chain_.size(); i++) {
     string der_cert = pd->signer_cert_chain_(i);
@@ -602,8 +610,12 @@ bool TaoProgramData::GetProgramData() {
       printf("GetProgramData: no crypting key blob\n");
       return false;
   }
-  if (program_data.has_crypto_suite()) {
+  if (!program_data.has_crypto_suite()) {
       printf("GetProgramData: no crypto suite\n");
+      return false;
+  }
+  if (!program_data.has_program_cert()) {
+      printf("GetProgramData: no program cert\n");
       return false;
   }
 
@@ -631,6 +643,13 @@ bool TaoProgramData::GetProgramData() {
 
   if (program_data.has_delegation()) {
       printf("GetProgramData: no delegation\n");
+  }
+
+  byte* pc = (byte*)program_data.program_cert().data();
+  program_certificate_ = d2i_X509(nullptr, (const byte**)&pc, program_data.program_cert().size());
+  if (program_certificate_ == nullptr) {
+    printf("Can't DER parse program cert.\n");
+    return false;
   }
 
   // repeated bytes signer_cert_chain

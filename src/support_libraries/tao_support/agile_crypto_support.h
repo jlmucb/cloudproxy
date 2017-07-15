@@ -35,7 +35,6 @@ typedef unsigned char byte;
 #endif
 
 using std::string;
-using std::unique_ptr;
 
 extern string Basic128BitCipherSuite;
 extern string Basic192BitCipherSuite;

@@ -19,6 +19,7 @@ package tao;
 message LinuxHostSealedBundle {
   required string policy = 1;
   optional string policy_info = 2;
+  // Add: algoritm, key name
   required bytes data = 3;
 }
 

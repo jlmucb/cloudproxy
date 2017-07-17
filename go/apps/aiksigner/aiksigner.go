@@ -27,6 +27,7 @@ import (
 	"time"
 )
 
+var configPath = flag.String("configPath", "/Domains/domain.simpleexampletpm1/tao.config", "The Tao domain config")
 var aikPath = flag.String("aik_path", "./aikblob", "The path to the AIK blob")
 var policyKeyPath = flag.String("policy_key_path", "./policy_keys", "The path to policy key directory")
 var pass = flag.String("password", "xxx", "The password protecting the policy keys")
@@ -77,16 +78,16 @@ func main() {
 			x509.KeyUsageKeyAgreement | x509.KeyUsageDigitalSignature,
 	}
 
-	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*pass), *policyKeyPath, x509IssuerName)
+	domain, err := tao.LoadDomain(*configPath, []byte(*pass))
 	if err != nil {
 		log.Fatalln("Error loading policy key: ", err)
 	}
-	if policyKey.Cert == nil {
+	if domain.Keys.Cert == nil {
 		log.Fatalln("Missing cert in policy key ")
 	}
 
 	cert, err := x509.CreateCertificate(rand.Reader, &certificateTemplate,
-		policyKey.Cert, aik, policyKey.SigningKey.GetSigner())
+		domain.Keys.Cert, aik, domain.Keys.SigningKey.GetSignerPrivateKey())
 	if err != nil {
 		log.Fatalln("Can't create AIK certificate: ", err)
 	}

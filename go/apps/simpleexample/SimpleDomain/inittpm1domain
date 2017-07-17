@@ -41,5 +41,5 @@ $BINPATH/tao domain init -tao_domain $DOMAINTPM1 -config_template $TEMPLATETPM1 
 
 # Replace with aiksigner?
 $BINPATH/genaik -blob $DOMAINTPM1/aikblob
-$BINPATH/aiksigner -aik_path $DOMAINTPM1/aikblob -policy_key_path $DOMAINTPM1/policy_keys \
+$BINPATH/aiksigner -aik_path $DOMAINTPM1/aikblob -policy_key_path $DOMAINTPM1 \
 -password xxx -output_file $DOMAINTPM1/aik_cert

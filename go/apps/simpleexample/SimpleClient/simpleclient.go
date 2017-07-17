@@ -56,7 +56,7 @@ func main() {
 
 	// If TaoParadigm completes without error, clientProgramData contains all the
 	// Cloudproxy information needed throughout simpleclient execution.
-	err := taosupport.TaoParadigm(simpleCfg, simpleClientPath, "ECC-P-256.aes128.hmacaes256",
+	err := taosupport.TaoParadigm(simpleCfg, simpleClientPath,
 		*useSimpleDomainService, *caAddr, &clientProgramData)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao: ", err)
@@ -134,9 +134,9 @@ func main() {
 	retrieveSecret := respmsg.Data[0]
 
 	// Encrypt and store the secret in simpleclient's save area.
-	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)
+	out, err := clientProgramData.ProgramCryptingKey.Encrypt(retrieveSecret)
 	if err != nil {
-		log.Fatalln("simpleclient: Error protecting data\n")
+		log.Fatalln("simpleclient: can't encrypt retrieved secret\n")
 	}
 	err = ioutil.WriteFile(path.Join(*simpleClientPath,
 		"retrieved_secret"), out, os.ModePerm)

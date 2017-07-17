@@ -27,6 +27,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
+
+	// "github.com/golang/crypto/ssh/terminal"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/jlmucb/cloudproxy/go/support_infrastructure/domain_service"

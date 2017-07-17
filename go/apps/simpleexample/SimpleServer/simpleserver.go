@@ -24,7 +24,6 @@ import (
 
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/common"
 	taosupport "github.com/jlmucb/cloudproxy/go/support_libraries/tao_support"
-	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -107,7 +106,12 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 	}
 	// Make the policy cert the unique root of the verification chain.
 	pool.AddCert(policyCert)
-	tlsc, err := tao.EncodeTLSCert(&serverProgramData.ProgramKey)
+	cert, err := x509.ParseCertificate(serverProgramData.ProgramCert)
+	if err != nil {
+		log.Printf("simpleserver: can't parse server cert")
+		return
+	}
+	tlsc, err := taosupport.EncodeTLSCertFromSigner(serverProgramData.ProgramSigningKey, cert)
 	if err != nil {
 		log.Printf("simpleserver, encode error: ", err, "\n")
 		return
@@ -179,12 +183,13 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	err := taosupport.TaoParadigm(simpleCfg, simpleServerPath, "ECC-P-256.aes128.hmacaes256",
+	err := taosupport.TaoParadigm(simpleCfg, simpleServerPath,
 		*useSimpleDomainService, *caAddr, &serverProgramData)
 	if err != nil {
 		log.Fatalln("simpleserver: Can't establish Tao", err)
 	}
 	log.Printf("simpleserver name is %s\n", serverProgramData.TaoName)
+	log.Printf("simpleserver Cert is %x\n", serverProgramData.ProgramCert)
 
 	server(serverAddr, &serverProgramData)
 	log.Printf("simpleserver: done\n")

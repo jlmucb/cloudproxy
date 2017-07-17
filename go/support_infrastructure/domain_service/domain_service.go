@@ -117,7 +117,7 @@ func VerifyAttestation(serializedHostAttestation []byte, domain *tao.Domain) (*a
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			if !verifier.Equals(cert) {
+			if !verifier.KeyEqual(cert) {
 				return nil, nil, nil, errors.New("Endorsement cert is irrelevant to attestation signer")
 			}
 			return speaker, key, program, nil
@@ -386,8 +386,10 @@ func GenerateProgramCert(domain *tao.Domain, serialNumber int, programPrin *auth
 	x509Info.CommonName = &localhost
 	x509Info.OrganizationalUnit = &programName
 	subjectName := tao.NewX509Name(x509Info)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*domain.Keys.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*domain.Keys.SigningKey.Header.KeyType)
 	clientCert, err := domain.Keys.SigningKey.CreateSignedX509(
-		policyCert, serialNumber, verifier, subjectName)
+		policyCert, serialNumber, verifier, pkInt, sigInt, subjectName)
 	if err != nil {
 		return nil, err
 	}

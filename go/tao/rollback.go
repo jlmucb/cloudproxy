@@ -13,69 +13,13 @@
 package tao
 
 import (
-	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 
 	"github.com/golang/protobuf/proto"
 )
-
-func Protect(keys []byte, in []byte) ([]byte, error) {
-	if in == nil {
-		return nil, nil
-	}
-	out := make([]byte, len(in), len(in))
-	iv := make([]byte, 16, 16)
-	_, err := rand.Read(iv[0:16])
-	if err != nil {
-		return nil, errors.New("Protect: Can't generate iv")
-	}
-	encKey := keys[0:16]
-	macKey := keys[16:32]
-	crypter, err := aes.NewCipher(encKey)
-	if err != nil {
-		return nil, errors.New("Protect: Can't make crypter")
-	}
-	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in)
-
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(append(iv, out...))
-	calculatedHmac := hm.Sum(nil)
-	return append(calculatedHmac, append(iv, out...)...), nil
-}
-
-func Unprotect(keys []byte, in []byte) ([]byte, error) {
-	if in == nil {
-		return nil, nil
-	}
-	out := make([]byte, len(in)-48, len(in)-48)
-	var iv []byte
-	iv = in[32:48]
-	encKey := keys[0:16]
-	macKey := keys[16:32]
-	crypter, err := aes.NewCipher(encKey)
-	if err != nil {
-		return nil, errors.New("Unprotect: Can't make crypter")
-	}
-	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out, in[48:])
-
-	hm := hmac.New(sha256.New, macKey)
-	hm.Write(in[32:])
-	calculatedHmac := hm.Sum(nil)
-	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
-		return nil, errors.New("Unprotect: Bad mac")
-	}
-	return out, nil
-}
 
 // Read the counter table.
 func ReadRollbackTable(fileName string, tableKey []byte) *RollbackCounterTable {
@@ -112,12 +56,12 @@ func WriteRollbackTable(rollBackTable *RollbackCounterTable, fileName string, ta
 	}
 	b, err := Protect(tableKey, blob)
 	if err != nil {
-		log.Printf("WriteRollbackTable: Protect failed\n")
+		log.Printf("WriteRollbackTable: Protect failed " + err.Error() + "\n")
 		return false
 	}
 	err = ioutil.WriteFile(fileName, b, 0644)
 	if err != nil {
-		log.Printf("WriteRollbackTable: WriteFile failed\n")
+		log.Printf("WriteRollbackTable: WriteFile failed " + err.Error() + "\n")
 		return false
 	}
 	return true
@@ -168,10 +112,18 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 	sealedKeyFileName string, tableFileName string) bool {
 	// TODO(jlm): child argument not used, remove?
 	// Generate new rollback table sealing keys
-	var newKeys [32]byte
-	rand.Read(newKeys[0:32])
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return false
+	}
+	totalKeySize := CombinedKeySizeFromAlgorithmName(*keyType)
+	if totalKeySize == nil {
+		return false
+	}
+	newKeys := make([]byte, *totalKeySize, *totalKeySize)
+	rand.Read(newKeys[0:*totalKeySize])
 
-	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:32], "self")
+	b, err := lh.Host.RollbackProtectedSeal("Table_secret", newKeys[0:*totalKeySize], "self")
 	if err != nil {
 		log.Printf("SaveHostRollbackTable: Can't do RollbackProtectedSeal\n")
 		return false
@@ -183,7 +135,7 @@ func (t *RollbackCounterTable) SaveHostRollbackTableWithNewKeys(lh *LinuxHost, c
 	}
 
 	// Save table.
-	if !WriteRollbackTable(t, tableFileName, newKeys[0:32]) {
+	if !WriteRollbackTable(t, tableFileName, newKeys[0:*totalKeySize]) {
 		log.Printf("WriteRollbackTable failed\n")
 		return false
 	}

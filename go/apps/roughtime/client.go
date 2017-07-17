@@ -27,15 +27,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jlmucb/cloudproxy/go/apps/roughtime/agl_roughtime/config"
+	"github.com/jlmucb/cloudproxy/go/apps/roughtime/agl_roughtime/monotime"
+	"github.com/jlmucb/cloudproxy/go/apps/roughtime/agl_roughtime/protocol"
 	"github.com/jlmucb/cloudproxy/go/tao"
 
 	"math/big"
 	mathrand "math/rand"
 
 	"golang.org/x/crypto/ed25519"
-	"roughtime.googlesource.com/go/client/monotime"
-	"roughtime.googlesource.com/go/config"
-	"roughtime.googlesource.com/go/protocol"
 )
 
 const (

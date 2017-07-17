@@ -113,7 +113,8 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		return signer, nil
 	case "key":
 		// Signer is ECDSA key, use Tao signature verification.
-		v, err := UnmarshalKey(a.SignerKey)
+		// TODO v, err := UnmarshalKey(a.SignerKey)
+		v, err := VerifierKeyFromCanonicalKeyBytes(a.SignerKey)
 		if err != nil {
 			return auth.Prin{}, err
 		}
@@ -149,6 +150,7 @@ func (a *Attestation) Validate() (auth.Says, error) {
 	} else {
 		return auth.Says{}, newError("tao: attestation statement has wrong type: %T", f)
 	}
+
 	if a.SerializedDelegation == nil {
 		// Case (1), no delegation present.
 		// Require that stmt.Speaker be a subprincipal of (or identical to) a.signer.
@@ -220,11 +222,15 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attesta
 		return nil, err
 	}
 
+	sk, err := s.GetVerifierFromSigner().CanonicalKeyBytesFromVerifier()
+	if err != nil {
+		return nil, err
+	}
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
 		SignerType:          proto.String("key"),
-		SignerKey:           s.GetVerifier().MarshalKey(),
+		SignerKey:           sk,
 	}
 
 	if len(delegation) > 0 {

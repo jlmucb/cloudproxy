@@ -2,16 +2,31 @@
 // source: attestation.proto
 // DO NOT EDIT!
 
+/*
+Package tao is a generated protocol buffer package.
+
+It is generated from these files:
+	attestation.proto
+
+It has these top-level messages:
+	Attestation
+*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
-import json "encoding/json"
+import fmt "fmt"
 import math "math"
 
-// Reference proto, json, and math imports to suppress error if they are not otherwise used.
+// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = &json.SyntaxError{}
+var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // An Attestation is a key, a signature, and a statement, and it conveys:
 //   signer says statement
@@ -147,14 +162,14 @@ type Attestation struct {
 	// A serialized statement. This is serialized to avoid canonicalization issues
 	// when signing and verifying signatures. In Go, this is obtained using
 	// cloudproxy/tao/auth.Marshal().
-	SerializedStatement []byte `protobuf:"bytes,1,req,name=serialized_statement" json:"serialized_statement,omitempty"`
+	SerializedStatement []byte `protobuf:"bytes,1,req,name=serialized_statement,json=serializedStatement" json:"serialized_statement,omitempty"`
 	// The signature type, either "tpm", "tpm2", or "key". This must match
 	// the type of the signer key, and it is also used to determine how to verify
 	// signatures.
-	SignerType *string `protobuf:"bytes,2,req,name=signer_type" json:"signer_type,omitempty"`
+	SignerType *string `protobuf:"bytes,2,req,name=signer_type,json=signerType" json:"signer_type,omitempty"`
 	// The signer's public key, i.e. the un-hashed key material used within
-	// clouddproxy/tao/auth.New*Prin().
-	SignerKey []byte `protobuf:"bytes,3,req,name=signer_key" json:"signer_key,omitempty"`
+	// cloudproxy/tao/auth.New*Prin().
+	SignerKey []byte `protobuf:"bytes,3,req,name=signer_key,json=signerKey" json:"signer_key,omitempty"`
 	// Signature over the serialized statement using TPM or Tao signing.
 	Signature []byte `protobuf:"bytes,4,req,name=signature" json:"signature,omitempty"`
 	// A delegation attestation that conveys (eventually) that signer speaks for
@@ -162,28 +177,29 @@ type Attestation struct {
 	// self evident that signer speaks for the issuer in the serialized statement.
 	// This can be added, removed, or replaced without changing the attestation
 	// signature, but verification may fail if a required delegation is missing.
-	SerializedDelegation []byte `protobuf:"bytes,5,opt,name=serialized_delegation" json:"serialized_delegation,omitempty"`
+	SerializedDelegation []byte `protobuf:"bytes,5,opt,name=serialized_delegation,json=serializedDelegation" json:"serialized_delegation,omitempty"`
 	// An optional set of further attestations that may pertain, in some way, to
 	// the the issuer or signer of this attestation. These can be added or removed
 	// without changing the attestation signature. This allows attestations to be
 	// piggy-backed, e.g. when an authorization guard requires multiple
 	// attestations to check a policy.
-	SerializedEndorsements [][]byte `protobuf:"bytes,6,rep,name=serialized_endorsements" json:"serialized_endorsements,omitempty"`
+	SerializedEndorsements [][]byte `protobuf:"bytes,6,rep,name=serialized_endorsements,json=serializedEndorsements" json:"serialized_endorsements,omitempty"`
 	// This is the quote structure actually signed by the tpm 2.0.
 	// TODO(kwalsh) remove this -- as for tpm1.2, the quote structure should be
 	// recoverable from the principal names in the serialized statement.
-	Tpm2QuoteStructure []byte `protobuf:"bytes,7,opt,name=tpm2_quote_structure" json:"tpm2_quote_structure,omitempty"`
+	Tpm2QuoteStructure []byte `protobuf:"bytes,7,opt,name=tpm2_quote_structure,json=tpm2QuoteStructure" json:"tpm2_quote_structure,omitempty"`
 	// This is a DER encoded X509 certificate certifying the key signing the
 	// attestation. This is included in attestations signed by a root Tao
 	// i.e. a TPM (1.2 or 2.0) Tao or a soft Tao, and forms the root of the
 	// attestation chain. This certificate is signed by the policy key.
-	RootEndorsement  []byte `protobuf:"bytes,8,opt,name=root_endorsement" json:"root_endorsement,omitempty"`
+	RootEndorsement  []byte `protobuf:"bytes,8,opt,name=root_endorsement,json=rootEndorsement" json:"root_endorsement,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *Attestation) Reset()         { *m = Attestation{} }
-func (m *Attestation) String() string { return proto.CompactTextString(m) }
-func (*Attestation) ProtoMessage()    {}
+func (m *Attestation) Reset()                    { *m = Attestation{} }
+func (m *Attestation) String() string            { return proto.CompactTextString(m) }
+func (*Attestation) ProtoMessage()               {}
+func (*Attestation) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 func (m *Attestation) GetSerializedStatement() []byte {
 	if m != nil {
@@ -242,4 +258,29 @@ func (m *Attestation) GetRootEndorsement() []byte {
 }
 
 func init() {
+	proto.RegisterType((*Attestation)(nil), "tao.Attestation")
 }
+
+/*
+func init() { proto.RegisterFile("attestation.proto", fileDescriptor0) }
+
+var fileDescriptor0 = []byte{
+	// 246 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x4c, 0x8f, 0x3d, 0x4f, 0xc3, 0x40,
+	0x0c, 0x86, 0xd5, 0x84, 0xaf, 0xba, 0x48, 0x80, 0x29, 0x70, 0x03, 0x88, 0x88, 0x09, 0x16, 0xc4,
+	0xc7, 0xc0, 0x8c, 0x04, 0x13, 0x13, 0x2d, 0x7b, 0x74, 0x22, 0x56, 0x15, 0xd1, 0xc6, 0xe1, 0xce,
+	0x19, 0xc2, 0x3f, 0xe6, 0x5f, 0x70, 0x71, 0x49, 0x73, 0xe3, 0x3d, 0xcf, 0x6b, 0xfb, 0x3d, 0x38,
+	0xb2, 0x22, 0xe4, 0xc5, 0x4a, 0xc9, 0xd5, 0x6d, 0xed, 0x58, 0x18, 0x53, 0xb1, 0x7c, 0xf5, 0x9b,
+	0xc0, 0xe4, 0x79, 0x50, 0x78, 0x0f, 0x53, 0x4f, 0xae, 0xb4, 0xcb, 0xf2, 0x87, 0x8a, 0xbc, 0xa3,
+	0xb4, 0xa2, 0x4a, 0xcc, 0x28, 0x4b, 0xae, 0xf7, 0x67, 0xc7, 0x83, 0x9b, 0xf7, 0x0a, 0x2f, 0x61,
+	0xe2, 0xcb, 0x45, 0x45, 0x2e, 0x97, 0xb6, 0x26, 0x93, 0x84, 0xe4, 0x78, 0x06, 0x6b, 0xf4, 0x11,
+	0x08, 0x5e, 0xc0, 0xff, 0x2b, 0xff, 0xa2, 0xd6, 0xa4, 0xba, 0x69, 0xbc, 0x26, 0x6f, 0xd4, 0xe2,
+	0x39, 0xe8, 0xc3, 0x4a, 0xe3, 0xc8, 0x6c, 0x0d, 0x56, 0x01, 0x3e, 0xc2, 0x49, 0x54, 0xa8, 0xa0,
+	0x25, 0x2d, 0xb4, 0xa9, 0xd9, 0xce, 0x46, 0x21, 0x19, 0xb5, 0x7d, 0xd9, 0x38, 0x7c, 0x82, 0xb3,
+	0x68, 0x88, 0xaa, 0x82, 0x9d, 0xd7, 0xb2, 0xde, 0xec, 0x64, 0x69, 0x18, 0x3b, 0x1d, 0xf4, 0x6b,
+	0x64, 0xf1, 0x0e, 0xa6, 0x52, 0xaf, 0x1e, 0xf2, 0xef, 0x86, 0x85, 0xc2, 0xf7, 0x5d, 0xf3, 0xa9,
+	0xb5, 0x76, 0xf5, 0x18, 0x76, 0xee, 0xbd, 0x53, 0xf3, 0xde, 0xe0, 0x0d, 0x1c, 0x3a, 0x66, 0x89,
+	0x8f, 0x98, 0x3d, 0x4d, 0x1f, 0x74, 0x3c, 0xda, 0xfe, 0x17, 0x00, 0x00, 0xff, 0xff, 0x12, 0x38,
+	0x5b, 0xa8, 0x84, 0x01, 0x00, 0x00,
+}
+*/

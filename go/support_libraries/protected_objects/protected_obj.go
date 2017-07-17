@@ -25,14 +25,25 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tpm2"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 func PrintObject(obj *ObjectMessage) {
 	fmt.Printf("Object %s, epoch %d\n", *obj.ObjId.ObjName, *obj.ObjId.ObjEpoch)
-	fmt.Printf("\ttype %s, status %s, notbefore: %s, notafter: %s\n", *obj.ObjType,
-		*obj.ObjStatus, *obj.NotBefore, *obj.NotAfter)
-	fmt.Printf("Object value: %x\n", obj.ObjVal)
+	if obj.ObjType != nil {
+		fmt.Printf("\ttype %s\n", *obj.ObjType)
+	}
+	if obj.ObjStatus != nil {
+		fmt.Printf("\tstatus %s\n", *obj.ObjStatus)
+	}
+	if obj.NotBefore != nil  && obj.NotBefore != nil {
+		fmt.Printf("\tnotbefore: %s, notafter: %s\n", *obj.NotBefore, *obj.NotAfter)
+	}
+	if obj.ObjVal != nil {
+		fmt.Printf("Object value: %x\n", obj.ObjVal)
+	} else {
+		fmt.Printf("Object value: nil\n")
+	}
 }
 
 func PrintProtectedObject(obj *ProtectedObjectMessage) {
@@ -372,9 +383,9 @@ func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch
 	p.ProtectorObjId.ObjEpoch = &protectorEpoch
 	unencrypted, err := proto.Marshal(&obj)
 	if err != nil {
-		return nil, errors.New("Can't make Protected Object")
+		return nil, errors.New("Can't make Protected Object: " + err.Error())
 	}
-	encrypted, err := tpm2.Protect(protectorKeys, unencrypted)
+	encrypted, err := tao.Protect(protectorKeys, unencrypted)
 	if err != nil {
 		return nil, errors.New("Can't Protect Object")
 	}
@@ -385,7 +396,7 @@ func MakeProtectedObject(obj ObjectMessage, protectorName string, protectorEpoch
 // Decrypt and unmarshal a protected object blob
 func RecoverProtectedObject(obj *ProtectedObjectMessage, protectorKeys []byte) (*ObjectMessage, error) {
 	p := new(ObjectMessage)
-	unencrypted, err := tpm2.Unprotect(protectorKeys, obj.Blob)
+	unencrypted, err := tao.Unprotect(protectorKeys, obj.Blob)
 	if err != nil {
 		return nil, errors.New("Can't make Unprotect Object")
 	}

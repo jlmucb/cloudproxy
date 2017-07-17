@@ -28,7 +28,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+// const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // TODO: explain different types
 type DomainServiceRequestRequestType int32
@@ -203,7 +203,7 @@ func init() {
 	proto.RegisterEnum("domain_service.DomainServiceRequestRequestType", DomainServiceRequestRequestType_name, DomainServiceRequestRequestType_value)
 }
 
-func init() { proto.RegisterFile("service.proto", fileDescriptor0) }
+// func init() { proto.RegisterFile("service.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
 	// 369 bytes of a gzipped FileDescriptorProto

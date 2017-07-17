@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -92,7 +93,7 @@ func HandleEndorsement(keySize int, keyName, endorsementCertFile, policyCertFile
 			IsCA: true,
 		}
 		endorsementCert, err = x509.CreateCertificate(rand.Reader, &signTemplate, policyKey.Cert,
-			hwPublic, policyKey.SigningKey.GetSigner())
+			hwPublic, policyKey.SigningKey.GetSignerPrivateKey())
 		if err != nil {
 			return fmt.Errorf("Can't create endorsement certificate: %s", err)
 		}
@@ -199,8 +200,9 @@ func HandleQuote(network, addr, pass, path string, details X509Details) error {
 			log.Printf("Quote server: Couldn't read request from channel: %s\n", err)
 			continue
 		}
-		response, err := tpm2.ProcessQuoteDomainRequest(request, policyKey.SigningKey.GetSigner(),
-			policyKey.Cert.Raw)
+		// FIX: only ecdsa is supported here, should check type
+		response, err := tpm2.ProcessQuoteDomainRequest(request,
+			(policyKey.SigningKey.GetSignerPrivateKey()).(*ecdsa.PrivateKey), policyKey.Cert.Raw)
 		if err != nil {
 			continue
 		}

@@ -102,6 +102,22 @@ type Tao interface {
 	RollbackProtectedUnseal(sealed []byte) ([]byte, string, error)
 }
 
+// Crypto Suite
+// 	Each Library is associated with exactly one cipher suite that describes
+// 	seal/unseal, hmac, public key and key derivation algorithms.  The original
+// 	default was AES-128-CTR-ECC-P256-SHA-256-HMAC-SHA-256.
+//
+// Supported crypto suites
+//	Basic256BitCipherSuite is the USG "Top Secret" suite.  See
+// 	https://www.iad.gov/iad/programs/iad-initiatives/cnsa-suite.cfm.
+const (
+	Basic128BitCipherSuite = "sign:ecdsap256,crypt:aes128-ctr-hmacsha256,derive:hdkf-sha256"
+	Basic192BitCipherSuite = "sign:ecdsap384,crypt:aes256-ctr-hmacsha384,derive:hdkf-sha256"
+	Basic256BitCipherSuite = "sign:ecdsap521,crypt:aes256-ctr-hmacsha512,derive:hdkf-sha256"
+)
+// The following variable, defined in "tao_cipher_suite.go," selects the cipher suite.
+// var TaoCryptoSuite = Basic128BitCipherSuite
+
 // The following variables are accessible within the tao package so they can be
 // accessed by the functions that manage the Tao parent singleton object.
 

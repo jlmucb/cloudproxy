@@ -123,25 +123,6 @@ func TestGenerateCertFromKeys(t *testing.T) {
 	fmt.Printf("cert: %x\n", cert)
 }
 
-// Test Protect/Unprotect
-func TestProtectUnprotect(t *testing.T) {
-	keys := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0,
-		1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0}
-	in := []byte{1, 2, 3, 4, 5, 6, 8, 9}
-	out, err := Protect(keys, in)
-	if err != nil {
-		t.Fatal("Protect failed\n")
-	}
-	recovered, err := Unprotect(keys, out)
-	if err != nil {
-		t.Fatal("Unprotect failed\n")
-	}
-	fmt.Printf("keys: %x, in: %x, out: %x, recovered: %x\n", keys, in, out, recovered)
-	if bytes.Compare(in, recovered) != 0 {
-		t.Fatal("input not recovered\n")
-	}
-}
-
 func TestEndorseCertificate(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert.ext"
 	out, err := ioutil.ReadFile(fileName)

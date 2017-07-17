@@ -15,113 +15,786 @@
 package tao
 
 import (
+	"bytes"
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/pem"
+
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"math/big"
-	"os"
-	"path"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	"github.com/jlmucb/cloudproxy/go/util"
 
 	"golang.org/x/crypto/hkdf"
-	"golang.org/x/crypto/pbkdf2"
 )
-
-// A KeyType represent the type(s) of keys held by a Keys struct.
-type KeyType int
-
-// These are the types of supported keys.
-const (
-	Signing KeyType = 1 << iota
-	Crypting
-	Deriving
-)
-
-const aesKeySize = 32 // 256-bit AES
-const deriverSecretSize = 32
-const hmacKeySize = 32 // SHA-256
 
 // A Signer is used to sign and verify signatures
 type Signer struct {
-	ec *ecdsa.PrivateKey
-}
+	Header *CryptoHeader
 
-func (s *Signer) GetSigner() *ecdsa.PrivateKey {
-	return s.ec
-}
-
-func (s *Verifier) GetVerifier() *ecdsa.PublicKey {
-	return s.ec
+	PrivKey crypto.PrivateKey
 }
 
 // A Verifier is used to verify signatures.
 type Verifier struct {
-	ec *ecdsa.PublicKey
+	Header *CryptoHeader
+
+	PubKey crypto.PublicKey
 }
 
 // A Crypter is used to encrypt and decrypt data.
 type Crypter struct {
-	aesKey  []byte
-	hmacKey []byte
+	Header *CryptoHeader
+
+	EncryptingKeyBytes []byte
+	HmacKeyBytes       []byte
 }
 
 // A Deriver is used to derive key material from a context using HKDF.
 type Deriver struct {
-	secret []byte
+	Header *CryptoHeader
+
+	Secret []byte
 }
 
-// GenerateSigner creates a new Signer with a fresh key.
-func GenerateSigner() (*Signer, error) {
-	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+// ZeroBytes clears the bytes in a slice.
+func ZeroBytes(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
+}
+
+func randBytes(size int) ([]byte, error) {
+	buf := make([]byte, size)
+	_, err := rand.Read(buf)
+	return buf, err
+}
+
+func SerializeRsaPrivateComponents(rsaKey *rsa.PrivateKey) ([][]byte, error) {
+	// mod, e, d, p, q
+	var keyComponents [][]byte
+	if rsaKey.PublicKey.N == nil {
+		return nil, errors.New("No modulus")
+	}
+	keyComponents = append(keyComponents, rsaKey.PublicKey.N.Bytes())
+	e := rsaKey.PublicKey.E
+	eInt := big.NewInt(int64(e))
+	keyComponents = append(keyComponents, eInt.Bytes())
+	d := rsaKey.D
+	if d == nil {
+		return keyComponents, nil
+	}
+	keyComponents = append(keyComponents, d.Bytes())
+	p := rsaKey.Primes[0]
+	if p == nil {
+		return keyComponents, nil
+	}
+	keyComponents = append(keyComponents, p.Bytes())
+	q := rsaKey.Primes[1]
+	if q == nil {
+		return keyComponents, nil
+	}
+	keyComponents = append(keyComponents, q.Bytes())
+	return keyComponents, nil
+}
+
+func DeserializeRsaPrivateComponents(keyComponents [][]byte, rsaKey *rsa.PrivateKey) error {
+	if len(keyComponents) < 3 {
+		return errors.New("Too few key components")
+	}
+	rsaKey.PublicKey.N = new(big.Int)
+	rsaKey.PublicKey.N.SetBytes(keyComponents[0])
+	eInt := new(big.Int)
+	eInt.SetBytes(keyComponents[1])
+	rsaKey.PublicKey.E = int(eInt.Int64())
+	rsaKey.D = new(big.Int)
+	rsaKey.D.SetBytes(keyComponents[2])
+	if len(keyComponents) < 5 {
+		return nil
+	}
+	p := new(big.Int)
+	p.SetBytes(keyComponents[3])
+	q := new(big.Int)
+	q.SetBytes(keyComponents[4])
+	rsaKey.Primes = make([]*big.Int, 2)
+	rsaKey.Primes[0] = p
+	rsaKey.Primes[1] = q
+	return nil
+}
+
+func SerializeEcdsaPrivateComponents(ecKey *ecdsa.PrivateKey) ([]byte, error) {
+	return x509.MarshalECPrivateKey(ecKey)
+}
+
+func DeserializeEcdsaPrivateComponents(keyBytes []byte) (*ecdsa.PrivateKey, error) {
+	return x509.ParseECPrivateKey(keyBytes)
+}
+
+func SerializeRsaPublicComponents(rsaKey *rsa.PublicKey) ([][]byte, error) {
+	// should this use return x509.ParsePKIXPublicKey(keyBytes)?
+	// mod, e, d
+	var keyComponents [][]byte
+	if rsaKey.N == nil {
+		return nil, errors.New("No modulus")
+	}
+	keyComponents = append(keyComponents, rsaKey.N.Bytes())
+	eInt := big.NewInt(int64(rsaKey.E))
+	keyComponents = append(keyComponents, eInt.Bytes())
+	return keyComponents, nil
+}
+
+func DeserializeRsaPublicComponents(rsaKey *rsa.PublicKey, keyComponents [][]byte) error {
+	if len(keyComponents) < 2 {
+		return errors.New("Too few key components")
+	}
+	rsaKey.N = new(big.Int)
+	rsaKey.N.SetBytes(keyComponents[0])
+	eInt := new(big.Int)
+	eInt.SetBytes(keyComponents[1])
+	rsaKey.E = int(eInt.Int64())
+	return nil
+}
+
+func SerializeEcdsaPublicComponents(ecKey *ecdsa.PublicKey) ([]byte, error) {
+	return x509.MarshalPKIXPublicKey(ecKey)
+}
+
+func DeserializeEcdsaPublicComponents(keyBytes []byte) (crypto.PrivateKey, error) {
+	return x509.ParsePKIXPublicKey(keyBytes)
+}
+
+func KeyComponentsFromSigner(s *Signer) ([][]byte, error) {
+	var keyComponents [][]byte
+	if s.Header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
+	switch *s.Header.KeyType {
+	case "rsa1024", "rsa2048", "rsa3072":
+		// Serialize modulus, public-exponent, private-exponent, P, Q
+		keyComponents, err := SerializeRsaPrivateComponents((s.PrivKey).(*rsa.PrivateKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		return keyComponents, nil
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		// Serialize
+		keyComponent, err := SerializeEcdsaPrivateComponents((s.PrivKey).(*ecdsa.PrivateKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		keyComponents = append(keyComponents, keyComponent)
+		return keyComponents, nil
+	default:
+		return nil, errors.New("Unknown signer key")
+	}
+	return keyComponents, nil
+}
+
+func KeyComponentsFromVerifier(v *Verifier) ([][]byte, error) {
+	var keyComponents [][]byte
+	if v.Header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
+	switch *v.Header.KeyType {
+	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
+		// Serialize modulus, public-exponent, private-exponent, P, Q
+		keyComponents, err := SerializeRsaPublicComponents((v.PubKey).(*rsa.PublicKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		return keyComponents, nil
+	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public":
+		// Serialize
+		keyComponent, err := SerializeEcdsaPublicComponents((v.PubKey).(*ecdsa.PublicKey))
+		if err != nil {
+			return nil, errors.New("Can't Serialize")
+		}
+		keyComponents = append(keyComponents, keyComponent)
+		return keyComponents, nil
+	default:
+	}
+	return keyComponents, nil
+}
+
+func KeyComponentsFromCrypter(c *Crypter) ([][]byte, error) {
+	var keyComponents [][]byte
+	if c.Header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
+	switch *c.Header.KeyType {
+	case "aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512":
+		keyComponents = append(keyComponents, c.EncryptingKeyBytes)
+		keyComponents = append(keyComponents, c.HmacKeyBytes)
+	default:
+		return nil, errors.New("Unknown crypter key")
+	}
+	return keyComponents, nil
+}
+
+func KeyComponentsFromDeriver(d *Deriver) ([][]byte, error) {
+	var keyComponents [][]byte
+	if d.Header.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
+	switch *d.Header.KeyType {
+	case "hdkf-sha256":
+		keyComponents = append(keyComponents, d.Secret)
+		return keyComponents, nil
+	default:
+		return nil, errors.New("Unknown deriver key")
+	}
+	return keyComponents, nil
+}
+
+func PrivateKeyFromCryptoKey(k CryptoKey) (crypto.PrivateKey, error) {
+	if k.KeyHeader.KeyType == nil {
+		return nil, errors.New("Empty key type")
+	}
+	switch *k.KeyHeader.KeyType {
+	case "rsa1024", "rsa2048", "rsa3072":
+		rsaKey := new(rsa.PrivateKey)
+		err := DeserializeRsaPrivateComponents(k.KeyComponents, rsaKey)
+		if err != nil {
+			return nil, errors.New("Can't DeserializeRsaPrivateComponents")
+		}
+		return crypto.PrivateKey(rsaKey), nil
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		ecKey, err := DeserializeEcdsaPrivateComponents(k.KeyComponents[0])
+		if err != nil {
+			return nil, errors.New("Can't DeserializeEcdsaPrivateComponents")
+		}
+		return crypto.PrivateKey(ecKey), nil
+	default:
+	}
+	return nil, errors.New("Unsupported key type")
+}
+
+func PublicKeyFromCryptoKey(k CryptoKey) (crypto.PublicKey, error) {
+	var publicKey crypto.PublicKey
+	if k.KeyHeader == nil {
+		return nil, errors.New("Empty key header")
+	}
+	switch *k.KeyHeader.KeyType {
+	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
+		rsaKey := new(rsa.PublicKey)
+		err := DeserializeRsaPublicComponents(rsaKey, k.KeyComponents)
+		if err != nil {
+			return nil, errors.New("Can't DeserializeRsaPublicComponents")
+		}
+		publicKey = crypto.PublicKey(rsaKey)
+		return publicKey, nil
+	case "ecdsap256-public", "ecdsap521-public", "ecdsap384-public":
+		ecKey, err := DeserializeEcdsaPublicComponents(k.KeyComponents[0])
+		if err != nil {
+			return nil, errors.New("Can't DeserializeEcdsaPublicComponents")
+		}
+		publicKey = crypto.PublicKey(ecKey)
+		return publicKey, nil
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+	return publicKey, errors.New("Unsupported key type")
+}
+
+func (k *CryptoKey) Clear() {
+	for i := 0; i < len(k.KeyComponents); i++ {
+		ZeroBytes(k.KeyComponents[i])
+	}
+}
+
+func (s *Signer) Clear() {
+	if (s.PrivKey).(*ecdsa.PrivateKey) != nil {
+		// TODO: ZeroBytes([]byte((s.PrivKey).(*ecdsa.PrivateKey)))
+	} else if (s.PrivKey).(*rsa.PrivateKey) != nil {
+	}
+}
+
+func (c *Crypter) Clear() {
+	ZeroBytes(c.EncryptingKeyBytes)
+	ZeroBytes(c.HmacKeyBytes)
+}
+
+func (d *Deriver) Clear() {
+	ZeroBytes(d.Secret)
+}
+
+func CryptoKeyFromSigner(s *Signer) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromSigner(s)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: s.Header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
+func CryptoKeyFromVerifier(v *Verifier) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromVerifier(v)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: v.Header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
+func CryptoKeyFromCrypter(c *Crypter) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromCrypter(c)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: c.Header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
+func CryptoKeyFromDeriver(d *Deriver) (*CryptoKey, error) {
+	keyComponents, err := KeyComponentsFromDeriver(d)
+	if err != nil {
+		return nil, errors.New("Can't get key components")
+	}
+	ck := &CryptoKey{
+		KeyHeader: d.Header,
+	}
+	ck.KeyComponents = keyComponents
+	return ck, nil
+}
+
+func PrintCryptoKeyHeader(header CryptoHeader) {
+	if header.Version == nil || *header.Version != CryptoVersion_CRYPTO_VERSION_2 {
+		fmt.Printf("Wrong version\n")
+	}
+	if header.KeyName == nil {
+		fmt.Printf("No key name\n")
+	} else {
+		fmt.Printf("Key name: %s\n", *header.KeyName)
+	}
+	if header.KeyType == nil {
+		fmt.Printf("No key type\n")
+	} else {
+		fmt.Printf("Key type: %s\n", *header.KeyType)
+	}
+	if header.KeyPurpose == nil {
+		fmt.Printf("No Purpose\n")
+	} else {
+		fmt.Printf("Purpose: %s\n", *header.KeyPurpose)
+	}
+	if header.KeyStatus == nil {
+		fmt.Printf("No key status\n")
+	} else {
+		fmt.Printf("Key status: %s\n", *header.KeyStatus)
+	}
+}
+
+func PrintCryptoKey(cryptoKey *CryptoKey) {
+	if cryptoKey.KeyHeader == nil {
+		fmt.Printf("No key header\n")
+		return
+	}
+	PrintCryptoKeyHeader(*cryptoKey.KeyHeader)
+	n := len(cryptoKey.KeyComponents)
+	for i := 0; i < n; i++ {
+		fmt.Printf("Component %d: %x\n", i, cryptoKey.KeyComponents[i])
+	}
+}
+
+func MarshalCryptoKey(ck CryptoKey) []byte {
+	b, err := proto.Marshal(&ck)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
+func UnmarshalCryptoKey(bytes []byte) (*CryptoKey, error) {
+	ck := new(CryptoKey)
+	err := proto.Unmarshal(bytes, ck)
 	if err != nil {
 		return nil, err
 	}
+	return ck, nil
+}
 
-	return &Signer{ec}, nil
+func GenerateCryptoKey(keyType string, keyName *string, keyEpoch *int32, keyPurpose *string, keyStatus *string) *CryptoKey {
+	cryptoKey := new(CryptoKey)
+	switch keyType {
+	case "aes128-raw":
+		keyBuf, err := randBytes(16)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "aes256-raw":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "aes128-ctr":
+		keyBuf, err := randBytes(16)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		ivBuf, err := randBytes(16)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, ivBuf)
+	case "aes256-ctr":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		hmacBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+	case "aes128-ctr-hmacsha256":
+		keyBuf, err := randBytes(16)
+		if err != nil {
+			return nil
+		}
+		hmacBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+	case "aes256-ctr-hmacsha384":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		hmacBuf, err := randBytes(48)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+	case "aes256-ctr-hmacsha512":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		hmacBuf, err := randBytes(64)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, hmacBuf)
+	case "hmacsha256":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "hmacsha384":
+		keyBuf, err := randBytes(48)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "hmacsha512":
+		keyBuf, err := randBytes(64)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "rsa1024":
+		rsaKey, err := rsa.GenerateKey(rand.Reader, 1024)
+		if err != nil {
+			return nil
+		}
+		// Serialize modulus, public-exponent, private-exponent, P, Q
+		keyComponents, err := SerializeRsaPrivateComponents(rsaKey)
+		if err != nil {
+			return nil
+		}
+		for i := 0; i < len(keyComponents); i++ {
+			cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponents[i])
+		}
+	case "rsa2048":
+		rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			return nil
+		}
+		keyComponents, err := SerializeRsaPrivateComponents(rsaKey)
+		if err != nil {
+			return nil
+		}
+		for i := 0; i < len(keyComponents); i++ {
+			cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponents[i])
+		}
+	case "rsa3072":
+		rsaKey, err := rsa.GenerateKey(rand.Reader, 3072)
+		if err != nil {
+			return nil
+		}
+		keyComponents, err := SerializeRsaPrivateComponents(rsaKey)
+		if err != nil {
+			return nil
+		}
+		for i := 0; i < len(keyComponents); i++ {
+			cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponents[i])
+		}
+	case "ecdsap256":
+		ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil
+		}
+		keyComponent, err := SerializeEcdsaPrivateComponents(ecKey)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
+	case "ecdsap384":
+		ecKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		if err != nil {
+			return nil
+		}
+		keyComponent, err := SerializeEcdsaPrivateComponents(ecKey)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
+	case "ecdsap521":
+		ecKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		if err != nil {
+			return nil
+		}
+		keyComponent, err := SerializeEcdsaPrivateComponents(ecKey)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyComponent)
+	case "hdkf-sha256":
+		keyBuf, err := randBytes(32)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "hdkf-sha384":
+		keyBuf, err := randBytes(48)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	case "hdkf-sha512":
+		keyBuf, err := randBytes(64)
+		if err != nil {
+			return nil
+		}
+		cryptoKey.KeyComponents = append(cryptoKey.KeyComponents, keyBuf)
+	default:
+		return nil
+	}
+	ver := CryptoVersion_CRYPTO_VERSION_2
+	ch := &CryptoHeader{
+		Version:    &ver,
+		KeyName:    keyName,
+		KeyEpoch:   keyEpoch,
+		KeyType:    &keyType,
+		KeyPurpose: keyPurpose,
+		KeyStatus:  keyStatus,
+	}
+	cryptoKey.KeyHeader = ch
+	return cryptoKey
+}
+
+func SignerFromCryptoKey(k CryptoKey) *Signer {
+	privateKey, err := PrivateKeyFromCryptoKey(k)
+	if err != nil {
+		return nil
+	}
+	if k.KeyHeader.KeyType == nil {
+		return nil
+	}
+	s := &Signer{
+		Header:  k.KeyHeader,
+		PrivKey: privateKey,
+	}
+	return s
+}
+
+func VerifierFromCryptoKey(k CryptoKey) *Verifier {
+	publicKey, err := PublicKeyFromCryptoKey(k)
+	if err != nil {
+		return nil
+	}
+	if k.KeyHeader.KeyType == nil {
+		return nil
+	}
+	v := &Verifier{
+		Header: k.KeyHeader,
+		PubKey: publicKey,
+	}
+	return v
+}
+
+func CrypterFromCryptoKey(k CryptoKey) *Crypter {
+	if k.KeyHeader.KeyType == nil {
+		return nil
+	}
+	c := &Crypter{
+		Header: k.KeyHeader,
+	}
+	switch *k.KeyHeader.KeyType {
+	case "aes128-ctr", "aes256-ctr":
+		c.EncryptingKeyBytes = k.KeyComponents[0]
+	case "aes128-gcm", "aes256-gcm",
+		"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha384", "aes256-ctr-hmacsha512":
+		c.EncryptingKeyBytes = k.KeyComponents[0]
+		c.HmacKeyBytes = k.KeyComponents[1]
+	case "hmacsha256", "hmacsha384", "hmacsha512":
+		c.HmacKeyBytes = k.KeyComponents[1]
+	default:
+		return nil
+	}
+	return c
+}
+
+func DeriverFromCryptoKey(k CryptoKey) *Deriver {
+	d := &Deriver{
+		Header: k.KeyHeader,
+		Secret: k.KeyComponents[0],
+	}
+	return d
+}
+
+func (s *Signer) GetVerifierFromSigner() *Verifier {
+	var pub crypto.PublicKey
+	if s.Header.KeyType == nil {
+		return nil
+	}
+	switch *s.Header.KeyType {
+	case "rsa1024", "rsa2048", "rsa3072":
+		pub = &(s.PrivKey).(*rsa.PrivateKey).PublicKey
+		break
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		pub = &(s.PrivKey).(*ecdsa.PrivateKey).PublicKey
+		break
+	default:
+		return nil
+	}
+	newKeyType := *s.Header.KeyType + "-public"
+	var newHeader CryptoHeader
+	newHeader.Version = s.Header.Version
+	newHeader.KeyName = s.Header.KeyName
+	newHeader.KeyEpoch = s.Header.KeyEpoch
+	newHeader.KeyType = &newKeyType
+	strVerifying := "verifying"
+	newHeader.KeyPurpose = &strVerifying
+	newHeader.KeyStatus = s.Header.KeyStatus
+	v := &Verifier{
+		Header: &newHeader,
+		PubKey: pub,
+	}
+	return v
+}
+
+func VerifierKeyFromCanonicalKeyBytes(vb []byte) (*Verifier, error) {
+	publicKey, err := x509.ParsePKIXPublicKey(vb)
+	if err != nil {
+		return nil, err
+	}
+	keyName := "Anonymous_verifier"
+	keyType := VerifierTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "verifying"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	ch := &CryptoHeader{
+		KeyName:    &keyName,
+		KeyType:    keyType,
+		KeyPurpose: &keyPurpose,
+		KeyStatus:  &keyStatus,
+		KeyEpoch:   &keyEpoch,
+	}
+	v := &Verifier{
+		Header: ch,
+		PubKey: publicKey,
+	}
+	return v, nil
+}
+
+func (v *Verifier) GetVerifierPublicKey() crypto.PublicKey {
+	return v.PubKey
+}
+
+func (s *Signer) GetSignerPrivateKey() crypto.PrivateKey {
+	return s.PrivKey
+}
+
+func (v *Verifier) CanonicalKeyBytesFromVerifier() ([]byte, error) {
+	return x509.MarshalPKIXPublicKey(v.PubKey)
+}
+
+func (s *Signer) CanonicalKeyBytesFromSigner() ([]byte, error) {
+	return s.GetVerifierFromSigner().CanonicalKeyBytesFromVerifier()
+}
+
+func MakeUniversalKeyNameFromCanonicalBytes(cn []byte) []byte {
+	// FIX: Should the algorithm be selected from TaoCryptoSuite
+	h := sha256.Sum256(cn)
+	return h[0:32]
+}
+
+func (s *Signer) UniversalKeyNameFromSigner() ([]byte, error) {
+	return s.GetVerifierFromSigner().UniversalKeyNameFromVerifier()
+}
+
+func (v *Verifier) UniversalKeyNameFromVerifier() ([]byte, error) {
+	kb, err := v.CanonicalKeyBytesFromVerifier()
+	if err != nil {
+		return nil, err
+	}
+	return MakeUniversalKeyNameFromCanonicalBytes(kb), nil
 }
 
 // ToPrincipal produces a "key" type Prin for this signer. This contains a
-// serialized CryptoKey for the public half of this signing key.
+// serialized CryptoKey for the public portion of the signing key.
 func (s *Signer) ToPrincipal() auth.Prin {
-	ck := MarshalPublicSignerProto(s)
-
-	// proto.Marshal won't fail here since we fill all required fields of the
-	// message. Propagating impossible errors just leads to clutter later.
-	data, _ := proto.Marshal(ck)
-
+	var empty []byte
+	// Note: ToPrincipal returns keybytes not universal name
+	data, err := s.CanonicalKeyBytesFromSigner()
+	if err != nil {
+		return auth.NewKeyPrin(empty)
+	}
 	return auth.NewKeyPrin(data)
 }
 
-// MarshalSignerDER serializes the signer to DER.
-func MarshalSignerDER(s *Signer) ([]byte, error) {
-	return x509.MarshalECPrivateKey(s.ec)
-}
-
-// UnmarshalSignerDER deserializes a Signer from DER.
-func UnmarshalSignerDER(signer []byte) (*Signer, error) {
-	k := new(Signer)
-	var err error
-	if k.ec, err = x509.ParseECPrivateKey(signer); err != nil {
-		return nil, err
+// ToPrincipal produces a "key" type Prin for this verifier. This contains a
+// hash of a serialized CryptoKey for this key.
+func (v *Verifier) ToPrincipal() auth.Prin {
+	// Note: ToPrincipal returns keybytes not universal name
+	var empty []byte
+	data, err := v.CanonicalKeyBytesFromVerifier()
+	if err != nil {
+		return auth.NewKeyPrin(empty)
 	}
-
-	return k, nil
+	return auth.NewKeyPrin(data)
 }
 
 // NewX509Name returns a new pkix.Name.
@@ -135,14 +808,25 @@ func NewX509Name(p *X509Details) *pkix.Name {
 	}
 }
 
+func PrintPKIXName(title string, name *pkix.Name) {
+	log.Printf("%s common name: %s, ", title, name.CommonName)
+	for i := 0 ; i < len(name.Organization); i++ {
+		log.Printf("organization: %s, ", name.Organization[i])
+	}
+	for i := 0 ; i < len(name.OrganizationalUnit); i++ {
+		log.Printf("organization unit: %s, ", name.OrganizationalUnit[i])
+	}
+	log.Printf("\n")
+}
+
 // PrepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
-func PrepareX509Template(subjectName *pkix.Name) *x509.Certificate {
+func PrepareX509Template(pkAlg int, sigAlg int, sn int64, subjectName *pkix.Name) *x509.Certificate {
 	return &x509.Certificate{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		PublicKeyAlgorithm: x509.ECDSA,
 		Version:            2, // x509v3
 		// It's always allowed for self-signed certs to have serial 1.
-		SerialNumber: new(big.Int).SetInt64(1),
+		SerialNumber: new(big.Int).SetInt64(sn),
 		Subject:      *subjectName,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
@@ -155,12 +839,24 @@ func PrepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 
 // CreateSelfSignedDER creates a DER representation of a new self-signed
 // certificate for the given name.
-func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
-	template := PrepareX509Template(name)
+func (s *Signer) CreateSelfSignedDER(pkAlg int, sigAlg int, sn int64, name *pkix.Name) ([]byte, error) {
+	template := PrepareX509Template(pkAlg, sigAlg, sn, name)
 	template.BasicConstraintsValid = true
 	template.IsCA = true
 	template.Issuer = template.Subject
-	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
+	if s.Header.KeyType == nil {
+		return nil, errors.New("No key type")
+	}
+	var pub interface{}
+	switch *s.Header.KeyType {
+	case "rsa1024", "rsa2048", "rsa3072":
+		pub = &(s.PrivKey).(*rsa.PrivateKey).PublicKey
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		pub = &(s.PrivKey).(*ecdsa.PrivateKey).PublicKey
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, s.PrivKey)
 	if err != nil {
 		return nil, err
 	}
@@ -169,13 +865,26 @@ func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
 
 // CreateSelfSignedX509 creates a self-signed X.509 certificate for the public
 // key of this Signer.
-func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error) {
-	template := PrepareX509Template(name)
+func (s *Signer) CreateSelfSignedX509(pkAlg int, sigAlg int, sn int64, name *pkix.Name) (*x509.Certificate, error) {
+	template := PrepareX509Template(pkAlg, sigAlg, sn, name)
 	template.IsCA = true
 	template.BasicConstraintsValid = true
 	template.Issuer = template.Subject
 
-	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
+	if s.Header.KeyType == nil {
+		return nil, errors.New("No key type")
+	}
+	var pub interface{}
+	switch *s.Header.KeyType {
+	case "rsa1024", "rsa2048", "rsa3072":
+		pub = &(s.PrivKey).(*rsa.PrivateKey).PublicKey
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		pub = &(s.PrivKey).(*ecdsa.PrivateKey).PublicKey
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, pub, s.PrivKey)
 	if err != nil {
 		return nil, err
 	}
@@ -186,155 +895,60 @@ func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error
 // CreateCRL creates a signed X.509 certificate list for revoked certificates.
 func (s *Signer) CreateCRL(cert *x509.Certificate, revokedCerts []pkix.RevokedCertificate, now, expiry time.Time) ([]byte, error) {
 	if cert == nil {
-		return nil, newError("Missing issuing certificate required to create CRL.")
+		return nil, errors.New("Missing issuing certificate required to create CRL.")
 	}
-	return cert.CreateCRL(rand.Reader, s.ec, revokedCerts, now, expiry)
+	return cert.CreateCRL(rand.Reader, s.PrivKey, revokedCerts, now, expiry)
 }
 
-// CreateSignedX509 creates a signed X.509 certificate for some other subject's
+// CreateSignedX509FromTemplate creates a signed X.509 certificate for some other subject's
 // key.
-func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) (*x509.Certificate, error) {
-	template := PrepareX509Template(subjectName)
-	template.SerialNumber = new(big.Int).SetInt64(int64(certSerial))
+func (s *Signer) CreateSignedX509FromTemplate(caCert *x509.Certificate, template *x509.Certificate,
+	subjectKey *Verifier, pkAlg int, sigAlg int) (*x509.Certificate, error) {
 
-	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.ec, s.ec)
+	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.PubKey, s.PrivKey)
 	if err != nil {
 		return nil, err
 	}
 	return x509.ParseCertificate(der)
 }
 
-// marshalECDSASHASigningKeyV1 encodes a private key as a protobuf message.
-func marshalECDSASHASigningKeyV1(k *ecdsa.PrivateKey) *ECDSA_SHA_SigningKeyV1 {
-	return &ECDSA_SHA_SigningKeyV1{
-		Curve:     NamedEllipticCurve_PRIME256_V1.Enum(),
-		EcPrivate: k.D.Bytes(),
-		EcPublic:  elliptic.Marshal(k.Curve, k.X, k.Y),
-	}
-
+// CreateSignedX509 creates a signed X.509 certificate for some other subject's
+// key.
+// Should take template as argument.
+func (s *Signer) CreateSignedX509(caCert *x509.Certificate, sn int, subjectKey *Verifier,
+	pkAlg int, sigAlg int, subjectName *pkix.Name) (*x509.Certificate, error) {
+	template := PrepareX509Template(pkAlg, sigAlg, int64(sn), subjectName)
+	template.SerialNumber = new(big.Int).SetInt64(int64(sn))
+	return s.CreateSignedX509FromTemplate(caCert, template, subjectKey, pkAlg, sigAlg)
 }
 
-// MarshalSignerProto encodes a signing key as a CryptoKey protobuf message.
-func MarshalSignerProto(s *Signer) (*CryptoKey, error) {
-	m := marshalECDSASHASigningKeyV1(s.ec)
-	defer ZeroBytes(m.EcPrivate)
-
-	b, err := proto.Marshal(m)
-	if err != nil {
-		return nil, err
+// Derive uses HKDF with HMAC-SHA256 to derive key bytes in its material
+// parameter.
+func (d *Deriver) Derive(salt, context, material []byte) error {
+	if d.Header.KeyType == nil {
+		return errors.New("Unspecified HKDF") 
+	}
+	switch *d.Header.KeyType {
+	default:
+		return errors.New("Unsupported HKDF") 
+	case "hdkf-sha256":
+		f := hkdf.New(sha256.New, d.Secret, salt, context)
+		if _, err := f.Read(material); err != nil {
+			return err
+		}
+	case "hdkf-sha384":
+		f := hkdf.New(sha512.New384, d.Secret, salt, context)
+		if _, err := f.Read(material); err != nil {
+			return err
+		}
+	case "hdkf-sha512":
+		f := hkdf.New(sha512.New, d.Secret, salt, context)
+		if _, err := f.Read(material); err != nil {
+			return err
+		}
 	}
 
-	ck := &CryptoKey{
-		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Purpose:   CryptoKey_SIGNING.Enum(),
-		Algorithm: CryptoKey_ECDSA_SHA.Enum(),
-		Key:       b,
-	}
-	return ck, nil
-}
-
-// marshalECDSASHAVerifyingKeyV1 encodes a public key as a protobuf message.
-func marshalECDSASHAVerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKeyV1 {
-	return &ECDSA_SHA_VerifyingKeyV1{
-		Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
-		EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
-	}
-
-}
-
-func unmarshalECDSASHAVerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
-	if *v.Curve != NamedEllipticCurve_PRIME256_V1 {
-		return nil, newError("bad curve")
-	}
-
-	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
-	pk := &ecdsa.PublicKey{
-		Curve: elliptic.P256(),
-		X:     x,
-		Y:     y,
-	}
-	return pk, nil
-}
-
-func marshalPublicKeyProto(k *ecdsa.PublicKey) *CryptoKey {
-	m := marshalECDSASHAVerifyingKeyV1(k)
-
-	// proto.Marshal won't fail here since we fill all required fields of the
-	// message. Propagating impossible errors just leads to clutter later.
-	b, _ := proto.Marshal(m)
-
-	return &CryptoKey{
-		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Purpose:   CryptoKey_VERIFYING.Enum(),
-		Algorithm: CryptoKey_ECDSA_SHA.Enum(),
-		Key:       b,
-	}
-}
-
-// MarshalPublicSignerProto encodes the public half of a signing key as a
-// CryptoKey protobuf message.
-func MarshalPublicSignerProto(s *Signer) *CryptoKey {
-	return marshalPublicKeyProto(&s.ec.PublicKey)
-}
-
-// MarshalVerifierProto encodes the public verifier key as a CryptoKey protobuf
-// message.
-func MarshalVerifierProto(v *Verifier) *CryptoKey {
-	return marshalPublicKeyProto(v.ec)
-}
-
-// UnmarshalSignerProto decodes a signing key from a CryptoKey protobuf
-// message.
-func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
-	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
-	}
-
-	if *ck.Purpose != CryptoKey_SIGNING {
-		return nil, newError("bad purpose")
-	}
-
-	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-		return nil, newError("bad algorithm")
-	}
-
-	k := new(ECDSA_SHA_SigningKeyV1)
-	defer ZeroBytes(k.EcPrivate)
-	if err := proto.Unmarshal(ck.Key, k); err != nil {
-		return nil, err
-	}
-
-	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
-		return nil, newError("bad Curve")
-	}
-
-	s := new(Signer)
-	s.ec = new(ecdsa.PrivateKey)
-	s.ec.D = new(big.Int).SetBytes(k.EcPrivate)
-	s.ec.Curve = elliptic.P256()
-	s.ec.X, s.ec.Y = elliptic.Unmarshal(elliptic.P256(), k.EcPublic)
-	if s.ec.X == nil || s.ec.Y == nil {
-		return nil, fmt.Errorf("failed to unmarshal EC point: X=%v, Y=%v", s.ec.X, s.ec.Y)
-	}
-
-	return s, nil
-}
-
-// CreateHeader encodes the version and a key hint into a CryptoHeader.
-func (s *Signer) CreateHeader() (*CryptoHeader, error) {
-	k := marshalECDSASHAVerifyingKeyV1(&s.ec.PublicKey)
-	b, err := proto.Marshal(k)
-	if err != nil {
-		return nil, err
-	}
-
-	h := sha1.Sum(b)
-	ch := &CryptoHeader{
-		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		KeyHint: h[:4],
-	}
-
-	return ch, nil
+	return nil
 }
 
 // An ecdsaSignature wraps the two components of the signature from an ECDSA
@@ -345,10 +959,17 @@ type ecdsaSignature struct {
 	R, S *big.Int
 }
 
-// Sign computes an ECDSA sigature over the contextualized data, using the
+// Sign computes a sigature over the contextualized data, using the
 // private key of the signer.
 func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
-	ch, err := s.CreateHeader()
+
+	var sig []byte
+
+	newKeyType := *s.Header.KeyType + "-public"
+	newHeader := *s.Header
+	newHeader.KeyType = &newKeyType
+
+	b, err := contextualizedSHA256(&newHeader, data, context, sha256.Size)
 	if err != nil {
 		return nil, err
 	}
@@ -356,35 +977,38 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	// TODO(tmroeder): for compatibility with the C++ version, we should
 	// compute ECDSA signatures over hashes truncated to fit in the ECDSA
 	// signature.
-	b, err := contextualizedSHA256(ch, data, context, sha256.Size)
-	if err != nil {
-		return nil, err
+	if s.Header.KeyType == nil {
+		return nil, errors.New("Empty header")
 	}
-
-	R, S, err := ecdsa.Sign(rand.Reader, s.ec, b)
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := asn1.Marshal(ecdsaSignature{R, S})
-	if err != nil {
-		return nil, err
+	switch *s.Header.KeyType {
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		R, S, err := ecdsa.Sign(rand.Reader, s.PrivKey.(*ecdsa.PrivateKey), b)
+		if err != nil {
+			return nil, err
+		}
+		sig, err = asn1.Marshal(ecdsaSignature{R, S})
+		if err != nil {
+			return nil, err
+		}
+	case "rsa1024", "rsa2048", "rsa3072":
+		// Use PSS?
+		// Change sig, err = s.PrivKey.(*rsa.PrivateKey).Sign(rand.Reader, b, nil)
+		sig, err = rsa.SignPKCS1v15(rand.Reader, s.PrivKey.(*rsa.PrivateKey), crypto.SHA256, b)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("Unsupported signing algorithm")
 	}
 
 	sd := &SignedData{
-		Header:    ch,
-		Signature: m,
+		Header:    &newHeader,
+		Signature: sig,
 	}
-
 	return proto.Marshal(sd)
 }
 
-// GetVerifier returns a Verifier from Signer.
-func (s *Signer) GetVerifier() *Verifier {
-	return &Verifier{&s.ec.PublicKey}
-}
-
-// Verify checks an ECDSA signature over the contextualized data, using the
+// Verify checks a signature over the contextualized data, using the
 // public key of the verifier.
 func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
 	// Deserialize the data and extract the CryptoHeader.
@@ -392,69 +1016,80 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 	if err := proto.Unmarshal(sig, &sd); err != nil {
 		return false, err
 	}
-
-	var ecSig ecdsaSignature
-	// We ignore the first parameter, since we don't mind if there's more
-	// data after the signature.
-	if _, err := asn1.Unmarshal(sd.Signature, &ecSig); err != nil {
-		return false, err
+	if v == nil || v.Header == nil || v.Header.KeyType == nil || sd.Header == nil || sd.Header.KeyType == nil {
+		return false, errors.New("NIL ptr")
+	}
+	if v.Header.KeyType == nil || sd.Header.KeyType == nil || *v.Header.KeyType != *sd.Header.KeyType {
+		return false, errors.New("Wrong signature algorithm")
 	}
 
-	b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
-	if err != nil {
+	switch *v.Header.KeyType {
+	case "ecdsap256-public", "ecdsap384-public", "ecdsap521-public":
+		var ecSig ecdsaSignature
+		// We ignore the first parameter, since we don't mind if there's more
+		// data after the signature.
+		if _, err := asn1.Unmarshal(sd.Signature, &ecSig); err != nil {
+			return false, err
+		}
+		b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
+		if err != nil {
+			return false, err
+		}
+		return ecdsa.Verify((v.PubKey).(*ecdsa.PublicKey), b, ecSig.R, ecSig.S), nil
+	case "rsa1024-public", "rsa2048-public", "rsa3072-public":
+		b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
+		if err != nil {
+			return false, err
+		}
+		err = rsa.VerifyPKCS1v15((v.PubKey).(*rsa.PublicKey), crypto.SHA256, b, sd.Signature)
+		if err == nil {
+			return true, nil
+		}
 		return false, err
+	default:
+		return false, errors.New("Unsupported signing algorithm")
 	}
-
-	return ecdsa.Verify(v.ec, b, ecSig.R, ecSig.S), nil
-}
-
-// ToPrincipal produces a "key" type Prin for this verifier. This contains a
-// hash of a serialized CryptoKey for this key.
-func (v *Verifier) ToPrincipal() auth.Prin {
-	return auth.NewKeyPrin(v.MarshalKey())
+	return false, nil
 }
 
 // MarshalKey serializes a Verifier.
 func (v *Verifier) MarshalKey() []byte {
-	ck := MarshalVerifierProto(v)
+	var ck CryptoKey
+	if v.Header == nil || v.Header.KeyType == nil {
+		return nil
+	}
+	ck.KeyHeader = v.Header
 
-	// proto.Marshal won't fail here since we fill all required fields of the
-	// message. Propagating impossible errors just leads to clutter later.
-	data, _ := proto.Marshal(ck)
-
-	return data
+	switch *v.Header.KeyType {
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		keyComponent, err := SerializeEcdsaPublicComponents((v.PubKey).(*ecdsa.PublicKey))
+		if err != nil {
+			return nil
+		}
+		ck.KeyComponents = append(ck.KeyComponents, keyComponent)
+		return MarshalCryptoKey(ck)
+	default:
+		return nil
+	}
+	return nil
 }
 
 // UnmarshalKey deserializes a Verifier.
 func UnmarshalKey(material []byte) (*Verifier, error) {
 	var ck CryptoKey
-	if err := proto.Unmarshal(material, &ck); err != nil {
-		return nil, err
-	}
-
-	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
-	}
-
-	if *ck.Purpose != CryptoKey_VERIFYING {
-		return nil, newError("bad purpose")
-	}
-
-	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-		return nil, newError("bad algorithm")
-	}
-
-	var ecvk ECDSA_SHA_VerifyingKeyV1
-	if err := proto.Unmarshal(ck.Key, &ecvk); err != nil {
-		return nil, err
-	}
-
-	ec, err := unmarshalECDSASHAVerifyingKeyV1(&ecvk)
+	err := proto.Unmarshal(material, &ck)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Can't Unmarshal verifier")
 	}
-
-	return &Verifier{ec}, nil
+	// make sure its a verifying ecdsa key using sha
+	if *ck.KeyHeader.KeyPurpose != "verifying" {
+		return nil, errors.New("Not a verifying key")
+	}
+	v := VerifierFromCryptoKey(ck)
+	if v == nil {
+		return nil, errors.New("VerifierFromCryptoKey failed")
+	}
+	return v, nil
 }
 
 // SignsForPrincipal returns true when prin is (or is a subprincipal of) this verifier key.
@@ -462,20 +1097,76 @@ func (v *Verifier) SignsForPrincipal(prin auth.Prin) bool {
 	return auth.SubprinOrIdentical(prin, v.ToPrincipal())
 }
 
-// FromX509 creates a Verifier from an X509 certificate.
-func FromX509(cert *x509.Certificate) (*Verifier, error) {
-	ecpk, ok := cert.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, newError("invalid key type in certificate: must be ECDSA")
+func IsP256(ecPk *ecdsa.PublicKey) bool {
+	// This check is insufficient
+	if ecPk.Curve.Params().BitSize == 256 {
+		return true
 	}
+	return false
+}
 
-	return &Verifier{ecpk}, nil
+func IsP384(ecPk *ecdsa.PublicKey) bool {
+	if ecPk.Curve.Params().BitSize == 384 {
+		return true
+	}
+	return false
+}
+
+func IsP521(ecPk *ecdsa.PublicKey) bool {
+	if ecPk.Curve.Params().BitSize == 521 {
+		return true
+	}
+	return false
+}
+
+// VerifierFromX509 creates a Verifier from an X509 certificate.
+func VerifierFromX509(cert *x509.Certificate) (*Verifier, error) {
+	keyEpoch := int32(1)
+	var keyType *string
+	if cert.PublicKeyAlgorithm == x509.ECDSA {
+		ecPk := cert.PublicKey.(*ecdsa.PublicKey)
+		if IsP256(ecPk) {
+			keyType = ptrFromString("ecdsap256-public")
+		} else if IsP384(ecPk) {
+			keyType = ptrFromString("ecdsap384-public")
+		} else if IsP521(ecPk) {
+			keyType = ptrFromString("ecdsap384-public")
+		} else {
+			return nil, errors.New("Unsupported ecdsa key type")
+		}
+	} else if cert.PublicKeyAlgorithm == x509.RSA {
+		rsaPk := cert.PublicKey.(*rsa.PublicKey)
+		if rsaPk.N.BitLen() > 1022 && rsaPk.N.BitLen() <= 1024 {
+			keyType = ptrFromString("rsa1024-public")
+		} else if rsaPk.N.BitLen() > 2046 && rsaPk.N.BitLen() <= 2048 {
+			keyType = ptrFromString("rsa2048-public")
+		} else if rsaPk.N.BitLen() > 3070 && rsaPk.N.BitLen() <= 3072 {
+			keyType = ptrFromString("rsa3072-public")
+		} else {
+			return nil, errors.New("Unsupported rsa key type")
+		}
+		return nil, errors.New("RSA not supported in FromX509")
+	} else {
+		return nil, errors.New("Unsupported PublicKeyAlgorithm")
+	}
+	h := &CryptoHeader{
+		KeyName:    ptrFromString("Anonymous verifying key"),
+		KeyType:    keyType,
+		KeyPurpose: ptrFromString("verifying"),
+		KeyEpoch:   &keyEpoch,
+		KeyStatus:  ptrFromString("active"),
+	}
+	v := &Verifier{
+		Header: h,
+		PubKey: cert.PublicKey,
+	}
+	return v, nil
 }
 
 // Equals checks to see if the public key in the X.509 certificate matches the
 // public key in the verifier.
-func (v *Verifier) Equals(cert *x509.Certificate) bool {
-	v2, err := FromX509(cert)
+func (v *Verifier) KeyEqual(cert *x509.Certificate) bool {
+	v2, err := VerifierFromX509(cert)
 	if err != nil {
 		return false
 	}
@@ -485,124 +1176,49 @@ func (v *Verifier) Equals(cert *x509.Certificate) bool {
 	return p.Identical(p2)
 }
 
-// UnmarshalVerifierProto decodes a verifying key from a CryptoKey protobuf
-// message.
-func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
-	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
-	}
-
-	if *ck.Purpose != CryptoKey_VERIFYING {
-		return nil, newError("bad purpose")
-	}
-
-	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-		return nil, newError("bad algorithm")
-	}
-
-	k := new(ECDSA_SHA_VerifyingKeyV1)
-	if err := proto.Unmarshal(ck.Key, k); err != nil {
-		return nil, err
-	}
-
-	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
-		return nil, newError("bad curve")
-	}
-
-	s := new(Verifier)
-	s.ec = new(ecdsa.PublicKey)
-	s.ec.Curve = elliptic.P256()
-	s.ec.X, s.ec.Y = elliptic.Unmarshal(elliptic.P256(), k.EcPublic)
-	return s, nil
-}
-
-// CreateHeader instantiates and fills in a header for this verifying key.
-func (v *Verifier) CreateHeader() (*CryptoHeader, error) {
-	k := marshalECDSASHAVerifyingKeyV1(v.ec)
-	b, err := proto.Marshal(k)
-	if err != nil {
-		return nil, err
-	}
-
-	h := sha1.Sum(b)
-	ch := &CryptoHeader{
-		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		KeyHint: h[:4],
-	}
-
-	return ch, nil
-}
-
 // contextualizeData produces a single string from a header, data, and a context.
-func contextualizeData(h *CryptoHeader, data []byte, context string) ([]byte, error) {
-	s := &SignaturePDU{
-		Header:  h,
+func contextualizeData(data []byte, context string) ([]byte, error) {
+	s := &ContextualizedData{
 		Context: proto.String(context),
 		Data:    data,
 	}
-
 	return proto.Marshal(s)
 }
 
 // contextualizedSHA256 performs a SHA-256 sum over contextualized data.
 func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLen int) ([]byte, error) {
-	b, err := contextualizeData(h, data, context)
+	b, err := contextualizeData(data, context)
 	if err != nil {
 		return nil, err
 	}
-
 	hash := sha256.Sum256(b)
 	return hash[:digestLen], nil
 }
 
-// GenerateCrypter instantiates a new Crypter with fresh keys.
-func GenerateCrypter() (*Crypter, error) {
-	c := &Crypter{
-		aesKey:  make([]byte, aesKeySize),
-		hmacKey: make([]byte, hmacKeySize),
-	}
-
-	if _, err := rand.Read(c.aesKey); err != nil {
-		return nil, err
-	}
-
-	if _, err := rand.Read(c.hmacKey); err != nil {
-		return nil, err
-	}
-
-	return c, nil
-}
-
-// Encrypt encrypts plaintext into ciphertext and protects ciphertext integrity
-// with a MAC.
-func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(c.aesKey)
-	if err != nil {
-		return nil, err
-	}
-
-	ch, err := c.CreateHeader()
+// Handles both aes128/sha256 and aes256/sha256
+func (c *Crypter) encryptAes128ctrHmacsha256(plain []byte) ([]byte, error) {
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	// A ciphertext consists of an IV, encrypted bytes, and the output of
 	// HMAC-SHA256.
-	ciphertext := make([]byte, aes.BlockSize+len(data))
+	ciphertext := make([]byte, aes.BlockSize+len(plain))
 	iv := ciphertext[:aes.BlockSize]
 	if _, err := rand.Read(iv); err != nil {
 		return nil, err
 	}
 
 	s := cipher.NewCTR(block, iv)
-	s.XORKeyStream(ciphertext[aes.BlockSize:], data)
+	s.XORKeyStream(ciphertext[aes.BlockSize:], plain)
 
-	mac := hmac.New(sha256.New, c.hmacKey)
+	mac := hmac.New(sha256.New, c.HmacKeyBytes)
 	mac.Write(ciphertext)
 	m := mac.Sum(nil)
 
 	ed := &EncryptedData{
-		Header:     ch,
+		Header:     c.Header,
 		Iv:         iv,
 		Ciphertext: ciphertext[aes.BlockSize:],
 		Mac:        m,
@@ -611,17 +1227,20 @@ func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
 	return proto.Marshal(ed)
 }
 
-// Decrypt checks the MAC then decrypts ciphertext into plaintext.
-func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
+// Handles both aes128/sha256 and aes256/sha256
+func (c *Crypter) decryptAes128ctrHmacsha256(ciphertext []byte) ([]byte, error) {
 	var ed EncryptedData
 	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
 		return nil, err
 	}
-
-	// TODO(tmroeder): we're currently mostly ignoring the CryptoHeader,
-	// since we only have one key.
-	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
+	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
+		return nil, errors.New("bad version")
+	}
+	if ed.Header.KeyType == nil || c.Header.KeyType == nil {
+		return nil, errors.New("empty key header")
+	}
+	if *ed.Header.KeyType != *c.Header.KeyType {
+		return nil, errors.New("bad key type")
 	}
 
 	// Check the HMAC before touching the ciphertext.
@@ -629,930 +1248,404 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	copy(fullCiphertext, ed.Iv)
 	copy(fullCiphertext[len(ed.Iv):], ed.Ciphertext)
 
-	mac := hmac.New(sha256.New, c.hmacKey)
+	mac := hmac.New(sha256.New, c.HmacKeyBytes)
 	mac.Write(fullCiphertext)
 	m := mac.Sum(nil)
 	if !hmac.Equal(m, ed.Mac) {
-		return nil, newError("bad HMAC")
+		return nil, errors.New("bad HMAC")
 	}
 
-	block, err := aes.NewCipher(c.aesKey)
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	s := cipher.NewCTR(block, ed.Iv)
-	data := make([]byte, len(ed.Ciphertext))
-	s.XORKeyStream(data, ed.Ciphertext)
-	return data, nil
+	plain := make([]byte, len(ed.Ciphertext))
+	s.XORKeyStream(plain, ed.Ciphertext)
+	return plain, nil
 }
 
-// marshalAESCTRHMACSHACryptingKeyV1 encodes a private AES/HMAC key pair
-// into a protobuf message.
-func marshalAESCTRHMACSHACryptingKeyV1(c *Crypter) *AES_CTR_HMAC_SHA_CryptingKeyV1 {
-	return &AES_CTR_HMAC_SHA_CryptingKeyV1{
-		Mode:        CryptoCipherMode_CIPHER_MODE_CTR.Enum(),
-		AesPrivate:  c.aesKey,
-		HmacPrivate: c.hmacKey,
-	}
-}
-
-// MarshalCrypterProto encodes a Crypter as a CryptoKey protobuf message.
-func MarshalCrypterProto(c *Crypter) (*CryptoKey, error) {
-	k := marshalAESCTRHMACSHACryptingKeyV1(c)
-
-	// Note that we don't need to call ZeroBytes on k.AesPrivate or
-	// k.HmacPrivate, since they're just slice references to the underlying
-	// keys.
-	m, err := proto.Marshal(k)
+func (c *Crypter) encryptAes256ctrHmacsha512(plain []byte) ([]byte, error) {
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	ck := &CryptoKey{
-		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Purpose:   CryptoKey_CRYPTING.Enum(),
-		Algorithm: CryptoKey_AES_CTR_HMAC_SHA.Enum(),
-		Key:       m,
-	}
-
-	return ck, nil
-}
-
-// UnmarshalCrypterProto decodes a crypting key from a CryptoKey protobuf
-// message.
-func UnmarshalCrypterProto(ck *CryptoKey) (*Crypter, error) {
-	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
-	}
-
-	if *ck.Purpose != CryptoKey_CRYPTING {
-		return nil, newError("bad purpose")
-	}
-
-	if *ck.Algorithm != CryptoKey_AES_CTR_HMAC_SHA {
-		return nil, newError("bad algorithm")
-	}
-
-	var k AES_CTR_HMAC_SHA_CryptingKeyV1
-	if err := proto.Unmarshal(ck.Key, &k); err != nil {
+	// A ciphertext consists of an IV, encrypted bytes, and the output of
+	// HMAC-SHA512.
+	ciphertext := make([]byte, aes.BlockSize+len(plain))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := rand.Read(iv); err != nil {
 		return nil, err
 	}
 
-	if *k.Mode != CryptoCipherMode_CIPHER_MODE_CTR {
-		return nil, newError("bad cipher mode")
+	s := cipher.NewCTR(block, iv)
+	s.XORKeyStream(ciphertext[aes.BlockSize:], plain)
+
+	mac := hmac.New(sha512.New, c.HmacKeyBytes)
+	mac.Write(ciphertext)
+	m := mac.Sum(nil)
+
+	ed := &EncryptedData{
+		Header:     c.Header,
+		Iv:         iv,
+		Ciphertext: ciphertext[aes.BlockSize:],
+		Mac:        m,
 	}
 
-	c := new(Crypter)
-	c.aesKey = k.AesPrivate
-	c.hmacKey = k.HmacPrivate
-	return c, nil
+	return proto.Marshal(ed)
 }
 
-// CreateHeader instantiates and fills in a header for this crypting key.
-func (c *Crypter) CreateHeader() (*CryptoHeader, error) {
-	k := marshalAESCTRHMACSHACryptingKeyV1(c)
-	b, err := proto.Marshal(k)
-	if err != nil {
+func (c *Crypter) decryptAes256ctrHmacsha512(ciphertext []byte) ([]byte, error) {
+	var ed EncryptedData
+	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
 		return nil, err
 	}
-	defer ZeroBytes(b)
-
-	h := sha1.Sum(b)
-	ch := &CryptoHeader{
-		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		KeyHint: h[:4],
+	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
+		return nil, errors.New("bad version")
+	}
+	if ed.Header.KeyType == nil || c.Header.KeyType == nil {
+		return nil, errors.New("empty key header")
+	}
+	if *ed.Header.KeyType != "aes256-ctr-hmacsha512" {
+		return nil, errors.New("bad key type")
 	}
 
-	return ch, nil
+	// Check the HMAC before touching the ciphertext.
+	fullCiphertext := make([]byte, len(ed.Iv)+len(ed.Ciphertext))
+	copy(fullCiphertext, ed.Iv)
+	copy(fullCiphertext[len(ed.Iv):], ed.Ciphertext)
 
-}
-
-// GenerateDeriver generates a deriver with a fresh secret.
-func GenerateDeriver() (*Deriver, error) {
-	d := new(Deriver)
-	d.secret = make([]byte, deriverSecretSize)
-	if _, err := rand.Read(d.secret); err != nil {
-		return nil, err
+	mac := hmac.New(sha512.New, c.HmacKeyBytes)
+	mac.Write(fullCiphertext)
+	m := mac.Sum(nil)
+	if !hmac.Equal(m, ed.Mac) {
+		return nil, errors.New("bad HMAC")
 	}
 
-	return d, nil
-}
-
-// Derive uses HKDF with HMAC-SHA256 to derive key bytes in its material
-// parameter.
-func (d *Deriver) Derive(salt, context, material []byte) error {
-	f := hkdf.New(sha256.New, d.secret, salt, context)
-	if _, err := f.Read(material); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// marshalHMACSHADerivingKeyV1 encodes a deriving key as a protobuf message.
-func marshalHMACSHADerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
-	return &HMAC_SHA_DerivingKeyV1{
-		Mode:        CryptoDerivingMode_DERIVING_MODE_HKDF.Enum(),
-		HmacPrivate: d.secret,
-	}
-}
-
-// MarshalDeriverProto encodes a Deriver as a CryptoKey protobuf message.
-func MarshalDeriverProto(d *Deriver) (*CryptoKey, error) {
-	k := marshalHMACSHADerivingKeyV1(d)
-
-	// Note that we don't need to call ZeroBytes on k.HmacPrivate since
-	// it's just a slice reference to the underlying keys.
-	m, err := proto.Marshal(k)
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	ck := &CryptoKey{
-		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Purpose:   CryptoKey_DERIVING.Enum(),
-		Algorithm: CryptoKey_HMAC_SHA.Enum(),
-		Key:       m,
-	}
-
-	return ck, nil
+	s := cipher.NewCTR(block, ed.Iv)
+	plain := make([]byte, len(ed.Ciphertext))
+	s.XORKeyStream(plain, ed.Ciphertext)
+	return plain, nil
 }
 
-// UnmarshalDeriverProto decodes a deriving key from a CryptoKey protobuf
-// message.
-func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
-	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
-	}
-
-	if *ck.Purpose != CryptoKey_DERIVING {
-		return nil, newError("bad purpose")
-	}
-
-	if *ck.Algorithm != CryptoKey_HMAC_SHA {
-		return nil, newError("bad algorithm")
-	}
-
-	var k HMAC_SHA_DerivingKeyV1
-	if err := proto.Unmarshal(ck.Key, &k); err != nil {
+func (c *Crypter) encryptAes256ctrHmacsha384(plain []byte) ([]byte, error) {
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
+	if err != nil {
 		return nil, err
 	}
 
-	if *k.Mode != CryptoDerivingMode_DERIVING_MODE_HKDF {
-		return nil, newError("bad deriving mode")
+	// A ciphertext consists of an IV, encrypted bytes, and the output of
+	// HMAC-SHA384.
+	ciphertext := make([]byte, aes.BlockSize+len(plain))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := rand.Read(iv); err != nil {
+		return nil, err
 	}
 
-	d := new(Deriver)
-	d.secret = k.HmacPrivate
-	return d, nil
-}
+	s := cipher.NewCTR(block, iv)
+	s.XORKeyStream(ciphertext[aes.BlockSize:], plain)
 
-// A Keys manages a set of signing, verifying, encrypting, and key-deriving
-// keys.
-type Keys struct {
-	dir      string
-	policy   string
-	keyTypes KeyType
+	mac := hmac.New(sha512.New384, c.HmacKeyBytes)
+	mac.Write(ciphertext)
+	m := mac.Sum(nil)
 
-	SigningKey   *Signer
-	CryptingKey  *Crypter
-	VerifyingKey *Verifier
-	DerivingKey  *Deriver
-	Delegation   *Attestation
-	Cert         *x509.Certificate
-}
-
-// The paths to the filename used by the Keys type.
-const (
-	X509Path            = "cert"
-	PBEKeysetPath       = "keys"
-	PBESignerPath       = "signer"
-	SealedKeysetPath    = "sealed_keyset"
-	PlaintextKeysetPath = "plaintext_keyset"
-)
-
-// X509Path returns the path to the verifier key, stored as an X.509
-// certificate.
-func (k *Keys) X509Path() string {
-	if k.dir == "" {
-		return ""
+	ed := &EncryptedData{
+		Header:     c.Header,
+		Iv:         iv,
+		Ciphertext: ciphertext[aes.BlockSize:],
+		Mac:        m,
 	}
 
-	return path.Join(k.dir, X509Path)
+	return proto.Marshal(ed)
 }
 
-// PBEKeysetPath returns the path for stored keys.
-func (k *Keys) PBEKeysetPath() string {
-	if k.dir == "" {
-		return ""
+func (c *Crypter) decryptAes256ctrHmacsha384(ciphertext []byte) ([]byte, error) {
+	var ed EncryptedData
+	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
+		return nil, err
 	}
-	return path.Join(k.dir, PBEKeysetPath)
-}
-
-// PBESignerPath returns the path for a stored signing key.
-func (k *Keys) PBESignerPath() string {
-	if k.dir == "" {
-		return ""
+	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_2 {
+		return nil, errors.New("bad version")
 	}
-	return path.Join(k.dir, PBESignerPath)
-}
-
-// SealedKeysetPath returns the path for a stored signing key.
-func (k *Keys) SealedKeysetPath() string {
-	if k.dir == "" {
-		return ""
+	if ed.Header.KeyType == nil || c.Header.KeyType == nil {
+		return nil, errors.New("empty key header")
+	}
+	if *ed.Header.KeyType != "aes256-ctr-hmacsha384" {
+		return nil, errors.New("bad key type")
 	}
 
-	return path.Join(k.dir, SealedKeysetPath)
-}
+	// Check the HMAC before touching the ciphertext.
+	fullCiphertext := make([]byte, len(ed.Iv)+len(ed.Ciphertext))
+	copy(fullCiphertext, ed.Iv)
+	copy(fullCiphertext[len(ed.Iv):], ed.Ciphertext)
 
-// PlaintextKeysetPath returns the path for a key stored in plaintext (this is
-// not normally the case).
-func (k *Keys) PlaintextKeysetPath() string {
-	if k.dir == "" {
-		return ""
+	mac := hmac.New(sha512.New384, c.HmacKeyBytes)
+	mac.Write(fullCiphertext)
+	m := mac.Sum(nil)
+	if !hmac.Equal(m, ed.Mac) {
+		return nil, errors.New("bad HMAC")
 	}
 
-	return path.Join(k.dir, PlaintextKeysetPath)
+	block, err := aes.NewCipher(c.EncryptingKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	s := cipher.NewCTR(block, ed.Iv)
+	plain := make([]byte, len(ed.Ciphertext))
+	s.XORKeyStream(plain, ed.Ciphertext)
+	return plain, nil
 }
 
-// ZeroBytes clears the bytes in a slice.
-func ZeroBytes(b []byte) {
-	for i := range b {
-		b[i] = 0
+// Encrypt encrypts plaintext into ciphertext with integrity
+// with a MAC.
+func (c *Crypter) Encrypt(plain []byte) ([]byte, error) {
+	if c == nil || c.Header == nil || c.Header.KeyType == nil {
+		return nil, errors.New("Key Type not set")
+	}
+	switch *c.Header.KeyType {
+	case "aes128-ctr-hmacsha256":
+		return c.encryptAes128ctrHmacsha256(plain)
+	case "aes256-ctr-hmacsha384":
+		return c.encryptAes256ctrHmacsha384(plain)
+	case "aes256-ctr-hmacsha512":
+		return c.encryptAes256ctrHmacsha512(plain)
+	default:
+		return nil, errors.New("Unsupported crypting algorithm")
 	}
 }
 
-// NewTemporaryKeys creates a new Keys structure with the specified keys.
-func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
-	k := &Keys{
-		keyTypes: keyTypes,
+// Decrypt checks the MAC then decrypts ciphertext into plaintext.
+func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
+	if c.Header.KeyType == nil {
+		return nil, errors.New("Key Type not set")
 	}
-	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
-		return nil, newError("bad key type")
+	switch *c.Header.KeyType {
+	case "aes128-ctr-hmacsha256":
+		return c.decryptAes128ctrHmacsha256(ciphertext)
+	case "aes256-ctr-hmacsha384":
+		return c.decryptAes256ctrHmacsha384(ciphertext)
+	case "aes256-ctr-hmacsha512":
+		return c.decryptAes256ctrHmacsha512(ciphertext)
+	default:
+		return nil, errors.New("Unsupported crypting algorithm")
 	}
+}
 
-	var err error
-	if k.keyTypes&Signing == Signing {
-		k.SigningKey, err = GenerateSigner()
-		if err != nil {
-			return nil, err
-		}
-
-		k.VerifyingKey = k.SigningKey.GetVerifier()
+// This code is duplicated in VerifierFromCanonicalBytes
+// MarshalSignerDER serializes the signer to DER.
+func MarshalSignerDER(s *Signer) ([]byte, error) {
+	// TODO: only ecdsa is supported, but this code is redundant now.
+	if s.Header.KeyType == nil {
+		return nil, errors.New("Unsupported alg for MarshalSignerDER")
 	}
-
-	if k.keyTypes&Crypting == Crypting {
-		k.CryptingKey, err = GenerateCrypter()
-		if err != nil {
-			return nil, err
-		}
+	switch *s.Header.KeyType {
+	case "ecdsap256", "ecdsap384", "ecdsap521":
+		return x509.MarshalECPrivateKey((s.PrivKey).(*ecdsa.PrivateKey))
+	default:
+		return nil, errors.New("Unsupported alg for MarshalSignerDER")
 	}
+	return nil, errors.New("Unsupported alg for MarshalSignerDER")
+}
 
-	if k.keyTypes&Deriving == Deriving {
-		k.DerivingKey, err = GenerateDeriver()
-		if err != nil {
-			return nil, err
-		}
+// UnmarshalSignerDER deserializes a Signer from DER.
+func UnmarshalSignerDER(signer []byte) (*Signer, error) {
+	// TODO: only ecdsa is supported
+	keyName := "Unnamed ECDSA signer"
+	keyEpoch := int32(1)
+	keyType := "ecdsap256"
+	keyPurpose := "singing"
+	keyStatus := "active"
+	h := &CryptoHeader{
+		KeyName:    &keyName,
+		KeyEpoch:   &keyEpoch,
+		KeyType:    &keyType,
+		KeyPurpose: &keyPurpose,
+		KeyStatus:  &keyStatus,
 	}
-
+	k := &Signer{
+		Header: h,
+	}
+	privateKey, err := x509.ParseECPrivateKey(signer)
+	if err != nil {
+		return nil, err
+	}
+	k.PrivKey = privateKey
 	return k, nil
 }
 
-// NewSignedOnDiskPBEKeys creates the same type of keys as NewOnDiskPBEKeys but
-// signs a certificate for the signer with the provided Keys, which must have
-// both a SigningKey and a Certificate.
-func NewSignedOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix.Name, serial int, signer *Keys) (*Keys, error) {
-	if signer == nil || name == nil {
-		return nil, newError("must supply a signer and a name")
+func GenerateAnonymousSigner() *Signer {
+	keyName := "Anonymous_signer"
+	keyType := SignerTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return nil
 	}
-
-	if signer.Cert == nil || signer.SigningKey == nil {
-		return nil, newError("the signing key must have a SigningKey and a Cert")
-	}
-
-	if keyTypes&Signing == 0 {
-		return nil, newError("can't sign a key that has no signer")
-	}
-
-	k, err := NewOnDiskPBEKeys(keyTypes, password, path, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// If there's already a cert, then this means that there was already a
-	// keyset on disk, so don't create a new signed certificate.
-	if k.Cert == nil {
-		k.Cert, err = signer.SigningKey.CreateSignedX509(signer.Cert, serial, k.VerifyingKey, name)
-		if err != nil {
-			return nil, err
-		}
-
-		if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
-			return nil, err
-		}
-	}
-
-	return k, nil
-}
-
-// NewOnDiskPBEKeys creates a new Keys structure with the specified key types
-// store under PBE on disk. If keys are generated and name is not nil, then a
-// self-signed x509 certificate will be generated and saved as well.
-func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix.Name) (*Keys, error) {
-	if keyTypes == 0 || (keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
-		return nil, newError("bad key type")
-	}
-
-	if path == "" {
-		return nil, newError("bad init call: no path for keys")
-	}
-
-	k := &Keys{
-		keyTypes: keyTypes,
-		dir:      path,
-	}
-
-	if len(password) == 0 {
-		// This means there's no secret information: just load a public
-		// verifying key.
-		if k.keyTypes & ^Signing != 0 {
-			return nil, newError("without a password, only a verifying key can be loaded")
-		}
-
-		err := k.loadCert()
-		if err != nil {
-			return nil, err
-		}
-		if k.Cert == nil {
-			return nil, newError("no password and can't load cert: %s", k.X509Path())
-		}
-
-		if k.VerifyingKey, err = FromX509(k.Cert); err != nil {
-			return nil, err
-		}
-	} else {
-		// There are two different types of keysets: in one there's
-		// just a Signer, so we use an encrypted PEM format. In the
-		// other, there are multiple keys, so we use a custom protobuf
-		// format.
-		if k.keyTypes & ^Signing != 0 {
-			// Check to see if there are already keys.
-			f, err := os.Open(k.PBEKeysetPath())
-			if err == nil {
-				defer f.Close()
-				ks, err := ioutil.ReadAll(f)
-				if err != nil {
-					return nil, err
-				}
-
-				data, err := PBEDecrypt(ks, password)
-				if err != nil {
-					return nil, err
-				}
-				defer ZeroBytes(data)
-
-				var cks CryptoKeyset
-				if err = proto.Unmarshal(data, &cks); err != nil {
-					return nil, err
-				}
-
-				// TODO(tmroeder): defer zeroKeyset(&cks)
-
-				ktemp, err := UnmarshalKeyset(&cks)
-				if err != nil {
-					return nil, err
-				}
-
-				// Note that this loads the certificate if it's
-				// present, and it returns nil otherwise.
-				err = k.loadCert()
-				if err != nil {
-					return nil, err
-				}
-
-				k.SigningKey = ktemp.SigningKey
-				k.VerifyingKey = ktemp.VerifyingKey
-				k.CryptingKey = ktemp.CryptingKey
-				k.DerivingKey = ktemp.DerivingKey
-			} else {
-				// Create and store a new set of keys.
-				k, err = NewTemporaryKeys(keyTypes)
-				if err != nil {
-					return nil, err
-				}
-
-				k.dir = path
-
-				cks, err := MarshalKeyset(k)
-				if err != nil {
-					return nil, err
-				}
-
-				// TODO(tmroeder): defer zeroKeyset(cks)
-
-				m, err := proto.Marshal(cks)
-				if err != nil {
-					return nil, err
-				}
-				defer ZeroBytes(m)
-
-				enc, err := PBEEncrypt(m, password)
-				if err != nil {
-					return nil, err
-				}
-
-				if err = util.WritePath(k.PBEKeysetPath(), enc, 0777, 0600); err != nil {
-					return nil, err
-				}
-
-				if k.SigningKey != nil && name != nil {
-					err = k.newCert(name)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-		} else {
-			// There's just a signer, so do PEM encryption of the encoded key.
-			f, err := os.Open(k.PBESignerPath())
-			if err == nil {
-				defer f.Close()
-				// Read the signer.
-				ss, err := ioutil.ReadAll(f)
-				if err != nil {
-					return nil, err
-				}
-
-				pb, rest := pem.Decode(ss)
-				if pb == nil || len(rest) > 0 {
-					return nil, newError("decoding failure")
-				}
-
-				p, err := x509.DecryptPEMBlock(pb, password)
-				if err != nil {
-					return nil, err
-				}
-				defer ZeroBytes(p)
-
-				err = k.loadCert()
-				if err != nil {
-					return nil, err
-				}
-
-				if k.SigningKey, err = UnmarshalSignerDER(p); err != nil {
-					return nil, err
-				}
-				k.VerifyingKey = k.SigningKey.GetVerifier()
-			} else {
-				// Create a fresh key and store it to the PBESignerPath.
-				if k.SigningKey, err = GenerateSigner(); err != nil {
-					return nil, err
-				}
-
-				k.VerifyingKey = k.SigningKey.GetVerifier()
-				p, err := MarshalSignerDER(k.SigningKey)
-				if err != nil {
-					return nil, err
-				}
-				defer ZeroBytes(p)
-
-				pb, err := x509.EncryptPEMBlock(rand.Reader, "EC PRIVATE KEY", p, password, x509.PEMCipherAES128)
-				if err != nil {
-					return nil, err
-				}
-
-				pbes, err := util.CreatePath(k.PBESignerPath(), 0777, 0600)
-				if err != nil {
-					return nil, err
-				}
-				defer pbes.Close()
-
-				if err = pem.Encode(pbes, pb); err != nil {
-					return nil, err
-				}
-
-				if k.SigningKey != nil && name != nil {
-					err = k.newCert(name)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-		}
-	}
-
-	return k, nil
-}
-
-func (k *Keys) newCert(name *pkix.Name) (err error) {
-	k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
-	if err != nil {
-		return err
-	}
-	if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (k *Keys) loadCert() error {
-	f, err := os.Open(k.X509Path())
-	// Allow this operation to fail silently, since there isn't always a
-	// certificate available.
+	keyPurpose := "signing"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	s, err := InitializeSigner(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
-
-	der, err := ioutil.ReadAll(f)
-	if err != nil {
-		return err
-	}
-
-	k.Cert, err = x509.ParseCertificate(der)
-	return err
+	return s
 }
 
-// NewTemporaryTaoDelegatedKeys initializes a set of temporary keys under a host
-// Tao, using the Tao to generate a delegation for the signing key. Since these
-// keys are never stored on disk, they are not sealed to the Tao.
-func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
-	k, err := NewTemporaryKeys(keyTypes)
+func GenerateAnonymousCrypter() *Crypter {
+	keyName := "Anonymous_crypter"
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "crypting"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	c, err := InitializeCrypter(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-
-	if t != nil && k.SigningKey != nil {
-
-		self, err := t.GetTaoName()
-		if err != nil {
-			return nil, err
-		}
-
-		s := &auth.Speaksfor{
-			Delegate:  k.SigningKey.ToPrincipal(),
-			Delegator: self,
-		}
-		if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
-			return nil, err
-		}
-	}
-
-	return k, nil
+	return c
 }
 
-// PBEEncrypt encrypts plaintext using a password to generate a key. Note that
-// since this is for private program data, we don't try for compatibility with
-// the C++ Tao version of the code.
-func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
-	if password == nil || len(password) == 0 {
-		return nil, newError("null or empty password")
+func GenerateAnonymousDeriver() *Deriver {
+	keyName := "Anonymous_deriver"
+	keyType := DeriverTypeFromSuiteName(TaoCryptoSuite)
+	keyPurpose := "deriving"
+	keyStatus := "active"
+	keyEpoch := int32(1)
+	d, err := InitializeDeriver(nil, *keyType, &keyName, &keyEpoch, &keyPurpose, &keyStatus)
+	if err != nil {
+		return nil
 	}
-
-	pbed := &PBEData{
-		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Cipher:  proto.String("aes128-ctr"),
-		Hmac:    proto.String("sha256"),
-		// The IV is required, so we include it, but this algorithm doesn't use it.
-		Iv:         make([]byte, aes.BlockSize),
-		Iterations: proto.Int32(4096),
-		Salt:       make([]byte, aes.BlockSize),
-	}
-
-	// We use the first half of the salt for the AES key and the second
-	// half for the HMAC key, since the standard recommends at least 8
-	// bytes of salt.
-	if _, err := rand.Read(pbed.Salt); err != nil {
-		return nil, err
-	}
-
-	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
-
-	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
-	c := &Crypter{aesKey, hmacKey}
-
-	// Note that we're abusing the PBEData format here, since the IV and
-	// the MAC are actually contained in the ciphertext from Encrypt().
-	var err error
-	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
-		return nil, err
-	}
-
-	return proto.Marshal(pbed)
+	return d
 }
 
-// PBEDecrypt decrypts ciphertext using a password to generate a key. Note that
-// since this is for private program data, we don't try for compatibility with
-// the C++ Tao version of the code.
-func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
-	if password == nil || len(password) == 0 {
-		return nil, newError("null or empty password")
+func Protect(keys []byte, in []byte) ([]byte, error) {
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return nil, errors.New("Protect: Can't get key type from cipher suite")
 	}
-
-	var pbed PBEData
-	if err := proto.Unmarshal(ciphertext, &pbed); err != nil {
-		return nil, err
+	encKeySize := SymmetricKeySizeFromAlgorithmName(*keyType)
+	if encKeySize == nil {
+		return nil, errors.New("Protect: Can't get symmetric key size from key type")
 	}
-
-	// Recover the keys from the password and the PBE header.
-	if *pbed.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, newError("bad version")
+	totalKeySize := CombinedKeySizeFromAlgorithmName(*keyType)
+	if totalKeySize == nil {
+		return nil, errors.New("Protect: Can't get total key size from key type")
 	}
-
-	if *pbed.Cipher != "aes128-ctr" {
-		return nil, newError("bad cipher")
+	if *totalKeySize > len(keys) {
+		return nil, errors.New("Protect: Bad key size")
 	}
-
-	if *pbed.Hmac != "sha256" {
-		return nil, newError("bad hmac")
+	blkSize := SymmetricBlockSizeFromAlgorithmName(*keyType)
+	if blkSize == nil {
+		return nil, errors.New("Protect: Can't get block size from key type")
 	}
-
-	// 128-bit AES key.
-	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer ZeroBytes(aesKey)
-
-	// 64-byte HMAC-SHA256 key.
-	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer ZeroBytes(hmacKey)
-	c := &Crypter{aesKey, hmacKey}
-
-	// Note that we're abusing the PBEData format here, since the IV and
-	// the MAC are actually contained in the ciphertext from Encrypt().
-	data, err := c.Decrypt(pbed.Ciphertext)
+	if in == nil {
+		return nil, nil
+	}
+	if len(keys) < *totalKeySize {
+		return nil, errors.New("Protect: Supplied key size too small")
+	}
+	iv := make([]byte, *blkSize, *blkSize)
+	_, err := rand.Read(iv[0:*blkSize])
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Protect: Can't generate iv")
 	}
+	encKey := keys[0:*encKeySize]
+	macKey := keys[*encKeySize:*totalKeySize]
+	crypter, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, errors.New("Protect: Can't make crypter")
+	}
+	ctr := cipher.NewCTR(crypter, iv)
+	cipheredOut := make([]byte, len(in))
+	ctr.XORKeyStream(cipheredOut, in)
+	ivAndCiphered := append(iv, cipheredOut...)
 
-	return data, nil
+	var calculatedHmac []byte
+	switch *keyType {
+	default:
+		return nil, errors.New("unknown symmetric cipher suite")
+	case "aes128-ctr-hmacsha256":
+		hm := hmac.New(sha256.New, macKey)
+		hm.Write(ivAndCiphered)
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha384":
+		hm := hmac.New(sha512.New384, macKey)
+		hm.Write(ivAndCiphered)
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha512":
+		hm := hmac.New(sha512.New, macKey)
+		hm.Write(ivAndCiphered)
+		calculatedHmac = hm.Sum(nil)
+	}
+	return append(calculatedHmac, ivAndCiphered...), nil
 }
 
-// MarshalKeyset encodes the keys into a protobuf message.
-func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
-	var cks []*CryptoKey
-	if k.keyTypes&Signing == Signing {
-		ck, err := MarshalSignerProto(k.SigningKey)
-		if err != nil {
-			return nil, err
-		}
-
-		cks = append(cks, ck)
+func Unprotect(keys []byte, in []byte) ([]byte, error) {
+	keyType := CrypterTypeFromSuiteName(TaoCryptoSuite)
+	if keyType == nil {
+		return nil, errors.New("Unprotect: Can't get key type from cipher suite")
 	}
-
-	if k.keyTypes&Crypting == Crypting {
-		ck, err := MarshalCrypterProto(k.CryptingKey)
-		if err != nil {
-			return nil, err
-		}
-
-		cks = append(cks, ck)
+	encKeySize := SymmetricKeySizeFromAlgorithmName(*keyType)
+	if encKeySize == nil {
+		return nil, errors.New("Unprotect: Can't get symmetric key size from key type")
 	}
-
-	if k.keyTypes&Deriving == Deriving {
-		ck, err := MarshalDeriverProto(k.DerivingKey)
-		if err != nil {
-			return nil, err
-		}
-
-		cks = append(cks, ck)
+	hmacKeySize := HmacKeySizeFromAlgorithmName(*keyType)
+	if hmacKeySize == nil {
+		return nil, errors.New("Unprotect: Can't get hmac key size from key type")
 	}
-
-	ckset := &CryptoKeyset{
-		Keys: cks,
+	hmacSize := HmacKeySizeFromAlgorithmName(*keyType)
+	if hmacSize == nil {
+		return nil, errors.New("Unprotect: Can't get hmac size from key type")
 	}
-
-	return ckset, nil
-}
-
-// UnmarshalKeyset decodes a CryptoKeyset into a temporary Keys structure. Note
-// that this Keys structure doesn't have any of its variables set.
-func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
-	k := new(Keys)
-	var err error
-	for i := range cks.Keys {
-		if *cks.Keys[i].Purpose == CryptoKey_SIGNING {
-			if k.SigningKey, err = UnmarshalSignerProto(cks.Keys[i]); err != nil {
-				return nil, err
-			}
-
-			k.VerifyingKey = k.SigningKey.GetVerifier()
-		}
-
-		if *cks.Keys[i].Purpose == CryptoKey_CRYPTING {
-			if k.CryptingKey, err = UnmarshalCrypterProto(cks.Keys[i]); err != nil {
-				return nil, err
-			}
-		}
-
-		if *cks.Keys[i].Purpose == CryptoKey_DERIVING {
-			if k.DerivingKey, err = UnmarshalDeriverProto(cks.Keys[i]); err != nil {
-				return nil, err
-			}
-		}
+	totalKeySize := CombinedKeySizeFromAlgorithmName(*keyType)
+	if totalKeySize == nil {
+		return nil, errors.New("Unprotect: Can't get total key size from key type")
 	}
-
-	return k, nil
-}
-
-// NewOnDiskTaoSealedKeys sets up the keys sealed under a host Tao or reads sealed keys.
-func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
-
-	// Fail if no parent Tao exists (otherwise t.Seal() would not be called).
-	if t == nil {
-		return nil, errors.New("parent tao is nil")
+	if *totalKeySize > len(keys) {
+		return nil, errors.New("Unprotect: Bad key size")
 	}
-
-	k := &Keys{
-		keyTypes: keyTypes,
-		dir:      path,
-		policy:   policy,
+	blkSize := SymmetricBlockSizeFromAlgorithmName(*keyType)
+	if blkSize == nil {
+		return nil, errors.New("Unprotect: Can't get block size from key type")
 	}
-
-	// Check if keys exist: if not, generate and save a new set.
-	f, err := os.Open(k.SealedKeysetPath())
+	if in == nil {
+		return nil, nil
+	}
+	out := make([]byte, len(in)-*blkSize-*hmacSize, len(in)-*blkSize-*hmacSize)
+	iv := in[*hmacSize : *hmacSize+*blkSize]
+	encKey := keys[0:*encKeySize]
+	macKey := keys[*encKeySize:*totalKeySize]
+	crypter, err := aes.NewCipher(encKey)
 	if err != nil {
-		k, err = NewTemporaryTaoDelegatedKeys(keyTypes, t)
-		if err != nil {
-			return nil, err
-		}
-		k.dir = path
-		k.policy = policy
-
-		if err = k.Save(t); err != nil {
-			return k, err
-		}
-		return k, nil
+		return nil, errors.New("Unprotect: Can't make crypter")
 	}
-	f.Close()
+	ctr := cipher.NewCTR(crypter, iv)
+	ctr.XORKeyStream(out, in[*hmacSize+*blkSize:])
 
-	// Otherwise, load from file.
-	return LoadKeys(keyTypes, t, path, policy)
-}
-
-// Save serializes, seals, and writes a key set to disk. It calls t.Seal().
-func (k *Keys) Save(t Tao) error {
-	// Marshal key set.
-	cks, err := MarshalKeyset(k)
-	if err != nil {
-		return err
+	var calculatedHmac []byte
+	switch *keyType {
+	default:
+		return nil, errors.New("unknown symmetric cipher suite")
+	case "aes128-ctr-hmacsha256":
+		hm := hmac.New(sha256.New, macKey)
+		hm.Write(in[*hmacSize:])
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha384":
+		hm := hmac.New(sha512.New384, macKey)
+		hm.Write(in[*hmacSize:])
+		calculatedHmac = hm.Sum(nil)
+	case "aes256-ctr-hmacsha512":
+		hm := hmac.New(sha512.New, macKey)
+		hm.Write(in[*hmacSize:])
+		calculatedHmac = hm.Sum(nil)
 	}
-	cks.Delegation = k.Delegation
-
-	// TODO(tmroeder): defer zeroKeyset(cks)
-
-	m, err := proto.Marshal(cks)
-	if err != nil {
-		return err
+	if bytes.Compare(calculatedHmac, in[0:*hmacSize]) != 0 {
+		return nil, errors.New("Unprotect: Bad mac")
 	}
-	defer ZeroBytes(m)
-
-	data, err := t.Seal(m, k.policy)
-	if err != nil {
-		return err
-	}
-
-	if err = util.WritePath(k.SealedKeysetPath(), data, 0700, 0600); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// LoadKeys reads a key set from file. If there is a parent tao (t!=nil), then
-// expect the keys are sealed and call t.Unseal(); otherwise, expect the key
-// set to be plaintext.
-func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
-	k := &Keys{
-		keyTypes: keyTypes,
-		dir:      path,
-		policy:   policy,
-	}
-
-	// Check to see if there are already keys.
-	var keysetPath string
-	if t == nil {
-		keysetPath = k.PlaintextKeysetPath()
-	} else {
-		keysetPath = k.SealedKeysetPath()
-	}
-	f, err := os.Open(keysetPath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	ks, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	var cks CryptoKeyset
-	if t != nil {
-		data, p, err := t.Unseal(ks)
-		if err != nil {
-			return nil, err
-		}
-		defer ZeroBytes(data)
-
-		if p != policy {
-			return nil, errors.New("invalid policy from Unseal")
-		}
-		if err = proto.Unmarshal(data, &cks); err != nil {
-			return nil, err
-		}
-
-	} else {
-		if err = proto.Unmarshal(ks, &cks); err != nil {
-			return nil, err
-		}
-	}
-
-	// TODO(tmroeder): defer zeroKeyset(&cks)
-
-	ktemp, err := UnmarshalKeyset(&cks)
-	if err != nil {
-		return nil, err
-	}
-
-	k.SigningKey = ktemp.SigningKey
-	k.VerifyingKey = ktemp.VerifyingKey
-	k.CryptingKey = ktemp.CryptingKey
-	k.DerivingKey = ktemp.DerivingKey
-
-	// Read the delegation.
-	k.Delegation = cks.Delegation
-
-	return k, nil
-}
-
-// NewSecret creates and encrypts a new secret value of the given length, or it
-// reads and decrypts the value and checks that it's the right length. It
-// creates the file and its parent directories if these directories do not
-// exist.
-func (k *Keys) NewSecret(file string, length int) ([]byte, error) {
-	if _, err := os.Stat(file); err != nil {
-		// Create the parent directories and the file.
-		if err := os.MkdirAll(path.Dir(file), 0700); err != nil {
-			return nil, err
-		}
-
-		secret := make([]byte, length)
-		if _, err := rand.Read(secret); err != nil {
-			return nil, err
-		}
-
-		enc, err := k.CryptingKey.Encrypt(secret)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := ioutil.WriteFile(file, enc, 0700); err != nil {
-			return nil, err
-		}
-
-		return secret, nil
-	}
-
-	enc, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	dec, err := k.CryptingKey.Decrypt(enc)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(dec) != length {
-		ZeroBytes(dec)
-		return nil, newError("The decrypted value had length %d, but it should have had length %d", len(dec), length)
-	}
-
-	return dec, nil
-}
-
-// SaveKeyset serializes and saves a Keys object to disk in plaintext.
-func SaveKeyset(k *Keys, dir string) error {
-	k.dir = dir
-	cks, err := MarshalKeyset(k)
-	if err != nil {
-		return err
-	}
-	cks.Delegation = k.Delegation
-
-	m, err := proto.Marshal(cks)
-	if err != nil {
-		return err
-	}
-
-	if err = util.WritePath(k.PlaintextKeysetPath(), m, 0700, 0600); err != nil {
-		return err
-	}
-
-	return nil
+	return out, nil
 }

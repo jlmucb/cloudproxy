@@ -115,7 +115,7 @@ func ValidatePeerAttestation(a *Attestation, cert *x509.Certificate, guard Guard
 	// The bytes of the delegate are the result of ToPrincipal on
 	// Keys.SigningKey. Check that this represents the same key as the one
 	// in the certificate.
-	verifier, err := FromX509(cert)
+	verifier, err := VerifierFromX509(cert)
 	if err != nil {
 		return err
 	}

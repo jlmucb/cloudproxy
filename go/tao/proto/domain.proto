@@ -16,13 +16,17 @@ syntax = "proto2";
 package tao;
 
 // TODO(jlm): Comments for arguments.
+// Policy key should be compatible with library cipher suite.
 message DomainDetails {
+  // name of domain
   optional string name = 1;
   optional string policy_keys_path = 2;
   optional string guard_type = 3;
+  // ??
   optional string guard_network = 4;
   optional string guard_address = 5;
   optional int64 guard_ttl = 6;
+  optional string cipher_suite = 7;
 }
 
 message X509Details {
@@ -45,10 +49,8 @@ message DatalogGuardDetails {
 message TPMDetails {
   optional string tpm_path = 1;
   optional string aik_path = 2;
-
   // A string representing the IDs of PCRs, like "17,18".
   optional string pcrs = 3;
-
   // Path for AIK cert.
   optional string aik_cert_path = 4;
 }

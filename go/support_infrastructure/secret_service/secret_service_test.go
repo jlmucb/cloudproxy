@@ -15,7 +15,6 @@ package secret_service
 import (
 	"bytes"
 	"container/list"
-	"crypto/rand"
 	"fmt"
 	"os"
 	"testing"
@@ -39,23 +38,25 @@ var domain *tao.Domain
 var encKey *tao.Keys
 
 var authorizedPrin = &auth.Prin{
-	Type:    "program",
-	KeyHash: auth.Bytes([]byte("Hash-of-AuthorizedProgram-Key")),
-	Ext:     []auth.PrinExt{}}
+	Type: "program",
+	KeyHash:  auth.Str("AuthorizedProgram"),
+	Ext:  []auth.PrinExt{}}
 
 var unAuthorizedPrin = &auth.Prin{
-	Type:    "program",
-	KeyHash: auth.Bytes([]byte("Hash-of-UnAuthorizedProgram-Key")),
-	Ext:     []auth.PrinExt{}}
+	Type: "program",
+	KeyHash:  auth.Str("UnAuthorizedProgram"),
+	Ext:  []auth.PrinExt{}}
 
 func TestReadObject(t *testing.T) {
 	setUpDomain(t)
 	l := list.New()
 	l.PushFront(createRootKey(t))
 	obj := createObject(name, epoch, value, secretType)
+	protected_objects.PrintObject(obj)
 	pObj, err := protected_objects.MakeProtectedObject(*obj, rootName, epoch, rootKey)
 	failOnError(t, err)
 	l.PushFront(*pObj)
+	protected_objects.PrintProtectedObject(pObj)
 
 	err = domain.Guard.Authorize(*authorizedPrin, "READ", []string{obj.ObjId.String()})
 	failOnError(t, err)
@@ -218,10 +219,10 @@ func createObjectId(name string, epoch int32) *protected_objects.ObjectIdMessage
 }
 
 func createRootKey(t *testing.T) protected_objects.ProtectedObjectMessage {
-	rootKey = make([]byte, 32)
-	_, err := rand.Read(rootKey)
-	if err != nil {
-		t.Fatal(err)
+	rootKey = []byte{
+		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
+		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
+		0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf,
 	}
 	p := new(protected_objects.ProtectedObjectMessage)
 	rootId = createObjectId(rootName, epoch)
@@ -253,7 +254,7 @@ func setUpDomain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encKey, err = tao.NewOnDiskPBEKeys(tao.Crypting, []byte("xxx"), "./tmpdir/keys", nil)
+	encKey, err = tao.NewOnDiskPBEKeys(tao.Signing | tao.Crypting, []byte("xxx"), "./tmpdir/keys", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

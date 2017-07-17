@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string>
 
-#include "helpers.h"
+#include "ssl_helpers.h"
 
 DEFINE_string(key_type, "ECC", "key type for generated keys");
 

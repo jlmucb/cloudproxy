@@ -35,6 +35,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/util/options"
+	// "github.com/golang/crypto/ssh/terminal"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -407,12 +408,31 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 				return nil, errors.New("Domain policy key missing signing key")
 			}
 			keyName := "Soft Tao Key"
-			subject := pkix.Name{
-				Organization: []string{keyName},
+			universalBytes, err :=  domain.Keys.SigningKey.UniversalKeyNameFromSigner()
+			if err != nil {
+				return nil, errors.New("Can't get universal name " + err.Error())
+			}
+			universalKeyName :=  fmt.Sprintf("key([%x])", universalBytes)
+			// TODO: Check with Kevin on the right way to do this
+			subject := &pkix.Name{
+				Organization: []string{universalKeyName},
 				CommonName:   keyName,
 			}
-			cert, err = domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 0,
-				rootHost.GetVerifier(), &subject)
+			keyType := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)
+			if keyType == nil {
+				return nil, errors.New("Bad key type")
+			}
+			pkAlg := tao.PublicKeyAlgFromSignerAlg(*keyType)
+			sigAlg := tao.SignatureAlgFromSignerAlg(*keyType)
+			if pkAlg < 0 || sigAlg < 0 {
+				return nil, errors.New("Bad Alg type")
+			}
+			verifier := rootHost.GetVerifier()
+			if verifier == nil {
+				return nil, errors.New("Verifier is nil in loadHost")
+			}
+			cert, err = domain.Keys.SigningKey.CreateSignedX509(domain.Keys.Cert, 1,
+				verifier, pkAlg, sigAlg, subject)
 			if err != nil {
 				return nil, err
 			}

@@ -19,6 +19,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -64,7 +65,17 @@ func generateX509() (*Keys, *tls.Certificate, error) {
 	}
 
 	// TODO(tmroeder): fix the name
-	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+	signerAlg := SignerTypeFromSuiteName(TaoCryptoSuite)
+	if signerAlg == nil {
+		return nil, nil, errors.New("Cant get signer alg from ciphersuite")
+	}
+	pkInt := PublicKeyAlgFromSignerAlg(*signerAlg)
+	skInt := SignatureAlgFromSignerAlg(*signerAlg)
+	if pkInt < 0 || skInt < 0 {
+		return nil, nil, errors.New("Cant get x509 signer alg from signer alg")
+	}
+
+	cert, err := keys.SigningKey.CreateSelfSignedX509(pkInt, skInt, 1, &pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
 		return nil, nil, err

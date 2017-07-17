@@ -13,6 +13,7 @@
 package main
 
 import (
+	"crypto/ecdsa"
 	"flag"
 	"log"
 	"net"
@@ -61,8 +62,8 @@ func main() {
 			log.Printf("Quote server: Couldn't read request from channel: %s\n", err)
 			continue
 		}
-		response, err := tpm2.ProcessQuoteDomainRequest(request, policyKey.SigningKey.GetSigner(),
-			policyKey.Cert.Raw)
+		response, err := tpm2.ProcessQuoteDomainRequest(request,
+			(policyKey.SigningKey.PrivKey).(*ecdsa.PrivateKey), policyKey.Cert.Raw)
 		if err != nil {
 			sendError(err, ms)
 			continue

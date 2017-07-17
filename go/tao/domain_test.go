@@ -58,7 +58,6 @@ func TestDomainACLSaveAndLoad(t *testing.T) {
 	if err := d.Save(); err != nil {
 		t.Fatal("Couldn't save the ACL-based domain:", err)
 	}
-
 	d2, err := LoadDomain(path.Join(tmpdir, "tao.config"), testDomainPassword)
 	if err != nil {
 		t.Fatal("Couldn't load the ACL domain:", err)

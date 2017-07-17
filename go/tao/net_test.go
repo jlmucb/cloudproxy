@@ -38,7 +38,17 @@ func newNetKeys(t *testing.T, ta Tao, org string) (*Keys, *tls.Config) {
 		t.Fatalf("couldn't create new temporary delegated keys: %s", err)
 	}
 
-	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+	signerAlg := SignerTypeFromSuiteName(TaoCryptoSuite)
+	if signerAlg == nil {
+		t.Error("Cant get signer alg from ciphersuite")
+	}
+	pkInt := PublicKeyAlgFromSignerAlg(*signerAlg)
+	skInt := SignatureAlgFromSignerAlg(*signerAlg)
+	if pkInt < 0 || skInt < 0 {
+		t.Error("Cant get x509 signer alg from signer alg")
+	}
+	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(pkInt, skInt, 1,
+		&pkix.Name{
 		Organization: []string{org}})
 	if err != nil {
 		t.Fatalf("couldn't create a self-signed certificate from the keys: %s", err)

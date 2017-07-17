@@ -31,13 +31,13 @@ import (
 )
 
 var Delegate = auth.Prin{
-	Type:    "program",
-	KeyHash: auth.Bytes([]byte("Hash-of-FakeProgram-Key")),
+	Type: "program",
+	KeyHash:  auth.Bytes([]byte(`fake program`)),
 }
 
 var Delegator = auth.Prin{
-	Type:    "program",
-	KeyHash: auth.Bytes([]byte("Hash-of-SpeakerProgram-Key")),
+	Type: "program",
+	KeyHash:  auth.Bytes([]byte(`speaker program`)),
 }
 
 var ProtectedObjectName = "obj_name"
@@ -65,8 +65,11 @@ func TestProcessDirectiveAndUpdateGuard(t *testing.T) {
 	speakerStr := Delegator.String()
 	info.CommonName = &speakerStr
 	subject := tao.NewX509Name(&info)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*domain.Keys.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*domain.Keys.SigningKey.Header.KeyType)
 	programKey.Cert, err = domain.Keys.SigningKey.CreateSignedX509(
-		domain.Keys.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
+		domain.Keys.Cert, 1, programKey.SigningKey.GetVerifierFromSigner(),
+		pkInt, sigInt, subject)
 	failOnError(t, err)
 	directive, err := CreateSecretDisclosureDirective(programKey, &Delegator,
 		&Delegate, ReadPredicate, &ProtectedObjectId)
@@ -91,7 +94,7 @@ func TestCreateDirective(t *testing.T) {
 	directive, err := CreateSecretDisclosureDirective(policyKey, &signer, &Delegate,
 		ReadPredicate, &ProtectedObjectId)
 	failOnError(t, err)
-	signatureValid, err := policyKey.SigningKey.GetVerifier().Verify(
+	signatureValid, err := policyKey.SigningKey.GetVerifierFromSigner().Verify(
 		directive.SerializedStatement, SigningContext, directive.Signature)
 	failOnError(t, err)
 	if !signatureValid {
@@ -159,8 +162,10 @@ func TestCreateAndVerifyDirectiveSignedByProgram(t *testing.T) {
 	speakerStr := Delegator.String()
 	info.CommonName = &speakerStr
 	subject := tao.NewX509Name(&info)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
 	programKey.Cert, err = policyKey.SigningKey.CreateSignedX509(
-		policyKey.Cert, 1, programKey.SigningKey.GetVerifier(), subject)
+		policyKey.Cert, 1, programKey.SigningKey.GetVerifierFromSigner(), pkInt, sigInt, subject)
 	failOnError(t, err)
 	directive, err := CreateSecretDisclosureDirective(programKey, &Delegator,
 		&Delegate, ReadPredicate, &ProtectedObjectId)
@@ -326,7 +331,9 @@ func generatePolicyKeyAndSignedDirective(params Params) (*tao.Keys, *DirectiveMe
 	name := policyKey.SigningKey.ToPrincipal().String()
 	info.CommonName = &name
 	subject := tao.NewX509Name(&info)
-	policyKey.Cert, err = policyKey.SigningKey.CreateSelfSignedX509(subject)
+	pkInt := tao.PublicKeyAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
+	sigInt := tao.SignatureAlgFromSignerAlg(*policyKey.SigningKey.Header.KeyType)
+	policyKey.Cert, err = policyKey.SigningKey.CreateSelfSignedX509(pkInt, sigInt, int64(1), subject)
 	if err != nil {
 		return nil, nil, err
 	}

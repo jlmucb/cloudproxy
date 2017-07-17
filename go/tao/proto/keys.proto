@@ -17,33 +17,48 @@ import "attestation.proto";
 
 package tao;
 
-// TODO(kwalsh) add finer-granularity version tags?
-
 enum CryptoVersion {
   CRYPTO_VERSION_1 = 1;
+  CRYPTO_VERSION_2 = 2;
 }
 
-message CryptoKey {
-  enum CryptoPurpose {
-    VERIFYING = 1;  // public
-    SIGNING = 2;    // private
-    CRYPTING = 3;   // private
-    DERIVING = 4;   // private
-  }
-  enum CryptoAlgorithm {  // algorithm, mode, etc., all rolled into one
-    ECDSA_SHA = 1;
-    AES_CTR_HMAC_SHA = 2;
-    HMAC_SHA = 3;
-  }
+// CryptoHeader has been changed to include:
+// key_name, key_epoch, key_type, key_purpose, key_status (all strings).
+// key_epoch is monotonically increasing integer
+// key_status: "primary," "pre-primary", "post-primary," "inactive," "revoked"
+// key_types:
+//	"aes-128-raw", "aes-256-raw",
+//	"aes128-ctr", "aes256-ctr", 
+//	"aes128-ctr-hmacsha256", "aes256-ctr-hmacsha256", 
+//	"hmacsha256", "hmacsha384", "hmacsha512",
+//	"rsa1024", "rsa2048", "rsa3072"
+//	"ecdsap256", "ecdsap384", "ecdsap384",
+//	"rsa1024-public", "rsa2048-public", "rsa3072-public"
+//	"ecdsap256-public", "ecdsap384-public"
+//	"hdkf-sha256"
+// key_purpose: "verifying", "signing", "crypting", "deriving", "sealing"
+message CryptoHeader {
   required CryptoVersion version = 1;
-  required CryptoPurpose purpose = 2;
-  required CryptoAlgorithm algorithm = 3;
-  required bytes key = 4;  // serialized <algorithm><purpose>Key<version>
+  optional string key_name = 2;
+  optional int32 key_epoch = 3;
+  optional string key_type = 4;
+  optional string key_purpose = 5;
+  optional string key_status = 6;
+}
+
+// CryptoKey
+message CryptoKey {
+  required CryptoHeader key_header = 1;
+  repeated bytes key_components = 2;
 }
 
 message CryptoKeyset {
-  repeated CryptoKey keys = 1;
-  optional Attestation delegation = 2;
+  repeated bytes keys = 1;
+  // Cert for Signing Key
+  optional bytes cert = 2;
+  optional Attestation delegation = 3;
+  // certs supporting cert from cert signer to authority.
+  repeated bytes cert_chain = 4;
 }
 
 // Stacked Tao hosts can invoke their host Tao to seal a serialized CryptoKeyset
@@ -52,9 +67,10 @@ message CryptoKeyset {
 // PBEData is used by root Tao hosts to seal a serialized CryptoKeyset
 // using a user-chosen password.
 
+// TODO(jlm): Should cipher/hmac be replaced by CryptoHeader?
 message PBEData {
   required CryptoVersion version = 1;
-  required string cipher = 2;  // "aes128-cbc"
+  required string cipher = 2;  // "aes128-ctr"
   required string hmac = 3;  // "sha256"
   required int32 iterations = 4;  // 4096
   required bytes iv = 5;
@@ -63,62 +79,25 @@ message PBEData {
   required bytes salt = 7;
 }
 
-enum NamedEllipticCurve {
-  PRIME256_V1 = 1;  // aka secp256r1
+// Contextualized protobuf.
+// SECURITY WARNING: Always choose a unique context for each unique type of
+// message. One easy way to do this is to number the messages in a protocol
+// and make the context "ProtocolName Message Y: ProtobufName Version X"
+// Marshaled representation of this is the data that is signed.
+message ContextualizedData {
+	required string context = 1;
+	required bytes data = 2;
 }
 
-message ECDSA_SHA_VerifyingKey_v1 {
-  required NamedEllipticCurve curve = 1;
-  required bytes ec_public = 2;  // = OpenSSL::EC_POINT_point2oct(pub_key)
-}
-
-message ECDSA_SHA_SigningKey_v1 {
-  required NamedEllipticCurve curve = 1;
-  required bytes ec_private = 2;  // = OpenSSL::BN_bn2bin(priv_key)
-  required bytes ec_public = 3;  // = OpenSSL::EC_POINT_point2oct(pub_key)
-}
-
-enum CryptoCipherMode {
-  CIPHER_MODE_CTR = 1;
-}
-
-message AES_CTR_HMAC_SHA_CryptingKey_v1 {
-  required CryptoCipherMode mode = 1;
-  required bytes aes_private = 2;
-  required bytes hmac_private = 3;
-}
-
-enum CryptoDerivingMode {
- DERIVING_MODE_HKDF = 1;
-}
-
-message HMAC_SHA_DerivingKey_v1 {
-  required CryptoDerivingMode mode = 1;
-  required bytes hmac_private = 2;
-}
-
-// Following Keyczar, signing and encryption use a short header that contains a
-// version number and a four-byte key-hint to distinguish among multiple keys
-// (e.g. if key rotation causes multiple keys to be live simultaneously)
-
-message CryptoHeader {
-  required CryptoVersion version = 1;
-  required bytes key_hint = 2;
-}
-
-// A PDU to be serialized and signed, including a required context to ensure
-// unique deserialization.
+// A PDU including metadata for representing data to be signed.  The data is
+// a serialized ContextualizedData message providing unique deserialization.
 message SignaturePDU {
   required CryptoHeader header = 1;
-
-  // SECURITY WARNING: Always choose a unique context for each unique type of
-  // message. One easy way to do this is to number the messages in a protocol
-  // and make the context "ProtocolName Message Y: ProtobufName Version X"
   required string context = 2;
-
-  // The serialized protobuf representing this message.
+  // The serialized ContextualizedData that is to be signed.
   required bytes data = 3;
 }
+
 
 // The result of signing.
 message SignedData {
@@ -130,11 +109,11 @@ message SignedData {
 // encryption modes (like AES CTR with HMAC-SHA) that require a separate MAC.
 // Note: We actually just hmac the partially serialized EncryptedData message
 // with all fields complete except the mac field.
-// message EncryptionIntegrityPDU {
-//   required CryptoHeader header = 1;
-//   required bytes iv = 2;
-//   required bytes ciphertext = 3;
-// }
+message EncryptionIntegrityPDU {
+   required CryptoHeader header = 1;
+   required bytes iv = 2;
+   required bytes ciphertext = 3;
+}
 
 // The result of encrypting.
 message EncryptedData {
@@ -150,4 +129,9 @@ message KeyDerivationPDU {
   required fixed32 size = 2;
   required string context = 3;
   required fixed32 index = 4;
+}
+
+message EcdsaSig {
+  required bytes r_val = 1;
+  required bytes s_val = 2;
 }

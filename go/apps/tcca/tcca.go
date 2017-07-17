@@ -45,7 +45,18 @@ func main() {
 		glog.Exit("Couldn't set up temporary keys for the connection:", err)
 		return
 	}
-	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+	keyType := tao.SignerTypeFromSuiteName(tao.TaoCryptoSuite)
+	if keyType == nil {
+		glog.Exit("Couldn't key algs")
+		return
+	}
+	pkAlg := tao.PublicKeyAlgFromSignerAlg(*keyType)
+	sigAlg := tao.SignatureAlgFromSignerAlg(*keyType)
+	if pkAlg < 0 || sigAlg < 0 {
+		glog.Exit("Couldn't key algs")
+		return
+	}
+	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(pkAlg, sigAlg, int64(1), &pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
 		glog.Exit("Couldn't set up a self-signed cert:", err)

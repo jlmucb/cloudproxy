@@ -46,6 +46,126 @@ type Domain struct {
 	Guard      Guard
 }
 
+func PrintDomainDetails(x *DomainDetails) {
+	if x.Name != nil {
+		fmt.Printf("Domain Name: %s\n", *x.Name)
+	}
+	if x.PolicyKeysPath != nil {
+		fmt.Printf("PolicyKeysPath: %s\n", *x.PolicyKeysPath)
+	}
+	if x.GuardType != nil {
+		fmt.Printf("GuardType: %s\n", *x.GuardType)
+	}
+	if x.GuardNetwork != nil {
+		fmt.Printf("GuardNetwork: %s\n", *x.GuardNetwork)
+	}
+	if x.GuardAddress != nil {
+		fmt.Printf("GuardAddress: %s\n", *x.GuardAddress)
+	}
+	if x.GuardTtl != nil {
+		fmt.Printf("GuardTtl: %d\n", *x.GuardTtl)
+	}
+	if x.CipherSuite != nil {
+		fmt.Printf("CipherSuite: %s\n", *x.CipherSuite)
+	}
+
+}
+
+func PrintX509Details(x *X509Details) {
+	if x.CommonName != nil {
+		fmt.Printf("CommonName: %s\n", *x.CommonName)
+	}
+	if x.Country != nil {
+		fmt.Printf("Country: %s\n", *x.Country)
+	}
+	if x.State != nil {
+		fmt.Printf("State: %s\n", *x.State)
+	}
+	if x.Organization != nil {
+		fmt.Printf("Organization: %s\n", *x.Organization)
+	}
+	if x.OrganizationalUnit != nil {
+		fmt.Printf("OrganizationalUnit: %s\n", *x.OrganizationalUnit)
+	}
+	if x.SerialNumber != nil {
+		fmt.Printf("SerialNumber: %d\n", *x.SerialNumber)
+	}
+}
+
+func PrintACLGuardDetails(x *ACLGuardDetails) {
+	if x.SignedAclsPath != nil {
+		fmt.Printf("SignedAclsPath : %s\n", *x.SignedAclsPath)
+	}
+}
+
+func PrintDatalogGuardDetails(x *DatalogGuardDetails) {
+	if x.SignedRulesPath != nil {
+		fmt.Printf("SignedRulesPath: %s\n", *x.SignedRulesPath)
+	}
+}
+
+func PrintTPMDetails(x *TPMDetails) {
+	if x.TpmPath != nil {
+		fmt.Printf("TpmPath: %s\n", *x.TpmPath)
+	}
+	if x.AikPath != nil {
+		fmt.Printf("AikPath: %s\n", *x.AikPath)
+	}
+	if x.AikCertPath != nil {
+		fmt.Printf("AikCertPath: %s\n", *x.AikCertPath)
+	}
+}
+
+func PrintTPM2Details(x *TPM2Details) {
+	if x.Tpm2InfoDir != nil {
+		fmt.Printf("Tpm2InfoDir: %s\n", *x.Tpm2InfoDir)
+	}
+	if x.Tpm2Device != nil {
+		fmt.Printf("Tpm2Device: %s\n", *x.Tpm2Device)
+	}
+	if x.Tpm2EkCert != nil {
+		fmt.Printf("Tpm2EkCert: %s\n", *x.Tpm2EkCert)
+	}
+	if x.Tpm2QuoteCert != nil {
+		fmt.Printf("Tpm2QuoteCert: %s\n", *x.Tpm2QuoteCert)
+	}
+	if x.Tpm2SealCert != nil {
+		fmt.Printf("Tpm2SealCert: %s\n", *x.Tpm2SealCert)
+	}
+}
+
+func PrintDomainConfig(cf *DomainConfig) {
+	if cf.DomainInfo != nil {
+		PrintDomainDetails(cf.DomainInfo)
+	}
+	if cf.X509Info != nil {
+		PrintX509Details(cf.X509Info)
+	}
+	if cf.X509Info != nil {
+		PrintX509Details(cf.X509Info)
+	}
+	if cf.AclGuardInfo != nil {
+		PrintACLGuardDetails(cf.AclGuardInfo)
+	}
+	if cf.DatalogGuardInfo != nil {
+		PrintDatalogGuardDetails(cf.DatalogGuardInfo)
+	}
+	if cf.TpmInfo != nil {
+		PrintTPMDetails(cf.TpmInfo)
+	}
+	if cf.Tpm2Info != nil {
+		PrintTPM2Details(cf.Tpm2Info)
+	}
+}
+
+func PrintDomain(d *Domain) {
+	fmt.Printf("ConfigPath: %s\n", d.ConfigPath)
+	PrintDomainConfig(&d.Config)
+	if d.Keys != nil {
+		PrintKeys(d.Keys)
+	}
+}
+
 var errUnknownGuardType = errors.New("unknown guard type")
 
 // SetDefaults sets each blank field of cfg to a reasonable default value.
@@ -158,6 +278,10 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		dgi := DatalogGuardDetails{
 			SignedRulesPath: proto.String(path.Join(configDir, rulesPath)),
 		}
+		// Fix?
+		if keys.VerifyingKey == nil {
+			return nil, errors.New("Empty verifying key")
+		}
 		guard, err = NewDatalogGuardFromConfig(keys.VerifyingKey, dgi)
 		if err != nil {
 			return nil, err
@@ -221,12 +345,13 @@ func (d *Domain) CreatePublicCachedDomain(network, addr string, ttl int64) (*Dom
 	if err != nil {
 		return nil, err
 	}
-	inFile, err := os.Open(d.Keys.X509Path())
+
+	inFile, err := os.Open(d.Keys.X509VerifierPath())
 	if err != nil {
 		return nil, err
 	}
 	defer inFile.Close()
-	outFile, err := os.Create(newDomain.Keys.X509Path())
+	outFile, err := os.Create(newDomain.Keys.X509VerifierPath())
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +378,7 @@ func (d *Domain) Save() error {
 	return d.Guard.Save(d.Keys.SigningKey)
 }
 
-// LoadDomain initialize a Domain from an existing configuration file. If
+// LoadDomain initializes a Domain from an existing configuration file. If
 // password is nil, the object will be "locked", meaning that the policy private
 // signing key will not be available, new ACL entries or attestations can not be
 // signed, etc. Otherwise, password will be used to unlock the policy private
@@ -264,7 +389,6 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if err := proto.UnmarshalText(string(d), &cfg); err != nil {
 		return nil, err
 	}
@@ -274,6 +398,14 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	// Fix?
+	if keys.VerifyingKey == nil {
+		keys.VerifyingKey = keys.SigningKey.GetVerifierFromSigner()
+		if keys.VerifyingKey == nil {
+			return nil, errors.New("Can't GetVeriferFromSigner")
+		}
 	}
 
 	var guard Guard

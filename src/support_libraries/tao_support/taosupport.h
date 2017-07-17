@@ -20,6 +20,8 @@
 #include "tao/tao_rpc.h"
 #include "tao/util.h"
 
+#include "agile_crypto_support.h"
+
 #include "attestation.pb.h"
 
 #include <openssl/rsa.h>
@@ -36,82 +38,94 @@ typedef unsigned char byte;
 class TaoProgramData {
 private:
 
-  // Most of these should be private
-
   // Has InitTao initialized me successfully?
   bool  initialized_;
-  // Channel to communicate with host.
-  tao::FDMessageChannel* msg_;
-  // Tao object interface
-  tao::Tao* tao_;
-
-  // Endorsement for AIK for TPM
-  string endorsement_cert_;
-
-  // Marshalled tao name (a Prin).
-  string marshalled_tao_name_;
-  // Printable tao name
-  string tao_name_;
 
   // cipher suite
   string cipher_suite_;
 
-  string policy_cert_;
-  X509* policyCertificate_;
+  // Program path
+  string program_path_;
 
-  // Program key.
-  string program_key_type_;
-  EVP_PKEY* program_key_;
+  // Policy cert file name (including path).
+  string policy_cert_file_name_;
+
+  // network
+  string network_;
+  string address_;
+  string port_;
+
+  // What kind of Authority Service?
+  bool useSimpleService_;
+
+  // Channel to communicate with host.
+  tao::FDMessageChannel* msg_;
+
+  // Tao object interface
+  tao::Tao* tao_;
+
+  // Marshalled tao name (a Prin).
+  string marshalled_tao_name_;
+
+  // Printable tao name
+  string tao_name_;
+
+  string policy_cert_;
+  X509* policy_certificate_;
+  Verifier* policy_verifying_key_;
+
+  // host certificate.
+  string host_cert_file_name_;
+  string host_cert_;
+  std::list<string> host_cert_chain_;
+
+  // keys
+  Signer* program_signing_key_;
+  Verifier* verifying_key_;
+  Crypter* crypting_key_;
 
   // Der encoded and parsed X509 program certificate.
   string program_cert_;
-  X509* programCertificate_;
+  X509* program_certificate_;
+  std::list<string> program_cert_chain_;
 
-  // Cert chain for Program Certificate.
-  std::list<string> certs_in_chain_;
+  bool SealMaterial(string& to_seal, string* sealed);
+  bool UnsealMaterial(string& sealed, string* unsealed);
+  bool Attest(string& to_attest, string* attested);
 
-  int size_program_sym_key_;
-  byte* program_sym_key_;
-  string program_file_path_;
+  bool SaveProgramData(tao_support::SavedProgramData& pd, string* out);
+  bool RecoverProgramData(string in, tao_support::SavedProgramData* pd);
+
+  bool InitProgramKeys(tao_support::SavedProgramData* pd);
+  bool GetProgramData();
 
 public:
   TaoProgramData();
   ~TaoProgramData();
 
-  // Accessors
-  bool GetTaoName(string* name);
-  bool GetSymKeys(string* symkeys);
-
-  bool GetPolicyCert(string* cert);
-  X509* GetPolicyCertificate();
-  void SetPolicyCertificate(X509* c);
-
-  bool GetProgramKeyType(string* keyType);
-  EVP_PKEY* GetProgramKey();
-
-  X509* GetProgramCertificate();
-  bool GetProgramCert(string* cert);
-  void SetProgramCertificate(X509* c);
-
-  std::list<string>* GetCertChain();
-
   void ClearProgramData();
-  bool InitTao(tao::FDMessageChannel* msg, tao::Tao* tao, string&, string&,
-               string& network, string& address, string& port, string& cipher_suite,
-               bool useSimpleService);
+  bool InitTao(string& cipher_suite, tao::FDMessageChannel* msg, tao::Tao* tao,
+       string& policy_key_path, string& host_key_path, string& program_path,
+       string& network, string& address, string& port, bool useSimpleService);
+
+  // Accessors
+  bool ExtendName(string& subprin);
+  bool GetTaoName(string* name);
+
   void Print();
 
-  // Maybe the Initialize routines should be private.
-  bool InitializeProgramKey(string& path, string& key_type, int key_size,
-                            string& network, string& address, string& port,
-                            string& hostType, string& hostCert);
-  bool InitializeSymmetricKeys(string& path, int keysize);
+  bool GetCipherSuite(string* keyType);
 
-  bool ExtendName(string& subprin);
-  bool Seal(string& to_seal, string* sealed);
-  bool Unseal(string& sealed, string* unsealed);
-  bool Attest(string& to_attest, string* attested);
+  bool GetPolicyCert(string* cert);
+  bool GetProgramCert(string* cert);
+  bool GetProgramKeyType(string* key_type);
+  EVP_PKEY* GetProgramKey();
 
+  void SetPolicyCertificate(X509* c);
+  X509* GetPolicyCertificate();
+  void SetProgramCertificate(X509* c);
+  X509* GetProgramCertificate();
+  std::list<string>* GetProgramCertChain();
 
   bool InitCounter(string& label, int64_t& c);
   bool GetCounter(string& label, int64_t* c);
@@ -120,9 +134,7 @@ public:
 
 private:
   // This should be private.
-  bool RequestDomainServiceCert(string& network, string& address, string& port,
-          string& attestation_string, string& endorsement_cert,
-          string* program_cert, std::list<string>* certsinChain);
+  bool RequestDomainServiceCert(string& request_string);
 };
 
 class TaoChannel {
@@ -140,8 +152,4 @@ public:
   bool GetRequest(int* size, byte* in);
   void Print();
 };
-
-bool GetKeyBytes(EVP_PKEY* pKey, string* bytes_out);
 #endif
-
-

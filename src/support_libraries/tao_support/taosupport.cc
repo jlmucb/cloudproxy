@@ -501,6 +501,14 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   request.set_attestation(attestation_string);
   request.set_key_type(signer_alg_name);
   request.set_subject_public_key(der_subj_key, der_subj_key_size);
+  string* der = request.add_cert_chain();
+  *der = host_cert_;
+  for (std::list<string>::iterator it = host_cert_chain_.begin();
+      it != host_cert_chain_.end(); ++it) {
+    string* der = request.add_cert_chain();
+    *der = *it;
+  }
+  
 
   string request_string;
   if (!request.SerializeToString(&request_string)) {
@@ -541,12 +549,13 @@ bool TaoProgramData::InitProgramKeys(tao_support::SavedProgramData* pd) {
   pd->set_crypting_key_blob(crypting_key_blob);
   pd->set_delegation(attestation_string);
   pd->set_program_cert(program_cert_);
-/*
-  for (int i = 0; i < pd->signer_cert_chain_.size(); i++) {
-    string der_cert = pd->signer_cert_chain_(i);
-    program_cert_chain_.push_back(der_cert);
+
+  // Save program cert chain
+  for (std::list<string>::iterator it = program_cert_chain_.begin();
+      it != program_cert_chain_.end(); ++it) {
+    string* next  = pd->add_signer_cert_chain();
+    *next = *it;
   }
- */
 
   return true;
 }
@@ -627,6 +636,8 @@ bool TaoProgramData::GetProgramData() {
   }
   program_signing_key_ = CryptoKeyToSigner(sck);
   if (program_signing_key_ == nullptr) {
+      printf("GetProgramData: can't convert signer cryptokey to signer\n");
+      return false;
   }
   if (!cck.ParseFromString(program_data.crypting_key_blob())) {
       printf("GetProgramData: can't decode crypting key blob\n");
@@ -634,6 +645,8 @@ bool TaoProgramData::GetProgramData() {
   }
   crypting_key_ = CryptoKeyToCrypter(cck);
   if (crypting_key_ == nullptr) {
+      printf("GetProgramData: can't convert crypter cryptokey to crypter\n");
+      return false;
   }
   verifying_key_ = VerifierFromSigner(program_signing_key_);
   if (verifying_key_ == nullptr) {
@@ -652,7 +665,10 @@ bool TaoProgramData::GetProgramData() {
     return false;
   }
 
-  // repeated bytes signer_cert_chain
+  for (int i = 0; i < program_data.signer_cert_chain().size(); i++) {
+    string der_cert = program_data.signer_cert_chain(i);
+    program_cert_chain_.push_back(der_cert);
+  }
 
   return true;
 }

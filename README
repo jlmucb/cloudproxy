@@ -104,8 +104,17 @@ original Cloudproxy paper by Manferdelli, Roeder and Schneider.  There is
 also Docker container support, although we have not kept this current
 nor is there extensive use documentation yet.
 
+News: Cloudproxy now has state rollback protection and supports more crypto
+suites (as well as enabling adding new crypto suites.  Current crypto suites include
+        1. The original "128 bit" security suite which includes aes-128,
+	   aes-128-CTR with SHA-256 HMAC and P-256 based Eliptic Curve Public Key support.
+        2. A Suite B compliant "192 bit" security suite which includes aes-256,
+	   aes-256-CTR with SHA-384 HMAC and P-384 based Eliptic Curve Public Key support.
+        3. A new "256 bit" security suite which includes aes-256,
+	   aes-256-CTR with SHA-512 HMAC and P-521 based Eliptic Curve Public Key support.
+
 Please send feedback, comments and suggestions and bug reports to
-  jlmucbmath@gmail.com or manferdelli@google.com
+  johnmanferdelli@hotmail.com or j.manferdelli@northeastern.edu
 Unless expressly noted in any such submitted material, you agree that any 
 feedback, comments or suggestions can be used and distributed under the Apache 
 License in this directory.
